@@ -6,6 +6,38 @@ namespace Andreja.Modules.Semantics;
 
 public sealed class InMemorySemanticAssertionLedger
 {
+    private static readonly HashSet<string> AuditReasonCodes =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "app-user-denied",
+            "corrected",
+            "created",
+            "deleted-content-removed",
+            "exported",
+            "inference-must-remain-hypothesis",
+            "input-invalidated",
+            "invalid-assertion",
+            "invalid-confidence",
+            "invalid-correction-cycle",
+            "invalid-correction-lineage",
+            "invalid-derivation",
+            "invalid-extension",
+            "invalid-lineage",
+            "invalid-predicate",
+            "invalid-provenance",
+            "invalid-value",
+            "missing-evidence",
+            "principal-denied",
+            "purpose-denied",
+            "raw-lineage-not-allowed",
+            "record-digest-mismatch",
+            "retracted",
+            "sensitive-inference-exposure-denied",
+            "superseded",
+            "tenant-denied",
+            "unsupported-contract-version",
+            "user-statement-not-approved",
+        };
     private readonly object gate = new();
     private readonly Dictionary<ProvenanceSourceId, ProvenanceSource> sources = [];
     private readonly Dictionary<ProfileAssertionId, ProfileAssertion> assertions = [];
@@ -48,35 +80,7 @@ public sealed class InMemorySemanticAssertionLedger
         ArgumentNullException.ThrowIfNull(assertion);
         lock (gate)
         {
-            var validation = ValidateAssertion(context, assertion);
-            if (validation is not null)
-            {
-                AppendAudit(
-                    context,
-                    assertion.AssertionId,
-                    assertion.Version,
-                    AssertionLifecycleAction.AccessDenied,
-                    SemanticEvaluationOutcome.Invalid,
-                    validation,
-                    assertion.RecordedAt);
-                return Denied(SemanticEvaluationOutcome.Invalid, validation);
-            }
-
-            if (!assertions.TryAdd(assertion.AssertionId, assertion))
-            {
-                return Denied(SemanticEvaluationOutcome.Conflict, "assertion-already-exists");
-            }
-
-            states.Add(assertion.AssertionId, AssertionLifecycleState.Active);
-            AppendAudit(
-                context,
-                assertion.AssertionId,
-                assertion.Version,
-                AssertionLifecycleAction.Created,
-                SemanticEvaluationOutcome.Allowed,
-                "created",
-                assertion.RecordedAt);
-            return Allowed(assertion, SemanticExposureLevel.Full, "created");
+            return AppendCore(context, assertion, allowLineage: false);
         }
     }
 
@@ -94,8 +98,13 @@ public sealed class InMemorySemanticAssertionLedger
                 return current;
             }
 
-            if (correction.Lineage.CorrectsAssertionId != request.AssertionId
+            if (correction.Lineage is null
+                || correction.Lineage.CorrectsAssertionId != request.AssertionId
                 || correction.Lineage.SupersedesAssertionId != request.AssertionId
+                || correction.Lineage.RetractsAssertionId is not null
+                || correction.AssertionId == request.AssertionId
+                || correction.DerivedFromAssertionIds.IsDefault
+                || correction.DerivedFromAssertionIds.Contains(request.AssertionId)
                 || correction.Version != 1
                 || correction.SubjectId != current.Assertion!.SubjectId
                 || !string.Equals(
@@ -104,10 +113,14 @@ public sealed class InMemorySemanticAssertionLedger
                     StringComparison.Ordinal)
                 || correction.DataClass != current.Assertion.DataClass)
             {
-                return Denied(SemanticEvaluationOutcome.Invalid, "invalid-correction-lineage");
+                return Denied(
+                    SemanticEvaluationOutcome.Invalid,
+                    correction.AssertionId == request.AssertionId
+                        ? "invalid-correction-cycle"
+                        : "invalid-correction-lineage");
             }
 
-            var append = Append(request.Context, correction);
+            var append = AppendCore(request.Context, correction, allowLineage: true);
             if (append.Outcome != SemanticEvaluationOutcome.Allowed)
             {
                 return append;
@@ -422,7 +435,6 @@ public sealed class InMemorySemanticAssertionLedger
             || assertion.Lineage is null
             || assertion.Handling is null
             || assertion.Extensions is null
-            || string.IsNullOrWhiteSpace(assertion.Predicate)
             || !Enum.IsDefined(assertion.DataClass)
             || !Enum.IsDefined(assertion.EpistemicStatus)
             || !Enum.IsDefined(assertion.VerificationState)
@@ -437,6 +449,11 @@ public sealed class InMemorySemanticAssertionLedger
             || assertion.ValidTo <= assertion.ValidFrom)
         {
             return "invalid-assertion";
+        }
+
+        if (!SemanticProfileContract.IsValidPredicate(assertion.Predicate))
+        {
+            return "invalid-predicate";
         }
 
         var scopeFailure = ValidateScope(context, assertion);
@@ -469,9 +486,10 @@ public sealed class InMemorySemanticAssertionLedger
             return "invalid-confidence";
         }
 
-        if (assertion.Handling.AllowedPurposes.IsDefaultOrEmpty
-            || assertion.Handling.AllowedPurposes.Any(string.IsNullOrWhiteSpace)
-            || assertion.Handling.AllowedPurposes.Any(purpose => purpose.Length > 128)
+        if (!SemanticProfileContract.IsAllowedPurpose(context.Purpose)
+            || assertion.Handling.AllowedPurposes.IsDefaultOrEmpty
+            || assertion.Handling.AllowedPurposes.Any(
+                purpose => !SemanticProfileContract.IsAllowedPurpose(purpose))
             || !assertion.Handling.AllowedPurposes.Contains(
                 context.Purpose,
                 StringComparer.Ordinal))
@@ -536,6 +554,65 @@ public sealed class InMemorySemanticAssertionLedger
 
         return null;
     }
+
+    private SemanticEvaluationResult AppendCore(
+        SemanticRequestContext context,
+        ProfileAssertion assertion,
+        bool allowLineage)
+    {
+        if (!allowLineage
+            && assertion.Lineage is not null
+            && HasLineage(assertion))
+        {
+            AppendAudit(
+                context,
+                assertion.AssertionId,
+                assertion.Version,
+                AssertionLifecycleAction.AccessDenied,
+                SemanticEvaluationOutcome.Invalid,
+                "raw-lineage-not-allowed",
+                assertion.RecordedAt);
+            return Denied(
+                SemanticEvaluationOutcome.Invalid,
+                "raw-lineage-not-allowed");
+        }
+
+        var validation = ValidateAssertion(context, assertion);
+        if (validation is not null)
+        {
+            AppendAudit(
+                context,
+                assertion.AssertionId,
+                assertion.Version,
+                AssertionLifecycleAction.AccessDenied,
+                SemanticEvaluationOutcome.Invalid,
+                validation,
+                assertion.RecordedAt);
+            return Denied(SemanticEvaluationOutcome.Invalid, validation);
+        }
+
+        if (states.ContainsKey(assertion.AssertionId)
+            || !assertions.TryAdd(assertion.AssertionId, assertion))
+        {
+            return Denied(SemanticEvaluationOutcome.Conflict, "assertion-already-exists");
+        }
+
+        states.Add(assertion.AssertionId, AssertionLifecycleState.Active);
+        AppendAudit(
+            context,
+            assertion.AssertionId,
+            assertion.Version,
+            AssertionLifecycleAction.Created,
+            SemanticEvaluationOutcome.Allowed,
+            "created",
+            assertion.RecordedAt);
+        return Allowed(assertion, SemanticExposureLevel.Full, "created");
+    }
+
+    private static bool HasLineage(ProfileAssertion assertion) =>
+        assertion.Lineage.CorrectsAssertionId is not null
+        || assertion.Lineage.SupersedesAssertionId is not null
+        || assertion.Lineage.RetractsAssertionId is not null;
 
     private bool IsEvidenceValid(
         SemanticRequestContext context,
@@ -657,6 +734,7 @@ public sealed class InMemorySemanticAssertionLedger
             || source.SourceReference.Contains('\r')
             || source.SourceReference.Contains('\n')
             || string.IsNullOrWhiteSpace(source.Purpose)
+            || !SemanticProfileContract.IsAllowedPurpose(source.Purpose)
             || !string.Equals(source.Purpose, context.Purpose, StringComparison.Ordinal)
             || string.IsNullOrWhiteSpace(source.Method)
             || string.IsNullOrWhiteSpace(source.MethodVersion)
@@ -696,8 +774,10 @@ public sealed class InMemorySemanticAssertionLedger
             context.PrincipalId,
             action,
             outcome,
-            context.Purpose,
-            reason,
+            SemanticProfileContract.IsAllowedPurpose(context.Purpose)
+                ? context.Purpose
+                : "invalid-purpose",
+            AuditReasonCodes.Contains(reason) ? reason : "redacted-reason",
             occurredAt));
     }
 

@@ -10,6 +10,55 @@ public static class SemanticProfileContract
     public const string JsonLdContextVersion = "1.0";
     public const string JsonLdContextIri = "https://andreja.invalid/ns/v1#";
     public const string ProvenanceContextIri = "http://www.w3.org/ns/prov#";
+
+    public static bool IsAllowedPurpose(string? purpose) =>
+        string.Equals(purpose, "task-management", StringComparison.Ordinal);
+
+    public static bool IsValidPredicate(string? predicate)
+    {
+        if (string.IsNullOrWhiteSpace(predicate)
+            || predicate.Any(character =>
+                char.IsWhiteSpace(character)
+                || char.IsControl(character)
+                || character == '\\'))
+        {
+            return false;
+        }
+
+        const string corePrefix = "and:";
+        if (predicate.StartsWith(corePrefix, StringComparison.Ordinal))
+        {
+            var term = predicate.AsSpan(corePrefix.Length);
+            return term.Length > 0
+                && IsAsciiLetter(term[0])
+                && term[1..].ToString().All(IsAllowedTermCharacter);
+        }
+
+        if (!Uri.TryCreate(predicate, UriKind.Absolute, out var iri)
+            || !string.Equals(predicate, iri.OriginalString, StringComparison.Ordinal)
+            || !iri.IsWellFormedOriginalString())
+        {
+            return false;
+        }
+
+        if (string.Equals(iri.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal)
+            || string.Equals(iri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal))
+        {
+            return !string.IsNullOrWhiteSpace(iri.Host)
+                && string.IsNullOrEmpty(iri.UserInfo);
+        }
+
+        return string.Equals(iri.Scheme, "urn", StringComparison.Ordinal)
+            && predicate.Length > "urn:".Length;
+    }
+
+    private static bool IsAsciiLetter(char character) =>
+        character is >= 'a' and <= 'z' or >= 'A' and <= 'Z';
+
+    private static bool IsAllowedTermCharacter(char character) =>
+        IsAsciiLetter(character)
+        || character is >= '0' and <= '9'
+        || character is '.' or '_' or '-';
 }
 
 public readonly record struct SemanticTenantId(Guid Value)

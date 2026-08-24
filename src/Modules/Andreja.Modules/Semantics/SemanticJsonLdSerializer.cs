@@ -70,6 +70,13 @@ public static class SemanticJsonLdSerializer
 
     private static void WriteAssertion(Utf8JsonWriter writer, ProfileAssertion assertion)
     {
+        if (!SemanticProfileContract.IsValidPredicate(assertion.Predicate))
+        {
+            throw new ArgumentException(
+                "The assertion predicate is not a safe IRI.",
+                nameof(assertion));
+        }
+
         writer.WriteStartObject();
         writer.WriteString("id", Urn(assertion.AssertionId.Value));
         writer.WriteString("type", "and:ProfileAssertion");

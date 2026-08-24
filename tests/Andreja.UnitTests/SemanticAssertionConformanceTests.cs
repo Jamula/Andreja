@@ -108,6 +108,197 @@ public sealed class SemanticAssertionConformanceTests
     }
 
     [Theory]
+    [InlineData("corrects")]
+    [InlineData("supersedes")]
+    [InlineData("retracts")]
+    public void RawAppendRejectsForgedLineage(string lineageKind)
+    {
+        var ledger = CreateLedger();
+        var original = CreateAssertion();
+        Assert.Equal(
+            SemanticEvaluationOutcome.Allowed,
+            ledger.Append(Context(), original).Outcome);
+        var lineage = lineageKind switch
+        {
+            "corrects" => new AssertionLineage(original.AssertionId, null, null),
+            "supersedes" => new AssertionLineage(null, original.AssertionId, null),
+            "retracts" => new AssertionLineage(null, null, original.AssertionId),
+            _ => throw new ArgumentOutOfRangeException(nameof(lineageKind)),
+        };
+        var forged = CreateAssertion(ProfileAssertionId.New(), lineage: lineage);
+
+        var result = ledger.Append(Context(), forged);
+
+        Assert.Equal(SemanticEvaluationOutcome.Invalid, result.Outcome);
+        Assert.Equal("raw-lineage-not-allowed", result.Reason);
+        Assert.Equal(
+            original.AssertionId,
+            Assert.Single(
+                ledger.FindActive(Context(), SubjectId, original.Predicate)).AssertionId);
+    }
+
+    [Fact]
+    public void DuplicateCorrectionRetiresPredecessorExactlyOnce()
+    {
+        var ledger = CreateLedger();
+        var original = CreateAssertion();
+        var correction = CreateCorrection(original, "early-morning");
+        Assert.Equal(
+            SemanticEvaluationOutcome.Allowed,
+            ledger.Append(Context(), original).Outcome);
+
+        var first = ledger.Correct(Change(original), correction);
+        var duplicate = ledger.Correct(Change(original), correction);
+
+        Assert.Equal(SemanticEvaluationOutcome.Allowed, first.Outcome);
+        Assert.Equal(SemanticEvaluationOutcome.NotFound, duplicate.Outcome);
+        Assert.Equal(
+            correction.AssertionId,
+            Assert.Single(
+                ledger.FindActive(Context(), SubjectId, original.Predicate)).AssertionId);
+        Assert.Single(
+            ledger.Audit,
+            entry =>
+                entry.AssertionId == original.AssertionId
+                && entry.Action == AssertionLifecycleAction.Superseded);
+    }
+
+    [Fact]
+    public async Task ConcurrentCorrectionsCreateExactlyOneActiveSuccessor()
+    {
+        var ledger = CreateLedger();
+        var original = CreateAssertion();
+        Assert.Equal(
+            SemanticEvaluationOutcome.Allowed,
+            ledger.Append(Context(), original).Outcome);
+        var corrections = Enumerable.Range(0, 16)
+            .Select(index => CreateCorrection(original, $"corrected-{index}"))
+            .ToArray();
+        using var start = new ManualResetEventSlim();
+        var operations = corrections.Select(correction => Task.Run(() =>
+        {
+            start.Wait();
+            return ledger.Correct(Change(original), correction);
+        })).ToArray();
+
+        start.Set();
+        var results = await Task.WhenAll(operations);
+
+        var winner = Assert.Single(
+            results,
+            result => result.Outcome == SemanticEvaluationOutcome.Allowed);
+        Assert.Equal(
+            15,
+            results.Count(result => result.Outcome == SemanticEvaluationOutcome.NotFound));
+        Assert.Equal(
+            winner.Assertion!.AssertionId,
+            Assert.Single(
+                ledger.FindActive(Context(), SubjectId, original.Predicate)).AssertionId);
+    }
+
+    [Fact]
+    public void CorrectionRejectsInactiveCrossScopeAndCyclicPredecessors()
+    {
+        var inactiveLedger = CreateLedger();
+        var inactive = CreateAssertion();
+        Assert.Equal(
+            SemanticEvaluationOutcome.Allowed,
+            inactiveLedger.Append(Context(), inactive).Outcome);
+        Assert.Equal(
+            SemanticEvaluationOutcome.Allowed,
+            inactiveLedger.Retract(Change(inactive)).Outcome);
+        Assert.Equal(
+            SemanticEvaluationOutcome.NotFound,
+            inactiveLedger.Correct(
+                Change(inactive),
+                CreateCorrection(inactive, "inactive-correction")).Outcome);
+
+        var crossScopeLedger = CreateLedger();
+        var original = CreateAssertion();
+        Assert.Equal(
+            SemanticEvaluationOutcome.Allowed,
+            crossScopeLedger.Append(Context(), original).Outcome);
+        var wrongContext = Context() with { PrincipalId = SemanticPrincipalId.New() };
+        Assert.Equal(
+            SemanticEvaluationOutcome.Denied,
+            crossScopeLedger.Correct(
+                Change(original) with { Context = wrongContext },
+                CreateCorrection(original, "cross-scope")).Outcome);
+        var wrongScopeSuccessor = SemanticRecordDigest.Seal(
+            CreateCorrection(original, "wrong-successor-scope") with
+            {
+                TenantId = SemanticTenantId.New(),
+            });
+        Assert.Equal(
+            SemanticEvaluationOutcome.Invalid,
+            crossScopeLedger.Correct(
+                Change(original),
+                wrongScopeSuccessor).Outcome);
+
+        var cycle = CreateCorrection(original, "cycle") with
+        {
+            AssertionId = original.AssertionId,
+        };
+        cycle = SemanticRecordDigest.Seal(cycle);
+        var cycleResult = crossScopeLedger.Correct(Change(original), cycle);
+        Assert.Equal(SemanticEvaluationOutcome.Invalid, cycleResult.Outcome);
+        Assert.Equal("invalid-correction-cycle", cycleResult.Reason);
+        Assert.Equal(
+            original.AssertionId,
+            Assert.Single(
+                crossScopeLedger.FindActive(
+                    Context(),
+                    SubjectId,
+                    original.Predicate)).AssertionId);
+    }
+
+    [Theory]
+    [InlineData("and:preferredTime")]
+    [InlineData("https://schema.org/startDate")]
+    [InlineData("http://www.w3.org/ns/prov#value")]
+    [InlineData("urn:example:preferred-time")]
+    public void PredicateValidationAcceptsPinnedAndApprovedAbsoluteIris(string predicate)
+    {
+        var ledger = CreateLedger();
+
+        var result = ledger.Append(Context(), CreateAssertion(predicate: predicate));
+
+        Assert.Equal(SemanticEvaluationOutcome.Allowed, result.Outcome);
+    }
+
+    [Theory]
+    [InlineData("and:")]
+    [InlineData("and:bad term")]
+    [InlineData("and:term:extra")]
+    [InlineData("relative/path")]
+    [InlineData("unknown:predicate")]
+    [InlineData("javascript:alert(1)")]
+    [InlineData(" https://schema.org/startDate")]
+    [InlineData("https://example.invalid/bad path")]
+    [InlineData("and:term\ninjected")]
+    public void PredicateValidationRejectsUnsafeOrUnknownIris(string predicate)
+    {
+        var ledger = CreateLedger();
+        var assertion = CreateAssertion(predicate: predicate);
+
+        var result = ledger.Append(Context(), assertion);
+
+        Assert.Equal(SemanticEvaluationOutcome.Invalid, result.Outcome);
+        Assert.Equal("invalid-predicate", result.Reason);
+        var package = new SemanticExportPackage(
+            SemanticProfileContract.Version,
+            SemanticProfileContract.JsonLdContextVersion,
+            "tenant-local-1",
+            RecordedAt,
+            [assertion],
+            [CreateSource()],
+            [],
+            []);
+        Assert.Throws<ArgumentException>(() =>
+            SemanticJsonLdSerializer.Serialize(package));
+    }
+
+    [Theory]
     [InlineData("tenant", "tenant-denied")]
     [InlineData("user", "app-user-denied")]
     [InlineData("principal", "principal-denied")]
@@ -259,17 +450,32 @@ public sealed class SemanticAssertionConformanceTests
     }
 
     [Fact]
-    public void DeleteRemovesContentAndRetainsOnlyConfiguredTombstoneAndMinimizedAudit()
+    public void DeleteRemovesContentFromSerializedAuditExportAndTombstones()
     {
-        var ledger = CreateLedger();
+        const string lexicalMarker = "PRIVATE-LEXICAL-VALUE";
+        const string predicateMarker = "private-predicate-marker";
+        const string sourceMarker = "receipt:PRIVATE-SOURCE-REFERENCE";
+        const string evidenceMarker = "PRIVATE-EVIDENCE-TEXT";
+        const string explanationMarker = "PRIVATE-CONFIDENCE-EXPLANATION";
+        const string extensionMarker = "PRIVATE-EXTENSION-VALUE";
+        const string reasonMarker = "PRIVATE-REASON-CONTENT";
+        var ledger = new InMemorySemanticAssertionLedger();
+        var source = CreateSource(sourceReference: sourceMarker);
+        ledger.AppendSource(Context(), source);
         var assertion = CreateAssertion(
+            lexicalValue: lexicalMarker,
+            predicate: $"https://example.invalid/vocab/{predicateMarker}",
+            confidence: new(1m, "user-entry", "1", explanationMarker),
+            evidenceRole: evidenceMarker,
+            extensionValue: extensionMarker,
             handling: CreateHandling(
+                SensitivityClass.Sensitive,
                 deleteDisposition: DeleteDisposition.Tombstone));
         Assert.Equal(
             SemanticEvaluationOutcome.Allowed,
             ledger.Append(Context(), assertion).Outcome);
 
-        var deleted = ledger.Delete(Change(assertion));
+        var deleted = ledger.Delete(Change(assertion, reasonMarker));
         var package = ledger.Export(
             Context(),
             "tenant-local-1",
@@ -280,14 +486,46 @@ public sealed class SemanticAssertionConformanceTests
         Assert.Empty(package.Assertions);
         var tombstone = Assert.Single(package.Tombstones);
         Assert.Equal(assertion.RecordDigest, tombstone.LastRecordDigest);
-        Assert.All(
-            package.Audit,
-            item => Assert.DoesNotContain(
-                item.GetType().GetProperties(),
-                property =>
-                    property.Name.Contains("Value", StringComparison.Ordinal)
-                    || property.Name.Contains("Predicate", StringComparison.Ordinal)
-                    || property.Name.Contains("SourceReference", StringComparison.Ordinal)));
+        var serialized = JsonSerializer.Serialize(new
+        {
+            LedgerAudit = ledger.Audit,
+            Export = package,
+            JsonLd = SemanticJsonLdSerializer.Serialize(package),
+        });
+        foreach (var forbidden in new[]
+        {
+            lexicalMarker,
+            predicateMarker,
+            sourceMarker,
+            SourceDigest,
+            evidenceMarker,
+            explanationMarker,
+            extensionMarker,
+            reasonMarker,
+        })
+        {
+            Assert.DoesNotContain(forbidden, serialized, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void AdversarialPurposeIsRejectedAndNormalizedInSerializedAudit()
+    {
+        const string purposeMarker = "PRIVATE-PURPOSE-CONTENT";
+        var adversarialPurpose = $"task-management\n{purposeMarker}";
+        var ledger = CreateLedger();
+        var assertion = CreateAssertion(
+            handling: CreateHandling(purposes: [adversarialPurpose]));
+
+        var result = ledger.Append(
+            Context() with { Purpose = adversarialPurpose },
+            assertion);
+        var serialized = JsonSerializer.Serialize(ledger.Audit);
+
+        Assert.Equal(SemanticEvaluationOutcome.Invalid, result.Outcome);
+        Assert.Equal("purpose-denied", result.Reason);
+        Assert.DoesNotContain(purposeMarker, serialized, StringComparison.Ordinal);
+        Assert.Contains("\"Purpose\":\"invalid-purpose\"", serialized, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -406,7 +644,8 @@ public sealed class SemanticAssertionConformanceTests
         return ledger;
     }
 
-    private static ProvenanceSource CreateSource() =>
+    private static ProvenanceSource CreateSource(
+        string sourceReference = "receipt:local-minimized-reference") =>
         new(
             SemanticProfileContract.Version,
             SourceId,
@@ -415,7 +654,7 @@ public sealed class SemanticAssertionConformanceTests
             AppUserId,
             PrincipalId,
             "interaction-receipt",
-            "receipt:local-minimized-reference",
+            sourceReference,
             SourceDigest,
             RecordedAt.AddMinutes(-1),
             PrincipalId,
@@ -432,9 +671,12 @@ public sealed class SemanticAssertionConformanceTests
         AssertionConfidence? confidence = null,
         SemanticHandlingPolicy? handling = null,
         AssertionLineage? lineage = null,
-        IEnumerable<ProfileAssertionId>? derivedFrom = null)
+        IEnumerable<ProfileAssertionId>? derivedFrom = null,
+        string predicate = "and:preferredTime",
+        string evidenceRole = "decisive",
+        string extensionValue = "bounded-extension-value")
     {
-        using var extension = JsonDocument.Parse("\"bounded-extension-value\"");
+        using var extension = JsonDocument.Parse(JsonSerializer.Serialize(extensionValue));
         var assertion = new ProfileAssertion(
             SemanticProfileContract.Version,
             assertionId ?? AssertionId,
@@ -444,7 +686,7 @@ public sealed class SemanticAssertionConformanceTests
             PrincipalId,
             PrincipalId,
             SubjectId,
-            "and:preferredTime",
+            predicate,
             new(
                 SemanticValueKind.Text,
                 lexicalValue,
@@ -456,7 +698,7 @@ public sealed class SemanticAssertionConformanceTests
             verificationState,
             reviewState,
             confidence,
-            [new(SourceId, SourceDigest, "decisive")],
+            [new(SourceId, SourceDigest, evidenceRole)],
             [.. derivedFrom ?? []],
             handling ?? CreateHandling(),
             RecordedAt,
@@ -477,10 +719,11 @@ public sealed class SemanticAssertionConformanceTests
     private static SemanticHandlingPolicy CreateHandling(
         SensitivityClass sensitivity = SensitivityClass.Personal,
         ExportDisposition exportDisposition = ExportDisposition.Include,
-        DeleteDisposition deleteDisposition = DeleteDisposition.Tombstone) =>
+        DeleteDisposition deleteDisposition = DeleteDisposition.Tombstone,
+        IEnumerable<string>? purposes = null) =>
         SemanticHandlingPolicy.PrivateByDefault(
             sensitivity,
-            [Purpose],
+            purposes ?? [Purpose],
             new(
                 exportDisposition,
                 deleteDisposition,
@@ -490,11 +733,24 @@ public sealed class SemanticAssertionConformanceTests
     private static SemanticRequestContext Context() =>
         new(TenantId, AppUserId, PrincipalId, Purpose);
 
-    private static AssertionChangeRequest Change(ProfileAssertion assertion) =>
+    private static ProfileAssertion CreateCorrection(
+        ProfileAssertion predecessor,
+        string lexicalValue) =>
+        CreateAssertion(
+            ProfileAssertionId.New(),
+            lexicalValue,
+            lineage: new(
+                predecessor.AssertionId,
+                predecessor.AssertionId,
+                null));
+
+    private static AssertionChangeRequest Change(
+        ProfileAssertion assertion,
+        string reason = "user-request") =>
         new(
             Context(),
             assertion.AssertionId,
             assertion.Version,
             RecordedAt.AddMinutes(1),
-            "user-request");
+            reason);
 }
