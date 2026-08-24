@@ -12,11 +12,12 @@
 
 ## Authority statement
 
-This document is the **authoritative source for workstream ownership**: who is
-accountable for each workstream, its boundaries and interfaces, GitHub ownership,
-RACI, artifact gates, handoffs, WIP limits, worktree/stacked-PR parallelism,
-integration ownership, the Customer Zero loop, the protected critical path,
-delight/urgency and stop/de-scope rules, and executive-versus-Cyrus authority.
+Upon ratification (see **Status** above), this document will be the
+**authoritative source for workstream ownership**: who is accountable for each
+workstream, its boundaries and interfaces, GitHub ownership, RACI, artifact
+gates, handoffs, WIP limits, worktree/stacked-PR parallelism, integration
+ownership, the Customer Zero loop, the protected critical path, delight/urgency
+and stop/de-scope rules, and executive-versus-Cyrus authority.
 
 It is explicitly **not authoritative** for, and does not define or duplicate,
 scoring, sequencing, or launch: the issue scorecard, portfolio lanes,
