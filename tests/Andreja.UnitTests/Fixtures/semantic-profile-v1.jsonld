@@ -47,7 +47,7 @@
       "and:sensitivity": "Personal",
       "and:modelExposure": "Denied",
       "and:sharing": "Denied",
-      "and:recordDigest": "bd8ee4ce36de1ef27a10d432ebac697f53c28c43e885ac233e889ad99d8aff9f",
+      "and:recordDigest": "e0a3d88ac397736838be48edbcf2f751448e0ade67270f28ef51cb3fcf3cbb6b",
       "prov:wasAttributedTo": {
         "id": "urn:uuid:018f0000-0000-7000-8000-000000000003"
       },

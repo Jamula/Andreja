@@ -497,24 +497,10 @@ public sealed class InMemorySemanticAssertionLedger
             return "missing-evidence";
         }
 
-        foreach (var evidence in assertion.Evidence)
+        if (assertion.Evidence.Any(evidence =>
+            !IsEvidenceValid(context, assertion, evidence)))
         {
-            if (!sources.TryGetValue(evidence.SourceId, out var source)
-                || source.TenantId != assertion.TenantId
-                || source.AppUserId != assertion.AppUserId
-                || source.PrincipalId != assertion.PrincipalId
-                || !string.Equals(
-                    source.Purpose,
-                    context.Purpose,
-                    StringComparison.Ordinal)
-                || !string.Equals(
-                    source.SourceDigest,
-                    evidence.SourceDigest,
-                    StringComparison.Ordinal)
-                || string.IsNullOrWhiteSpace(evidence.Role))
-            {
-                return "invalid-provenance";
-            }
+            return "invalid-provenance";
         }
 
         var lineageIds = new[]
@@ -523,50 +509,23 @@ public sealed class InMemorySemanticAssertionLedger
             assertion.Lineage.SupersedesAssertionId,
             assertion.Lineage.RetractsAssertionId,
         };
-        foreach (var lineageId in lineageIds.Where(id => id is not null))
+        if (lineageIds
+            .Where(id => id is not null)
+            .Any(lineageId => !IsLineageValid(assertion, lineageId!.Value)))
         {
-            if (!assertions.TryGetValue(lineageId!.Value, out var predecessor)
-                || predecessor.TenantId != assertion.TenantId
-                || predecessor.AppUserId != assertion.AppUserId
-                || predecessor.PrincipalId != assertion.PrincipalId)
-            {
-                return "invalid-lineage";
-            }
-
-            if (assertion.DerivedFromAssertionIds.IsDefault)
-            {
-                return "invalid-derivation";
-            }
-            foreach (var inputId in assertion.DerivedFromAssertionIds)
-            {
-                if (!assertions.TryGetValue(inputId, out var input)
-                    || states[inputId] != AssertionLifecycleState.Active
-                    || input.TenantId != assertion.TenantId
-                    || input.AppUserId != assertion.AppUserId
-                    || input.PrincipalId != assertion.PrincipalId)
-                {
-                    return "invalid-derivation";
-                }
-            }
+            return "invalid-lineage";
         }
 
-        foreach (var extension in assertion.Extensions)
+        if (assertion.DerivedFromAssertionIds.IsDefault
+            || assertion.DerivedFromAssertionIds.Any(
+                inputId => !IsDerivationValid(assertion, inputId)))
         {
-            if (!Uri.TryCreate(extension.Key, UriKind.Absolute, out var extensionIri)
-                || !string.Equals(
-                    extensionIri.Scheme,
-                    Uri.UriSchemeHttps,
-                    StringComparison.Ordinal)
-                || extension.Key.StartsWith(
-                    SemanticProfileContract.JsonLdContextIri,
-                    StringComparison.Ordinal)
-                || extension.Key.StartsWith(
-                    SemanticProfileContract.ProvenanceContextIri,
-                    StringComparison.Ordinal)
-                || extension.Value.ValueKind == System.Text.Json.JsonValueKind.Undefined)
-            {
-                return "invalid-extension";
-            }
+            return "invalid-derivation";
+        }
+
+        if (assertion.Extensions.Any(extension => !IsExtensionValid(extension)))
+        {
+            return "invalid-extension";
         }
 
         var expectedDigest = SemanticRecordDigest.Compute(assertion);
@@ -577,6 +536,53 @@ public sealed class InMemorySemanticAssertionLedger
 
         return null;
     }
+
+    private bool IsEvidenceValid(
+        SemanticRequestContext context,
+        ProfileAssertion assertion,
+        AssertionEvidence evidence) =>
+        sources.TryGetValue(evidence.SourceId, out var source)
+        && source.TenantId == assertion.TenantId
+        && source.AppUserId == assertion.AppUserId
+        && source.PrincipalId == assertion.PrincipalId
+        && string.Equals(source.Purpose, context.Purpose, StringComparison.Ordinal)
+        && string.Equals(
+            source.SourceDigest,
+            evidence.SourceDigest,
+            StringComparison.Ordinal)
+        && !string.IsNullOrWhiteSpace(evidence.Role);
+
+    private bool IsLineageValid(
+        ProfileAssertion assertion,
+        ProfileAssertionId lineageId) =>
+        assertions.TryGetValue(lineageId, out var predecessor)
+        && predecessor.TenantId == assertion.TenantId
+        && predecessor.AppUserId == assertion.AppUserId
+        && predecessor.PrincipalId == assertion.PrincipalId;
+
+    private bool IsDerivationValid(
+        ProfileAssertion assertion,
+        ProfileAssertionId inputId) =>
+        assertions.TryGetValue(inputId, out var input)
+        && states[inputId] == AssertionLifecycleState.Active
+        && input.TenantId == assertion.TenantId
+        && input.AppUserId == assertion.AppUserId
+        && input.PrincipalId == assertion.PrincipalId;
+
+    private static bool IsExtensionValid(
+        KeyValuePair<string, System.Text.Json.JsonElement> extension) =>
+        Uri.TryCreate(extension.Key, UriKind.Absolute, out var extensionIri)
+        && string.Equals(
+            extensionIri.Scheme,
+            Uri.UriSchemeHttps,
+            StringComparison.Ordinal)
+        && !extension.Key.StartsWith(
+            SemanticProfileContract.JsonLdContextIri,
+            StringComparison.Ordinal)
+        && !extension.Key.StartsWith(
+            SemanticProfileContract.ProvenanceContextIri,
+            StringComparison.Ordinal)
+        && extension.Value.ValueKind != System.Text.Json.JsonValueKind.Undefined;
 
     private static string? ValidateScope(
         SemanticRequestContext context,

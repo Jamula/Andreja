@@ -56,7 +56,7 @@ public sealed class SemanticAssertionConformanceTests
             RecordedAt.AddHours(1));
 
         var actual = SemanticJsonLdSerializer.Serialize(package, indented: true);
-        var fixturePath = Path.Combine(
+        var fixturePath = Path.Join(
             AppContext.BaseDirectory,
             "Fixtures",
             "semantic-profile-v1.jsonld");

@@ -26,7 +26,7 @@ public static class SemanticRecordDigest
         Add(hash, assertion.Value.LexicalValue);
         Add(hash, assertion.Value.DataTypeIri);
         Add(hash, assertion.Value.Language);
-        Add(hash, assertion.Value.NodeReference?.Value);
+        Add(hash, assertion.Value.NodeReference.GetValueOrDefault().Value);
         Add(hash, assertion.DataClass);
         Add(hash, assertion.EpistemicStatus);
         Add(hash, assertion.VerificationState);
@@ -62,9 +62,9 @@ public static class SemanticRecordDigest
         Add(hash, assertion.ObservedAt);
         Add(hash, assertion.ValidFrom);
         Add(hash, assertion.ValidTo);
-        Add(hash, assertion.Lineage.CorrectsAssertionId?.Value);
-        Add(hash, assertion.Lineage.SupersedesAssertionId?.Value);
-        Add(hash, assertion.Lineage.RetractsAssertionId?.Value);
+        Add(hash, assertion.Lineage.CorrectsAssertionId.GetValueOrDefault().Value);
+        Add(hash, assertion.Lineage.SupersedesAssertionId.GetValueOrDefault().Value);
+        Add(hash, assertion.Lineage.RetractsAssertionId.GetValueOrDefault().Value);
         foreach (var extension in assertion.Extensions.OrderBy(item => item.Key, StringComparer.Ordinal))
         {
             Add(hash, extension.Key);
