@@ -50,6 +50,8 @@ dotnet format Andreja.slnx --verify-no-changes --no-restore
 dotnet format tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --verify-no-changes --no-restore
 pwsh -NoProfile -File .github\scripts\invoke-nuget-vulnerability-scan.ps1
 pwsh -NoProfile -File scripts\operations\validate-contract.ps1
+pwsh -NoProfile -File scripts\supply-chain\Test-SupplyChainPolicy.ps1
+pwsh -NoProfile -File scripts\supply-chain\Invoke-NegativeTests.ps1
 bash -n scripts/operations/*.sh
 ```
 
@@ -163,8 +165,47 @@ push-to-`main` or `merge_group` coverage.
 
 Default-branch required-check and merge-queue enforcement is deliberately
 tracked in [issue #67](https://github.com/Jamula/Andreja/issues/67). OCI SBOM,
-image scanning, and provenance remain in
-[issue #71](https://github.com/Jamula/Andreja/issues/71).
+image scanning, and provenance are implemented by the entitlement-neutral
+[`OCI Supply Chain`](../.github/workflows/oci-supply-chain.yml) gate. It builds
+twice from a clean commit, generates SPDX and CycloneDX inventories, applies the
+High/Critical dependency/image/container/IaC policy, and generates provenance.
+The host first restores with the pinned SDK, then the BuildKit stage receives only
+the exact resolved package directories as a read-only named context, copies them
+into a transient writable cache, runs with network disabled, and removes the cache
+before committing the build layer. Container
+restore disables NuGet's online audit because that isolated stage may have no
+trusted network path; the separate direct/transitive NuGet audit and pinned Grype
+scans remain mandatory and fail closed. Only the source-unavailable `NU1801`
+warning is demoted there; an absent resolved package remains a blocking restore
+error. The SDK records publish wall-clock times in static-asset endpoint
+`Last-Modified` headers, so the Dockerfile normalizes only those metadata values to
+the reviewed commit epoch after deterministic precompression. Asset bytes,
+fingerprints, ETags, and cache policy remain unchanged.
+
+The audited `final` stage is the only application-image target and is the
+Dockerfile default. A plain `docker build .` intentionally fails because it cannot
+silently use a network restore. For an untrusted local developer image, explicitly
+provide the already-restored package cache; this exercises the same final target
+but does not create signed evidence and must not be used as `ANDREJA_IMAGE`:
+
+```powershell
+dotnet restore src\Andreja.AppHost\Andreja.AppHost.csproj
+$revision = git rev-parse HEAD
+$epoch = git show -s --format=%ct HEAD
+docker buildx build --load --network none `
+  --build-context "nuget-cache=$HOME\.nuget\packages" `
+  --build-arg "SOURCE_REVISION=$revision" `
+  --build-arg "SOURCE_DATE_EPOCH=$epoch" `
+  --tag andreja:developer .
+```
+
+Trusted/operator use must go through `New-OciEvidence.ps1`, which supplies a
+minimal exact package context, selects that same `final` target, builds twice,
+scans, and signs.
+The hosted job is read-only, receives no secrets, uploads nothing, and deliberately
+does not sign. Trusted evidence uses the local operator-held key workflow in the
+[self-host runbook](operations/self-hosting.md); unsigned hosted output cannot
+authorize startup, update, release, or publication.
 
 ## Run the host
 
