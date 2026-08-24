@@ -1,8 +1,11 @@
 # Phase 1A decision packet
 
 - **Status:** Proposed; Cyrus approval required
+- **Date:** 2026-08-23
 - **Issue:** [#9](https://github.com/cyrusjamula/Andreja/issues/9)
 - **Scope:** Independent self-hosted assistant walking skeleton
+- **Governing:** [Platform plan](../plan.md), [company charter](../charter.md),
+  and [ADR 0000](../adr/0000-plan-ratification.md)
 
 This packet narrows the ratified [platform plan](../plan.md) into decisions that
 are needed before Phase 1A implementation. It does not amend the plan or approve
@@ -66,12 +69,63 @@ Cyrus must explicitly decide:
 Cloud runtime, managed database, CIAM, and graph database decisions are
 explicitly deferred and are not hidden prerequisites for Phase 1A.
 
+## Ethics and sustainability impact assessment
+
+This single packet-level assessment satisfies the
+[charter's required eight points](../charter.md#ethics-and-sustainability-impact-assessment)
+for ADRs 0001–0005; each ADR separately records its technical alternatives.
+
+1. **People and agency:** Cyrus benefits first from a self-owned assistant/task
+   outcome. Server-authorized proposals, explicit confirmation, correction,
+   completion, export, deletion, revocation, and provider pause/kill preserve review
+   and exit. Affected contacts or future peers receive no Phase 1A live sharing.
+2. **Data and consent:** Identity, task/assistant content, grants/consent/share audit,
+   credentials, recovery material, and usage evidence have explicit purpose,
+   minimization, export/delete, retention, and model-exposure rules. Sharing defaults
+   denied; contract fixtures confer no live authority.
+3. **Equity and accessibility:** Local hosting, passkeys, technical recovery, and
+   BYOK may exclude people with limited devices, connectivity, funds, or operational
+   skill. Keyboard/accessibility and phone/tablet/desktop proof is required, while
+   broader languages, assisted recovery, and managed onboarding remain known gaps.
+4. **AI and safety:** AI is limited to a declared provider, exact typed tool, and
+   proposal rather than direct task mutation. Provenance, errors, policy denials,
+   budget stop, deterministic fakes, and human confirmation expose uncertainty and
+   constrain prompt/tool injection or confused-deputy misuse.
+5. **Sustainability:** One modular process, one relational store, local telemetry,
+   deterministic fakes, bounded retention, and no inactive federation persistence
+   reduce compute, storage, vendor, maintenance, financial, and environmental cost.
+   Live model use remains blocked pending the canonical cost-model approval gate.
+6. **Stakeholders and incentives:** The user/data subject, operator, contributors,
+   providers, future peers, and affected non-users are considered. No sponsor,
+   marketplace, growth, or provider incentive can widen grants, bypass confirmation,
+   receive content, or authorize spend.
+7. **Evidence and alternatives:** Architecture, isolation, recovery, portability,
+   permission-negative, envelope, telemetry, accessibility, and cost evidence can
+   disprove the design. Each ADR rejects a higher-risk or higher-resource alternative;
+   failed evidence reopens the decision rather than converting assumptions to claims.
+8. **Owner and stop conditions:** Cyrus owns acceptance; Spock, Tuvok, Deanna Troi,
+   Data, Quark, Jett Reno, Seven of Nine, Rai, and Sarek own the listed challenges.
+   Isolation, consent, recovery, content-suppression, accessibility, unknown spend,
+   unexplained egress, or high/critical residual-risk failure pauses exit and triggers
+   remediation, de-scope, rollback, or a new decision.
+
+## Deferred ADR topics
+
+The selected version fields in API/export/peer fixtures are sufficient for Phase 1A,
+but the general compatibility/versioning policy remains a separate ADR. Also
+deferred are reminders/recurrence; live federation discovery, trust, transport, and
+relay; general grants/sharing UX; production channel/connector lifecycle; third-party
+skill execution and marketplace governance; managed/remote control plane; CIAM and
+cloud topology; graph infrastructure; public API compatibility; and provider PITR.
+These are remaining plan ADR topics, not silently approved by this packet.
+
 ## Evidence gaps
 
 No implementation evidence exists yet for WebAuthn bootstrap/recovery, database
 constraints, migration rollback, dump/restore, portable import, key restoration,
-offline startup, provider failure, container restart/update, local OTel queries,
-content suppression, mobile viewport behavior, or production-auth isolation.
+offline startup after image acquisition, provider failure, container restart/update,
+grant/consent/disclosure and signed-envelope conformance, local OTel queries, content
+suppression, mobile viewport behavior, or production-auth isolation.
 The exact gaps and required proof are enumerated in
 [the evidence gates](evidence-gates.md) and block Phase 1A exit, not packet
 review.
