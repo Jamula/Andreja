@@ -1,5 +1,6 @@
 using Andreja.Adapters.PostgreSql;
 using Andreja.Modules.Identity;
+using Andreja.Modules.OpenLoops;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,6 +37,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             provider => provider.GetRequiredService<ScopedTenantPrincipalContext>());
         collection.AddDbContext<AndrejaIdentityDbContext>(
             options => options.UseNpgsql(connectionString));
+        collection.AddScoped<IOpenLoopsTaskStore, PostgreSqlOpenLoopsTaskStore>();
         services = collection.BuildServiceProvider();
 
         await using var scope = services.CreateAsyncScope();
@@ -102,6 +104,73 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                 tenantB,
                 "https://issuer.example",
                 "same-subject"));
+    }
+
+    [Fact]
+    public async Task TaskMigrationPersistsIdempotentLifecycleAndEnforcesTenantIsolation()
+    {
+        var tenantA = await SeedTenantAsync("TASK-TENANT-A");
+        var tenantB = await SeedTenantAsync("TASK-TENANT-B");
+        var contextA = tenantA.Context with { Purpose = OpenLoopsPolicy.Purpose };
+        var contextB = tenantB.Context with { Purpose = OpenLoopsPolicy.Purpose };
+        var createdAt = new DateTimeOffset(2026, 8, 24, 4, 30, 0, TimeSpan.Zero);
+        var task = new OpenLoopTask(
+            Guid.CreateVersion7(),
+            contextA.TenantId,
+            contextA.PrincipalId,
+            "Persisted task",
+            null,
+            null,
+            "assistant",
+            "assistant:integration",
+            createdAt);
+
+        await using (var scope = CreateScope(contextA))
+        {
+            var store = scope.ServiceProvider.GetRequiredService<IOpenLoopsTaskStore>();
+            var created = await store.CreateAsync(
+                contextA,
+                task,
+                Guid.CreateVersion7(),
+                "create-integration");
+            Assert.Equal(TaskMutationOutcome.Applied, created.Outcome);
+        }
+
+        await using (var scope = CreateScope(contextB))
+        {
+            var store = scope.ServiceProvider.GetRequiredService<IOpenLoopsTaskStore>();
+            Assert.Empty(await store.ListAsync(contextB));
+            var crossTenant = await store.CompleteAsync(
+                contextB,
+                task.Id,
+                task.Version,
+                "complete-cross-tenant",
+                createdAt.AddMinutes(1));
+            Assert.Equal(TaskMutationOutcome.NotFound, crossTenant.Outcome);
+        }
+
+        await using (var scope = CreateScope(contextA))
+        {
+            var store = scope.ServiceProvider.GetRequiredService<IOpenLoopsTaskStore>();
+            var persisted = Assert.Single(await store.ListAsync(contextA));
+            var openVersion = persisted.Version;
+            var completed = await store.CompleteAsync(
+                contextA,
+                persisted.Id,
+                openVersion,
+                "complete-integration",
+                createdAt.AddMinutes(1));
+            var replay = await store.CompleteAsync(
+                contextA,
+                persisted.Id,
+                openVersion,
+                "complete-integration",
+                createdAt.AddMinutes(2));
+
+            Assert.Equal(TaskMutationOutcome.Applied, completed.Outcome);
+            Assert.Equal(TaskMutationOutcome.IdempotentReplay, replay.Outcome);
+            Assert.Equal(OpenLoopTaskStatus.Completed, replay.Task?.Status);
+        }
     }
 
     private async Task<SeededIdentity> SeedTenantAsync(string normalizedName)

@@ -2,9 +2,8 @@
 
 This runbook implements the local-only Phase 1A contract in
 [ADR 0005](../adr/0005-phase-1a-self-host-operations.md). It provisions no cloud
-resource. The current composition is an application foundation: persistence and
-identity adapters must later register their probes and migrations without moving
-operational policy into `Program.cs`.
+resource. The composition includes the PostgreSQL identity/Open Loops migration,
+authenticated task API, and responsive task UI.
 
 ## Host and trust prerequisites
 
@@ -19,18 +18,22 @@ operational policy into `Program.cs`.
 - PostgreSQL 17 client tools for the host-side logical backup scripts.
 - An operator-approved encrypted, access-controlled destination for recovery sets.
 
-Copy `.env.example` to `.env`. Create the password file without placing its value
-in `.env`, command arguments, source control, logs, or Compose environment:
+Copy `.env.example` to `.env`. Create the PostgreSQL password and one-time identity
+bootstrap token files without placing either value in `.env`, command arguments,
+source control, logs, or Compose environment:
 
 ```powershell
 New-Item -ItemType Directory -Force deploy\secrets | Out-Null
 [Convert]::ToBase64String(
   [Security.Cryptography.RandomNumberGenerator]::GetBytes(48)
 ) | Set-Content -NoNewline deploy\secrets\postgres_password
+[Convert]::ToBase64String(
+  [Security.Cryptography.RandomNumberGenerator]::GetBytes(32)
+) | Set-Content -NoNewline deploy\secrets\bootstrap_token
 ```
 
-Restrict the secret file to the account running the runtime. On Unix, use mode
-`0600`. The file, `.env`, backup directory, and runtime state are ignored by Git.
+Restrict both secret files to the account running the runtime. On Unix, use mode
+`0600`. The files, `.env`, backup directory, and runtime state are ignored by Git.
 
 ## Acquire and verify images
 
@@ -85,9 +88,10 @@ Invoke-WebRequest http://127.0.0.1:8080/health/ready
 
 `/health/live` proves the process can serve. `/health/ready` proves the Data
 Protection directory is writable, the password secret is mounted, and the
-PostgreSQL and enabled local OTLP sockets are reachable. A future persistence
-adapter must add an authenticated schema/migration probe; startup never runs
-migrations.
+PostgreSQL and enabled local OTLP sockets are reachable. When Open Loops and the
+database are enabled, the single Phase 1A application instance applies pending
+identity/Open Loops EF migrations before accepting traffic. A migration failure
+blocks startup; do not bypass it.
 
 The application and PostgreSQL run as non-root users with dropped capabilities,
 read-only application filesystems, bounded process/memory/CPU settings, and named
@@ -97,6 +101,13 @@ host. The application port binds to loopback unless explicitly changed.
 Use `docker compose restart app` for a process restart and prove both endpoints
 again. Use `docker compose down` to stop while retaining named volumes. **Do not**
 use `down --volumes` during normal operations.
+
+After local identity bootstrap and sign-in, the Open Loops page supports assistant
+proposal, exact review, confirmation, list, complete, JSON export, and explicit
+two-step deletion. See [Open Loops help](../help/open-loops.md). The API requires
+the authenticated tenant, app-user, and principal claims plus antiforgery on every
+mutation. No development or test authentication handler is present in the
+application image.
 
 ## Data Protection key contract
 

@@ -9,8 +9,8 @@ or external services.
 
 ## Solution layout
 
-- `src\Andreja.AppHost`: the composition root, minimal HTTP pipeline, and empty
-  Blazor host.
+- `src\Andreja.AppHost`: the composition root, authenticated typed HTTP API, and
+  responsive Blazor Open Loops host.
 - `src\Andreja.Api.Contracts`: the versioned HTTP contract boundary.
 - `src\Andreja.Platform.Contracts`: framework-neutral shared boundary contracts.
 - `src\Modules\Andreja.Modules`: capability seams for Identity, Open Loops,
@@ -18,7 +18,8 @@ or external services.
 - `src\Adapters\Andreja.Adapters`: outer seams for PostgreSQL, ASP.NET Core
   Identity, OpenAI-compatible assistants, and OpenTelemetry.
 - `tests\Andreja.ArchitectureTests` and `tests\Andreja.UnitTests`: dependency
-  direction and unit baselines.
+  direction, domain/application, typed API, authorization-negative, antiforgery,
+  provider-failure, cancellation, and telemetry baselines.
 - `compose.yaml`, `Dockerfile`, `deploy`, and `scripts\operations`: the local-only
   self-host, observability, backup, and recovery contract. See the
   [operations runbook](operations/self-hosting.md).
@@ -56,12 +57,17 @@ part of the service-free solution test. Follow
 When PostgreSQL is unavailable, record this evidence as blocked; do not mark it
 skipped or successful.
 
-## Run the empty host
+## Run the host
 
 ```powershell
 dotnet run --project src\Andreja.AppHost\Andreja.AppHost.csproj
 ```
 
-This starts only the empty Blazor foundation host plus local health/readiness,
-Data Protection persistence, and opt-in OpenTelemetry composition seams. Identity,
-persistence behavior, assistant, and tasks remain intentionally absent.
+Development enables the Open Loops UI with an in-memory task store for deterministic
+local work. Production refuses to enable Open Loops without PostgreSQL. The
+self-host bundle enables PostgreSQL, ASP.NET Core Identity cookies, tenant/principal
+claim enforcement, antiforgery, and the task migration.
+
+The API routes are under `/api/v1/open-loops`; Blazor components use only
+`IOpenLoopsApiClient` and versioned DTOs. See the
+[Open Loops help](help/open-loops.md) and [testing matrix](testing-matrix.md).

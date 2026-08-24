@@ -1,4 +1,5 @@
 using Andreja.Modules.Identity;
+using Andreja.Modules.OpenLoops;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +25,12 @@ public sealed class AndrejaIdentityDbContext(
 
     public DbSet<Contact> Contacts => Set<Contact>();
 
+    internal DbSet<OpenLoopTask> OpenLoopTasks => Set<OpenLoopTask>();
+
+    internal DbSet<OpenLoopTaskAudit> OpenLoopTaskAudits => Set<OpenLoopTaskAudit>();
+
+    internal DbSet<OpenLoopTaskReceipt> OpenLoopTaskReceipts => Set<OpenLoopTaskReceipt>();
+
     private TenantId CurrentTenantId =>
         contextAccessor.Current?.TenantId ?? new TenantId(Guid.Empty);
 
@@ -40,6 +47,7 @@ public sealed class AndrejaIdentityDbContext(
         ConfigurePrincipals(builder);
         ConfigureMemberships(builder);
         ConfigureContacts(builder);
+        ConfigureOpenLoopTasks(builder);
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
@@ -251,6 +259,59 @@ public sealed class AndrejaIdentityDbContext(
         });
     }
 
+    private void ConfigureOpenLoopTasks(ModelBuilder builder)
+    {
+        builder.Entity<OpenLoopTask>(entity =>
+        {
+            entity.ToTable("tasks", "open_loops");
+            entity.HasKey(task => task.Id);
+            entity.Property(task => task.TenantId)
+                .HasConversion(id => id.Value, value => new TenantId(value));
+            entity.Property(task => task.OwnerPrincipalId)
+                .HasConversion(id => id.Value, value => new PrincipalId(value));
+            entity.Property(task => task.Title).HasMaxLength(200);
+            entity.Property(task => task.Details).HasMaxLength(4000);
+            entity.Property(task => task.SourceKind).HasMaxLength(32);
+            entity.Property(task => task.SourceReference).HasMaxLength(200);
+            entity.Property(task => task.Version).IsConcurrencyToken();
+            entity.HasAlternateKey(task => new { task.TenantId, task.Id });
+            entity.HasIndex(task => new { task.TenantId, task.OwnerPrincipalId, task.Status });
+            entity.HasOne<Principal>()
+                .WithMany()
+                .HasForeignKey(task => new { task.TenantId, task.OwnerPrincipalId })
+                .HasPrincipalKey(principal => new { principal.TenantId, principal.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(task => task.TenantId == CurrentTenantId);
+        });
+
+        builder.Entity<OpenLoopTaskAudit>(entity =>
+        {
+            entity.ToTable("task_audit", "open_loops");
+            entity.HasKey(audit => audit.Id);
+            entity.Property(audit => audit.TenantId)
+                .HasConversion(id => id.Value, value => new TenantId(value));
+            entity.Property(audit => audit.ActorId)
+                .HasConversion(id => id.Value, value => new PrincipalId(value));
+            entity.Property(audit => audit.Operation).HasMaxLength(32);
+            entity.Property(audit => audit.Outcome).HasMaxLength(32);
+            entity.Property(audit => audit.SourceKind).HasMaxLength(32);
+            entity.Property(audit => audit.SourceReference).HasMaxLength(200);
+            entity.HasIndex(audit => new { audit.TenantId, audit.ResourceId, audit.OccurredAt });
+            entity.HasQueryFilter(audit => audit.TenantId == CurrentTenantId);
+        });
+
+        builder.Entity<OpenLoopTaskReceipt>(entity =>
+        {
+            entity.ToTable("task_receipts", "open_loops");
+            entity.HasKey(receipt => new { receipt.TenantId, receipt.IdempotencyKey });
+            entity.Property(receipt => receipt.TenantId)
+                .HasConversion(id => id.Value, value => new TenantId(value));
+            entity.Property(receipt => receipt.IdempotencyKey).HasMaxLength(128);
+            entity.Property(receipt => receipt.Intent).HasMaxLength(256);
+            entity.HasQueryFilter(receipt => receipt.TenantId == CurrentTenantId);
+        });
+    }
+
     private void ValidateTenantWrites()
     {
         var current = TenantPrincipalContext.Require(contextAccessor);
@@ -267,6 +328,9 @@ public sealed class AndrejaIdentityDbContext(
                 Membership membership => membership.TenantId,
                 Principal principal => principal.TenantId,
                 Contact contact => contact.TenantId,
+                OpenLoopTask task => task.TenantId,
+                OpenLoopTaskAudit audit => audit.TenantId,
+                OpenLoopTaskReceipt receipt => receipt.TenantId,
                 _ => (TenantId?)null,
             };
 

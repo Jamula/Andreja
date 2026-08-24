@@ -23,6 +23,11 @@ services:
       Andreja__Operations__Database__Name: ${POSTGRES_DB:-andreja}
       Andreja__Operations__Database__Username: ${POSTGRES_USER:-andreja}
       Andreja__Operations__Database__PasswordFile: /run/secrets/postgres_password
+      Andreja__OpenLoops__Enabled: "true"
+      Andreja__OpenLoops__PublicOrigin: http://127.0.0.1:8080
+      Andreja__Identity__RelyingPartyId: ${ANDREJA_HOSTNAME:-localhost}
+      Andreja__Identity__AllowedOrigins__0: https://${ANDREJA_HOSTNAME:-localhost}
+      Andreja__Identity__BootstrapTokenFile: /run/secrets/bootstrap_token
       Andreja__Telemetry__Enabled: "true"
       Andreja__Telemetry__ServiceName: andreja
       Andreja__Telemetry__OtlpEndpoint: http://otel-collector:4317
@@ -30,6 +35,7 @@ services:
       - "${ANDREJA_BIND_ADDRESS:-127.0.0.1}:${ANDREJA_HTTP_PORT:-8080}:8080"
     secrets:
       - postgres_password
+      - bootstrap_token
     volumes:
       - data-protection-keys:/var/lib/andreja/keys
       - attachments:/var/lib/andreja/attachments
@@ -140,6 +146,8 @@ services:
 secrets:
   postgres_password:
     file: ${POSTGRES_PASSWORD_FILE:-./deploy/secrets/postgres_password}
+  bootstrap_token:
+    file: ${ANDREJA_BOOTSTRAP_TOKEN_FILE:-./deploy/secrets/bootstrap_token}
 
 volumes:
   postgres-data:

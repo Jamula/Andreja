@@ -1,5 +1,6 @@
 using Andreja.AppHost.Components;
 using Andreja.AppHost.Hosting;
+using Andreja.AppHost.OpenLoops;
 
 if (await ContainerHealthProbe.TryRunAsync(args))
 {
@@ -12,6 +13,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddAndrejaFoundation(builder.Configuration);
 builder.Services.AddAndrejaOperations(builder.Configuration);
+builder.Services.AddAndrejaOpenLoops(builder.Configuration, builder.Environment);
 builder.Host.UseDefaultServiceProvider((context, options) =>
 {
     options.ValidateScopes = context.HostingEnvironment.IsDevelopment();
@@ -19,6 +21,7 @@ builder.Host.UseDefaultServiceProvider((context, options) =>
 });
 
 var app = builder.Build();
+await app.ApplyAndrejaOpenLoopsMigrationsAsync();
 
 if (!app.Environment.IsDevelopment())
 {
@@ -28,11 +31,18 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
+app.Use(TaskRequestContext.ResolveAsync);
 app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 app.MapAndrejaOperationalEndpoints();
+if (app.Configuration.GetValue<bool>($"{OpenLoopsOptions.SectionName}:Enabled"))
+{
+    app.MapOpenLoopsEndpoints();
+}
 
 app.Run();
 
