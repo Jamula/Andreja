@@ -1,5 +1,7 @@
 using Andreja.Api.Contracts;
 using Andreja.AppHost.Hosting;
+using Andreja.AppHost.Components.Pages;
+using Andreja.AppHost.OpenLoops;
 using Andreja.Adapters.Identity.AspNetCore;
 using Andreja.Modules.OpenLoops;
 using Andreja.Platform.Contracts;
@@ -88,6 +90,47 @@ public sealed class DependencyDirectionTests
             typeof(AspNetCoreIdentityAdapter).Assembly.GetTypes(),
             type => type.Name.Contains("FakeAuth", StringComparison.OrdinalIgnoreCase)
                 || type.Name.Contains("TestAuth", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void BlazorTaskPageInjectsOnlyTypedApiBoundary()
+    {
+        var injectedTypes = typeof(Home)
+            .GetProperties(
+                System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.Public
+                | System.Reflection.BindingFlags.NonPublic)
+            .Where(property => property.CustomAttributes.Any(attribute =>
+                attribute.AttributeType.FullName
+                    == "Microsoft.AspNetCore.Components.InjectAttribute"))
+            .Select(property => property.PropertyType)
+            .ToArray();
+
+        Assert.Contains(typeof(IOpenLoopsApiClient), injectedTypes);
+        Assert.DoesNotContain(
+            injectedTypes,
+            type => type.Namespace?.StartsWith("Andreja.Modules", StringComparison.Ordinal) == true
+                || type.Namespace?.StartsWith("Andreja.Adapters", StringComparison.Ordinal) == true
+                || type.Name.Contains("DbContext", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void InteractiveTypedClientDoesNotDependOnHttpContextOrCookieForwarding()
+    {
+        var constructorDependencies = typeof(CircuitDelegationHandler)
+            .GetConstructors()
+            .SelectMany(constructor => constructor.GetParameters())
+            .Select(parameter => parameter.ParameterType)
+            .ToArray();
+
+        Assert.DoesNotContain(
+            constructorDependencies,
+            type => type.FullName == "Microsoft.AspNetCore.Http.IHttpContextAccessor");
+        Assert.DoesNotContain(
+            typeof(CircuitDelegationHandler).Assembly.GetTypes(),
+            type => type.Name.Contains(
+                "CookieForwarding",
+                StringComparison.OrdinalIgnoreCase));
     }
 
     private static string[] FindUnapprovedModuleReferences(

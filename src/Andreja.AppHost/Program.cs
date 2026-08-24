@@ -1,11 +1,22 @@
 using Andreja.AppHost.Components;
 using Andreja.AppHost.Hosting;
+using Andreja.AppHost.OpenLoops;
+using Andreja.AppHost.Identity;
 
-var builder = WebApplication.CreateBuilder(args);
+if (await ContainerHealthProbe.TryRunAsync(args))
+{
+    return;
+}
+
+var migrationCommandRequested = DatabaseMigrationCommand.IsRequested(args);
+var builder = WebApplication.CreateBuilder(migrationCommandRequested ? [] : args);
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddAndrejaFoundation(builder.Configuration);
+builder.Services.AddAndrejaOperations(builder.Configuration);
+builder.Services.AddAndrejaOpenLoops(builder.Configuration, builder.Environment);
+builder.Services.ConfigureAndrejaCookieBehavior();
 builder.Host.UseDefaultServiceProvider((context, options) =>
 {
     options.ValidateScopes = context.HostingEnvironment.IsDevelopment();
@@ -13,6 +24,42 @@ builder.Host.UseDefaultServiceProvider((context, options) =>
 });
 
 var app = builder.Build();
+using var migrationCancellation = new CancellationTokenSource();
+ConsoleCancelEventHandler cancelMigration = (_, eventArgs) =>
+{
+    eventArgs.Cancel = true;
+    migrationCancellation.Cancel();
+};
+if (migrationCommandRequested)
+{
+    Console.CancelKeyPress += cancelMigration;
+}
+
+int? migrationExitCode;
+try
+{
+    migrationExitCode = await DatabaseMigrationCommand.TryRunAsync(
+        args,
+        app.Services,
+        Console.Out,
+        migrationCancellation.Token);
+}
+finally
+{
+    if (migrationCommandRequested)
+    {
+        Console.CancelKeyPress -= cancelMigration;
+    }
+}
+
+if (migrationExitCode is not null)
+{
+    Environment.ExitCode = migrationExitCode.Value;
+    return;
+}
+await DatabaseMigrationStartupVerifier.VerifyAsync(
+    app.Services,
+    app.Lifetime.ApplicationStopping);
 
 if (!app.Environment.IsDevelopment())
 {
@@ -22,10 +69,19 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
+app.Use(TaskRequestContext.ResolveAsync);
 app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+app.MapAndrejaOperationalEndpoints();
+app.MapLocalAccountEndpoints(app.Environment);
+if (app.Configuration.GetValue<bool>($"{OpenLoopsOptions.SectionName}:Enabled"))
+{
+    app.MapOpenLoopsEndpoints();
+}
 
 app.Run();
 
