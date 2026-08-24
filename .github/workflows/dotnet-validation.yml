@@ -1,0 +1,277 @@
+name: .NET Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dotnet-validation-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1'
+
+jobs:
+  build-test:
+    name: Build and test (${{ matrix.configuration }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Debug, Release]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Set up pinned .NET SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+
+      - name: Record SDK
+        run: dotnet --info
+
+      - id: restore_solution
+        name: Restore service-free solution
+        run: dotnet restore Andreja.slnx
+
+      - id: restore_postgresql
+        name: Restore PostgreSQL integration project
+        run: dotnet restore tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj
+
+      - id: build_solution
+        name: Build service-free solution
+        run: dotnet build Andreja.slnx --configuration ${{ matrix.configuration }} --no-restore
+
+      - id: build_postgresql
+        name: Compile PostgreSQL integration project
+        run: dotnet build tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj --configuration ${{ matrix.configuration }} --no-restore
+
+      - id: test_solution
+        name: Test service-free solution
+        run: >-
+          dotnet test Andreja.slnx
+          --configuration ${{ matrix.configuration }}
+          --no-build
+          --logger "trx;LogFilePrefix=${{ matrix.configuration }}"
+          --results-directory artifacts/${{ matrix.configuration }}/test-results
+
+      - id: report
+        if: always()
+        name: Write complete test-project evidence
+        shell: pwsh
+        env:
+          VALIDATION_RESULTS: >-
+            {"restore_solution":"${{ steps.restore_solution.outcome }}",
+            "restore_postgresql":"${{ steps.restore_postgresql.outcome }}",
+            "build_solution":"${{ steps.build_solution.outcome }}",
+            "build_postgresql":"${{ steps.build_postgresql.outcome }}",
+            "test_solution":"${{ steps.test_solution.outcome }}"}
+        run: >-
+          ./.github/scripts/write-dotnet-validation-report.ps1
+          -Kind build-test
+          -Configuration '${{ matrix.configuration }}'
+          -ResultsJson $env:VALIDATION_RESULTS
+          -OutputPath 'artifacts/${{ matrix.configuration }}/validation-report.json'
+
+      - if: always() && steps.report.outcome == 'success'
+        name: Upload bounded validation evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dotnet-${{ matrix.configuration }}-evidence-${{ github.run_attempt }}
+          path: artifacts/${{ matrix.configuration }}
+          if-no-files-found: error
+          retention-days: 14
+
+  format:
+    name: Format verification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Set up pinned .NET SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+
+      - id: restore_solution
+        name: Restore service-free solution
+        run: dotnet restore Andreja.slnx
+
+      - id: restore_postgresql
+        name: Restore PostgreSQL integration project
+        run: dotnet restore tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj
+
+      - id: format_solution
+        name: Verify solution formatting
+        run: dotnet format Andreja.slnx --verify-no-changes --no-restore
+
+      - id: format_postgresql
+        name: Verify PostgreSQL integration project formatting
+        run: dotnet format tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj --verify-no-changes --no-restore
+
+      - id: report
+        if: always()
+        name: Write complete test-project evidence
+        shell: pwsh
+        env:
+          VALIDATION_RESULTS: >-
+            {"restore_solution":"${{ steps.restore_solution.outcome }}",
+            "restore_postgresql":"${{ steps.restore_postgresql.outcome }}",
+            "format_solution":"${{ steps.format_solution.outcome }}",
+            "format_postgresql":"${{ steps.format_postgresql.outcome }}"}
+        run: >-
+          ./.github/scripts/write-dotnet-validation-report.ps1
+          -Kind format
+          -ResultsJson $env:VALIDATION_RESULTS
+          -OutputPath artifacts/format/validation-report.json
+
+      - if: always() && steps.report.outcome == 'success'
+        name: Upload bounded format evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dotnet-format-evidence-${{ github.run_attempt }}
+          path: artifacts/format
+          if-no-files-found: error
+          retention-days: 14
+
+  vulnerability:
+    name: NuGet vulnerability audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Set up pinned .NET SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+
+      - id: restore_solution
+        name: Restore service-free solution
+        run: dotnet restore Andreja.slnx
+
+      - id: restore_postgresql
+        name: Restore PostgreSQL integration project
+        run: dotnet restore tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj
+
+      - id: audit
+        name: Report direct and transitive vulnerabilities
+        shell: pwsh
+        run: ./.github/scripts/invoke-nuget-vulnerability-scan.ps1
+
+      - id: report
+        if: always()
+        name: Write complete test-project evidence
+        shell: pwsh
+        env:
+          VALIDATION_RESULTS: >-
+            {"restore_solution":"${{ steps.restore_solution.outcome }}",
+            "restore_postgresql":"${{ steps.restore_postgresql.outcome }}",
+            "direct_transitive_audit":"${{ steps.audit.outcome }}"}
+        run: >-
+          ./.github/scripts/write-dotnet-validation-report.ps1
+          -Kind vulnerability
+          -ResultsJson $env:VALIDATION_RESULTS
+          -OutputPath artifacts/vulnerability/validation-report.json
+
+      - if: always() && steps.report.outcome == 'success'
+        name: Upload bounded vulnerability evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: nuget-vulnerability-evidence-${{ github.run_attempt }}
+          path: artifacts/vulnerability
+          if-no-files-found: error
+          retention-days: 14
+
+  sast:
+    name: C# SAST (DevSkim)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Set up pinned .NET SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+
+      - id: install
+        name: Install pinned Microsoft DevSkim
+        run: dotnet tool install Microsoft.CST.DevSkim.CLI --version 1.0.90 --tool-path .tools/devskim
+
+      - id: analyze
+        name: Analyze C# source without uploading source
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path artifacts/sast -Force | Out-Null
+          & ./.tools/devskim/devskim analyze `
+            --source-code . `
+            --output-file artifacts/sast/devskim-results.sarif `
+            --include-globs '**/*.cs' `
+            --ignore-globs '**/.git/**,**/bin/**,**/obj/**,**/artifacts/**,**/.tools/**' `
+            --ignore-rule-ids 'DS137138,DS162092'
+          if ($LASTEXITCODE -ne 0) {
+            throw "DevSkim analysis failed with exit code $LASTEXITCODE."
+          }
+
+      - id: findings
+        name: Fail on DevSkim findings
+        shell: pwsh
+        run: |
+          $sarif = Get-Content artifacts/sast/devskim-results.sarif -Raw | ConvertFrom-Json
+          $findings = @($sarif.runs | ForEach-Object { @($_.results) })
+          if ($findings.Count -gt 0) {
+            foreach ($finding in $findings) {
+              Write-Host "::error::$($finding.message.text)"
+            }
+            throw "DevSkim reported $($findings.Count) finding(s)."
+          }
+
+      - id: report
+        if: always()
+        name: Write complete test-project evidence
+        shell: pwsh
+        env:
+          VALIDATION_RESULTS: >-
+            {"tool_install":"${{ steps.install.outcome }}",
+            "devskim_analysis":"${{ steps.analyze.outcome }}",
+            "finding_gate":"${{ steps.findings.outcome }}",
+            "baseline_exclusions":"DS137138-loopback-URLs;DS162092-Debug-guard-false-positives",
+            "codeql_entitlement":"unavailable-private-repository-code-security-disabled"}
+        run: >-
+          ./.github/scripts/write-dotnet-validation-report.ps1
+          -Kind sast
+          -ResultsJson $env:VALIDATION_RESULTS
+          -OutputPath artifacts/sast/validation-report.json
+
+      - if: always() && steps.report.outcome == 'success'
+        name: Upload bounded SAST evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: csharp-sast-evidence-${{ github.run_attempt }}
+          path: artifacts/sast
+          if-no-files-found: error
+          retention-days: 14

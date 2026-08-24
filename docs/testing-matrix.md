@@ -17,8 +17,10 @@ Never report unavailable live dependencies as passed.
 | Accessibility and responsive UI | Semantic headings/labels, live status/error regions, keyboard-native controls, reduced motion, mobile breakpoint, and safe interactive initialization failure | `dotnet test Andreja.slnx --no-build`; manual keyboard and 320/768/1280 px viewport review | Initialization failure automated; manual viewport evidence required before launch |
 | Browser E2E | Sign in, assistant proposal, confirm, complete, export, delete at mobile/tablet/desktop widths | Playwright | Blocked: the repository has no Playwright package or browser harness; no package was added solely for this slice |
 | Telemetry privacy | Task/proposal content attributes suppressed while route/status allowlist remains | `dotnet test Andreja.slnx --no-build` | Automated |
-| Formatting and docs | Compiler analyzers, format verification, contract and docs consistency | See `docs\development.md` | Required before PR readiness |
-| Vulnerabilities | Direct and transitive NuGet advisory scan | `dotnet list Andreja.slnx package --vulnerable --include-transitive` | Required before PR readiness |
+| Hosted .NET gate | Restore; Debug and Release solution build/test; separate Debug and Release PostgreSQL-project compile | `.github\workflows\dotnet-validation.yml` | Hosted on PR, push to `main`, and `merge_group`; artifacts enumerate included, excluded, and unavailable runtime projects |
+| Formatting and docs | Compiler analyzers, solution and PostgreSQL-project format verification, contract and docs consistency | See `docs\development.md` | Required before PR readiness |
+| Vulnerabilities | Direct and transitive NuGet advisory scan of the service-free solution and separately restored PostgreSQL project | `pwsh -NoProfile -File .github\scripts\invoke-nuget-vulnerability-scan.ps1` | Required locally and hosted before PR readiness |
+| C# SAST | Microsoft DevSkim CLI 1.0.90, pinned and executed locally on the hosted runner | `.github\workflows\dotnet-validation.yml` | CodeQL unavailable while private-repository Code Security is disabled; DevSkim fails on findings after the documented loopback-URL and Debug-guard lexical exclusions |
 
 The API integration fixture uses the real cookie scheme through the explicit
 Development-only sign-in endpoint for external API evidence. Its circuit regression
