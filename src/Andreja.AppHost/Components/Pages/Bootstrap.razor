@@ -13,7 +13,7 @@
         </p>
 
         <div class="identity-message" data-identity-status role="status" aria-live="polite"></div>
-        <form data-passkey-bootstrap>
+        <form method="post" data-passkey-bootstrap>
             <AntiforgeryToken />
             <div class="field">
                 <label for="tenant-name">Workspace name</label>
@@ -40,7 +40,7 @@
             </button>
         </form>
 
-        <section class="recovery-codes" data-recovery-codes hidden
+        <section class="recovery-codes" data-recovery-codes hidden tabindex="-1"
                  aria-labelledby="recovery-codes-heading">
             <h2 id="recovery-codes-heading">Save your recovery codes now</h2>
             <p>

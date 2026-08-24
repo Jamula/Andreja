@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Data.Common;
 using Andreja.Adapters.Identity.AspNetCore;
 using Andreja.Adapters.PostgreSql;
 using Andreja.Api.Contracts.OpenLoops;
@@ -472,7 +473,9 @@ public static class LocalAccountEndpoints
             return Results.Ok(new IdentityCompletionDto(LoginPath, result.RecoveryCodes));
         }
         catch (Exception exception) when (
-            exception is InvalidOperationException or DbUpdateException)
+            !context.RequestAborted.IsCancellationRequested
+            && (exception is InvalidOperationException
+                || IsExpectedDatabaseConflict(exception)))
         {
             await operations.AuditRecoveryFailureAsync(
                 recovery?.UserId,
@@ -557,7 +560,9 @@ public static class LocalAccountEndpoints
             return Results.Ok();
         }
         catch (Exception exception) when (
-            exception is InvalidOperationException or ArgumentException)
+            !context.RequestAborted.IsCancellationRequested
+            && (exception is InvalidOperationException or ArgumentException
+                || IsExpectedDatabaseConflict(exception)))
         {
             return IdentityFailure("passkey-registration-failed");
         }
@@ -605,7 +610,10 @@ public static class LocalAccountEndpoints
                 context.RequestAborted);
             return Results.Ok();
         }
-        catch (InvalidOperationException)
+        catch (Exception exception) when (
+            !context.RequestAborted.IsCancellationRequested
+            && (exception is InvalidOperationException
+                || IsExpectedDatabaseConflict(exception)))
         {
             return IdentityFailure("passkey-revocation-failed");
         }
@@ -691,6 +699,19 @@ public static class LocalAccountEndpoints
         Results.BadRequest(new ApiErrorDto(
             code,
             "The identity request could not be completed."));
+
+    internal static bool IsExpectedDatabaseConflict(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        var databaseException = exception switch
+        {
+            DbException direct => direct,
+            DbUpdateException { InnerException: DbException inner } => inner,
+            _ => null,
+        };
+        return databaseException?.SqlState is
+            "23505" or "40001" or "40P01";
+    }
 
     private static Task WriteApiOrRedirectAsync(
         RedirectContext<

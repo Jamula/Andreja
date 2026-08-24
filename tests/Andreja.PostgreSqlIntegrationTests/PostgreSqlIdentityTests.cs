@@ -412,6 +412,145 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                 CancellationToken.None));
     }
 
+    [Fact]
+    public async Task ConcurrentRegistrationCannotExceedPasskeyLimit()
+    {
+        BootstrapIdentityResult bootstrap;
+        await using (var scope = services.CreateAsyncScope())
+        {
+            bootstrap = await scope.ServiceProvider
+                .GetRequiredService<LocalIdentityOperations>()
+                .CompleteBootstrapAsync(
+                    CreateSecureRequest(),
+                    bootstrapToken,
+                    "Concurrent registration",
+                    "Concurrent owner",
+                    Guid.CreateVersion7(),
+                    CreatePasskey([60, 61, 62]),
+                    CancellationToken.None);
+        }
+
+        async Task<bool> RegisterAsync(byte discriminator)
+        {
+            await using var scope = services.CreateAsyncScope();
+            var users = scope.ServiceProvider
+                .GetRequiredService<UserManager<AspNetIdentityUser>>();
+            var user = await users.FindByIdAsync(bootstrap.User.Id.ToString("D"));
+            Assert.NotNull(user);
+            try
+            {
+                await scope.ServiceProvider
+                    .GetRequiredService<LocalIdentityOperations>()
+                    .RegisterPasskeyAsync(
+                        user,
+                        CreatePasskey([discriminator, 70, 71]),
+                        $"Device {discriminator}",
+                        CancellationToken.None);
+                return true;
+            }
+            catch (Exception exception) when (
+                exception is InvalidOperationException
+                    or DbUpdateException
+                    or Npgsql.PostgresException)
+            {
+                return false;
+            }
+        }
+
+        var outcomes = await Task.WhenAll(
+            RegisterAsync(1),
+            RegisterAsync(2),
+            RegisterAsync(3));
+
+        Assert.Equal(2, outcomes.Count(outcome => outcome));
+        await using var verificationScope = services.CreateAsyncScope();
+        var verificationUsers = verificationScope.ServiceProvider
+            .GetRequiredService<UserManager<AspNetIdentityUser>>();
+        var persisted = await verificationUsers.FindByIdAsync(
+            bootstrap.User.Id.ToString("D"));
+        Assert.NotNull(persisted);
+        Assert.Equal(3, (await verificationUsers.GetPasskeysAsync(persisted)).Count);
+    }
+
+    [Fact]
+    public async Task ConcurrentRevocationPreservesOneAuthenticationPath()
+    {
+        BootstrapIdentityResult bootstrap;
+        byte[][] credentialIds;
+        await using (var scope = services.CreateAsyncScope())
+        {
+            var operations =
+                scope.ServiceProvider.GetRequiredService<LocalIdentityOperations>();
+            bootstrap = await operations.CompleteBootstrapAsync(
+                CreateSecureRequest(),
+                bootstrapToken,
+                "Concurrent revocation",
+                "Concurrent owner",
+                Guid.CreateVersion7(),
+                CreatePasskey([80, 81, 82]),
+                CancellationToken.None);
+            await operations.RegisterPasskeyAsync(
+                bootstrap.User,
+                CreatePasskey([83, 84, 85]),
+                "Second device",
+                CancellationToken.None);
+            var database =
+                scope.ServiceProvider.GetRequiredService<AndrejaIdentityDbContext>();
+            foreach (var code in await database.IdentityRecoveryCodes
+                         .Where(code => code.ConsumedAt == null)
+                         .ToArrayAsync())
+            {
+                code.Consume(DateTimeOffset.UtcNow);
+            }
+
+            await database.SaveChangesAsync();
+            var users = scope.ServiceProvider
+                .GetRequiredService<UserManager<AspNetIdentityUser>>();
+            credentialIds = (await users.GetPasskeysAsync(bootstrap.User))
+                .Select(passkey => passkey.CredentialId)
+                .ToArray();
+        }
+
+        async Task<bool> RevokeAsync(byte[] credentialId)
+        {
+            await using var scope = services.CreateAsyncScope();
+            var users = scope.ServiceProvider
+                .GetRequiredService<UserManager<AspNetIdentityUser>>();
+            var user = await users.FindByIdAsync(bootstrap.User.Id.ToString("D"));
+            Assert.NotNull(user);
+            try
+            {
+                await scope.ServiceProvider
+                    .GetRequiredService<LocalIdentityOperations>()
+                    .RevokePasskeyAsync(
+                        user,
+                        credentialId,
+                        CancellationToken.None);
+                return true;
+            }
+            catch (Exception exception) when (
+                exception is InvalidOperationException
+                    or DbUpdateException
+                    or Npgsql.PostgresException)
+            {
+                return false;
+            }
+        }
+
+        var outcomes = await Task.WhenAll(
+            RevokeAsync(credentialIds[0]),
+            RevokeAsync(credentialIds[1]));
+
+        Assert.Single(outcomes, outcome => outcome);
+        await using var verificationScope = services.CreateAsyncScope();
+        var verificationUsers = verificationScope.ServiceProvider
+            .GetRequiredService<UserManager<AspNetIdentityUser>>();
+        var persisted = await verificationUsers.FindByIdAsync(
+            bootstrap.User.Id.ToString("D"));
+        Assert.NotNull(persisted);
+        Assert.Single(await verificationUsers.GetPasskeysAsync(persisted));
+    }
+
     private async Task<SeededIdentity> SeedTenantAsync(string normalizedName)
     {
         var context = new TenantPrincipalContext(

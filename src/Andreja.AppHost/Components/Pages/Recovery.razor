@@ -13,7 +13,7 @@
         </p>
 
         <div class="identity-message" data-identity-status role="status" aria-live="polite"></div>
-        <form data-passkey-recovery>
+        <form method="post" data-passkey-recovery>
             <AntiforgeryToken />
             <div class="field">
                 <label for="recovery-code">Recovery code</label>
@@ -25,7 +25,7 @@
             </button>
         </form>
 
-        <section class="recovery-codes" data-recovery-codes hidden
+        <section class="recovery-codes" data-recovery-codes hidden tabindex="-1"
                  aria-labelledby="replacement-codes-heading">
             <h2 id="replacement-codes-heading">Replace your stored recovery codes</h2>
             <p>All previous codes are revoked. Store this new set offline now.</p>

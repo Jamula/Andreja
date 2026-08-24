@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Data.Common;
 using Andreja.Adapters.Identity.AspNetCore;
 using Andreja.Adapters.PostgreSql;
 using Andreja.AppHost.Identity;
@@ -24,6 +25,23 @@ namespace Andreja.UnitTests;
 
 public sealed class BootstrapCeremonyEndpointTests
 {
+    [Theory]
+    [InlineData("23505", true)]
+    [InlineData("40001", true)]
+    [InlineData("40P01", true)]
+    [InlineData("08006", false)]
+    [InlineData(null, false)]
+    public void DatabaseConflictFilterDoesNotMaskOutages(
+        string? sqlState,
+        bool expected)
+    {
+        var exception = new TestDbException(sqlState);
+
+        Assert.Equal(
+            expected,
+            LocalAccountEndpoints.IsExpectedDatabaseConflict(exception));
+    }
+
     [Fact]
     public async Task WebApplicationFactoryUsesProductionAntiforgeryHeader()
     {
@@ -494,6 +512,11 @@ public sealed class BootstrapCeremonyEndpointTests
     private sealed record AssertionOptions(string Challenge);
 
     private sealed record AntiforgeryResponse(string Token);
+
+    private sealed class TestDbException(string? sqlState) : DbException
+    {
+        public override string? SqlState => sqlState;
+    }
 
     private static async Task<string> ReadPageAntiforgeryTokenAsync(
         HttpClient client,

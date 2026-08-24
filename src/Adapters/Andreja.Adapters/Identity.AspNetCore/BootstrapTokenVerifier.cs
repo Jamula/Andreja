@@ -63,12 +63,10 @@ public sealed class BootstrapTokenVerifier(IOptions<LocalIdentityOptions> option
         }
 
         var mode = File.GetUnixFileMode(path);
-        const UnixFileMode writeModes =
-            UnixFileMode.UserWrite | UnixFileMode.GroupWrite | UnixFileMode.OtherWrite;
-        if ((mode & writeModes) != 0)
+        if (mode != UnixFileMode.UserRead)
         {
             throw new InvalidDataException(
-                "The bootstrap token file must be mounted read-only.");
+                "The bootstrap token file must be readable only by its owner.");
         }
     }
 

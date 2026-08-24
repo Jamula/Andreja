@@ -1,4 +1,5 @@
 using System.Data;
+using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
 using Andreja.Adapters.PostgreSql;
@@ -387,6 +388,10 @@ public sealed class LocalIdentityOperations(
         byte[] credentialId,
         CancellationToken cancellationToken = default)
     {
+        await using var transaction = await database.Database.BeginTransactionAsync(
+            IsolationLevel.ReadCommitted,
+            cancellationToken);
+        await AcquireUserMutationLockAsync(user.Id, cancellationToken);
         var passkeys = await userManager.GetPasskeysAsync(user);
         var recoveryCount = await database.IdentityRecoveryCodes.CountAsync(
             code =>
@@ -405,6 +410,7 @@ public sealed class LocalIdentityOperations(
                 succeeded: true,
                 timeProvider.GetUtcNow()));
         await database.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task RegisterPasskeyAsync(
@@ -416,6 +422,10 @@ public sealed class LocalIdentityOperations(
         ArgumentNullException.ThrowIfNull(user);
         ArgumentNullException.ThrowIfNull(passkey);
         ArgumentException.ThrowIfNullOrWhiteSpace(deviceName);
+        await using var transaction = await database.Database.BeginTransactionAsync(
+            IsolationLevel.ReadCommitted,
+            cancellationToken);
+        await AcquireUserMutationLockAsync(user.Id, cancellationToken);
         var existing = await userManager.FindByPasskeyIdAsync(passkey.CredentialId);
         var passkeys = await userManager.GetPasskeysAsync(user);
         IdentityCredentialPolicy.EnsureCanRegisterPasskey(
@@ -432,6 +442,7 @@ public sealed class LocalIdentityOperations(
                 succeeded: true,
                 timeProvider.GetUtcNow()));
         await database.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     public static bool IsAcceptedRelyingPartyRequest(
@@ -486,6 +497,34 @@ public sealed class LocalIdentityOperations(
             await database.Database.ExecuteSqlRawAsync(
                 $"SELECT pg_advisory_xact_lock({BootstrapAdvisoryLock})",
                 cancellationToken);
+        }
+    }
+
+    private async Task AcquireUserMutationLockAsync(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        if (!string.Equals(
+                database.Database.ProviderName,
+                "Npgsql.EntityFrameworkCore.PostgreSQL",
+                StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var userBytes = userId.ToByteArray();
+        var digest = SHA256.HashData(userBytes);
+        try
+        {
+            var lockKey = BinaryPrimitives.ReadInt64LittleEndian(digest);
+            await database.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock({lockKey})",
+                cancellationToken);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(userBytes);
+            CryptographicOperations.ZeroMemory(digest);
         }
     }
 

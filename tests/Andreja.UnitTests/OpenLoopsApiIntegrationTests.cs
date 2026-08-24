@@ -385,9 +385,19 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         var bootstrap = await client.GetStringAsync(LocalAccountEndpoints.BootstrapPath);
         Assert.Contains("Create the first administrator", bootstrap, StringComparison.Ordinal);
         Assert.Contains("Save your recovery codes now", bootstrap, StringComparison.Ordinal);
+        Assert.Contains(
+            "method=\"post\" data-passkey-bootstrap",
+            bootstrap,
+            StringComparison.Ordinal);
+        Assert.Contains("tabindex=\"-1\"", bootstrap, StringComparison.Ordinal);
         var recovery = await client.GetStringAsync(LocalAccountEndpoints.RecoveryPath);
         Assert.Contains("Replace lost passkeys", recovery, StringComparison.Ordinal);
         Assert.Contains("signs out existing sessions", recovery, StringComparison.Ordinal);
+        Assert.Contains(
+            "method=\"post\" data-passkey-recovery",
+            recovery,
+            StringComparison.Ordinal);
+        Assert.Contains("tabindex=\"-1\"", recovery, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -108,6 +108,34 @@ public sealed class BootstrapTokenVerifierTests
     }
 
     [Fact]
+    public async Task UnixTokenFileRejectsGroupOrOtherPermissions()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var token = RandomNumberGenerator.GetBytes(32);
+        var path = await WriteTokenFileAsync(Convert.ToBase64String(token));
+        try
+        {
+            File.SetUnixFileMode(
+                path,
+                UnixFileMode.UserRead | UnixFileMode.GroupRead);
+            var verifier = CreateVerifier(path);
+
+            await Assert.ThrowsAsync<InvalidDataException>(
+                async () => await verifier.VerifyAsync(
+                    Convert.ToBase64String(token)));
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(token);
+            DeleteTokenFile(path);
+        }
+    }
+
+    [Fact]
     public void SensitiveBufferZeroesOwnedBytesOnDisposal()
     {
         var bytes = Enumerable.Repeat((byte)0xA5, 64).ToArray();
