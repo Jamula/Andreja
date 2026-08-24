@@ -43,10 +43,17 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         Assert.Equal("?ReturnUrl=%2F", uiResponse.Headers.Location?.Query);
         var loginResponse = await anonymous.GetAsync(uiResponse.Headers.Location);
         Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+#if DEBUG
         Assert.Contains(
             "Sign in to the development workspace",
             await loginResponse.Content.ReadAsStringAsync(),
             StringComparison.Ordinal);
+#else
+        Assert.Contains(
+            "Production passkey sign-in is not shipped yet.",
+            await loginResponse.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+#endif
 
         var apiResponse = await anonymous.GetAsync($"{OpenLoopsApi.RoutePrefix}/tasks");
         Assert.Equal(HttpStatusCode.Unauthorized, apiResponse.StatusCode);
@@ -62,6 +69,7 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         Assert.Null(fakeHeaderResponse.Headers.Location);
     }
 
+#if DEBUG
     [Fact]
     public async Task DevelopmentSignInUsesLocalReturnUrlAndEnablesUiAndApi()
     {
@@ -77,6 +85,7 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         var error = await unsafeResponse.Content.ReadFromJsonAsync<ApiErrorDto>();
         Assert.Equal("invalid-antiforgery-token", error?.Code);
     }
+#endif
 
     [Fact]
     public async Task CookieAccessDeniedEventReturnsJson403ForApiWithoutRedirect()
@@ -109,6 +118,7 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
             StringComparison.Ordinal);
     }
 
+#if DEBUG
     [Fact]
     public async Task AuthenticatedTypedApiCompletesTaskScenario()
     {
@@ -183,6 +193,7 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         Assert.Empty(await client.GetFromJsonAsync<TaskDto[]>(
             $"{OpenLoopsApi.RoutePrefix}/tasks") ?? []);
     }
+#endif
 
     [Fact]
     public async Task CircuitDelegationUsesRealTypedClientWithoutHttpContext()
@@ -252,11 +263,15 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         using var development = factory.CreateAnonymousClient();
         var login = await development.GetStringAsync(
             "/Account/Login?ReturnUrl=https%3A%2F%2Fexample.test");
+#if DEBUG
         Assert.Contains("""name="returnUrl" value="/" """.Trim(), login, StringComparison.Ordinal);
         Assert.DoesNotContain(
             """name="returnUrl" value="https://example.test" """.Trim(),
             login,
             StringComparison.Ordinal);
+#else
+        Assert.DoesNotContain("returnUrl", login, StringComparison.OrdinalIgnoreCase);
+#endif
 
         using var productionFactory = new ProductionWebApplicationFactory();
         using var production = productionFactory.CreateClient(
