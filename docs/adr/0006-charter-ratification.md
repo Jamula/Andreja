@@ -6,7 +6,7 @@
 - **Decision owner:** Cyrus Jamula
 - **Tracking issue:** [#3](https://github.com/Jamula/Andreja/issues/3)
 - **Charter:** [`docs/charter.md`](../charter.md)
-- **Charter SHA-256:** `e00242f91ff9d4568cb29113b44f3d45bf76edb276d83ce480c3e416f7bcf81b`
+- **Charter SHA-256:** `43c900cc6b5f05338510078dde10fa0164cf307aa9989d7707a47751d2e9ce18`
 
 ## Context
 
@@ -43,8 +43,17 @@ The acceptance pull request must make these changes atomically:
   `.github/ISSUE_TEMPLATE/decision.yml` and
   `.github/pull_request_template.md`, including issue validation and the pull
   request gate.
-- [ ] Open or link a `type:decision` issue for any charter/plan conflict and
-  reconcile the plan's charter seed through a reviewed plan amendment.
+- [ ] Open or link a `type:decision` issue for every charter conflict and
+  reconcile both the plan's charter seed and conflicting ratified framework
+  text through reviewed amendments. Known plan-seed divergences include
+  `Publish measurable indicators... before GA` versus the charter's internal
+  indicator regime, and `inspect reasoning` versus `understand material
+  recommendations`.
+- [ ] Reconcile the known ratified-framework conflict in
+  `docs/frameworks/feedback-support.md`: the routing-table row `Legal, IP,
+  regulatory, or privileged inquiry | Sarek through the confidential counsel
+  route`. Preserve that agent research is neither counsel nor privilege and
+  does not create a privileged channel.
 - [ ] Run documentation consistency, YAML, Markdown/link, and diff checks and
   record their exact results.
 - [ ] Do not represent agent research as legal advice, trademark clearance, or

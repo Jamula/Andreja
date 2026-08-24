@@ -46,5 +46,91 @@ class CharterHashTests(unittest.TestCase):
                 )
 
 
+class CharterAtomicityTests(unittest.TestCase):
+    PROPOSED_ADR = "- **Status:** Proposed\n"
+    ACCEPTED_ADR = "- **Status:** Accepted\n"
+    PROPOSED_CHARTER = (
+        "- **Status:** Proposed for explicit ratification; not yet authoritative\n"
+    )
+    ACCEPTED_CHARTER = "- **Status:** Ratified and authoritative\n"
+    REQUIRED_CHARTER_FIELD = """
+body:
+  - type: textarea
+    id: evidence
+    validations:
+      required: false
+  - type: textarea
+    id: charter
+    attributes:
+      label: Charter impact
+    validations:
+      required: true
+"""
+
+    def assert_fails(self, charter: str, adr: str, form: str) -> None:
+        with redirect_stdout(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                CHECKS.check_charter_atomicity_content(charter, adr, form)
+
+    def test_proposed_state_accepts_non_authoritative_charter(self) -> None:
+        CHECKS.check_charter_atomicity_content(
+            self.PROPOSED_CHARTER, self.PROPOSED_ADR, "body: []\n"
+        )
+
+    def test_proposed_state_rejects_authoritative_charter(self) -> None:
+        self.assert_fails(
+            self.ACCEPTED_CHARTER, self.PROPOSED_ADR, self.REQUIRED_CHARTER_FIELD
+        )
+
+    def test_accepted_state_accepts_atomic_charter_and_required_field(self) -> None:
+        CHECKS.check_charter_atomicity_content(
+            self.ACCEPTED_CHARTER,
+            self.ACCEPTED_ADR,
+            self.REQUIRED_CHARTER_FIELD,
+        )
+
+    def test_accepted_state_rejects_proposed_charter(self) -> None:
+        self.assert_fails(
+            self.PROPOSED_CHARTER, self.ACCEPTED_ADR, self.REQUIRED_CHARTER_FIELD
+        )
+
+    def test_accepted_state_rejects_optional_charter_field(self) -> None:
+        optional_field = """
+body:
+  - type: textarea
+    id: charter
+    attributes:
+      label: Charter impact
+    validations:
+      required: false
+"""
+        self.assert_fails(
+            self.ACCEPTED_CHARTER, self.ACCEPTED_ADR, optional_field
+        )
+
+    def test_other_required_field_does_not_satisfy_charter_gate(self) -> None:
+        form = """
+body:
+  - type: textarea
+    id: evidence
+    validations:
+      required: true
+  - type: textarea
+    id: charter
+"""
+        self.assert_fails(self.ACCEPTED_CHARTER, self.ACCEPTED_ADR, form)
+
+    def test_nested_required_text_does_not_satisfy_charter_gate(self) -> None:
+        form = """
+body:
+  - type: textarea
+    id: charter
+    attributes:
+      validations:
+        required: true
+"""
+        self.assert_fails(self.ACCEPTED_CHARTER, self.ACCEPTED_ADR, form)
+
+
 if __name__ == "__main__":
     unittest.main()

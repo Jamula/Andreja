@@ -103,10 +103,11 @@ requirements for user ownership, data dignity, consent, portability, ethical
 optimization, sustainability, and protected dissent. Amazon and Microsoft have
 not sponsored, approved, or endorsed Andreja. Before any public culture page,
 Sarek's research on the source links, attribution, and trademark exposure must
-be recorded for Cyrus's decision. Cyrus approves publication, and qualified
-counsel in each relevant jurisdiction must review material legal or trademark
-exposure. Agent research is advisory and is neither trademark clearance nor
-counsel approval.
+be recorded for Cyrus's decision. Cyrus, not an agent, determines and records
+whether the legal or trademark exposure is material. Cyrus approves publication,
+and qualified counsel in each relevant jurisdiction must review exposure that
+Cyrus records as material. Agent research is advisory and is neither trademark
+clearance nor counsel approval.
 
 ## Human and agent authority
 
@@ -204,18 +205,19 @@ Andreja will provide a confidential reporting path for staff, contributors,
 users, publishers, partners, and other affected people. Reporters are told the
 practical limits of confidentiality. The fallback recipient class is qualified
 external counsel or an independent reviewer appointed through a tracked issue.
-Before Andreja offers an external reporting path, that appointment, its scope,
+Before Andreja offers that reporting path, the appointment, its scope, direct
 contact method, access boundaries, retention, and handoff process must be in
-place. Andreja must not represent an external path as available before this
-precondition is met.
+place.
 
 A report that names Cyrus or creates an actual, potential, or perceived conflict
-for him bypasses Cyrus. He must recuse from access, investigation, findings,
-remediation, and retaliation decisions for that report; the appointed fallback
-recipient controls those steps and any necessary qualified escalation. Other
-access is limited to Cyrus and the appointed recipient on a need-to-know basis.
-Anonymous or pseudonymous reporting will be supported when a safe, sustainable
-mechanism is available.
+for him is a conflict-class report. It routes directly to the appointed external
+counsel or independent reviewer, without Cyrus-mediated intake or triage. Cyrus
+must recuse from access, investigation, findings, remediation, and retaliation
+decisions for that report; the appointed recipient controls those steps and any
+necessary qualified escalation. Until that recipient and direct contact method
+are appointed, Andreja must not represent any internal or external
+conflict-of-interest reporting path as available. Anonymous or pseudonymous
+reporting will be supported when a safe, sustainable mechanism is available.
 
 Retaliation for a good-faith report, refusal to cross a gate, participation in
 an investigation, or evidence-based dissent is prohibited. Performance,
@@ -248,12 +250,17 @@ or human-authority gate.
 
 Once ratified, this charter governs mission, ethics, stakeholder rights, and
 human authority; the accepted platform plan governs architecture and roadmap.
-A conflict between them pauses the affected work, becomes a tracked
-`type:decision` issue, and is resolved through a reviewed amendment to the
-governing artifact. The plan's charter seed summary must be reconciled with the
-ratified charter through a plan amendment. Until ratification, the plan's seed
-summary remains authoritative and this proposed charter informs review without
-superseding it.
+A conflict with the plan or a ratified framework pauses the affected work,
+becomes a tracked `type:decision` issue, and is resolved through a reviewed
+amendment to the governing artifact. Ratification requires reconciliation of
+both the plan's charter seed and conflicting ratified framework text. The known
+framework conflict is the `docs/frameworks/feedback-support.md` routing-table row
+`Legal, IP, regulatory, or privileged inquiry | Sarek through the confidential
+counsel route`. That text must be reconciled without implying that Sarek or any
+other agent is counsel, creates privilege, or operates a privileged channel;
+agent research is neither counsel nor privilege. Until ratification, the plan's
+seed summary remains authoritative and this proposed charter informs review
+without superseding it.
 
 Cyrus alone ratifies this charter and material amendments. Changes to mission,
 human authority, stakeholder rights, reporting or non-retaliation, enforcement,
@@ -262,12 +269,14 @@ documentation pull request. Editorial clarifications may use the same process
 without re-ratification when they do not change meaning.
 
 Public publication requires recorded Sarek research on attribution, trademark,
-reporting, and legal posture, Cyrus's approval, and review by qualified counsel
-in each relevant jurisdiction where legal or trademark exposure is material.
+reporting, and legal posture, Cyrus's recorded materiality determination and
+approval, and review by qualified counsel in each relevant jurisdiction where
+Cyrus determines and records that legal or trademark exposure is material.
 Those inputs inform publication language; they do not weaken the commitments in
 this private-facing charter or constitute a claim that clearance has occurred.
 
 Any repository visibility change uses the same decision path for official-source
 attribution, trademark posture, internal Star Trek codenames, and public-culture
-wording: recorded Sarek research, Cyrus approval, and qualified-jurisdiction
-counsel review where exposure is material.
+wording: recorded Sarek research, Cyrus's recorded materiality determination
+and approval, and qualified-jurisdiction counsel review where Cyrus records
+exposure as material.

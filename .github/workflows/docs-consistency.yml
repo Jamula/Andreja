@@ -6,12 +6,14 @@ on:
     paths:
       - 'docs/**'
       - '.github/scripts/check_docs_consistency.py'
+      - '.github/ISSUE_TEMPLATE/decision.yml'
       - 'tests/test_check_docs_consistency.py'
       - '.github/workflows/docs-consistency.yml'
   pull_request:
     paths:
       - 'docs/**'
       - '.github/scripts/check_docs_consistency.py'
+      - '.github/ISSUE_TEMPLATE/decision.yml'
       - 'tests/test_check_docs_consistency.py'
       - '.github/workflows/docs-consistency.yml'
 
