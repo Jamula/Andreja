@@ -24,8 +24,6 @@ jobs:
   build:
     permissions:
       contents: read # for actions/checkout to fetch code
-      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
-      actions: read # required for private repositories by github/codeql-action/upload-sarif
     name: PSScriptAnalyzer
     runs-on: ubuntu-latest
     steps:
@@ -67,8 +65,3 @@ jobs:
           name: psscriptanalyzer-results
           path: results.sarif
           if-no-files-found: error
-
-      - name: Upload SARIF results to code scanning
-        uses: github/codeql-action/upload-sarif@42947a340483f03ba47bb1a039b2c519aab3df85 # v3.37.8
-        with:
-          sarif_file: results.sarif
