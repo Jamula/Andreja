@@ -44,6 +44,11 @@ public static partial class ManifestContract
             manifest.Integrity);
         ValidateField(manifest.ChannelDependencies, nameof(manifest.ChannelDependencies));
         RequireValues(manifest.ActivityCategories, nameof(manifest.ActivityCategories));
+        if (manifest.Lifecycle.FrameworkStage > 11)
+        {
+            throw new ArgumentOutOfRangeException(nameof(manifest));
+        }
+
         if (manifest.Tools.Count == 0)
         {
             throw new ArgumentException("A skill manifest must declare at least one tool.");
@@ -59,6 +64,7 @@ public static partial class ManifestContract
             Require(tool.Operation, nameof(tool.Operation));
             Require(tool.DataClass, nameof(tool.DataClass));
             RequireKnown(tool.MaximumDisclosure, nameof(tool.MaximumDisclosure));
+            ValidateInputSchema(tool.InputSchema);
             RequireValues(tool.RequiredCapabilities, nameof(tool.RequiredCapabilities));
             RequireValues(tool.AllowedPurposes, nameof(tool.AllowedPurposes));
             RequireSubset(tool.RequiredCapabilities, manifest.Permissions.DeclaredCapabilities, "capability");
@@ -91,6 +97,11 @@ public static partial class ManifestContract
             manifest.Integrity);
         Require(manifest.Category, nameof(manifest.Category));
         ValidateProvider(manifest.Provider);
+        if (manifest.Lifecycle.FrameworkStage > 10)
+        {
+            throw new ArgumentOutOfRangeException(nameof(manifest));
+        }
+
         if (manifest.Operations.Count == 0)
         {
             throw new ArgumentException("A channel manifest must declare at least one operation.");
@@ -108,6 +119,7 @@ public static partial class ManifestContract
             Require(operation.Operation, nameof(operation.Operation));
             Require(operation.DataClass, nameof(operation.DataClass));
             RequireKnown(operation.MaximumDisclosure, nameof(operation.MaximumDisclosure));
+            ValidateInputSchema(operation.InputSchema);
             RequireValues(operation.AllowedPurposes, nameof(operation.AllowedPurposes));
             RequireSubset(
                 [operation.Capability],
@@ -186,6 +198,11 @@ public static partial class ManifestContract
         RequireValues(
             compatibility.SupportedPlatformVersions,
             nameof(compatibility.SupportedPlatformVersions));
+        foreach (var supportedVersion in compatibility.SupportedPlatformVersions)
+        {
+            RequireSemVer(supportedVersion, nameof(compatibility));
+        }
+
         ValidateField(integrity.PackageDigest, nameof(integrity.PackageDigest));
         ValidateField(integrity.Signature, nameof(integrity.Signature));
         ValidateField(integrity.Provenance, nameof(integrity.Provenance));
@@ -223,12 +240,38 @@ public static partial class ManifestContract
                     "Applicable metadata requires a value and no non-applicability reason.",
                     name);
             }
+
+            if (field.Value is string text && string.IsNullOrWhiteSpace(text))
+            {
+                throw new ArgumentException(
+                    "Applicable string metadata cannot be empty.",
+                    name);
+            }
+
+            if (field.Value is IEnumerable<string> values)
+            {
+                RequireValues(values, name);
+            }
         }
         else if (field.Value is not null || string.IsNullOrWhiteSpace(field.Reason))
         {
             throw new ArgumentException(
                 "Non-applicable metadata requires an explicit reason and no value.",
                 name);
+        }
+    }
+
+    private static void ValidateInputSchema(IReadOnlyList<ToolFieldSchema> schema)
+    {
+        ArgumentNullException.ThrowIfNull(schema);
+        RequireUnique(schema.Select(field => field.Name), nameof(schema));
+        foreach (var field in schema)
+        {
+            Require(field.Name, nameof(schema));
+            if (!Enum.IsDefined(field.Kind))
+            {
+                throw new ArgumentOutOfRangeException(nameof(schema));
+            }
         }
     }
 

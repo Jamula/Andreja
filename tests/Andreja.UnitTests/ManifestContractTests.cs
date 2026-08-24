@@ -110,6 +110,43 @@ public sealed class ManifestContractTests
     }
 
     [Fact]
+    public void UnknownManifestSchemaVersionsFailRegistration()
+    {
+        var skill = ExecutionContractFixture.SkillManifest() with
+        {
+            SchemaVersion = "andreja.skill-manifest.v2",
+        };
+        var channel = ExecutionContractFixture.ChannelManifest() with
+        {
+            SchemaVersion = "andreja.channel-manifest.v2",
+        };
+
+        Assert.Throws<ArgumentException>(() =>
+            new InMemorySkillHost().Register(
+                skill,
+                new Dictionary<string, SkillToolHandler>
+                {
+                    [ExecutionContractFixture.ToolName] = (_, _, _) =>
+                        ValueTask.FromResult(new SkillResult(
+                            SkillResultStatus.Completed,
+                            null,
+                            null,
+                            null)),
+                }));
+        Assert.Throws<ArgumentException>(() =>
+            new InMemoryChannelHost().Register(
+                channel,
+                new Dictionary<string, ChannelOperationHandler>
+                {
+                    [ExecutionContractFixture.ChannelOperationName] = (_, _, _) =>
+                        ValueTask.FromResult(new ChannelResult(
+                            ChannelResultStatus.Completed,
+                            null,
+                            null)),
+                }));
+    }
+
+    [Fact]
     public void ApplicableMetadataCannotSmuggleANonApplicabilityReason()
     {
         var channel = ExecutionContractFixture.ChannelManifest();
