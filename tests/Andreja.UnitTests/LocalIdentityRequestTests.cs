@@ -86,4 +86,27 @@ public sealed class LocalIdentityRequestTests
             result.Failures!,
             failure => failure.Contains("RecoveryRateLimitWindow", StringComparison.Ordinal));
     }
+
+    [Theory]
+    [InlineData(42, false)]
+    [InlineData(43, true)]
+    [InlineData(64, true)]
+    [InlineData(65, false)]
+    public void RecoveryCodesAreLengthBoundedBeforeHashing(
+        int length,
+        bool expected) =>
+        Assert.Equal(
+            expected,
+            LocalIdentityOperations.IsPlausibleRecoveryCode(
+                new string('A', length)));
+
+    [Fact]
+    public void RecoveryCodeBoundsRejectWhitespaceShrinkageAndNull()
+    {
+        Assert.False(LocalIdentityOperations.IsPlausibleRecoveryCode(null));
+        Assert.False(LocalIdentityOperations.IsPlausibleRecoveryCode(
+            " " + new string(
+                'A',
+                LocalIdentityOperations.RecoveryCodeMinimumLength - 1)));
+    }
 }

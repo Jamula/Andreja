@@ -72,6 +72,19 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
     padding: clamp(1rem, 4vw, 3rem);
 }
 
+.account-nav {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 auto;
+    max-width: 72rem;
+    padding: 1rem clamp(1rem, 4vw, 3rem) 0;
+}
+
+.account-nav a {
+    color: var(--accent-dark);
+    font-weight: 750;
+}
+
 .task-hero {
     max-width: 50rem;
     padding: clamp(1rem, 5vw, 4rem) 0 2rem;

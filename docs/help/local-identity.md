@@ -36,8 +36,9 @@ rejected.
 ## Sign in, sign out, and passkeys
 
 Use **Sign in with a passkey** at `/Account/Login`. A return URL is accepted only
-when it is a local absolute-path reference. Use **Manage passkeys** at
-`/Account/Passkeys` to add an independently stored passkey or remove one. The
+when it is a local absolute-path reference. After sign-in, use **Account and
+security** in the persistent application navigation to open `/Account/Passkeys`,
+add or remove a passkey, or sign out. The
 configured device limit is enforced, and Andreja refuses to remove the last usable
 passkey/recovery path. Adding or removing a passkey also requires a recent passkey
 sign-in; an older application cookie alone is insufficient. The recent marker is
@@ -52,6 +53,8 @@ restore is incomplete.
 ## Recovery
 
 Open `/Account/Recovery`, enter one unused recovery code, and enroll a new passkey.
+Recovery accepts only bounded, plausible code lengths before any UTF-8 conversion
+or hashing; invalid inputs receive the same generic failure.
 Successful recovery:
 
 - consumes the presented code and revokes every old recovery code;

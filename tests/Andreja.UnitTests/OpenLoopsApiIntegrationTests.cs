@@ -92,6 +92,39 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
     public async Task SignOutClearsTheAuthenticatedCookie()
     {
         using var client = await factory.CreateDevelopmentSignedInClientAsync("/");
+        var repositoryRoot = new DirectoryInfo(AppContext.BaseDirectory);
+        for (var level = 0; level < 5; level++)
+        {
+            repositoryRoot = repositoryRoot.Parent
+                ?? throw new DirectoryNotFoundException();
+        }
+        var home = await File.ReadAllTextAsync(Path.Join(
+            repositoryRoot.FullName,
+            "src",
+            "Andreja.AppHost",
+            "Components",
+            "Pages",
+            "Home.razor"));
+        var passkeys = await File.ReadAllTextAsync(Path.Join(
+            repositoryRoot.FullName,
+            "src",
+            "Andreja.AppHost",
+            "Components",
+            "Pages",
+            "Passkeys.razor"));
+        using var passkeysResponse =
+            await client.GetAsync(LocalAccountEndpoints.PasskeysPath);
+        passkeysResponse.EnsureSuccessStatusCode();
+        Assert.Contains(
+            "href=\"@LocalAccountEndpoints.PasskeysPath\"",
+            home,
+            StringComparison.Ordinal);
+        Assert.Contains("Account and security", home, StringComparison.Ordinal);
+        Assert.Contains(
+            "action=\"@LocalAccountEndpoints.LogoutPath\"",
+            passkeys,
+            StringComparison.Ordinal);
+        Assert.Contains("Sign out", passkeys, StringComparison.Ordinal);
         var login = await client.GetStringAsync(LocalAccountEndpoints.LoginPath);
         var tokenMatch = Regex.Match(
             login,
@@ -106,12 +139,14 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
                 ["__RequestVerificationToken"] =
                     WebUtility.HtmlDecode(tokenMatch.Groups[1].Value),
             }));
-        var home = await client.GetAsync("/");
+        using var anonymousHome = await client.GetAsync("/");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal(LocalAccountEndpoints.LoginPath, response.Headers.Location?.OriginalString);
-        Assert.Equal(HttpStatusCode.Redirect, home.StatusCode);
-        Assert.Equal(LocalAccountEndpoints.LoginPath, home.Headers.Location?.AbsolutePath);
+        Assert.Equal(HttpStatusCode.Redirect, anonymousHome.StatusCode);
+        Assert.Equal(
+            LocalAccountEndpoints.LoginPath,
+            anonymousHome.Headers.Location?.AbsolutePath);
     }
 #endif
 
@@ -369,6 +404,7 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         Assert.Contains("identity-passkeys", content, StringComparison.Ordinal);
         Assert.DoesNotContain("navigator.credentials", content, StringComparison.Ordinal);
         Assert.Contains("Sign in with a passkey", content, StringComparison.Ordinal);
+        Assert.DoesNotContain("Account and security", content, StringComparison.Ordinal);
         Assert.True(response.Headers.TryGetValues(
             "Content-Security-Policy",
             out var policies));
@@ -457,6 +493,10 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
             StringComparison.Ordinal);
         Assert.DoesNotContain(
             "querySelectorAll(\"button, input\")",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "revoke.setAttribute(\"aria-label\", `Remove passkey ${passkey.name}`)",
             script,
             StringComparison.Ordinal);
         Assert.DoesNotContain(

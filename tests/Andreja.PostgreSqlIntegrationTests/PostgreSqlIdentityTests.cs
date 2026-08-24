@@ -247,6 +247,11 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             Assert.Equal(reservedCredentialUserId, persisted.Id);
             var passkey = Assert.Single(await users.GetPasskeysAsync(persisted));
             Assert.Equal(credentialId, passkey.CredentialId);
+            Assert.Equal(
+                "Local owner",
+                await scope.ServiceProvider
+                    .GetRequiredService<IAppUserDisplayNameResolver>()
+                    .ResolveAsync(persisted));
 
             var operations = scope.ServiceProvider.GetRequiredService<LocalIdentityOperations>();
             await Assert.ThrowsAsync<InvalidOperationException>(

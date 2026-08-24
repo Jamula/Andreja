@@ -37,6 +37,9 @@ public static class LocalIdentityServiceCollectionExtensions
         services.AddScoped<
             IRecentAuthenticationGrantStore,
             PostgreSqlRecentAuthenticationGrantStore>();
+        services.AddScoped<
+            IAppUserDisplayNameResolver,
+            PostgreSqlAppUserDisplayNameResolver>();
         services.AddOptions<ForwardedHeadersOptions>()
             .Configure<IOptions<LocalIdentityOptions>>(
                 (forwarded, identity) =>

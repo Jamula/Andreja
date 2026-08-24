@@ -168,6 +168,7 @@ async function loadPasskeys(form) {
         revoke.type = "button";
         revoke.className = "button danger";
         revoke.textContent = "Remove";
+        revoke.setAttribute("aria-label", `Remove passkey ${passkey.name}`);
         revoke.dataset.passkeyRevoke = passkey.credentialId;
         revoke.dataset.passkeyName = passkey.name;
         item.append(details, revoke);

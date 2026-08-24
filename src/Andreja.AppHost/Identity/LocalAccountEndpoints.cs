@@ -64,6 +64,9 @@ public static class LocalAccountEndpoints
         services.TryAddScoped<
             IRecentAuthenticationGrantStore,
             RecentPasskeyAuthentication.UnavailableRecentAuthenticationGrantStore>();
+        services.TryAddScoped<
+            IAppUserDisplayNameResolver,
+            RecentPasskeyAuthentication.UnavailableAppUserDisplayNameResolver>();
         services.AddScoped<RecentPasskeyAuthentication>();
         return services;
     }
@@ -394,6 +397,8 @@ public static class LocalAccountEndpoints
         IDataProtectionProvider dataProtection)
     {
         if (!await ValidateAntiforgeryAsync(context, antiforgery)
+            || !LocalIdentityOperations.IsPlausibleRecoveryCode(
+                input.RecoveryCode)
             || !LocalIdentityOperations.IsAcceptedRelyingPartyRequest(
                 context.Request,
                 configured.Value))
@@ -499,7 +504,8 @@ public static class LocalAccountEndpoints
         UserManager<AspNetIdentityUser> users,
         SignInManager<AspNetIdentityUser> signInManager,
         IOptions<LocalIdentityOptions> configured,
-        RecentPasskeyAuthentication recentAuthentication)
+        RecentPasskeyAuthentication recentAuthentication,
+        IAppUserDisplayNameResolver displayNames)
     {
         if (!await ValidateAntiforgeryAsync(context, antiforgery)
             || !LocalIdentityOperations.IsAcceptedRelyingPartyRequest(
@@ -510,7 +516,11 @@ public static class LocalAccountEndpoints
         }
 
         var user = await users.GetUserAsync(context.User);
+        var displayName = user is null
+            ? null
+            : await displayNames.ResolveAsync(user, context.RequestAborted);
         if (user is null
+            || string.IsNullOrWhiteSpace(displayName)
             || !await recentAuthentication.IsValidAsync(
                 context,
                 user,
@@ -525,7 +535,7 @@ public static class LocalAccountEndpoints
         {
             Id = user.Id.ToString("D"),
             Name = user.UserName ?? $"user-{user.Id:N}",
-            DisplayName = input.DeviceName.Trim(),
+            DisplayName = displayName,
         });
         return TypedResults.Content(options, "application/json");
     }

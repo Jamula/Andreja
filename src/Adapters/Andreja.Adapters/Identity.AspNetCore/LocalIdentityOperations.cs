@@ -46,7 +46,7 @@ public interface ILocalIdentityBootstrapOperations
 public interface ILocalIdentityRecoveryOperations
 {
     Task<RecoveryStartResult?> BeginRecoveryAsync(
-        string recoveryCode,
+        string? recoveryCode,
         CancellationToken cancellationToken = default);
 
     Task<RecoveryCompletionResult> CompleteRecoveryAsync(
@@ -84,6 +84,8 @@ public sealed class LocalIdentityOperations(
         ILocalIdentityRecoveryOperations,
         ILocalPasskeyManagementOperations
 {
+    public const int RecoveryCodeMinimumLength = 43;
+    public const int RecoveryCodeMaximumLength = 64;
     private const int RecoveryHashIterations = 210_000;
     private const long BootstrapAdvisoryLock = 0x414E4452454A41;
 
@@ -220,16 +222,17 @@ public sealed class LocalIdentityOperations(
     }
 
     public async Task<RecoveryStartResult?> BeginRecoveryAsync(
-        string recoveryCode,
+        string? recoveryCode,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(recoveryCode))
+        if (!IsPlausibleRecoveryCode(recoveryCode))
         {
             return null;
         }
 
+        var normalizedCode = recoveryCode.AsSpan().Trim().ToString();
         var now = timeProvider.GetUtcNow();
-        var lookupHash = ComputeLookupHash(recoveryCode);
+        var lookupHash = ComputeLookupHash(normalizedCode);
         try
         {
             var stored = await database.IdentityRecoveryCodes
@@ -239,7 +242,7 @@ public sealed class LocalIdentityOperations(
                         && candidate.ConsumedAt == null
                         && candidate.ExpiresAt > now,
                     cancellationToken);
-            if (stored is null || !VerifyRecoveryCode(stored, recoveryCode))
+            if (stored is null || !VerifyRecoveryCode(stored, normalizedCode))
             {
                 database.IdentitySecurityAuditRecords.Add(
                     new IdentitySecurityAuditRecord(
@@ -292,6 +295,20 @@ public sealed class LocalIdentityOperations(
         {
             CryptographicOperations.ZeroMemory(lookupHash);
         }
+    }
+
+    public static bool IsPlausibleRecoveryCode(string? value)
+    {
+        if (value is null
+            || value.Length is < RecoveryCodeMinimumLength
+                or > RecoveryCodeMaximumLength)
+        {
+            return false;
+        }
+
+        var trimmed = value.AsSpan().Trim();
+        return trimmed.Length is >= RecoveryCodeMinimumLength
+            and <= RecoveryCodeMaximumLength;
     }
 
     public async Task<RecoveryCompletionResult> CompleteRecoveryAsync(

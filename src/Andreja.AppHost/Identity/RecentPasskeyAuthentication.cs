@@ -41,6 +41,15 @@ internal sealed class RecentPasskeyAuthentication
             .ToTimeLimitedDataProtector();
     }
 
+    internal sealed class UnavailableAppUserDisplayNameResolver
+        : IAppUserDisplayNameResolver
+    {
+        public Task<string?> ResolveAsync(
+            AspNetIdentityUser user,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+    }
+
     internal sealed class UnavailableRecentAuthenticationGrantStore
         : IRecentAuthenticationGrantStore
     {

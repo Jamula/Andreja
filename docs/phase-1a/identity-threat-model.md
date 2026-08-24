@@ -27,6 +27,7 @@ application logging, telemetry, exports, errors, and support evidence.
 | Open redirect or CSRF | Local-only ReturnUrl, SameSite cookies, antiforgery header/form token on every mutation |
 | Stolen long-lived application cookie changes credentials | Registration and revocation require a separate short-lived Data-Protection marker issued only by successful passkey assertion, bound to user/security stamp/audience and a PostgreSQL-backed one-time nonce hash atomically consumed on mutation |
 | Recovery guessing or replay | High-entropy single-use codes, PBKDF2 verification, lookup hash, expiry, fixed-window request limiter, generic responses, audit |
+| Oversized anonymous recovery input | Plausible recovery-code length is checked before trimming, UTF-8 allocation, lookup hashing, or PBKDF2; failures remain generic |
 | Stolen session after recovery | Security-stamp rotation, zero validation interval, old passkey removal |
 | Last authentication path removal | Server-side count of passkeys and unexpired unused recovery codes before revoke |
 | Release-only bypass | Development helper is inside `#if DEBUG` and requires Development; no header/password/test scheme exists |

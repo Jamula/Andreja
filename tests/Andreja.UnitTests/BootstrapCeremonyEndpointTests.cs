@@ -25,6 +25,9 @@ namespace Andreja.UnitTests;
 
 public sealed class BootstrapCeremonyEndpointTests
 {
+    private const string ValidRecoveryCode =
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
     [Theory]
     [InlineData("23505", true)]
     [InlineData("40001", true)]
@@ -208,6 +211,8 @@ public sealed class BootstrapCeremonyEndpointTests
         registrationOptionsResponse.EnsureSuccessStatusCode();
         var registrationOptions = (await registrationOptionsResponse.Content
             .ReadFromJsonAsync<CreationOptions>())!;
+        Assert.Equal("Local owner", registrationOptions.User.DisplayName);
+        Assert.NotEqual("Laptop", registrationOptions.User.DisplayName);
         var registrationComplete =
             new LocalAccountEndpoints.RegistrationCompleteRequest(
                 "Laptop",
@@ -272,7 +277,14 @@ public sealed class BootstrapCeremonyEndpointTests
 
         var recoveryRequest =
             new LocalAccountEndpoints.RecoveryOptionsRequest(
-                "offline-recovery-code");
+                ValidRecoveryCode);
+        using var oversizedRecovery = await PostJsonWithTokenAsync(
+            client,
+            LocalIdentityNetworkSecurity.RecoveryOptionsPath,
+            new LocalAccountEndpoints.RecoveryOptionsRequest(
+                new string('X', LocalIdentityOperations.RecoveryCodeMaximumLength + 1)),
+            authenticatedToken);
+        Assert.Equal(HttpStatusCode.BadRequest, oversizedRecovery.StatusCode);
         await AssertAntiforgeryRejectedAsync(
             client,
             LocalIdentityNetworkSecurity.RecoveryOptionsPath,
@@ -662,6 +674,8 @@ public sealed class BootstrapCeremonyEndpointTests
                 new FakePasskeyStore.FakeRecentAuthenticationGrantStore();
             builder.Services.AddSingleton<IRecentAuthenticationGrantStore>(
                 grants);
+            builder.Services.AddSingleton<IAppUserDisplayNameResolver>(
+                new FakeDisplayNameResolver());
             builder.Services.ConfigureAndrejaCookieBehavior();
             builder.Services.Configure<RateLimiterOptions>(
                 limiter => LocalIdentityNetworkSecurity.ConfigureRateLimiting(
@@ -967,14 +981,14 @@ public sealed class BootstrapCeremonyEndpointTests
             initialized = true;
             CompletionCount++;
             return Task.FromResult<BootstrapIdentityResult>(
-                new(user, ["offline-recovery-code"]));
+                new(user, [ValidRecoveryCode]));
         }
 
         public Task<RecoveryStartResult?> BeginRecoveryAsync(
-            string recoveryCode,
+            string? recoveryCode,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(
-                recoveryCode == "offline-recovery-code" && store.User is not null
+                recoveryCode == ValidRecoveryCode && store.User is not null
                     ? new RecoveryStartResult(
                         Guid.CreateVersion7(),
                         store.User.Id,
@@ -1333,6 +1347,14 @@ public sealed class BootstrapCeremonyEndpointTests
             Task.FromResult(user.SecurityStamp);
     }
 
+    private sealed class FakeDisplayNameResolver : IAppUserDisplayNameResolver
+    {
+        public Task<string?> ResolveAsync(
+            AspNetIdentityUser user,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>("Local owner");
+    }
+
     private sealed class IdentityEndpointWebApplicationFactory
         : WebApplicationFactory<Program>
     {
@@ -1378,6 +1400,9 @@ public sealed class BootstrapCeremonyEndpointTests
                     bootstrap);
                 services.RemoveAll<IRecentAuthenticationGrantStore>();
                 services.AddSingleton<IRecentAuthenticationGrantStore>(grants);
+                services.RemoveAll<IAppUserDisplayNameResolver>();
+                services.AddSingleton<IAppUserDisplayNameResolver>(
+                    new FakeDisplayNameResolver());
                 services.Configure<RateLimiterOptions>(
                     limiter => LocalIdentityNetworkSecurity.ConfigureRateLimiting(
                         limiter,
