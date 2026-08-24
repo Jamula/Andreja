@@ -77,22 +77,17 @@ Quark's failure-cost baseline and is not amended retroactively.
 
 ## Cost categories and SKU tracking
 
-`docs/cost-model.md` tracks, per provider, the following categories with expected
-monthly fixed cost, variable unit drivers, assumptions, free-tier limits, and scale
-thresholds once Phase 1 provisioning is approved:
+`docs/cost-model.md` maintains the provider/SKU baseline Quark updates as
+evidence changes. Phase 0 remains no-provisioning, so cloud SKUs stay at `$0.00`
+until a separately approved Phase 1B spike budget exists:
 
-| Category | Examples | Notes |
-|---|---|---|
-| Compute | App hosting, consumption functions, containers | Prefer consumption hosting where reliable |
-| Data | SQL/Postgres, storage, backups | SQL auto-pause only with a cold-start UX disclosed to users |
-| Telemetry/observability | Logs, metrics, traces | Sampling and caps required; no unbounded retention |
-| Networking | Egress, CDN, federation traffic | CDN/domains tracked as recurring fixed cost |
-| AI/model usage | Model tokens, provider AI credits | Tracked in the development and product ledgers, never combined |
-| Messaging/integration | Queues, functions, secrets | Per-invocation and storage cost |
-| CI/CD | Build minutes, artifact storage, ephemeral test environments | Ephemeral environments used only where cheaper than permanent staging |
-| Verification/compliance | Connector verification, security assessments, audits | Owned jointly with Tuvok/Sarek |
-| Distribution | App stores, domain registration | Outside the $0 cloud cap; professional-services envelope |
-| People and services | Legal, support, tooling, contractors | Tracked as recurring or one-time company spend |
+| Provider | SKU/service baseline | Expected monthly fixed cost (USD) | Variable unit driver | Assumptions | Free-tier/trial limit | Scale threshold / trigger |
+|---|---|---:|---|---|---|---|
+| Current AI-credit provider | Development agent/session credit consumption | 0.00 | Credits consumed per run/session | Billing statement treated as the source of truth; initial observed burn is 896.87 credits | Not a cloud free tier; governed by explicit AI-credit envelope approvals | Phase 1A live model-token spend gate approval |
+| GitHub (repository CI/docs hosting) | Repository hosting, Actions/docs workflow execution | 0.00 (Phase 0 baseline) | Build minutes, artifact/storage usage, docs/deploy runs | Stay within included quota; no paid upgrades in Phase 0 | Included quota only; no paid overage approval in Phase 0 | Quota-pressure or overage risk triggers FinOps review before any upgrade |
+| Cloud provider (TBD by ADR) | Compute, SQL/Postgres, storage, backups, queues/functions, secrets, egress | 0.00 (Phase 0 cap) | vCPU-hours, GB-month, requests, egress GB, function invocations | Local/paper estimation only; no account/subscription/trial provisioning in Phase 0 | N/A in Phase 0 (free tiers/trials are prohibited) | Phase 1B spike budget + TTL/quota/teardown evidence required |
+| Domains/CDN registrar/provider (TBD) | Domain registration/renewal and CDN add-ons | 0.00 baseline until purchased | Domain years purchased, add-on subscriptions | Professional-services envelope only; not cloud-infrastructure spend | No auto-renew purchase without explicit approval | Renewal date or proposed first purchase triggers approval workflow |
+| Legal/compliance vendors (TBD) | Trademark search/counsel and regulatory/compliance assessments | 0.00 baseline until engaged | Fixed-fee engagement or hourly billing | Professional-services envelope only; Sarek-reviewed before commitment | N/A | New matter request triggers explicit spend approval |
 
 Every paid dependency in any category has a named owner, a renewal or usage trigger,
 a documented cancellation path, and a lower-cost alternative on file where one is
