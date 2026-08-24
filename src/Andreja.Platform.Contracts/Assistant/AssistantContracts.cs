@@ -26,6 +26,7 @@ public sealed record AssistantProviderCapabilities(
 
 public sealed record AssistantExecutionContext(
     Guid TenantId,
+    Guid AppUserId,
     Guid PrincipalId,
     string Purpose);
 

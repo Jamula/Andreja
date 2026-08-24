@@ -10,6 +10,9 @@ public static class OpenLoopsPolicy
 {
     public const string Purpose = "task.capture";
     public const string ProposeCapability = "tasks.propose";
+    public const string ProposeOperation = "propose";
+    public const string TaskDataClass = "tasks";
+    public const string ResourceReference = "open-loops/tasks";
     public const string ManageCapability = "tasks.manage";
 
     public static void Require(TenantPrincipalContext context)

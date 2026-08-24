@@ -1,27 +1,27 @@
 using Andreja.Modules.Execution;
+using Andreja.Modules.Skills;
+using Andreja.Platform.Contracts.Channels;
 using Andreja.Platform.Contracts.Execution;
-using Andreja.Platform.Contracts.Skills;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 
-namespace Andreja.Modules.Skills;
+namespace Andreja.Modules.Channels;
 
-public sealed class InMemorySkillHost : ISkillHost
+public sealed class InMemoryChannelHost : IChannelHost
 {
     private readonly ConcurrentDictionary<(string Id, string Version), Registration> registrations = [];
     private readonly IExecutionAuthorizationEvaluator evaluator;
     private readonly IExecutionAuditSink auditSink;
 
-    public InMemorySkillHost()
+    public InMemoryChannelHost()
     {
         var sink = new InMemoryExecutionAuditSink();
         evaluator = new ExecutionAuthorizationEvaluator(sink);
         auditSink = sink;
     }
 
-    public InMemorySkillHost(
+    public InMemoryChannelHost(
         IExecutionAuthorizationEvaluator evaluator,
         IExecutionAuditSink auditSink)
     {
@@ -33,40 +33,44 @@ public sealed class InMemorySkillHost : ISkillHost
         auditSink is InMemoryExecutionAuditSink sink ? sink.Entries : [];
 
     public void Register(
-        SkillManifest manifest,
-        IReadOnlyDictionary<string, SkillToolHandler> handlers)
+        ChannelManifest manifest,
+        IReadOnlyDictionary<string, ChannelOperationHandler> handlers)
     {
         ArgumentNullException.ThrowIfNull(manifest);
         ArgumentNullException.ThrowIfNull(handlers);
         ManifestContract.Validate(manifest);
 
-        var declaredTools = manifest.Tools.Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal);
-        if (declaredTools.Count != manifest.Tools.Count || !declaredTools.SetEquals(handlers.Keys))
+        var declared = manifest.Operations
+            .Select(operation => operation.Name)
+            .ToHashSet(StringComparer.Ordinal);
+        if (declared.Count != manifest.Operations.Count || !declared.SetEquals(handlers.Keys))
         {
-            throw new ArgumentException("Handlers must exactly match declared tools.", nameof(handlers));
+            throw new ArgumentException(
+                "Handlers must exactly match declared channel operations.",
+                nameof(handlers));
         }
 
         if (!registrations.TryAdd(
-                (manifest.SkillId, manifest.Version),
+                (manifest.ChannelId, manifest.Version),
                 new(manifest, ComputeManifestDigest(manifest), handlers)))
         {
-            throw new InvalidOperationException("The skill version is already registered.");
+            throw new InvalidOperationException("The channel version is already registered.");
         }
     }
 
-    public ValueTask<SkillManifest?> ResolveManifestAsync(
-        string skillId,
+    public ValueTask<ChannelManifest?> ResolveManifestAsync(
+        string channelId,
         string version,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        registrations.TryGetValue((skillId, version), out var registration);
+        registrations.TryGetValue((channelId, version), out var registration);
         return ValueTask.FromResult(registration?.Manifest);
     }
 
-    public async ValueTask<SkillResult> InvokeAsync(
-        SkillInvocation invocation,
-        SkillExecutionContext context,
+    public async ValueTask<ChannelResult> InvokeAsync(
+        ChannelInvocation invocation,
+        ChannelExecutionContext context,
         CancellationToken cancellationToken)
     {
         try
@@ -75,13 +79,15 @@ public sealed class InMemorySkillHost : ISkillHost
             ArgumentNullException.ThrowIfNull(context);
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (!registrations.TryGetValue((invocation.SkillId, invocation.SkillVersion), out var registration))
+            if (!registrations.TryGetValue(
+                    (invocation.ChannelId, invocation.ChannelVersion),
+                    out var registration))
             {
                 return await DeniedAsync(
                     invocation,
                     context,
-                    "skill-not-declared",
-                    "The requested skill version is not registered.").ConfigureAwait(false);
+                    "channel-not-declared",
+                    "The requested channel version is not registered.").ConfigureAwait(false);
             }
 
             var suppliedDigest = Encoding.UTF8.GetBytes(invocation.ManifestDigest);
@@ -97,15 +103,19 @@ public sealed class InMemorySkillHost : ISkillHost
                     "The supplied manifest digest does not match.").ConfigureAwait(false);
             }
 
-            var tool = registration.Manifest.Tools.SingleOrDefault(
-                candidate => string.Equals(candidate.Name, invocation.ToolName, StringComparison.Ordinal));
-            if (tool is null || !registration.Handlers.TryGetValue(invocation.ToolName, out var handler))
+            var operation = registration.Manifest.Operations.SingleOrDefault(
+                candidate => string.Equals(
+                    candidate.Name,
+                    invocation.OperationName,
+                    StringComparison.Ordinal));
+            if (operation is null
+                || !registration.Handlers.TryGetValue(invocation.OperationName, out var handler))
             {
                 return await DeniedAsync(
                     invocation,
                     context,
-                    "tool-not-declared",
-                    "The requested tool is not declared.").ConfigureAwait(false);
+                    "operation-not-declared",
+                    "The requested channel operation is not declared.").ConfigureAwait(false);
             }
 
             var identityDenial = IdentityDenial(invocation, context);
@@ -119,7 +129,7 @@ public sealed class InMemorySkillHost : ISkillHost
             }
 
             if (!string.Equals(invocation.Purpose, context.Purpose, StringComparison.Ordinal)
-                || !tool.AllowedPurposes.Contains(invocation.Purpose, StringComparer.Ordinal)
+                || !operation.AllowedPurposes.Contains(invocation.Purpose, StringComparer.Ordinal)
                 || !registration.Manifest.Permissions.AllowedPurposes.Contains(
                     invocation.Purpose,
                     StringComparer.Ordinal))
@@ -128,37 +138,37 @@ public sealed class InMemorySkillHost : ISkillHost
                     invocation,
                     context,
                     "wrong-purpose",
-                    "The purpose is not authorized for this tool.").ConfigureAwait(false);
+                    "The purpose is not authorized for this channel operation.").ConfigureAwait(false);
             }
 
-            if (!string.Equals(invocation.Operation, tool.Operation, StringComparison.Ordinal))
+            if (!string.Equals(invocation.Operation, operation.Operation, StringComparison.Ordinal))
             {
                 return await DeniedAsync(
                     invocation,
                     context,
                     "operation-denied",
-                    "The operation does not match the declared tool operation.").ConfigureAwait(false);
+                    "The operation does not match the channel declaration.").ConfigureAwait(false);
             }
 
-            if (!string.Equals(invocation.DataClass, tool.DataClass, StringComparison.Ordinal))
+            if (!string.Equals(invocation.DataClass, operation.DataClass, StringComparison.Ordinal))
             {
                 return await DeniedAsync(
                     invocation,
                     context,
                     "data-class-denied",
-                    "The data class does not match the declared tool data class.").ConfigureAwait(false);
+                    "The data class does not match the channel declaration.").ConfigureAwait(false);
             }
 
             var schemaFailure = ArgumentSchemaValidator.Validate(
-                tool.InputSchema,
+                operation.InputSchema,
                 invocation.Arguments);
             if (schemaFailure is not null)
             {
                 await ExecutionAudit.DeniedAsync(
                     auditSink,
-                    "skill",
-                    invocation.SkillId,
-                    invocation.SkillVersion,
+                    "channel",
+                    invocation.ChannelId,
+                    invocation.ChannelVersion,
                     invocation.TenantId,
                     invocation.AppUserId,
                     invocation.PrincipalId,
@@ -168,24 +178,27 @@ public sealed class InMemorySkillHost : ISkillHost
                     invocation.RequestedDisclosure,
                     context.Authorization,
                     schemaFailure.Code).ConfigureAwait(false);
-                return new(SkillResultStatus.Invalid, null, null, schemaFailure);
+                return new(
+                    ChannelResultStatus.Invalid,
+                    null,
+                    new(schemaFailure.Code, schemaFailure.Message));
             }
 
             var decision = await evaluator.EvaluateAsync(
                 new(
-                    "skill",
-                    invocation.SkillId,
-                    invocation.SkillVersion,
+                    "channel",
+                    invocation.ChannelId,
+                    invocation.ChannelVersion,
                     invocation.TenantId,
                     invocation.AppUserId,
                     invocation.PrincipalId,
                     invocation.Purpose,
-                    tool.RequiredCapabilities,
+                    [operation.Capability],
                     invocation.Operation,
                     invocation.DataClass,
                     invocation.RequestedDisclosure,
-                    tool.MaximumDisclosure < registration.Manifest.Permissions.MaximumDisclosure
-                        ? tool.MaximumDisclosure
+                    operation.MaximumDisclosure < registration.Manifest.Permissions.MaximumDisclosure
+                        ? operation.MaximumDisclosure
                         : registration.Manifest.Permissions.MaximumDisclosure,
                     invocation.ResourceReference,
                     context.Authorization),
@@ -203,19 +216,18 @@ public sealed class InMemorySkillHost : ISkillHost
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             return new(
-                SkillResultStatus.Cancelled,
-                null,
+                ChannelResultStatus.Cancelled,
                 null,
                 new("cancelled", "The invocation was cancelled."));
         }
     }
 
-    public static string ComputeManifestDigest(SkillManifest manifest) =>
+    public static string ComputeManifestDigest(ChannelManifest manifest) =>
         ManifestContract.ComputeDigest(manifest);
 
     private static (string Code, string Message)? IdentityDenial(
-        SkillInvocation invocation,
-        SkillExecutionContext context)
+        ChannelInvocation invocation,
+        ChannelExecutionContext context)
     {
         if (invocation.TenantId != context.TenantId)
         {
@@ -235,17 +247,17 @@ public sealed class InMemorySkillHost : ISkillHost
         return null;
     }
 
-    private async ValueTask<SkillResult> DeniedAsync(
-        SkillInvocation invocation,
-        SkillExecutionContext context,
+    private async ValueTask<ChannelResult> DeniedAsync(
+        ChannelInvocation invocation,
+        ChannelExecutionContext context,
         string code,
         string message)
     {
         await ExecutionAudit.DeniedAsync(
             auditSink,
-            "skill",
-            invocation.SkillId,
-            invocation.SkillVersion,
+            "channel",
+            invocation.ChannelId,
+            invocation.ChannelVersion,
             invocation.TenantId,
             invocation.AppUserId,
             invocation.PrincipalId,
@@ -258,56 +270,11 @@ public sealed class InMemorySkillHost : ISkillHost
         return Denied(code, message);
     }
 
-    private static SkillResult Denied(string code, string message) =>
-        new(SkillResultStatus.Denied, null, null, new(code, message));
+    private static ChannelResult Denied(string code, string message) =>
+        new(ChannelResultStatus.Denied, null, new(code, message));
 
     private sealed record Registration(
-        SkillManifest Manifest,
+        ChannelManifest Manifest,
         string ManifestDigest,
-        IReadOnlyDictionary<string, SkillToolHandler> Handlers);
-}
-
-internal static class ArgumentSchemaValidator
-{
-    public static SkillFailure? Validate(
-        IReadOnlyList<ToolFieldSchema> schema,
-        IReadOnlyDictionary<string, JsonElement> arguments)
-    {
-        var declared = schema.Select(field => field.Name).ToHashSet(StringComparer.Ordinal);
-        if (arguments.Keys.Any(argument => !declared.Contains(argument)))
-        {
-            return new("undeclared-argument", "An argument is not declared by the schema.");
-        }
-
-        foreach (var field in schema)
-        {
-            if (!arguments.TryGetValue(field.Name, out var value))
-            {
-                if (field.Required)
-                {
-                    return new("missing-argument", $"Required argument '{field.Name}' is missing.");
-                }
-
-                continue;
-            }
-
-            if (!Matches(field.Kind, value.ValueKind))
-            {
-                return new("argument-type", $"Argument '{field.Name}' has the wrong type.");
-            }
-        }
-
-        return null;
-    }
-
-    private static bool Matches(ToolValueKind expected, JsonValueKind actual) =>
-        expected switch
-        {
-            ToolValueKind.Text => actual == JsonValueKind.String,
-            ToolValueKind.Numeric => actual == JsonValueKind.Number,
-            ToolValueKind.Logical => actual is JsonValueKind.True or JsonValueKind.False,
-            ToolValueKind.Structured => actual == JsonValueKind.Object,
-            ToolValueKind.Sequence => actual == JsonValueKind.Array,
-            _ => false,
-        };
+        IReadOnlyDictionary<string, ChannelOperationHandler> Handlers);
 }
