@@ -2,8 +2,9 @@
 
 Andreja is a user-owned personal assistant and skill platform. The ratified
 architecture, product roadmap, and delivery phases are in
-[`docs/plan.md`](docs/plan.md). The durable company mission, commitments, and
-operating culture are in [`docs/charter.md`](docs/charter.md).
+[`docs/plan.md`](docs/plan.md). The proposed company mission, commitments, and
+operating culture are in [`docs/charter.md`](docs/charter.md); the charter remains
+pending explicit ratification and takes effect only if Cyrus approves it.
 
 ## Development
 
