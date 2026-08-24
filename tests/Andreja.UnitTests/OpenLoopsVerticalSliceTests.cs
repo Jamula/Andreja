@@ -12,6 +12,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.DataProtection;
+using System.Security.Claims;
 
 namespace Andreja.UnitTests;
 
@@ -260,8 +263,19 @@ public sealed class OpenLoopsVerticalSliceTests
     [Fact]
     public async Task TypedClientObtainsAntiforgeryTokenAndSendsOnlyDtos()
     {
+        var context = NewContext();
+        var principal = Principal(
+            (ClaimTypes.NameIdentifier, context.AppUserId.Value.ToString("D")),
+            (AndrejaClaimTypes.TenantId, context.TenantId.Value.ToString("D")),
+            (AndrejaClaimTypes.AppUserId, context.AppUserId.Value.ToString("D")),
+            (AndrejaClaimTypes.PrincipalId, context.PrincipalId.Value.ToString("D")));
+        var tokenService = new CircuitDelegationTokenService(
+            new EphemeralDataProtectionProvider(),
+            new MutableTimeProvider(Now));
         var handler = new RecordingHandler();
-        var forwarding = new AuthenticationCookieForwardingHandler(new HttpContextAccessor())
+        var forwarding = new CircuitDelegationHandler(
+            new FixedAuthenticationStateProvider(principal),
+            tokenService)
         {
             InnerHandler = handler,
         };
@@ -276,6 +290,19 @@ public sealed class OpenLoopsVerticalSliceTests
         Assert.Equal(2, handler.Requests.Count);
         Assert.Equal(OpenLoopsApi.AntiforgeryRoute, handler.Requests[0].Path);
         Assert.Equal("test-token", handler.Requests[1].Antiforgery);
+        Assert.All(handler.Requests, request =>
+        {
+            Assert.Equal(
+                CircuitDelegation.AuthorizationScheme,
+                request.AuthorizationScheme);
+            var validation = tokenService.ValidateAndConsume(
+                Assert.IsType<string>(request.AuthorizationParameter),
+                CircuitDelegation.OpenLoopsAudience);
+            Assert.True(validation.Succeeded);
+            Assert.Equal(
+                context.PrincipalId.Value.ToString("D"),
+                validation.Principal?.FindFirst(AndrejaClaimTypes.PrincipalId)?.Value);
+        });
         Assert.Contains(
             ".AspNetCore.Antiforgery.test=cookie-value",
             handler.Requests[1].Cookie,
@@ -351,6 +378,13 @@ public sealed class OpenLoopsVerticalSliceTests
         public void Advance(TimeSpan duration) => now += duration;
     }
 
+    private sealed class FixedAuthenticationStateProvider(ClaimsPrincipal principal)
+        : AuthenticationStateProvider
+    {
+        public override Task<AuthenticationState> GetAuthenticationStateAsync() =>
+            Task.FromResult(new AuthenticationState(principal));
+    }
+
     private sealed class RecordingHandler : HttpMessageHandler
     {
         public List<RecordedRequest> Requests { get; } = [];
@@ -370,6 +404,8 @@ public sealed class OpenLoopsVerticalSliceTests
                 request.Headers.TryGetValues("Cookie", out var cookies)
                     ? cookies.Single()
                     : null,
+                request.Headers.Authorization?.Scheme,
+                request.Headers.Authorization?.Parameter,
                 body));
 
             if (request.RequestUri.AbsolutePath == OpenLoopsApi.AntiforgeryRoute)
@@ -409,5 +445,7 @@ public sealed class OpenLoopsVerticalSliceTests
         string Path,
         string? Antiforgery,
         string? Cookie,
+        string? AuthorizationScheme,
+        string? AuthorizationParameter,
         string? Body);
 }

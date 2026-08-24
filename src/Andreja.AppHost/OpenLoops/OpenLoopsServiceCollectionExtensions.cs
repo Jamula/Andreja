@@ -10,6 +10,7 @@ using Andreja.Platform.Contracts.Assistant;
 using Andreja.Platform.Contracts.Proposals;
 using Andreja.Platform.Contracts.Skills;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
@@ -54,14 +55,26 @@ public static class OpenLoopsServiceCollectionExtensions
                 "The assistant provider must be deterministic or openai-compatible.")
             .ValidateOnStart();
 
-        services.AddHttpContextAccessor();
         services.AddCascadingAuthenticationState();
         services.AddAntiforgery(options => options.HeaderName = OpenLoopsApi.AntiforgeryHeader);
-        services.AddAuthentication(IdentityConstants.ApplicationScheme);
+        services.AddSingleton<TimeProvider>(TimeProvider.System);
+        services.AddSingleton<
+            ICircuitDelegationTokenService,
+            CircuitDelegationTokenService>();
+        services.AddAuthentication(IdentityConstants.ApplicationScheme)
+            .AddScheme<
+                AuthenticationSchemeOptions,
+                CircuitDelegationAuthenticationHandler>(
+                CircuitDelegation.AuthenticationScheme,
+                _ => { });
         services.AddAuthorizationBuilder()
             .AddPolicy(
                 "andreja-user",
-                policy => policy.RequireAuthenticatedUser());
+                policy => policy
+                    .AddAuthenticationSchemes(
+                        CircuitDelegation.AuthenticationScheme,
+                        IdentityConstants.ApplicationScheme)
+                    .RequireAuthenticatedUser());
 
         if (!openLoops.Enabled)
         {
@@ -111,7 +124,6 @@ public static class OpenLoopsServiceCollectionExtensions
                 "Open Loops requires PostgreSQL outside Development.");
         }
 
-        services.AddSingleton<TimeProvider>(TimeProvider.System);
         services.AddSingleton<InMemoryProposalStore>();
         services.AddSingleton<IProposalStore>(
             provider => provider.GetRequiredService<InMemoryProposalStore>());
@@ -127,7 +139,7 @@ public static class OpenLoopsServiceCollectionExtensions
                 : OpenLoopsSkill.CreateDeterministicProvider());
         services.AddScoped<OpenLoopsAssistantService>();
 
-        services.AddTransient<AuthenticationCookieForwardingHandler>();
+        services.AddTransient<CircuitDelegationHandler>();
         services.AddHttpClient<IOpenLoopsApiClient, OpenLoopsApiClient>(
                 (provider, client) =>
                 {
@@ -137,7 +149,7 @@ public static class OpenLoopsServiceCollectionExtensions
                 })
             .ConfigurePrimaryHttpMessageHandler(
                 () => CreateSameOriginHandler(environment))
-            .AddHttpMessageHandler<AuthenticationCookieForwardingHandler>();
+            .AddHttpMessageHandler<CircuitDelegationHandler>();
         return services;
     }
 

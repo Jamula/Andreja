@@ -1,6 +1,6 @@
 @page "/"
 @attribute [Authorize(Policy = "andreja-user")]
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject IOpenLoopsApiClient Api
 
 <PageTitle>Open Loops | Andreja</PageTitle>
@@ -220,7 +220,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadAsync();
+        await RunAsync(LoadAsync);
+        Loaded = true;
     }
 
     private async Task ProposeAsync()
@@ -330,6 +331,14 @@
         catch (OperationCanceledException)
         {
             ErrorMessage = "The request was cancelled. Nothing was changed.";
+        }
+        catch (HttpRequestException)
+        {
+            ErrorMessage = "Andreja could not reach the task API. Nothing was changed.";
+        }
+        catch (InvalidOperationException)
+        {
+            ErrorMessage = "Your signed-in session could not be delegated. Sign in again.";
         }
         finally
         {

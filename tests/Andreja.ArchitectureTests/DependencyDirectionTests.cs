@@ -114,6 +114,25 @@ public sealed class DependencyDirectionTests
                 || type.Name.Contains("DbContext", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void InteractiveTypedClientDoesNotDependOnHttpContextOrCookieForwarding()
+    {
+        var constructorDependencies = typeof(CircuitDelegationHandler)
+            .GetConstructors()
+            .SelectMany(constructor => constructor.GetParameters())
+            .Select(parameter => parameter.ParameterType)
+            .ToArray();
+
+        Assert.DoesNotContain(
+            constructorDependencies,
+            type => type.FullName == "Microsoft.AspNetCore.Http.IHttpContextAccessor");
+        Assert.DoesNotContain(
+            typeof(CircuitDelegationHandler).Assembly.GetTypes(),
+            type => type.Name.Contains(
+                "CookieForwarding",
+                StringComparison.OrdinalIgnoreCase));
+    }
+
     private static string[] FindUnapprovedModuleReferences(
         IEnumerable<System.Reflection.AssemblyName> references)
     {

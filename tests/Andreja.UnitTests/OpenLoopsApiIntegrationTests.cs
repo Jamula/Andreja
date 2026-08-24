@@ -1,21 +1,24 @@
 using Andreja.Api.Contracts.OpenLoops;
 using Andreja.AppHost.Identity;
 using Andreja.AppHost.OpenLoops;
+using Andreja.AppHost.Components.Pages;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Net.Security;
+using System.Security.Claims;
+using System.Reflection;
 
 namespace Andreja.UnitTests;
 
@@ -182,19 +185,55 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
     }
 
     [Fact]
-    public async Task AuthenticatedHomeRendersAccessibleExplicitControls()
+    public async Task CircuitDelegationUsesRealTypedClientWithoutHttpContext()
     {
-        using var client = await factory.CreateDevelopmentSignedInClientAsync("/");
+        Assert.Null(new HttpContextAccessor().HttpContext);
+        using var client = factory.CreateCircuitApiClient();
 
-        var html = await client.GetStringAsync("/");
+        var provider = await client.Api.GetProviderAsync();
+        Assert.True(provider.Ready);
+        Assert.Empty(await client.Api.ListAsync());
 
-        Assert.Contains("""<label for="task-request">""", html, StringComparison.Ordinal);
-        Assert.Contains("""aria-describedby="task-request-help""", html, StringComparison.Ordinal);
-        Assert.Contains("Prepare proposal", html, StringComparison.Ordinal);
-        Assert.Contains("Selected by the self-host operator", html, StringComparison.Ordinal);
-        Assert.Contains("Export JSON", html, StringComparison.Ordinal);
-        Assert.Contains("""aria-labelledby="tasks-heading""", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("Yes, delete", html, StringComparison.Ordinal);
+        var proposed = await client.Api.ProposeAsync("Circuit delegated task");
+        var proposal = Assert.IsType<TaskProposalDto>(proposed.Proposal);
+        var confirmed = await client.Api.ConfirmAsync(
+            proposal.Id,
+            proposal.Version,
+            "circuit-confirm-0001");
+        var task = Assert.IsType<TaskDto>(confirmed.Task);
+        var completed = await client.Api.CompleteAsync(
+            task.Id,
+            task.Version,
+            "circuit-complete-0001");
+        Assert.Equal(TaskStatusDto.Completed, completed.Task?.Status);
+        Assert.Equal(
+            TaskStatusDto.Completed,
+            Assert.Single((await client.Api.ExportAsync()).Tasks).Status);
+        var deleted = await client.Api.DeleteAsync(
+            task.Id,
+            completed.Task!.Version,
+            "circuit-delete-0001");
+
+        Assert.Equal("Applied", deleted.Outcome);
+        Assert.Empty(await client.Api.ListAsync());
+    }
+
+    [Fact]
+    public async Task InteractiveInitializationFailureBecomesSafeUiState()
+    {
+        var page = new Home();
+        var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+        typeof(Home).GetProperty("Api", flags)!.SetValue(
+            page,
+            new OpenLoopsWebApplicationFactory.UnreachableOpenLoopsApiClient());
+        var initialize = typeof(Home).GetMethod("OnInitializedAsync", flags)!;
+
+        await Assert.IsAssignableFrom<Task>(initialize.Invoke(page, null));
+
+        Assert.True((bool)typeof(Home).GetProperty("Loaded", flags)!.GetValue(page)!);
+        Assert.Equal(
+            "Andreja could not reach the task API. Nothing was changed.",
+            typeof(Home).GetProperty("ErrorMessage", flags)!.GetValue(page));
     }
 
     [Theory]
@@ -317,55 +356,29 @@ public sealed class OpenLoopsWebApplicationFactory : WebApplicationFactory<Progr
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
-        builder.ConfigureTestServices(services =>
-        {
-            services.RemoveAll<IOpenLoopsApiClient>();
-            services.AddSingleton<IOpenLoopsApiClient, EmptyOpenLoopsApiClient>();
-        });
     }
 
-    private sealed class EmptyOpenLoopsApiClient : IOpenLoopsApiClient
+    public CircuitClient CreateCircuitApiClient()
     {
-        public Task<AssistantProviderDto> GetProviderAsync(
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(new AssistantProviderDto(
-                "deterministic",
-                "open-loops-v1",
-                "deterministic",
-                true,
-                "Local deterministic provider."));
-
-        public Task<IReadOnlyList<TaskDto>> ListAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<TaskDto>>([]);
-
-        public Task<AssistantTaskResponse> ProposeAsync(
-            string message,
-            CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public Task<ProposalOutcomeDto> ConfirmAsync(
-            Guid proposalId,
-            long expectedVersion,
-            string idempotencyKey,
-            CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public Task<TaskMutationOutcomeDto> CompleteAsync(
-            Guid taskId,
-            long expectedVersion,
-            string idempotencyKey,
-            CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public Task<TaskMutationOutcomeDto> DeleteAsync(
-            Guid taskId,
-            long expectedVersion,
-            string idempotencyKey,
-            CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public Task<TaskExportDto> ExportAsync(CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new(ClaimTypes.NameIdentifier, TestAppUserId.ToString("D")),
+                new(AndrejaClaimTypes.TenantId, TestTenantId.ToString("D")),
+                new(AndrejaClaimTypes.AppUserId, TestAppUserId.ToString("D")),
+                new(AndrejaClaimTypes.PrincipalId, TestPrincipalId.ToString("D")),
+            ],
+            "circuit-test"));
+        var delegation = new CircuitDelegationHandler(
+            new FixedAuthenticationStateProvider(principal),
+            Services.GetRequiredService<ICircuitDelegationTokenService>())
+        {
+            InnerHandler = Server.CreateHandler(),
+        };
+        var httpClient = new HttpClient(delegation)
+        {
+            BaseAddress = new Uri("https://localhost"),
+        };
+        return new(new OpenLoopsApiClient(httpClient), httpClient);
     }
 
     public HttpClient CreateAnonymousClient() =>
@@ -397,6 +410,70 @@ public sealed class OpenLoopsWebApplicationFactory : WebApplicationFactory<Progr
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal(returnUrl, response.Headers.Location?.OriginalString);
         return client;
+    }
+
+    private static readonly Guid TestTenantId =
+        Guid.Parse("0198D117-3D00-7000-8000-00000000C001");
+    private static readonly Guid TestAppUserId =
+        Guid.Parse("0198D117-3D00-7000-8000-00000000C002");
+    private static readonly Guid TestPrincipalId =
+        Guid.Parse("0198D117-3D00-7000-8000-00000000C003");
+
+    private sealed class FixedAuthenticationStateProvider(ClaimsPrincipal principal)
+        : AuthenticationStateProvider
+    {
+        public override Task<AuthenticationState> GetAuthenticationStateAsync() =>
+            Task.FromResult(new AuthenticationState(principal));
+    }
+
+    public sealed class UnreachableOpenLoopsApiClient : IOpenLoopsApiClient
+    {
+        public Task<IReadOnlyList<TaskDto>> ListAsync(
+            CancellationToken cancellationToken = default) =>
+            throw new HttpRequestException();
+
+        public Task<AssistantProviderDto> GetProviderAsync(
+            CancellationToken cancellationToken = default) =>
+            throw new HttpRequestException();
+
+        public Task<AssistantTaskResponse> ProposeAsync(
+            string message,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<ProposalOutcomeDto> ConfirmAsync(
+            Guid proposalId,
+            long expectedVersion,
+            string idempotencyKey,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<TaskMutationOutcomeDto> CompleteAsync(
+            Guid taskId,
+            long expectedVersion,
+            string idempotencyKey,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<TaskMutationOutcomeDto> DeleteAsync(
+            Guid taskId,
+            long expectedVersion,
+            string idempotencyKey,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<TaskExportDto> ExportAsync(
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+    }
+
+    public sealed class CircuitClient(
+        IOpenLoopsApiClient api,
+        HttpClient httpClient) : IDisposable
+    {
+        public IOpenLoopsApiClient Api { get; } = api;
+
+        public void Dispose() => httpClient.Dispose();
     }
 }
 

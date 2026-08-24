@@ -116,6 +116,13 @@ server-issued explicit context claims), then require antiforgery on every mutati
 No development sign-in endpoint is mapped in Production, and no header-based or
 automatic fake-auth handler exists.
 
+Interactive Server API calls do not forward browser cookies from `HttpContext`.
+They use a short-lived, one-time, Data Protection-protected circuit delegation
+token accepted only by the internal Open Loops audience. External API requests
+continue to require the approved Identity cookie/passkey path. Delegation tokens,
+cookies, and authorization headers must never be logged, exported, or copied into
+support evidence.
+
 `ANDREJA_ASSISTANT_PROVIDER` selects `deterministic` (the local, offline default) or
 `openai-compatible`. The UI exposes the selected provider, model, readiness, and
 disclosure. The existing BYOK adapter fails safely until its credential-backed
