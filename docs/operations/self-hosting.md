@@ -21,9 +21,11 @@ controlling until Cyrus and qualified counsel explicitly decide otherwise.
 - A trusted HTTPS endpoint whose exact origin is configured in
   `Andreja__Identity__AllowedOrigins__0` and whose host is within
   `Andreja__Identity__RelyingPartyId`. The bundle exposes plain HTTP only on
-  `127.0.0.1` for an operator-managed same-host TLS reverse proxy. Bootstrap,
-  sign-in, registration, and recovery reject HTTP, a missing `Origin`, a forwarded
-  origin the application has not been configured to trust, and RP/origin mismatch.
+  `127.0.0.1` for an operator-managed same-host TLS reverse proxy. Set
+  `ANDREJA_TRUSTED_PROXY_IP` to the one exact source IP Kestrel observes for that
+  proxy. Bootstrap, sign-in, registration, and recovery reject HTTP, a missing
+  `Origin`, an untrusted forwarder, a forwarded origin/host the application has not
+  been configured to trust, and RP/origin/port mismatch.
 - PostgreSQL 17 client tools for the host-side logical backup scripts.
 - An operator-approved encrypted, access-controlled destination for recovery sets.
 
@@ -45,6 +47,45 @@ Restrict the password file to the account running the runtime. Mount the bootstr
 token read-only; on Unix use mode `0400`, and on Windows set the read-only attribute
 after applying an account-only ACL. The application refuses a writable bootstrap
 token file. The files, `.env`, backup directory, and runtime state are ignored by Git.
+
+## Same-host TLS reverse proxy
+
+Kestrel intentionally listens on plain HTTP inside the loopback-published container
+port. It trusts `X-Forwarded-For`, `X-Forwarded-Proto`, and `X-Forwarded-Host` only
+when the immediate source is an exact IP in
+`Andreja:Identity:TrustedProxyAddresses`. No network range or trust-all fallback is
+configured. The middleware requires all three headers, processes one nearest-proxy
+entry, and accepts forwarded hosts only from the configured WebAuthn origins.
+
+Determine the address that the app container actually observes for the same-host
+proxy (for example, the exact Compose edge-network gateway) and put only that
+address in `ANDREJA_TRUSTED_PROXY_IP`. Do not use `0.0.0.0`, `::`, a CIDR, a Docker
+address pool, or a client-controlled value. If the proxy source address changes,
+Kestrel ignores the forwarded headers and passkey requests fail closed as HTTP.
+
+The proxy must **replace**, not append to, all three headers. For nginx at the
+configured public HTTPS virtual host:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-Host $http_host;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-For $remote_addr;
+}
+```
+
+Use `$host` instead of `$http_host` only for the default HTTPS port. Set
+`ANDREJA_HOSTNAME` to the exact public host (without a port) and keep the allowed
+origin, TLS virtual host, and `AllowedHosts` aligned. Do not enable framework
+environment switches that trust all forwarded headers.
+
+Before bootstrap, send a request through the proxy and confirm the application
+accepts the configured HTTPS origin. A direct request to
+`http://127.0.0.1:8080`, an untrusted source with spoofed forwarding headers, or a
+wrong host/origin must not start a passkey ceremony. A spoofed earlier chain entry
+must not override the single nearest value Kestrel processes.
 
 ## Acquire and verify images
 

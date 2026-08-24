@@ -13,6 +13,12 @@ cookies, credential responses, Data Protection keys, and raw user identifiers ar
 forbidden in logs, telemetry, application exports, errors, GitHub, or support
 artifacts.
 
+The effective client IP is used only as an in-memory recovery-rate-limit partition
+after trusted-proxy validation. It is not placed in the identity audit table,
+telemetry, export, or application logs. An unavailable or untrusted forwarded
+address falls back to the immediate connection address, which may reduce
+availability by sharing a bucket but cannot create attacker-selected buckets.
+
 Identity rows and Data Protection keys follow the operator's encrypted backup,
 restore, retention, and deletion controls. Ordinary application export excludes
 both. Deleting an account must delete its credential and recovery rows under the

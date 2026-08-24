@@ -55,7 +55,9 @@ public sealed class LocalIdentityRequestTests
         var validator = new LocalIdentityOptionsValidator();
         var invalid = Options with
         {
+            TrustedProxyAddresses = ["0.0.0.0"],
             RecoveryRateLimitAttempts = 0,
+            RecoveryGlobalRateLimitAttempts = 1,
             RecoveryRateLimitWindow = TimeSpan.FromSeconds(1),
         };
 
@@ -65,7 +67,15 @@ public sealed class LocalIdentityRequestTests
         Assert.NotNull(result.Failures);
         Assert.Contains(
             result.Failures!,
+            failure => failure.Contains("Trusted proxy", StringComparison.Ordinal));
+        Assert.Contains(
+            result.Failures!,
             failure => failure.Contains("RecoveryRateLimitAttempts", StringComparison.Ordinal));
+        Assert.Contains(
+            result.Failures!,
+            failure => failure.Contains(
+                "RecoveryGlobalRateLimitAttempts",
+                StringComparison.Ordinal));
         Assert.Contains(
             result.Failures!,
             failure => failure.Contains("RecoveryRateLimitWindow", StringComparison.Ordinal));

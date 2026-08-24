@@ -13,7 +13,6 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using System.Threading.RateLimiting;
 
 namespace Andreja.AppHost.Identity;
 
@@ -30,8 +29,6 @@ public static class LocalAccountEndpoints
     private const string BootstrapCompletePath = "/Account/Passkeys/BootstrapComplete";
     private const string SignInOptionsPath = "/Account/Passkeys/SignInOptions";
     private const string SignInCompletePath = "/Account/Passkeys/SignInComplete";
-    private const string RecoveryOptionsPath = "/Account/Passkeys/RecoveryOptions";
-    private const string RecoveryCompletePath = "/Account/Passkeys/RecoveryComplete";
     private const string RegistrationOptionsPath = "/Account/Passkeys/RegistrationOptions";
     private const string RegistrationCompletePath = "/Account/Passkeys/RegistrationComplete";
     private const string RevokePath = "/Account/Passkeys/Revoke";
@@ -56,21 +53,7 @@ public static class LocalAccountEndpoints
         services.Configure<Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationOptions>(
             IdentityConstants.ApplicationScheme,
             ConfigureCookie);
-        services.AddRateLimiter(rateLimiter =>
-        {
-            rateLimiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-            rateLimiter.AddPolicy(
-                "identity-recovery",
-                context => RateLimitPartition.GetFixedWindowLimiter(
-                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                    _ => new FixedWindowRateLimiterOptions
-                    {
-                        PermitLimit = 5,
-                        Window = TimeSpan.FromMinutes(15),
-                        QueueLimit = 0,
-                        AutoReplenishment = true,
-                    }));
-        });
+        services.AddRateLimiter();
         return services;
     }
 
@@ -113,12 +96,16 @@ public static class LocalAccountEndpoints
         endpoints.MapPost(BootstrapCompletePath, BootstrapCompleteAsync).AllowAnonymous();
         endpoints.MapPost(SignInOptionsPath, SignInOptionsAsync).AllowAnonymous();
         endpoints.MapPost(SignInCompletePath, SignInCompleteAsync).AllowAnonymous();
-        endpoints.MapPost(RecoveryOptionsPath, RecoveryOptionsAsync)
+        endpoints.MapPost(
+                LocalIdentityNetworkSecurity.RecoveryOptionsPath,
+                RecoveryOptionsAsync)
             .AllowAnonymous()
-            .RequireRateLimiting("identity-recovery");
-        endpoints.MapPost(RecoveryCompletePath, RecoveryCompleteAsync)
+            .RequireRateLimiting(LocalIdentityNetworkSecurity.RecoveryRateLimitPolicy);
+        endpoints.MapPost(
+                LocalIdentityNetworkSecurity.RecoveryCompletePath,
+                RecoveryCompleteAsync)
             .AllowAnonymous()
-            .RequireRateLimiting("identity-recovery");
+            .RequireRateLimiting(LocalIdentityNetworkSecurity.RecoveryRateLimitPolicy);
         endpoints.MapPost(RegistrationOptionsPath, RegistrationOptionsAsync)
             .RequireAuthorization();
         endpoints.MapPost(RegistrationCompletePath, RegistrationCompleteAsync)
@@ -223,6 +210,10 @@ public static class LocalAccountEndpoints
             var attestation =
                 await signInManager.PerformPasskeyAttestationAsync(input.CredentialJson);
             if (!attestation.Succeeded
+                || !Guid.TryParse(
+                    attestation.UserEntity.Id,
+                    out var reservedCredentialUserId)
+                || reservedCredentialUserId == Guid.Empty
                 || !string.Equals(
                     attestation.UserEntity.DisplayName,
                     input.UserDisplayName.Trim(),
@@ -236,6 +227,7 @@ public static class LocalAccountEndpoints
                 input.Token,
                 input.TenantName,
                 input.UserDisplayName,
+                reservedCredentialUserId,
                 attestation.Passkey,
                 context.RequestAborted);
             await signInManager.SignInAsync(

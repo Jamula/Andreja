@@ -69,12 +69,20 @@ public sealed class LocalIdentityOperations(
         string suppliedToken,
         string tenantName,
         string userDisplayName,
+        Guid credentialUserId,
         UserPasskeyInfo passkey,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantName);
         ArgumentException.ThrowIfNullOrWhiteSpace(userDisplayName);
         ArgumentNullException.ThrowIfNull(passkey);
+        if (credentialUserId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "A reserved credential user ID is required.",
+                nameof(credentialUserId));
+        }
+
         if (!await CanBeginBootstrapAsync(request, suppliedToken, cancellationToken))
         {
             throw new InvalidOperationException("Identity bootstrap requirements were not satisfied.");
@@ -96,7 +104,9 @@ public sealed class LocalIdentityOperations(
         }
 
         var existingCredential = await userManager.FindByPasskeyIdAsync(passkey.CredentialId);
-        if (existingCredential is not null)
+        var existingCredentialUser = await userManager.FindByIdAsync(
+            credentialUserId.ToString("D"));
+        if (existingCredential is not null || existingCredentialUser is not null)
         {
             throw new InvalidOperationException("The passkey credential is already registered.");
         }
@@ -126,7 +136,7 @@ public sealed class LocalIdentityOperations(
 
         var credentialUser = new AspNetIdentityUser
         {
-            Id = Guid.CreateVersion7(),
+            Id = credentialUserId,
             AppUserId = appUserId,
             UserName = $"owner-{appUserId.Value:N}",
             EmailConfirmed = true,

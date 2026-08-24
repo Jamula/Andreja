@@ -24,6 +24,7 @@ builder.Host.UseDefaultServiceProvider((context, options) =>
 });
 
 var app = builder.Build();
+app.UseForwardedHeaders();
 app.Use(async (context, next) =>
 {
     var nonce = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(

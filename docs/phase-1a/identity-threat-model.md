@@ -16,10 +16,12 @@ application logging, telemetry, exports, errors, and support evidence.
 
 | Abuse case | Control and negative evidence |
 | --- | --- |
-| HTTP, hostile host, RP, origin, or cross-origin ceremony | Exact HTTPS request/origin allowlist, configured RP domain, built-in WebAuthn challenge/origin verification, strict host comparison |
+| HTTP, hostile host, RP, origin, or cross-origin ceremony | Forwarded headers accepted only from exact configured proxy IPs, symmetry and one-hop limit, forwarded-host allowlist, effective HTTPS request/origin allowlist, configured RP domain, built-in WebAuthn verification, exact host/port comparison |
+| Forwarded client-IP spoofing or shared recovery bucket | Untrusted headers are ignored; trusted single-hop `X-Forwarded-For` restores the client address before the per-client limiter; a separate bounded global recovery limiter resists distributed abuse |
 | Stolen/replayed bootstrap token | Read-only 256-bit token file, verification before ceremony and completion, PostgreSQL serializable transaction plus advisory lock and singleton row |
 | Concurrent bootstrap | Transaction lock, empty tenant/owner checks inside the transaction, unique state, rollback on any Identity/credential collision |
 | Attestation-state substitution/replay | .NET `SignInManager` Data Protection cookie, user-entity binding, single-use temporary state |
+| Bootstrap user-handle mismatch | The reserved credential-user GUID is placed in creation options and recovered from .NET's protected attestation state; the transaction creates the exact same Identity user ID. .NET 10 assertion resolves `response.userHandle` through `UserManager.FindByIdAsync`, so mismatch tests fail as expected |
 | Credential collision or database exhaustion | Global credential lookup, unique passkey storage, bounded passkeys and names |
 | Open redirect or CSRF | Local-only ReturnUrl, SameSite cookies, antiforgery header/form token on every mutation |
 | Recovery guessing or replay | High-entropy single-use codes, PBKDF2 verification, lookup hash, expiry, fixed-window request limiter, generic responses, audit |
@@ -35,3 +37,21 @@ proxy, missing Data Protection history, or unavailable PostgreSQL recovery set
 remains a stop condition. Real browser ceremony and disposable PostgreSQL runtime
 evidence are required before Phase 1A exit; compiled/WAF evidence cannot replace
 them.
+
+## Pinned user-handle evidence
+
+The fix is based on the shipped ASP.NET Core 10.0.9 source, not an assumption:
+
+- [`PasskeyHandler` places `PasskeyUserEntity.Id` in the credential user
+  handle](https://github.com/dotnet/aspnetcore/blob/v10.0.9/src/Identity/Core/src/PasskeyHandler.cs#L58).
+- During discoverable assertion it
+  [resolves `response.userHandle` with
+  `UserManager.FindByIdAsync`](https://github.com/dotnet/aspnetcore/blob/v10.0.9/src/Identity/Core/src/PasskeyHandler.cs#L446-L466).
+- `SignInManager` [stores and retrieves attestation state in the protected
+  two-factor cookie and signs it out when
+  read](https://github.com/dotnet/aspnetcore/blob/v10.0.9/src/Identity/Core/src/SignInManager.cs#L696-L728).
+
+`PasskeyUserHandleTests` generates a valid ES256 assertion against the built-in
+handler: the reserved/stored ID succeeds and a different user handle fails. The
+PostgreSQL bootstrap test separately proves that the reserved ID is the credential
+user ID committed by the transaction.

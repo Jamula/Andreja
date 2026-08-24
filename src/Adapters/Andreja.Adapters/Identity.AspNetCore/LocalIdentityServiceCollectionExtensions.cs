@@ -1,5 +1,7 @@
 using Andreja.Adapters.PostgreSql;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,6 +26,18 @@ public static class LocalIdentityServiceCollectionExtensions
         services.AddSingleton<IConfigureOptions<IdentityPasskeyOptions>, ConfigurePasskeyOptions>();
         services.AddScoped<IBootstrapTokenVerifier, BootstrapTokenVerifier>();
         services.AddScoped<LocalIdentityOperations>();
+        services.AddOptions<ForwardedHeadersOptions>()
+            .Configure<IOptions<LocalIdentityOptions>>(
+                (forwarded, identity) =>
+                    LocalIdentityNetworkSecurity.ConfigureForwardedHeaders(
+                        forwarded,
+                        identity.Value));
+        services.AddOptions<RateLimiterOptions>()
+            .Configure<IOptions<LocalIdentityOptions>>(
+                (limiter, identity) =>
+                    LocalIdentityNetworkSecurity.ConfigureRateLimiting(
+                        limiter,
+                        identity.Value));
 
         services
             .AddAuthentication(IdentityConstants.ApplicationScheme)

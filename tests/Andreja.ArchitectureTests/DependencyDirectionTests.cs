@@ -146,6 +146,40 @@ public sealed class DependencyDirectionTests
                 StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public void ForwardedHeadersRunBeforeSecurityAndNoTrustAllSwitchExists()
+    {
+        var repositoryRoot = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+        var program = File.ReadAllText(Path.Combine(
+            repositoryRoot,
+            "src",
+            "Andreja.AppHost",
+            "Program.cs"));
+        var compose = File.ReadAllText(Path.Combine(repositoryRoot, "compose.yaml"));
+        var forwarding = program.IndexOf(
+            "app.UseForwardedHeaders();",
+            StringComparison.Ordinal);
+        var contentSecurityPolicy = program.IndexOf(
+            "Andreja.CspNonce",
+            StringComparison.Ordinal);
+        var rateLimiter = program.IndexOf(
+            "app.UseRateLimiter();",
+            StringComparison.Ordinal);
+        var authentication = program.IndexOf(
+            "app.UseAuthentication();",
+            StringComparison.Ordinal);
+
+        Assert.True(forwarding >= 0);
+        Assert.True(forwarding < contentSecurityPolicy);
+        Assert.True(forwarding < rateLimiter);
+        Assert.True(forwarding < authentication);
+        Assert.DoesNotContain(
+            "ASPNETCORE_FORWARDEDHEADERS_ENABLED",
+            compose,
+            StringComparison.Ordinal);
+    }
+
     private static string[] FindUnapprovedModuleReferences(
         IEnumerable<System.Reflection.AssemblyName> references)
     {

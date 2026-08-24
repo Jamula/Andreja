@@ -87,6 +87,32 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         var error = await unsafeResponse.Content.ReadFromJsonAsync<ApiErrorDto>();
         Assert.Equal("invalid-antiforgery-token", error?.Code);
     }
+
+    [Fact]
+    public async Task SignOutClearsTheAuthenticatedCookie()
+    {
+        using var client = await factory.CreateDevelopmentSignedInClientAsync("/");
+        var login = await client.GetStringAsync(LocalAccountEndpoints.LoginPath);
+        var tokenMatch = Regex.Match(
+            login,
+            "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"",
+            RegexOptions.CultureInvariant);
+        Assert.True(tokenMatch.Success);
+
+        var response = await client.PostAsync(
+            LocalAccountEndpoints.LogoutPath,
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] =
+                    WebUtility.HtmlDecode(tokenMatch.Groups[1].Value),
+            }));
+        var home = await client.GetAsync("/");
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(LocalAccountEndpoints.LoginPath, response.Headers.Location?.OriginalString);
+        Assert.Equal(HttpStatusCode.Redirect, home.StatusCode);
+        Assert.Equal(LocalAccountEndpoints.LoginPath, home.Headers.Location?.AbsolutePath);
+    }
 #endif
 
     [Fact]

@@ -207,6 +207,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
     {
         BootstrapIdentityResult created;
         byte[] credentialId = [1, 2, 3, 4, 5, 6, 7, 8];
+        var reservedCredentialUserId = Guid.CreateVersion7();
         await using (var scope = services.CreateAsyncScope())
         {
             var operations = scope.ServiceProvider.GetRequiredService<LocalIdentityOperations>();
@@ -215,6 +216,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                 bootstrapToken,
                 "Personal workspace",
                 "Local owner",
+                reservedCredentialUserId,
                 CreatePasskey(credentialId),
                 CancellationToken.None);
         }
@@ -242,6 +244,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             var users = scope.ServiceProvider.GetRequiredService<UserManager<AspNetIdentityUser>>();
             var persisted = Assert.Single(
                 await users.Users.Where(user => user.Id == created.User.Id).ToArrayAsync());
+            Assert.Equal(reservedCredentialUserId, persisted.Id);
             var passkey = Assert.Single(await users.GetPasskeysAsync(persisted));
             Assert.Equal(credentialId, passkey.CredentialId);
 
@@ -252,6 +255,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                     bootstrapToken,
                     "Replay",
                     "Replay",
+                    Guid.CreateVersion7(),
                     CreatePasskey([9, 9, 9]),
                     CancellationToken.None));
         }
@@ -271,6 +275,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                         bootstrapToken,
                         $"Workspace {discriminator}",
                         $"Owner {discriminator}",
+                        Guid.CreateVersion7(),
                         CreatePasskey([discriminator, 1, 2, 3]),
                         CancellationToken.None);
                 return true;
@@ -308,6 +313,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                     bootstrapToken,
                     "Recovery workspace",
                     "Recovery owner",
+                    Guid.CreateVersion7(),
                     CreatePasskey(initialCredential),
                     CancellationToken.None);
         }
@@ -358,6 +364,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             bootstrapToken,
             "Limits workspace",
             "Limits owner",
+            Guid.CreateVersion7(),
             CreatePasskey([40, 41, 42]),
             CancellationToken.None);
         await operations.RegisterPasskeyAsync(

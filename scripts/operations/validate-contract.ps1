@@ -9,11 +9,13 @@ $collector = Get-Content -LiteralPath (Join-Path $root "deploy/otel-collector.ya
 
 $digest = "sha256:" + ("a" * 64)
 $previousImage = $env:ANDREJA_IMAGE
+$previousTrustedProxy = $env:ANDREJA_TRUSTED_PROXY_IP
 $previousMigrationApproval = $env:MIGRATION_APPROVAL_FILE
 $previousMigrationBackup = $env:MIGRATION_BACKUP_FILE
 $previousMigrationScript = $env:MIGRATION_SCRIPT_FILE
 try {
     $env:ANDREJA_IMAGE = "andreja@$digest"
+    $env:ANDREJA_TRUSTED_PROXY_IP = "127.0.0.1"
     & docker compose --file (Join-Path $root "compose.yaml") config --quiet
     if ($LASTEXITCODE -ne 0) {
         throw "docker compose config failed."
@@ -53,6 +55,7 @@ try {
 }
 finally {
     $env:ANDREJA_IMAGE = $previousImage
+    $env:ANDREJA_TRUSTED_PROXY_IP = $previousTrustedProxy
     $env:MIGRATION_APPROVAL_FILE = $previousMigrationApproval
     $env:MIGRATION_BACKUP_FILE = $previousMigrationBackup
     $env:MIGRATION_SCRIPT_FILE = $previousMigrationScript

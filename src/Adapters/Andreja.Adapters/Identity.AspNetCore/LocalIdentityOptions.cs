@@ -13,6 +13,8 @@ public sealed record LocalIdentityOptions
 
     public string[] AllowedOrigins { get; init; } = [];
 
+    public string[] TrustedProxyAddresses { get; init; } = ["127.0.0.1", "::1"];
+
     public string BootstrapTokenFile { get; init; } = string.Empty;
 
     public int BootstrapTokenBytes { get; init; } = 32;
@@ -26,6 +28,8 @@ public sealed record LocalIdentityOptions
     public TimeSpan RecentAuthenticationWindow { get; init; } = TimeSpan.FromMinutes(10);
 
     public int RecoveryRateLimitAttempts { get; init; } = 5;
+
+    public int RecoveryGlobalRateLimitAttempts { get; init; } = 100;
 
     public TimeSpan RecoveryRateLimitWindow { get; init; } = TimeSpan.FromMinutes(15);
 }
@@ -61,12 +65,30 @@ public sealed class LocalIdentityOptionsValidator : IValidateOptions<LocalIdenti
             {
                 if (!Uri.TryCreate(originValue, UriKind.Absolute, out var origin)
                     || origin.Scheme != Uri.UriSchemeHttps
+                    || !string.IsNullOrEmpty(origin.UserInfo)
                     || !string.IsNullOrEmpty(origin.PathAndQuery.Trim('/'))
                     || !string.IsNullOrEmpty(origin.Fragment)
                     || !OriginMatchesRelyingParty(origin.Host, options.RelyingPartyId))
                 {
                     failures.Add(
                         $"Allowed origin '{originValue}' must be an HTTPS origin within the relying-party domain.");
+                }
+            }
+        }
+
+        if (options.TrustedProxyAddresses.Length == 0)
+        {
+            failures.Add("At least one exact trusted proxy IP address is required.");
+        }
+        else
+        {
+            foreach (var proxyValue in options.TrustedProxyAddresses)
+            {
+                if (!System.Net.IPAddress.TryParse(proxyValue, out var proxy)
+                    || !IsExactUnicastAddress(proxy))
+                {
+                    failures.Add(
+                        $"Trusted proxy '{proxyValue}' must be one exact unicast IP address.");
                 }
             }
         }
@@ -109,6 +131,14 @@ public sealed class LocalIdentityOptionsValidator : IValidateOptions<LocalIdenti
             failures.Add("RecoveryRateLimitAttempts must be between 1 and 20.");
         }
 
+        if (options.RecoveryGlobalRateLimitAttempts is < 20 or > 1000
+            || options.RecoveryGlobalRateLimitAttempts
+                < options.RecoveryRateLimitAttempts)
+        {
+            failures.Add(
+                "RecoveryGlobalRateLimitAttempts must be between 20 and 1000 and not less than the per-client limit.");
+        }
+
         if (options.RecoveryRateLimitWindow < TimeSpan.FromMinutes(1)
             || options.RecoveryRateLimitWindow > TimeSpan.FromHours(24))
         {
@@ -124,5 +154,22 @@ public sealed class LocalIdentityOptionsValidator : IValidateOptions<LocalIdenti
     {
         return host.Equals(relyingPartyId, StringComparison.OrdinalIgnoreCase)
             || host.EndsWith($".{relyingPartyId}", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsExactUnicastAddress(System.Net.IPAddress address)
+    {
+        if (address.Equals(System.Net.IPAddress.Any)
+            || address.Equals(System.Net.IPAddress.IPv6Any)
+            || address.Equals(System.Net.IPAddress.Broadcast)
+            || address.Equals(System.Net.IPAddress.None)
+            || address.IsIPv6Multicast)
+        {
+            return false;
+        }
+
+        var bytes = address.GetAddressBytes();
+        return address.AddressFamily
+            != System.Net.Sockets.AddressFamily.InterNetwork
+            || bytes[0] < 224;
     }
 }

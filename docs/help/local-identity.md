@@ -8,6 +8,9 @@ Andreja, GitHub, email, password, or other cloud account.
 1. Apply the reviewed `ProductionPasskeyIdentity` migration with the explicit
    migration command in the [self-host runbook](../operations/self-hosting.md).
 2. Configure one exact HTTPS allowed origin and its relying-party domain.
+   When TLS terminates at the documented same-host reverse proxy, configure its
+   exact Kestrel-observed IP and the required single-hop forwarded headers from the
+   [self-host runbook](../operations/self-hosting.md#same-host-tls-reverse-proxy).
 3. Generate a 32-byte random bootstrap token, store only its Base64 value in an
    account-readable, read-only host file, and mount it at the configured path.
 4. Open `/Account/Bootstrap` at that exact HTTPS origin. Enter the token, workspace
@@ -19,6 +22,11 @@ opening the page over HTTP, changing origin/host, using an initialized database,
 credential collision, and concurrent completion all fail closed. Delete the host
 copy of the bootstrap token after successful setup; the database stores only the
 single-use completion marker, never the token.
+
+The bootstrap ceremony reserves the ASP.NET Core Identity user ID before asking the
+authenticator to create a credential. That exact protected user handle is used when
+the transaction creates the credential user. A different handle would make
+discoverable passkey assertion fail and is rejected.
 
 ## Sign in, sign out, and passkeys
 
