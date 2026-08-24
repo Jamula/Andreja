@@ -8,6 +8,14 @@ Closes #
 
 <!-- Describe the smallest complete slice and important tradeoffs. -->
 
+## Charter impact
+
+<!--
+Assess human agency, data dignity, inclusion, AI/safety, sustainability,
+stakeholder incentives, evidence, ownership, and stop conditions against
+docs/charter.md. Write "Not applicable" only with a reason.
+-->
+
 ## Validation
 
 <!-- List automated, live, failure-path, accessibility, and help evidence. -->
@@ -17,6 +25,7 @@ Closes #
 - [ ] Architecture/contract impact recorded or not applicable
 - [ ] Security/privacy/legal review recorded or not applicable
 - [ ] Cost/operability impact recorded or not applicable
+- [ ] Company charter impact recorded or not applicable
 - [ ] User help/release notes updated or not applicable
 - [ ] No personal data, prompts, credentials, or connector content included
 
