@@ -28,6 +28,12 @@ controlling until Cyrus and qualified counsel explicitly decide otherwise.
   been configured to trust, and RP/origin/port mismatch.
 - PostgreSQL 17 client tools for the host-side logical backup scripts.
 - An operator-approved encrypted, access-controlled destination for recovery sets.
+- Docker Buildx plus the exact Syft, Grype, Trivy, and Cosign images pinned in
+  `supply-chain-policy.json`. Scanner or advisory-database unavailability is a hard
+  failure; do not substitute a different tag or skip a scan.
+- A Cosign public key obtained through a separately authenticated operator channel.
+  The corresponding password-protected private key remains outside the repository,
+  image, evidence bundle, backups, and runtime host whenever possible.
 
 Copy `.env.example` to `.env`. Create the PostgreSQL password and one-time identity
 bootstrap token files without placing either value in `.env`, command arguments,
@@ -105,46 +111,80 @@ must not override the single nearest value Kestrel processes.
 
 The Dockerfile build and runtime bases, PostgreSQL, collector, and optional
 Prometheus backend are pinned by multi-platform manifest digest. An
-operator-controlled `ANDREJA_IMAGE` must be a trusted `name@sha256:<64 hex>`
-reference or immutable local image ID. Record the source revision, image reference,
-resolved platform digest, acquisition time, and migration notes in the recovery
-inventory. These local evidence instructions do not authorize publication.
+operator-controlled `ANDREJA_IMAGE` must be a verified
+`name@sha256:<64 hex>` reference. `supply-chain-policy.json` forbids High and
+Critical dependency, final-image, container, and IaC findings and permits no
+waivers or scanner fallback. Record the source/tree, base and final image digests,
+tool versions, both SBOM checksums, scanner reports, provenance, signature trust
+anchor fingerprint, and migration notes in the recovery inventory. These local
+evidence instructions do not authorize publication.
 
-For a locally built image:
-
-```powershell
-docker build --pull=false `
-  --build-arg SOURCE_REVISION=$(git rev-parse HEAD) `
-  --tag andreja:local .
-$env:ANDREJA_IMAGE = docker image inspect andreja:local --format '{{.Id}}'
-```
-
-A local image ID (`sha256:<64 hex>`) is also immutable for that host. If publication
-is later approved, its separately reviewed distribution contract must use a
-repository digest and approved artifact-specific metadata. Never substitute
-`latest`.
-
-For offline transfer, acquire everything before disconnecting:
+Generate an operator-held key outside the checkout once, while the pinned Cosign
+image is available. Supply the password through `COSIGN_PASSWORD`; never place it
+on the command line or in the evidence directory:
 
 ```powershell
-$env:ANDREJA_IMAGE = "registry.example/andreja@sha256:<digest>"
-docker compose --profile evidence pull
-$images = docker compose --profile evidence config --images
-docker image save --output andreja-images.tar $images
-Get-FileHash andreja-images.tar -Algorithm SHA256
+$cosign = (Get-Content supply-chain-policy.json -Raw | ConvertFrom-Json).tools.cosign.image
+New-Item -ItemType Directory -Force $HOME\.andreja-signing | Out-Null
+docker pull $cosign
+docker run --rm --network none --env COSIGN_PASSWORD `
+  --mount "type=bind,source=$HOME\.andreja-signing,target=/keys" `
+  $cosign generate-key-pair --output-key-prefix /keys/andreja
 ```
 
-Transfer `andreja-images.tar`, its independently recorded checksum, this checkout
-or release bundle, and the release signature/provenance through the approved
-channel. On the destination, verify the checksum, run `docker image load`, confirm
-every configured reference resolves locally, then disable networking before the
-offline startup/restart proof. Source builds performed offline also require a
-previously acquired NuGet package cache; the normal proof starts after image
-acquisition.
+From a clean reviewed commit, build twice without cache, compare the OCI/config
+digests, create SPDX 2.3 and CycloneDX SBOMs, run all scanners, generate SLSA
+in-toto provenance, and sign it locally:
+
+```powershell
+$env:COSIGN_PASSWORD = Read-Host 'Cosign key password' -AsSecureString |
+  ConvertFrom-SecureString -AsPlainText
+pwsh -NoProfile -File scripts\supply-chain\New-OciEvidence.ps1 `
+  -OutputDirectory artifacts\supply-chain `
+  -SigningKeyPath $HOME\.andreja-signing\andreja.key `
+  -TrustedPublicKeyPath $HOME\.andreja-signing\andreja.pub
+Remove-Item Env:\COSIGN_PASSWORD
+```
+
+The local artifact directory is ignored by Git. It contains private image layers
+and detailed reports: keep it access-controlled and never upload it as a GitHub
+artifact, attach it to an issue/PR, or send it to a public registry. Publication,
+release, and license decisions remain in issues #6 and #65.
+
+For offline transfer, acquire the signed bundle, the independently trusted public
+key, this verification script, and the exact pinned Cosign image before
+disconnecting. Transfer them only through the approved private operator channel.
+At the destination, disconnect networking and run:
+
+```powershell
+pwsh -NoProfile -File scripts\supply-chain\Test-OciEvidence.ps1 `
+  -BundleDirectory artifacts\supply-chain `
+  -TrustedPublicKeyPath D:\trusted\andreja.pub
+$evidence = Get-Content artifacts\supply-chain\evidence.json -Raw | ConvertFrom-Json
+$env:ANDREJA_IMAGE = $evidence.image.immutableReference
+```
+
+Verification runs Cosign with `--network none`, validates the externally trusted
+key fingerprint and signature, checks the schema and exact artifact inventory,
+recomputes every checksum, parses both SBOMs and all scanner reports against the
+signed severity policy, binds provenance to the commit/tree/base/image/tool
+digests, requires commit-specific migration notes, checks the OCI manifest/config
+digests, loads the archive, and resolves it by immutable digest. Missing or extra
+files, invalid/unsigned provenance, an untrusted key, forbidden findings, policy
+or checksum drift, unavailable tools, or an unresolved digest blocks startup.
+There is no unsigned, tag-based, online, or scanner fallback.
+
+The hosted workflow performs the same reproducible build and scans with read-only
+permissions and no secrets, then destroys its local image layers and reports. It
+does not upload them and cannot produce trusted release evidence. Keyless OIDC is
+explicitly deferred because private entitlement and no-publication boundaries have
+not been approved. Its unsigned provenance exercises binding only and cannot
+authorize offline startup or update.
 
 ## Start, stop, and inspect
 
-Validate interpolation and immutable references before every start:
+Verify the signed bundle as above, then validate interpolation and immutable
+references before every start or update:
 
 ```powershell
 pwsh -NoProfile -File scripts\operations\validate-contract.ps1
@@ -358,7 +398,9 @@ result as the migration evidence set.
 2. Produce and verify a fresh logical dump and key/config recovery set. Restore it
    into a clean instance before approving the update.
 3. Acquire the proposed digest and inspect signatures, SBOM/vulnerability results,
-   release notes, and migration notes without changing the running reference.
+   release notes, and migration notes without changing the running reference. Run
+   `Test-OciEvidence.ps1` offline with the separately trusted public key; any failure
+   stops the update before Compose or migration.
 4. Stop writes. Run the exact explicit migration command above with the reviewed
    SQL, restored backup evidence, checksum approval, and pending-ID list. The web
    process never migrates on startup.
@@ -369,8 +411,8 @@ result as the migration evidence set.
 If schemas are compatible, restore the prior app digest and restart. Otherwise stop
 the new revision and restore the complete pre-update database **and keys/config**
 into a clean instance. Never run a down-migration implicitly. A failed checksum,
-signature, migration, readiness check, key read, tenant integrity check, or
-telemetry canary is a stop condition.
+signature, SBOM, scanner policy, evidence inventory, migration, readiness check,
+key read, tenant integrity check, or telemetry canary is a stop condition.
 
 ## Local telemetry and evidence
 
