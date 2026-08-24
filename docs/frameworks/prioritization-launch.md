@@ -5,12 +5,19 @@
 Picard and Quark co-own the Prioritization and Launch Framework, per
 [plan §Phase 0 deliverables](../plan.md#phase-0---govern-and-decide) ("Assign
 ... Picard/Quark as Prioritization/Launch Framework owners"). This document
-is the ratified, authoritative expansion of
-[plan §Roadmap prioritization and launch framework](../plan.md#roadmap-prioritization-and-launch-framework)
-and [plan §Phased execution](../plan.md#phased-execution); those plan
-sections become summary pointers once this file merges. Every roadmap issue,
-skill, and channel must trace to a portfolio lane, a scored position, and a
-launch-stage evidence gate defined here.
+is the ratified **operational expansion** of
+[plan §Roadmap prioritization and launch framework](../plan.md#roadmap-prioritization-and-launch-framework):
+it operationalizes how issues are scored, sequenced into launch stages, and
+gated for evidence. **`docs/plan.md` remains authoritative for phased scope,
+phase exit gates, and the Phase 0 $0 no-cloud envelope** ([plan §Phased
+execution](../plan.md#phased-execution),
+[plan §Phase 0 deliverables](../plan.md#phase-0---govern-and-decide)); this
+framework does not redefine, supersede, or turn those plan sections into
+summary pointers — it references them and adds the scoring/sequencing/
+launch-gate mechanics plan.md leaves to the named framework owners. Every
+roadmap issue, skill, and channel must trace to a portfolio lane, a scored
+position, and a launch-stage evidence gate defined here, without changing the
+phase or scope plan.md already ratified for it.
 
 Picard and Quark maintain the scorecard weighting formula and stage-gate
 recommendation; neither can bypass Tuvok/Deanna Troi/Sarek/Data evidence or
@@ -19,9 +26,20 @@ responsibilities](../plan.md#business-leadership-responsibilities)).
 
 ## Scope boundary
 
-This framework governs **prioritization, scoring, workstream ownership, and
-launch-stage gating** across the whole roadmap. It does not redefine:
+This framework governs **prioritization, scoring, and launch-stage gating**
+across the whole roadmap — it operationalizes plan.md's phased scope, it does
+not restate or own it. It does not redefine:
 
+- `docs/plan.md`'s phased scope, phase exit gates, and the Phase 0 $0
+  no-cloud envelope — plan.md remains authoritative for what a phase
+  contains and when it exits; this framework only adds scoring/sequencing/
+  evidence-gate mechanics on top.
+- Workstream charters, accountable leads, RACI, artifact gates, handoff
+  format, WIP limits, and worktree/stacked-PR mechanics — those are owned
+  and ratified in `docs/operating-model.md` (issue #14). This framework
+  references workstreams by name for scoring/lane purposes only; see
+  [Workstream and issue scorecard](#workstream-and-issue-scorecard) for the
+  authority split.
 - The Skill Development Framework's charter-to-retirement lifecycle
   ([`skill-development.md`](skill-development.md)).
 - The Channel Development Framework's provider-qualification-to-retirement
@@ -76,13 +94,23 @@ that every roadmap issue, skill, and channel must respect while in Phase 0:
 - Any Phase 1B cloud spike requires a new, separately approved budget
   decision with alerts, quotas, TTL, and automatic teardown before any
   resource is provisioned.
-- This rule gates stage progression in both lifecycle frameworks: a channel
-  cannot pass validation
-  ([`channel-development.md` stage 6](channel-development.md#6-validate)) and
-  a skill cannot pass safety/security review's live-provider steps
-  ([`skill-development.md` stage 7](skill-development.md#7-validation))
-  while Phase 0 is open for that item, because both require a live account or
-  live model spend beyond the AI-credit envelope.
+- **Live-provider boundary.** Each lifecycle framework has exactly one stage
+  that first requires a live account, sandbox, or live-model spend beyond the
+  AI-credit envelope — this rule gates that stage, not the artifact stages
+  before it:
+  - Channel: stage 4, **Threat/privacy design**
+    ([`channel-development.md` stage 4](channel-development.md#4-threatprivacy-design)) —
+    implementation (stage 5) and validation (stage 6) both require a sandbox
+    account, so stages 1–4 (charter, qualify provider, manifest,
+    threat/privacy design) are the paper/local artifacts that may proceed in
+    Phase 0.
+  - Skill: stage 7, **Validation**
+    ([`skill-development.md` stage 7](skill-development.md#7-validation)) —
+    stages 1–6 (charter, semantic contract, capability design, experience/
+    help, implementation, safety/privacy/security review) are paper/local
+    artifacts and may proceed in Phase 0.
+  - A skill or channel cannot pass its respective live-provider stage while
+    Phase 0 is open for that item.
 
 Every issue opened under Phase 0 must state, in its scope section, that no
 cloud provisioning is required — or must explicitly request a budget
@@ -104,29 +132,25 @@ secondary lane may be noted for cross-cutting work):
 
 ## Workstream and issue scorecard
 
-### Workstream ownership
+### Workstream ownership authority
 
-Portfolio lanes describe *what* is being built; workstreams describe *who* is
-accountable end to end. Every issue links to exactly one accountable
-workstream owner in addition to its portfolio lane. This table is the
-authoritative expansion of
-[plan §Operating model and cohesive workstreams](../plan.md#operating-model-and-cohesive-workstreams):
+Portfolio lanes describe *what* is being built; **workstream charters,
+accountable leads, boundaries, RACI, and handoff mechanics are ratified in
+[`docs/operating-model.md`](../operating-model.md#workstream-charters-owners-and-boundaries)
+(issue #14)** — they are not restated here to avoid two owning documents for
+the same fact. The authority split, as operating-model.md itself records:
 
-| Workstream | Accountable lead(s) | Core scope |
-|---|---|---|
-| Executive, Product and Business | Picard (CEO); Quark (CFO) | Vision, business model, portfolio, launch, sponsorship, unit economics, priorities, partnerships, executive risk |
-| Product Discovery and User Research | Picard, Jadzia Dax, Guinan, Neelix | Jobs-to-be-done, dogfood, customer interviews/feedback, usability, roadmap evidence, adoption learning |
-| Core Platform and Architecture | Spock, T'Pol, Seven of Nine | Clean/Onion modules, API/domain, identity/tenancy, semantic graph, assistant/provider, skill/channel hosts, data ownership, federation seams |
-| Web, Public Site and User Experience | Jadzia Dax, Neelix, Guinan | Blazor web app, accessible workflows, public site, help/docs, feedback/support surfaces |
-| Native Mobile and Device Experience | Hoshi Sato | iOS/Android architecture, offline sync, secure device storage, push/background, deep links, app-store lifecycle |
-| Platform Operations, Hosting and FinOps | Jett Reno, Quark | Self-host package, cloud adapters, OpenTofu, CI/CD, reliability, OTel, incidents, backups/DR, cost/burn, scale evidence |
-| Quality, Performance and Release | Data | Test architecture, E2E/accessibility, performance/scale, provider conformance, release evidence, regression prevention |
-| Channels and Connectors | Jett Reno, Seven of Nine, Tuvok | Channel Framework, provider qualification, adapters, auth/scopes, email/messaging/files/photos/partner channels, retirement |
-| First-party Skills and Developer Ecosystem | Seven of Nine plus domain leads | Skill Framework, manifests, first-party catalog, SDK/examples/conformance, third-party trust/marketplace path |
-| Trust, Security, Privacy and Legal | Tuvok, Deanna Troi, Sarek | Threat/privacy/legal artifacts, data classification, auth/grants, abuse/safety, terms/licensing/trademark, regulatory gates |
-| Customer Success, Feedback and Support | Guinan | Intake/triage, support status, user communication, help gaps, resolution verification, feedback insights (issue #10) |
-| Marketing, Community and Partnerships | Neelix, Picard, Quark | Positioning, Personal Brand Studio input, public/community content, sponsorship communication, partner ecosystem |
-| Future Research and Innovation | Spock, Seven of Nine, rotating specialists | Semantic/AI, federation, on-device intelligence, new providers/skills/channels, bounded experiments |
+- **This framework (issue #5) is authoritative for scoring, sequencing, and
+  launch-stage evidence gates** — the issue scorecard, portfolio lanes, and
+  Must/Should/Could/Won't stage scope below.
+- **`docs/operating-model.md` (issue #14) is authoritative for who does the
+  work, how they hand it off, and what authority they hold** — the
+  workstream table, RACI, artifact gates, and WIP/integration rules.
+
+Every issue links to exactly one accountable workstream owner (from
+operating-model.md's table) in addition to its portfolio lane (below). When
+a workstream's accountable lead changes, update `docs/operating-model.md` —
+never a shadow copy in this file.
 
 ### Issue scorecard
 
@@ -296,6 +320,9 @@ request.
 
 ## Cross-references
 
+- Workstream charters, owners, RACI, and handoff mechanics (authoritative,
+  not duplicated here): [`docs/operating-model.md`](../operating-model.md)
+  (issue #14)
 - Skill lifecycle: [`docs/frameworks/skill-development.md`](skill-development.md)
 - Channel lifecycle: [`docs/frameworks/channel-development.md`](channel-development.md)
 - Skill catalog: [`docs/roadmap/first-party-skills.md`](../roadmap/first-party-skills.md)

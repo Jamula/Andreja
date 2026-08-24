@@ -4,11 +4,15 @@
 
 Seven of Nine owns the Skill Development Framework end to end, per
 [plan §Phase 0 deliverables](../plan.md#phase-0---govern-and-decide) ("Assign
-... Seven as Skill Framework owner"). This document is the ratified,
-authoritative expansion of
-[plan §Skill Development Framework](../plan.md#skill-development-framework);
-the plan section becomes a summary pointer once this file merges. Every skill
-in [`docs/roadmap/first-party-skills.md`](../roadmap/first-party-skills.md)
+... Seven as Skill Framework owner"). This document is the ratified
+**operational expansion** of
+[plan §Skill Development Framework](../plan.md#skill-development-framework):
+it operationalizes the plan's skill lifecycle into numbered stages with exit
+evidence. **`docs/plan.md` remains authoritative for the skill catalog's
+seed scope and the Phase 0 $0 no-cloud envelope**; this framework does not
+redefine or supersede plan.md, and the plan section does not become a
+summary pointer. Every skill in
+[`docs/roadmap/first-party-skills.md`](../roadmap/first-party-skills.md)
 must progress through the stages below, and the catalog's Status column must
 match a stage name here.
 

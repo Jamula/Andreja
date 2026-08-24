@@ -1,0 +1,23 @@
+commit 230a0b666f443abcd19c14b0f2b590e54631dc6f
+Author: copilot-swe-agent[bot] <198982749+Copilot@users.noreply.github.com>
+Date:   Mon Aug 24 02:01:13 2026 +0000
+
+    fix: use structured error path when reading plan.md for hash check
+    
+    Co-authored-by: cyrusjamula <19627536+cyrusjamula@users.noreply.github.com>
+
+diff --git a/.github/scripts/check_docs_consistency.py b/.github/scripts/check_docs_consistency.py
+index f4ad7a1..50a7ec8 100755
+--- a/.github/scripts/check_docs_consistency.py
++++ b/.github/scripts/check_docs_consistency.py
+@@ -40,8 +40,8 @@ def read(path: Path) -> str:
+ 
+ 
+ def check_plan_hash() -> None:
+-    plan_bytes = PLAN_PATH.read_bytes()
+-    actual_hash = hashlib.sha256(plan_bytes).hexdigest()
++    plan_text = read(PLAN_PATH)
++    actual_hash = hashlib.sha256(plan_text.encode("utf-8")).hexdigest()
+ 
+     adr_text = read(ADR_PATH)
+     match = re.search(r"\*\*Plan SHA-256:\*\*\s*`([0-9a-fA-F]+)`", adr_text)

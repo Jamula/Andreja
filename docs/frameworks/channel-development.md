@@ -4,10 +4,14 @@
 
 Jett Reno owns the Channel Development Framework end to end, per
 [plan §Phase 0 deliverables](../plan.md#phase-0---govern-and-decide) ("Assign
-Jett Reno as Channel Framework owner"). This document is the ratified,
-authoritative expansion of
-[plan §Channel Development Framework](../plan.md#channel-development-framework);
-the plan section becomes a summary pointer once this file merges. Every
+Jett Reno as Channel Framework owner"). This document is the ratified
+**operational expansion** of
+[plan §Channel Development Framework](../plan.md#channel-development-framework):
+it operationalizes the plan's channel lifecycle into numbered stages with
+exit evidence. **`docs/plan.md` remains authoritative for the connector
+catalog's seed scope and the Phase 0 $0 no-cloud envelope**; this framework
+does not redefine or supersede plan.md, and the plan section does not become
+a summary pointer. Every
 connector in [`docs/roadmap/channel-connectors.md`](../roadmap/channel-connectors.md)
 must progress through the stages below, and the catalog's Status column must
 match a stage name here.
