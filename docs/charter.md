@@ -2,7 +2,7 @@
 
 - **Status:** Proposed for explicit ratification; not yet authoritative
 - **Final human authority:** Cyrus Jamula
-- **Tracking:** [GitHub issue #3](https://github.com/cyrusjamula/Andreja/issues/3)
+- **Tracking:** [GitHub issue #3](https://github.com/Jamula/Andreja/issues/3)
 - **Governing context:** [Andreja platform plan](plan.md) and
   [ADR 0000](adr/0000-plan-ratification.md)
 

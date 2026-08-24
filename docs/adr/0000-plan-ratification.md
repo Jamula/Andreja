@@ -4,7 +4,7 @@
 - **Date:** 2026-08-23
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
-- **Plan SHA-256:** `073f928ddbfc8c8fbf837897e5e9473296b32dba1b571fc921be4b10d1401448`
+- **Plan SHA-256:** `9dfe3e8f81d140082270de0517ecc3f15d2a2090c5b6c530f83fe461ff8798c0`
 
 ## Decision
 
@@ -40,3 +40,15 @@ Changes to vision, data ownership, trust boundaries, the Phase 0 envelope,
 public claims, legal posture, or non-negotiable architecture require explicit
 re-ratification. Documentation CI must fail when this ADR's current hash does
 not match the merged `docs/plan.md`.
+
+## Amendments
+
+### 2026-08-23 — organization repository migration
+
+- **Tracking issue:** [#30](https://github.com/Jamula/Andreja/issues/30)
+- **Pull request:** Pending
+- **Plan SHA-256:** `9dfe3e8f81d140082270de0517ecc3f15d2a2090c5b6c530f83fe461ff8798c0`
+- **Approver:** Cyrus Jamula
+- **Decision:** Logged amendment; no architecture or ratification change.
+- **Scope:** Update the canonical repository and organization Project references
+  after transfer to `Jamula/Andreja`.
