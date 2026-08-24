@@ -214,8 +214,10 @@ for him is a conflict-class report. It routes directly to the appointed external
 counsel or independent reviewer, without Cyrus-mediated intake or triage. Cyrus
 must recuse from access, investigation, findings, remediation, and retaliation
 decisions for that report; the appointed recipient controls those steps and any
-necessary qualified escalation. Until that recipient and direct contact method
-are appointed, Andreja must not represent any internal or external
+necessary qualified escalation. Access to any report is limited on a
+need-to-know basis to the appointed recipient and, for non-conflict-class
+reports only, Cyrus. Until that recipient and direct contact method are
+appointed, Andreja must not represent any internal or external
 conflict-of-interest reporting path as available. Anonymous or pseudonymous
 reporting will be supported when a safe, sustainable mechanism is available.
 
@@ -256,9 +258,17 @@ amendment to the governing artifact. Ratification requires reconciliation of
 both the plan's charter seed and conflicting ratified framework text. The known
 framework conflict is the `docs/frameworks/feedback-support.md` routing-table row
 `Legal, IP, regulatory, or privileged inquiry | Sarek through the confidential
-counsel route`. That text must be reconciled without implying that Sarek or any
-other agent is counsel, creates privilege, or operates a privileged channel;
-agent research is neither counsel nor privilege. Until ratification, the plan's
+counsel route`. The framework's RACI rows for security incident handling and
+privacy, consent, or data-incident handling also inform Cyrus on a need-to-know
+basis without the conflict-class exception required here. That text must be
+reconciled without implying that Sarek or any other agent is counsel, creates
+privilege, or operates a privileged channel; agent research is neither counsel
+nor privilege. Before Cyrus may ratify this charter or ADR 0006 may be accepted,
+reviewed amendments reconciling both the plan seed and all of those framework
+rows must already be merged. An open issue, proposed amendment, or
+acceptance-PR change does not satisfy this prerequisite. Because this charter
+remains Proposed, those merged amendments are prerequisites for a later
+acceptance pull request and are not made here. Until ratification, the plan's
 seed summary remains authoritative and this proposed charter informs review
 without superseding it.
 

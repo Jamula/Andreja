@@ -6,7 +6,7 @@
 - **Decision owner:** Cyrus Jamula
 - **Tracking issue:** [#3](https://github.com/Jamula/Andreja/issues/3)
 - **Charter:** [`docs/charter.md`](../charter.md)
-- **Charter SHA-256:** `43c900cc6b5f05338510078dde10fa0164cf307aa9989d7707a47751d2e9ce18`
+- **Charter SHA-256:** `d030d985c5de8260035eb83b17bc3be74876700487575408cf9679a05b4fa843`
 
 ## Context
 
@@ -31,7 +31,30 @@ ratification.
 
 ## Acceptance checklist
 
-The acceptance pull request must make these changes atomically:
+Before an acceptance pull request is opened or merged, these prerequisites must
+already be satisfied:
+
+- [ ] Merge reviewed amendments that reconcile both the plan's charter seed and
+  conflicting ratified framework text, and record their merged pull requests
+  and commit SHAs in the later acceptance pull request. An open or linked
+  `type:decision` issue, an unmerged amendment, or changes made in the acceptance
+  pull request itself do not satisfy this prerequisite. This Proposed pull
+  request intentionally leaves `docs/plan.md` and the framework unchanged.
+- [ ] The merged plan amendment must resolve the known seed divergences:
+  `Publish measurable indicators... before GA` versus the charter's internal
+  indicator regime, and `inspect reasoning` versus `understand material
+  recommendations`.
+- [ ] The merged framework amendment must resolve the
+  `docs/frameworks/feedback-support.md` routing-table row `Legal, IP, regulatory,
+  or privileged inquiry | Sarek through the confidential counsel route`.
+  It must also reconcile the RACI rows for security incident handling and
+  privacy, consent, or data-incident handling that inform Cyrus on a
+  need-to-know basis, so those rows preserve the direct Cyrus bypass and
+  no-Cyrus-access rule for conflict-class reports. Preserve that agent research
+  is neither counsel nor privilege and does not create a privileged channel.
+
+After those prerequisite amendments have merged, the acceptance pull request
+must make these changes atomically:
 
 - [ ] Record Cyrus's explicit approval, decision date, and the accepting pull
   request.
@@ -43,17 +66,6 @@ The acceptance pull request must make these changes atomically:
   `.github/ISSUE_TEMPLATE/decision.yml` and
   `.github/pull_request_template.md`, including issue validation and the pull
   request gate.
-- [ ] Open or link a `type:decision` issue for every charter conflict and
-  reconcile both the plan's charter seed and conflicting ratified framework
-  text through reviewed amendments. Known plan-seed divergences include
-  `Publish measurable indicators... before GA` versus the charter's internal
-  indicator regime, and `inspect reasoning` versus `understand material
-  recommendations`.
-- [ ] Reconcile the known ratified-framework conflict in
-  `docs/frameworks/feedback-support.md`: the routing-table row `Legal, IP,
-  regulatory, or privileged inquiry | Sarek through the confidential counsel
-  route`. Preserve that agent research is neither counsel nor privilege and
-  does not create a privileged channel.
 - [ ] Run documentation consistency, YAML, Markdown/link, and diff checks and
   record their exact results.
 - [ ] Do not represent agent research as legal advice, trademark clearance, or
