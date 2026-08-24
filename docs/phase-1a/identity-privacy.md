@@ -22,7 +22,9 @@ availability by sharing a bucket but cannot create attacker-selected buckets.
 Credential management uses a short-lived protected browser marker containing only
 the credential-user ID, security stamp, and fixed audience. It is HttpOnly, Secure,
 SameSite=Strict, omitted from logs/telemetry/exports, invalidated by security-stamp
-rotation, and consumed when a passkey is added or removed.
+rotation, and consumed when a passkey is added or removed. PostgreSQL stores only a
+one-time nonce hash, expiry, and consumption time; the bearer nonce remains inside
+the protected cookie and expired/consumed rows are pruned on later issuance.
 
 Identity rows and Data Protection keys follow the operator's encrypted backup,
 restore, retention, and deletion controls. Ordinary application export excludes

@@ -177,6 +177,32 @@ public sealed class ForwardedIdentityIntegrationTests
             await host.SendRecoveryAsync("198.51.100.1"));
     }
 
+    [Fact]
+    public async Task RecoveryGlobalCapIncludesTrailingSlashRoute()
+    {
+        var configured = CreateOptions() with
+        {
+            RecoveryRateLimitAttempts = 20,
+            RecoveryGlobalRateLimitAttempts = 20,
+        };
+        await using var host = await ProxyTestHost.StartAsync(configured);
+
+        for (var index = 1; index <= 20; index++)
+        {
+            Assert.Equal(
+                HttpStatusCode.OK,
+                await host.SendRecoveryAsync(
+                    $"203.0.113.{index}",
+                    LocalIdentityNetworkSecurity.RecoveryOptionsPath + "/"));
+        }
+
+        Assert.Equal(
+            HttpStatusCode.TooManyRequests,
+            await host.SendRecoveryAsync(
+                "198.51.100.1",
+                LocalIdentityNetworkSecurity.RecoveryOptionsPath + "/"));
+    }
+
     private static LocalIdentityOptions CreateOptions() =>
         new()
         {
@@ -267,11 +293,13 @@ public sealed class ForwardedIdentityIntegrationTests
             return await client.SendAsync(request);
         }
 
-        public async Task<HttpStatusCode> SendRecoveryAsync(string clientAddress)
+        public async Task<HttpStatusCode> SendRecoveryAsync(
+            string clientAddress,
+            string? path = null)
         {
             using var request = CreateForwardedRequest(
                 HttpMethod.Post,
-                LocalIdentityNetworkSecurity.RecoveryOptionsPath,
+                path ?? LocalIdentityNetworkSecurity.RecoveryOptionsPath,
                 clientAddress,
                 "https",
                 "localhost",

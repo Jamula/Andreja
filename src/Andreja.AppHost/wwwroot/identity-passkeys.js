@@ -88,7 +88,7 @@ function handleFailure(error) {
 }
 
 function disableWhile(form, action) {
-    const controls = [...form.querySelectorAll("button, input")];
+    const controls = [...form.querySelectorAll("button")];
     controls.forEach(control => control.disabled = true);
     setStatus("Waiting for your passkey provider…");
     return action().finally(() => {

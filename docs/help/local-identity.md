@@ -5,8 +5,9 @@ Andreja, GitHub, email, password, or other cloud account.
 
 ## First administrator
 
-1. Apply the reviewed `ProductionPasskeyIdentity` migration with the explicit
-   migration command in the [self-host runbook](../operations/self-hosting.md).
+1. Apply the reviewed `ProductionPasskeyIdentity` and
+   `DurableRecentAuthenticationGrants` migrations with the explicit migration
+   command in the [self-host runbook](../operations/self-hosting.md).
 2. Configure one exact HTTPS allowed origin and its relying-party domain.
    When TLS terminates at the documented same-host reverse proxy, configure its
    exact Kestrel-observed IP and the required single-hop forwarded headers from the

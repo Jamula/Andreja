@@ -551,6 +551,57 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
         Assert.Single(await verificationUsers.GetPasskeysAsync(persisted));
     }
 
+    [Fact]
+    public async Task RecentAuthenticationGrantIsConsumedExactlyOnce()
+    {
+        BootstrapIdentityResult bootstrap;
+        var nonceHash = System.Security.Cryptography.SHA256.HashData(
+            [1, 2, 3, 4, 5, 6, 7, 8]);
+        var now = DateTimeOffset.UtcNow;
+        await using (var scope = services.CreateAsyncScope())
+        {
+            bootstrap = await scope.ServiceProvider
+                .GetRequiredService<LocalIdentityOperations>()
+                .CompleteBootstrapAsync(
+                    CreateSecureRequest(),
+                    bootstrapToken,
+                    "Recent auth workspace",
+                    "Recent auth owner",
+                    Guid.CreateVersion7(),
+                    CreatePasskey([90, 91, 92]),
+                    CancellationToken.None);
+            await scope.ServiceProvider
+                .GetRequiredService<IRecentAuthenticationGrantStore>()
+                .IssueAsync(
+                    bootstrap.User.Id,
+                    nonceHash,
+                    now.AddMinutes(5));
+        }
+
+        async Task<bool> ConsumeAsync()
+        {
+            await using var scope = services.CreateAsyncScope();
+            return await scope.ServiceProvider
+                .GetRequiredService<IRecentAuthenticationGrantStore>()
+                .TryConsumeAsync(
+                    bootstrap.User.Id,
+                    nonceHash,
+                    now);
+        }
+
+        var outcomes = await Task.WhenAll(ConsumeAsync(), ConsumeAsync());
+
+        Assert.Single(outcomes, consumed => consumed);
+        await using var verificationScope = services.CreateAsyncScope();
+        Assert.False(await verificationScope.ServiceProvider
+            .GetRequiredService<IRecentAuthenticationGrantStore>()
+            .IsValidAsync(
+                bootstrap.User.Id,
+                nonceHash,
+                now));
+        System.Security.Cryptography.CryptographicOperations.ZeroMemory(nonceHash);
+    }
+
     private async Task<SeededIdentity> SeedTenantAsync(string normalizedName)
     {
         var context = new TenantPrincipalContext(

@@ -459,20 +459,30 @@ public sealed class BootstrapCeremonyEndpointTests
             await host.GetRegistrationOptionsStatusAsync(token));
 
         var expiration = DateTimeOffset.UtcNow.AddMinutes(5);
+        var nonceBytes = RandomNumberGenerator.GetBytes(32);
+        var nonce = Microsoft.AspNetCore.WebUtilities.WebEncoders
+            .Base64UrlEncode(nonceBytes);
+        await host.Grants.IssueAsync(
+            user.Id,
+            SHA256.HashData(nonceBytes),
+            expiration);
         foreach (var ticket in new[]
                  {
                      new RecentPasskeyAuthenticationTicket(
                          user.Id,
                          user.SecurityStamp!,
-                         "wrong-audience"),
+                         "wrong-audience",
+                         nonce),
                      new RecentPasskeyAuthenticationTicket(
                          Guid.CreateVersion7(),
                          user.SecurityStamp!,
-                         RecentPasskeyAuthentication.Audience),
+                         RecentPasskeyAuthentication.Audience,
+                         nonce),
                      new RecentPasskeyAuthenticationTicket(
                          user.Id,
                          "wrong-security-stamp",
-                         RecentPasskeyAuthentication.Audience),
+                         RecentPasskeyAuthentication.Audience,
+                         nonce),
                  })
         {
             host.Cookies.Set(
@@ -489,7 +499,8 @@ public sealed class BootstrapCeremonyEndpointTests
                 new(
                     user.Id,
                     user.SecurityStamp!,
-                    RecentPasskeyAuthentication.Audience),
+                    RecentPasskeyAuthentication.Audience,
+                    nonce),
                 DateTimeOffset.UtcNow.AddSeconds(-1)));
         Assert.Equal(
             HttpStatusCode.BadRequest,
@@ -501,6 +512,13 @@ public sealed class BootstrapCeremonyEndpointTests
         Assert.Equal(
             HttpStatusCode.OK,
             await host.GetRegistrationOptionsStatusAsync(token));
+        var firstContext = CreateMarkerContext(validMarker);
+        var secondContext = CreateMarkerContext(validMarker);
+        var consumeResults = await Task.WhenAll(
+            recent.TryConsumeAsync(firstContext, user),
+            recent.TryConsumeAsync(secondContext, user));
+        Assert.Single(consumeResults, consumed => consumed);
+        CryptographicOperations.ZeroMemory(nonceBytes);
     }
 
     private sealed record CreationOptions(
@@ -512,6 +530,14 @@ public sealed class BootstrapCeremonyEndpointTests
     private sealed record AssertionOptions(string Challenge);
 
     private sealed record AntiforgeryResponse(string Token);
+
+    private static DefaultHttpContext CreateMarkerContext(string marker)
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers.Cookie =
+            $"{RecentPasskeyAuthentication.CookieName}={marker}";
+        return context;
+    }
 
     private sealed class TestDbException(string? sqlState) : DbException
     {
@@ -577,7 +603,9 @@ public sealed class BootstrapCeremonyEndpointTests
         CookieJar cookies,
         FakePasskeyStore store,
         FakePasskeyHandler handler,
-        FakeBootstrapOperations bootstrap) : IAsyncDisposable
+        FakeBootstrapOperations bootstrap,
+        FakePasskeyStore.FakeRecentAuthenticationGrantStore grants)
+        : IAsyncDisposable
     {
         public const string BootstrapCookieName = "__Host-Andreja.Bootstrap";
 
@@ -590,6 +618,9 @@ public sealed class BootstrapCeremonyEndpointTests
         public FakePasskeyHandler Handler { get; } = handler;
 
         public FakeBootstrapOperations Bootstrap { get; } = bootstrap;
+
+        public FakePasskeyStore.FakeRecentAuthenticationGrantStore Grants { get; } =
+            grants;
 
         public static async Task<BootstrapEndpointHost> StartAsync()
         {
@@ -609,6 +640,7 @@ public sealed class BootstrapCeremonyEndpointTests
             builder.WebHost.UseTestServer();
             builder.Services.AddLogging();
             builder.Services.AddDataProtection();
+            builder.Services.AddSingleton(TimeProvider.System);
             builder.Services.AddAuthorization();
             builder.Services.AddSingleton(Options.Create(identity));
             builder.Services.AddSingleton<IUserStore<AspNetIdentityUser>>(store);
@@ -626,6 +658,10 @@ public sealed class BootstrapCeremonyEndpointTests
                 bootstrap);
             builder.Services.AddSingleton<ILocalPasskeyManagementOperations>(
                 bootstrap);
+            var grants =
+                new FakePasskeyStore.FakeRecentAuthenticationGrantStore();
+            builder.Services.AddSingleton<IRecentAuthenticationGrantStore>(
+                grants);
             builder.Services.ConfigureAndrejaCookieBehavior();
             builder.Services.Configure<RateLimiterOptions>(
                 limiter => LocalIdentityNetworkSecurity.ConfigureRateLimiting(
@@ -663,7 +699,8 @@ public sealed class BootstrapCeremonyEndpointTests
                 new CookieJar(),
                 store,
                 handler,
-                bootstrap);
+                bootstrap,
+                grants);
         }
 
         public async Task<string> GetAntiforgeryTokenAsync()
@@ -1108,6 +1145,64 @@ public sealed class BootstrapCeremonyEndpointTests
             Passkey = passkey;
         }
 
+        public sealed class FakeRecentAuthenticationGrantStore
+            : IRecentAuthenticationGrantStore
+        {
+            private readonly object gate = new();
+            private readonly Dictionary<string, DateTimeOffset> grants = [];
+
+            public Task IssueAsync(
+                Guid userId,
+                byte[] nonceHash,
+                DateTimeOffset expiresAt,
+                CancellationToken cancellationToken = default)
+            {
+                lock (gate)
+                {
+                    grants[Key(userId, nonceHash)] = expiresAt;
+                }
+
+                return Task.CompletedTask;
+            }
+
+            public Task<bool> IsValidAsync(
+                Guid userId,
+                byte[] nonceHash,
+                DateTimeOffset now,
+                CancellationToken cancellationToken = default)
+            {
+                lock (gate)
+                {
+                    return Task.FromResult(
+                        grants.TryGetValue(Key(userId, nonceHash), out var expiresAt)
+                        && expiresAt > now);
+                }
+            }
+
+            public Task<bool> TryConsumeAsync(
+                Guid userId,
+                byte[] nonceHash,
+                DateTimeOffset now,
+                CancellationToken cancellationToken = default)
+            {
+                lock (gate)
+                {
+                    var key = Key(userId, nonceHash);
+                    if (!grants.TryGetValue(key, out var expiresAt)
+                        || expiresAt <= now)
+                    {
+                        return Task.FromResult(false);
+                    }
+
+                    grants.Remove(key);
+                    return Task.FromResult(true);
+                }
+            }
+
+            private static string Key(Guid userId, byte[] nonceHash) =>
+                $"{userId:D}:{Convert.ToHexString(nonceHash)}";
+        }
+
         public void SetPasskey(UserPasskeyInfo? passkey) => Passkey = passkey;
 
         public void Dispose()
@@ -1250,6 +1345,8 @@ public sealed class BootstrapCeremonyEndpointTests
         private readonly FakePasskeyStore store = new();
         private readonly FakeBootstrapOperations bootstrap;
         private readonly FakePasskeyHandler handler;
+        private readonly FakePasskeyStore.FakeRecentAuthenticationGrantStore grants =
+            new();
 
         public IdentityEndpointWebApplicationFactory()
         {
@@ -1279,6 +1376,8 @@ public sealed class BootstrapCeremonyEndpointTests
                     bootstrap);
                 services.AddSingleton<ILocalPasskeyManagementOperations>(
                     bootstrap);
+                services.RemoveAll<IRecentAuthenticationGrantStore>();
+                services.AddSingleton<IRecentAuthenticationGrantStore>(grants);
                 services.Configure<RateLimiterOptions>(
                     limiter => LocalIdentityNetworkSecurity.ConfigureRateLimiting(
                         limiter,

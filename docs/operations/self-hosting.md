@@ -43,10 +43,24 @@ New-Item -ItemType Directory -Force deploy\secrets | Out-Null
 ) | Set-Content -NoNewline deploy\secrets\bootstrap_token
 ```
 
-Restrict the password file to the account running the runtime. Mount the bootstrap
-token read-only; on Unix use mode `0400`, and on Windows set the read-only attribute
-after applying an account-only ACL. The application refuses a writable bootstrap
-token file. The files, `.env`, backup directory, and runtime state are ignored by Git.
+Restrict the password file to the accounts running the runtime. The app container
+runs as numeric UID/GID `1654:1654`, and file-backed Compose secrets preserve host
+ownership. On a Linux host, provision the bootstrap token for that exact container
+identity:
+
+```bash
+sudo chown 1654:1654 deploy/secrets/bootstrap_token
+sudo chmod 0400 deploy/secrets/bootstrap_token
+test "$(stat -c '%u:%g:%a' deploy/secrets/bootstrap_token)" = "1654:1654:400"
+```
+
+Do not leave the file owned only by the interactive host operator: Kestrel's
+non-root user could not read it. On Docker Desktop, stage the file in the Linux/WSL
+filesystem with numeric owner `1654:1654`; an NTFS ACL/read-only attribute alone
+does not establish the in-container Unix ownership/mode contract. Stop if the
+runtime presents any mode other than `0400`. The application verifies exact
+owner-read permission before reading. The files, `.env`, backup directory, and
+runtime state are ignored by Git.
 
 ## Same-host TLS reverse proxy
 
@@ -277,7 +291,7 @@ pwsh -NoProfile -File scripts\operations\migrate-database.ps1 `
   -BackupDumpPath backups\postgres\andreja-<timestamp>.dump `
   -ReviewedMigrationScriptPath .andreja\reviewed-migration.sql `
   -DatabaseName andreja `
-  -ApprovedMigrations 20260824031732_InitialIdentityTenancy,20260824043341_Phase1AOpenLoopsTasks,20260824075115_ProductionPasskeyIdentity `
+  -ApprovedMigrations 20260824031732_InitialIdentityTenancy,20260824043341_Phase1AOpenLoopsTasks,20260824075115_ProductionPasskeyIdentity,20260824102012_DurableRecentAuthenticationGrants `
   -ConfirmBackupRestoreAndMigrationReview
 ```
 

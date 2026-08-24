@@ -34,6 +34,9 @@ public static class LocalIdentityServiceCollectionExtensions
             provider => provider.GetRequiredService<LocalIdentityOperations>());
         services.AddScoped<ILocalPasskeyManagementOperations>(
             provider => provider.GetRequiredService<LocalIdentityOperations>());
+        services.AddScoped<
+            IRecentAuthenticationGrantStore,
+            PostgreSqlRecentAuthenticationGrantStore>();
         services.AddOptions<ForwardedHeadersOptions>()
             .Configure<IOptions<LocalIdentityOptions>>(
                 (forwarded, identity) =>

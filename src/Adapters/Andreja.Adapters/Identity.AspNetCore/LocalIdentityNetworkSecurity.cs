@@ -74,7 +74,10 @@ public static class LocalIdentityNetworkSecurity
     }
 
     private static bool IsRecoveryRequest(PathString path) =>
-        path.Equals(RecoveryOptionsPath, StringComparison.OrdinalIgnoreCase);
+        path.Equals(RecoveryOptionsPath, StringComparison.OrdinalIgnoreCase)
+        || path.Equals(
+            RecoveryOptionsPath + "/",
+            StringComparison.OrdinalIgnoreCase);
 
     private static FixedWindowRateLimiterOptions CreateWindow(
         int permitLimit,

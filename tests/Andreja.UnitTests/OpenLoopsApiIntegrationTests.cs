@@ -313,6 +313,9 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
     [InlineData("/tasks?view=today", true)]
     [InlineData("//example.test", false)]
     [InlineData("/\\example.test", false)]
+    [InlineData("/\n/evil.example", false)]
+    [InlineData("/\r/evil.example", false)]
+    [InlineData("/\t/evil.example", false)]
     [InlineData("https://example.test", false)]
     [InlineData("", false)]
     public void ReturnUrlMustBeLocal(string returnUrl, bool expected) =>
@@ -446,6 +449,14 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
             StringComparison.Ordinal);
         Assert.DoesNotContain(
             "document.addEventListener(\"enhancedload\"",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "form.querySelectorAll(\"button\")",
+            script,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "querySelectorAll(\"button, input\")",
             script,
             StringComparison.Ordinal);
         Assert.DoesNotContain(

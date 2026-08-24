@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Andreja.AppHost.Identity;
 
@@ -60,6 +61,9 @@ public static class LocalAccountEndpoints
                 OpenLoopsApi.AntiforgeryHeader);
         services.AddRateLimiter();
         services.AddScoped<BootstrapCeremonyTicketProtector>();
+        services.TryAddScoped<
+            IRecentAuthenticationGrantStore,
+            RecentPasskeyAuthentication.UnavailableRecentAuthenticationGrantStore>();
         services.AddScoped<RecentPasskeyAuthentication>();
         return services;
     }
@@ -173,7 +177,8 @@ public static class LocalAccountEndpoints
         !string.IsNullOrEmpty(returnUrl)
         && returnUrl[0] == '/'
         && (returnUrl.Length == 1 || returnUrl[1] is not ('/' or '\\'))
-        && !returnUrl.Contains('\\');
+        && !returnUrl.Contains('\\')
+        && !returnUrl.Any(char.IsControl);
 
     private static void ConfigureCookie(
         Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationOptions options)
@@ -370,7 +375,10 @@ public static class LocalAccountEndpoints
             return IdentityFailure("sign-in-failed");
         }
 
-        recentAuthentication.Issue(context, user);
+        await recentAuthentication.IssueAsync(
+            context,
+            user,
+            context.RequestAborted);
         return Results.Ok(new IdentityCompletionDto(
             IsLocalReturnUrl(input.ReturnUrl) ? input.ReturnUrl! : "/",
             null));
@@ -503,7 +511,10 @@ public static class LocalAccountEndpoints
 
         var user = await users.GetUserAsync(context.User);
         if (user is null
-            || !recentAuthentication.IsValid(context, user)
+            || !await recentAuthentication.IsValidAsync(
+                context,
+                user,
+                context.RequestAborted)
             || (await users.GetPasskeysAsync(user)).Count
                 >= configured.Value.MaximumPasskeysPerUser)
         {
@@ -534,7 +545,11 @@ public static class LocalAccountEndpoints
         }
 
         var user = await users.GetUserAsync(context.User);
-        if (user is null || !recentAuthentication.TryConsume(context, user))
+        if (user is null
+            || !await recentAuthentication.TryConsumeAsync(
+                context,
+                user,
+                context.RequestAborted))
         {
             return IdentityFailure("passkey-registration-failed");
         }
@@ -599,7 +614,10 @@ public static class LocalAccountEndpoints
 
         try
         {
-            if (!recentAuthentication.TryConsume(context, user))
+            if (!await recentAuthentication.TryConsumeAsync(
+                    context,
+                    user,
+                    context.RequestAborted))
             {
                 return IdentityFailure("passkey-revocation-failed");
             }

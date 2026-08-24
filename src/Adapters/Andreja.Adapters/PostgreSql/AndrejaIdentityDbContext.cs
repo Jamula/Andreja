@@ -34,6 +34,9 @@ public sealed class AndrejaIdentityDbContext(
     public DbSet<IdentitySecurityAuditRecord> IdentitySecurityAuditRecords =>
         Set<IdentitySecurityAuditRecord>();
 
+    public DbSet<IdentityRecentAuthenticationGrant> IdentityRecentAuthenticationGrants =>
+        Set<IdentityRecentAuthenticationGrant>();
+
     internal DbSet<OpenLoopTask> OpenLoopTasks => Set<OpenLoopTask>();
 
     internal DbSet<OpenLoopTaskAudit> OpenLoopTaskAudits => Set<OpenLoopTaskAudit>();
@@ -318,6 +321,25 @@ public sealed class AndrejaIdentityDbContext(
                 .WithMany()
                 .HasForeignKey(audit => audit.UserId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<IdentityRecentAuthenticationGrant>(entity =>
+        {
+            entity.ToTable("recent_authentication_grants");
+            entity.HasKey(grant => grant.Id);
+            entity.Property(grant => grant.Id).ValueGeneratedNever();
+            entity.Property(grant => grant.NonceHash).HasMaxLength(32);
+            entity.HasIndex(grant => grant.NonceHash).IsUnique();
+            entity.HasIndex(grant => new
+            {
+                grant.UserId,
+                grant.ConsumedAt,
+                grant.ExpiresAt,
+            });
+            entity.HasOne<AspNetIdentityUser>()
+                .WithMany()
+                .HasForeignKey(grant => grant.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 
