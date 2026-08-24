@@ -1,0 +1,41 @@
+name: Architecture, business, or policy decision
+description: Request evidence and a recorded decision
+title: "[Decision]: "
+labels:
+  - type:decision
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Decision question
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why this matters now
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Options and tradeoffs
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Required evidence and sources
+    validations:
+      required: true
+  - type: textarea
+    id: gates
+    attributes:
+      label: Required artifact gates
+      description: Architecture, security, privacy, legal, cost, quality, operations, or public claims.
+  - type: textarea
+    id: stop
+    attributes:
+      label: Reversibility, rollback, and stop criteria
+    validations:
+      required: true

@@ -1,0 +1,49 @@
+name: Bug report
+description: Report reproducible incorrect behavior without including personal data
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include task content, prompts, tokens, connector payloads, health,
+        financial, family, or other personal data. Use the private security route
+        for vulnerabilities or data incidents.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: User impact
+      description: What user outcome is blocked or incorrect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction
+      description: Provide minimal sanitized steps.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed personal data, credentials, prompts, and connector content.
+          required: true
