@@ -68,9 +68,18 @@ public sealed class InMemoryProposalStore : IProposalStore, IProposalAuditSink
             if (receipts.TryGetValue(receiptKey, out var receipt))
             {
                 var exactRetry = IsSameIntent(receipt.Request, request);
-                return ValueTask.FromResult(exactRetry
-                    ? receipt.Result with { Outcome = ProposalTransitionOutcome.IdempotentReplay }
-                    : new ProposalTransitionResult(ProposalTransitionOutcome.Conflict, receipt.Result.Proposal));
+                if (!exactRetry)
+                {
+                    return ValueTask.FromResult(
+                        new ProposalTransitionResult(
+                            ProposalTransitionOutcome.Conflict,
+                            receipt.Result.Proposal));
+                }
+
+                return ValueTask.FromResult(
+                    receipt.Result.Outcome == ProposalTransitionOutcome.Applied
+                        ? receipt.Result with { Outcome = ProposalTransitionOutcome.IdempotentReplay }
+                        : receipt.Result);
             }
 
             if (!proposals.TryGetValue(request.ProposalId, out var proposal))

@@ -8,7 +8,7 @@ namespace Andreja.UnitTests;
 public sealed class ProposalLifecycleTests
 {
     [Fact]
-    public async Task ConfirmationRetryIsIdempotentAndAuditedOncePerAttempt()
+    public async Task ConfirmationRetryIsIdempotentAndAuditedOnceForAppliedEffect()
     {
         var store = new InMemoryProposalStore();
         var proposal = CreateProposal();
@@ -41,6 +41,72 @@ public sealed class ProposalLifecycleTests
 
         Assert.Equal(ProposalTransitionOutcome.Expired, result.Outcome);
         Assert.Equal(ProposalState.Expired, result.Proposal?.State);
+    }
+
+    public static TheoryData<string, ProposalTransitionOutcome> NegativeReplayCases =>
+        new()
+        {
+            { "wrong-actor", ProposalTransitionOutcome.Denied },
+            { "wrong-tenant", ProposalTransitionOutcome.Denied },
+            { "not-found", ProposalTransitionOutcome.NotFound },
+            { "expired", ProposalTransitionOutcome.Expired },
+            { "conflict", ProposalTransitionOutcome.Conflict },
+            { "invalid-state", ProposalTransitionOutcome.InvalidState },
+        };
+
+    [Theory]
+    [MemberData(nameof(NegativeReplayCases))]
+    public async Task NegativeTransitionRetryPreservesOriginalOutcomeWithoutDuplicateEffects(
+        string scenario,
+        ProposalTransitionOutcome expectedOutcome)
+    {
+        var store = new InMemoryProposalStore();
+        var proposal = CreateProposal();
+        ProposalTransitionRequest request;
+
+        if (scenario == "not-found")
+        {
+            request = Request(proposal, ProposalAction.Confirm, scenario, proposal.CreatedAt.AddMinutes(1))
+                with
+            { ProposalId = Guid.CreateVersion7() };
+        }
+        else
+        {
+            Assert.True(await store.TryCreateAsync(proposal, CancellationToken.None));
+            request = Request(proposal, ProposalAction.Confirm, scenario, proposal.CreatedAt.AddMinutes(1));
+
+            request = scenario switch
+            {
+                "wrong-actor" => request with { ActorId = Guid.CreateVersion7() },
+                "wrong-tenant" => request with { TenantId = Guid.CreateVersion7() },
+                "expired" => request with { OccurredAt = proposal.ExpiresAt },
+                "conflict" => request with { ExpectedVersion = proposal.Version + 1 },
+                "invalid-state" => await CreateInvalidStateRequestAsync(store, proposal, request),
+                _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
+            };
+        }
+
+        var first = await store.TryTransitionAsync(request, CancellationToken.None);
+        var stateAfterFirst = await store.GetAsync(
+            proposal.TenantId,
+            proposal.ProposalId,
+            CancellationToken.None);
+        var auditCountAfterFirst = store.AuditEntries.Count;
+
+        var retry = await store.TryTransitionAsync(
+            request with { OccurredAt = request.OccurredAt.AddSeconds(5) },
+            CancellationToken.None);
+        var stateAfterRetry = await store.GetAsync(
+            proposal.TenantId,
+            proposal.ProposalId,
+            CancellationToken.None);
+
+        Assert.Equal(expectedOutcome, first.Outcome);
+        Assert.Equal(expectedOutcome, retry.Outcome);
+        Assert.NotEqual(ProposalTransitionOutcome.IdempotentReplay, retry.Outcome);
+        Assert.Equal(first.Proposal, retry.Proposal);
+        Assert.Equal(stateAfterFirst, stateAfterRetry);
+        Assert.Equal(auditCountAfterFirst, store.AuditEntries.Count);
     }
 
     [Fact]
@@ -124,4 +190,20 @@ public sealed class ProposalLifecycleTests
             action,
             idempotencyKey,
             occurredAt);
+
+    private static async Task<ProposalTransitionRequest> CreateInvalidStateRequestAsync(
+        InMemoryProposalStore store,
+        Proposal proposal,
+        ProposalTransitionRequest request)
+    {
+        var applied = await store.TryTransitionAsync(
+            Request(
+                proposal,
+                ProposalAction.Confirm,
+                "invalid-state-prerequisite",
+                proposal.CreatedAt.AddSeconds(30)),
+            CancellationToken.None);
+        Assert.Equal(ProposalTransitionOutcome.Applied, applied.Outcome);
+        return request with { ExpectedVersion = applied.Proposal!.Version };
+    }
 }
