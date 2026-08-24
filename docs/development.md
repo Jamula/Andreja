@@ -100,14 +100,18 @@ redirect to an HTML login page. Browser UI challenges redirect only to the exist
 
 Interactive Server components do not forward request cookies or use
 `IHttpContextAccessor`; there is no stable request `HttpContext` after a Blazor
-circuit starts. The typed client's delegating handler reads the circuit's
-`AuthenticationState`, issues a Data Protection-protected, one-minute, single-use
-token for the exact `andreja.internal.open-loops.v1` audience, and sends it to the
-dedicated internal API authentication scheme. The protected token binds tenant, app
-user, principal, subject, issue/expiry times, and nonce. Invalid, expired, replayed,
-wrong-audience, missing, or conflicting identity context fails closed. External API
-callers continue to use the approved Identity cookie/passkey scheme; unsigned
-tenant/principal headers are never accepted.
+circuit starts. `OpenLoopsApiClient` is resolved inside the circuit scope and reads
+that scope's `AuthenticationStateProvider` directly at each call. It issues a Data
+Protection-protected, one-minute, single-use token for the exact
+`andreja.internal.open-loops.v1` audience and attaches it to that request. The
+`IHttpClientFactory` pipeline is pooled and deliberately stateless: no delegating
+handler captures a principal, circuit service, request cookie, or `HttpContext`.
+
+The protected token binds tenant, app user, principal, subject, issue/expiry times,
+and nonce. Invalid, expired, replayed, wrong-audience, missing, or conflicting
+identity context fails closed. External API callers continue to use the approved
+Identity cookie/passkey scheme; unsigned tenant/principal headers are never
+accepted.
 
 The task page disables prerendering so initialization runs once inside the
 authenticated circuit. API, transport, cancellation, and delegation initialization

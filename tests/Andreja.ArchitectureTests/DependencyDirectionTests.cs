@@ -115,19 +115,32 @@ public sealed class DependencyDirectionTests
     }
 
     [Fact]
-    public void InteractiveTypedClientDoesNotDependOnHttpContextOrCookieForwarding()
+    public void PooledHttpHandlersDoNotCaptureCircuitOrRequestState()
     {
-        var constructorDependencies = typeof(CircuitDelegationHandler)
+        var clientDependencies = typeof(OpenLoopsApiClient)
             .GetConstructors()
             .SelectMany(constructor => constructor.GetParameters())
             .Select(parameter => parameter.ParameterType)
             .ToArray();
+        var statefulHandlers = typeof(OpenLoopsApiClient).Assembly.GetTypes()
+            .Where(type => type.IsAssignableTo(typeof(DelegatingHandler)))
+            .Where(type => type.GetConstructors()
+                .SelectMany(constructor => constructor.GetParameters())
+                .Any(parameter =>
+                    parameter.ParameterType.FullName
+                        == "Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider"
+                    || parameter.ParameterType.FullName
+                        == "Microsoft.AspNetCore.Http.IHttpContextAccessor"))
+            .ToArray();
 
+        Assert.Contains(
+            clientDependencies,
+            type => type.FullName
+                == "Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider");
+        Assert.Contains(typeof(ICircuitDelegationTokenService), clientDependencies);
+        Assert.Empty(statefulHandlers);
         Assert.DoesNotContain(
-            constructorDependencies,
-            type => type.FullName == "Microsoft.AspNetCore.Http.IHttpContextAccessor");
-        Assert.DoesNotContain(
-            typeof(CircuitDelegationHandler).Assembly.GetTypes(),
+            typeof(OpenLoopsApiClient).Assembly.GetTypes(),
             type => type.Name.Contains(
                 "CookieForwarding",
                 StringComparison.OrdinalIgnoreCase));

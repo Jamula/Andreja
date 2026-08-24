@@ -127,8 +127,10 @@ No development sign-in endpoint is mapped in Production, and no header-based or
 automatic fake-auth handler exists.
 
 Interactive Server API calls do not forward browser cookies from `HttpContext`.
-They use a short-lived, one-time, Data Protection-protected circuit delegation
-token accepted only by the internal Open Loops audience. External API requests
+The circuit-scoped typed client reads its own authentication state and attaches a
+fresh, short-lived, one-time, Data Protection-protected delegation token accepted
+only by the internal Open Loops audience. The pooled HTTP handler pipeline is
+stateless and contains no user/circuit-scoped dependency. External API requests
 continue to require the approved Identity cookie/passkey path. Delegation tokens,
 cookies, and authorization headers must never be logged, exported, or copied into
 support evidence.

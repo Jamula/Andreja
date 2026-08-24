@@ -273,16 +273,13 @@ public sealed class OpenLoopsVerticalSliceTests
             new EphemeralDataProtectionProvider(),
             new MutableTimeProvider(Now));
         var handler = new RecordingHandler();
-        var forwarding = new CircuitDelegationHandler(
+        var client = new OpenLoopsApiClient(
+            new HttpClient(handler)
+            {
+                BaseAddress = new Uri("https://andreja.test"),
+            },
             new FixedAuthenticationStateProvider(principal),
-            tokenService)
-        {
-            InnerHandler = handler,
-        };
-        var client = new OpenLoopsApiClient(new HttpClient(forwarding)
-        {
-            BaseAddress = new Uri("https://andreja.test"),
-        });
+            tokenService);
 
         var result = await client.ProposeAsync("Call the dentist");
 

@@ -11,6 +11,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
 using System.Net;
 using System.Net.Http.Json;
@@ -196,37 +198,70 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
 #endif
 
     [Fact]
-    public async Task CircuitDelegationUsesRealTypedClientWithoutHttpContext()
+    public async Task ActualDiTypedClientsKeepConcurrentCircuitIdentitiesIsolated()
     {
         Assert.Null(new HttpContextAccessor().HttpContext);
-        using var client = factory.CreateCircuitApiClient();
+        var handlerBuildsBefore = factory.HandlerBuildCount;
+        using var first = factory.CreateCircuitApiClient(
+            Guid.Parse("0198D117-3D00-7000-8000-00000000C101"),
+            Guid.Parse("0198D117-3D00-7000-8000-00000000C102"),
+            Guid.Parse("0198D117-3D00-7000-8000-00000000C103"));
+        using var second = factory.CreateCircuitApiClient(
+            Guid.Parse("0198D117-3D00-7000-8000-00000000C201"),
+            Guid.Parse("0198D117-3D00-7000-8000-00000000C202"),
+            Guid.Parse("0198D117-3D00-7000-8000-00000000C203"));
 
-        var provider = await client.Api.GetProviderAsync();
-        Assert.True(provider.Ready);
-        Assert.Empty(await client.Api.ListAsync());
+        var proposals = await Task.WhenAll(
+            first.Api.ProposeAsync("First circuit task"),
+            second.Api.ProposeAsync("Second circuit task"));
+        var firstProposal = Assert.IsType<TaskProposalDto>(proposals[0].Proposal);
+        var secondProposal = Assert.IsType<TaskProposalDto>(proposals[1].Proposal);
+        var confirmations = await Task.WhenAll(
+            first.Api.ConfirmAsync(
+                firstProposal.Id,
+                firstProposal.Version,
+                "circuit-first-confirm"),
+            second.Api.ConfirmAsync(
+                secondProposal.Id,
+                secondProposal.Version,
+                "circuit-second-confirm"));
+        var firstTask = Assert.IsType<TaskDto>(confirmations[0].Task);
+        var secondTask = Assert.IsType<TaskDto>(confirmations[1].Task);
 
-        var proposed = await client.Api.ProposeAsync("Circuit delegated task");
-        var proposal = Assert.IsType<TaskProposalDto>(proposed.Proposal);
-        var confirmed = await client.Api.ConfirmAsync(
-            proposal.Id,
-            proposal.Version,
-            "circuit-confirm-0001");
-        var task = Assert.IsType<TaskDto>(confirmed.Task);
-        var completed = await client.Api.CompleteAsync(
-            task.Id,
-            task.Version,
-            "circuit-complete-0001");
-        Assert.Equal(TaskStatusDto.Completed, completed.Task?.Status);
-        Assert.Equal(
-            TaskStatusDto.Completed,
-            Assert.Single((await client.Api.ExportAsync()).Tasks).Status);
-        var deleted = await client.Api.DeleteAsync(
-            task.Id,
-            completed.Task!.Version,
-            "circuit-delete-0001");
+        var lists = await Task.WhenAll(
+            first.Api.ListAsync(),
+            second.Api.ListAsync());
+        Assert.Equal("First circuit task", Assert.Single(lists[0]).Title);
+        Assert.Equal("Second circuit task", Assert.Single(lists[1]).Title);
+        Assert.Equal(handlerBuildsBefore + 1, factory.HandlerBuildCount);
 
-        Assert.Equal("Applied", deleted.Outcome);
-        Assert.Empty(await client.Api.ListAsync());
+        var completions = await Task.WhenAll(
+            first.Api.CompleteAsync(
+                firstTask.Id,
+                firstTask.Version,
+                "circuit-first-complete"),
+            second.Api.CompleteAsync(
+                secondTask.Id,
+                secondTask.Version,
+                "circuit-second-complete"));
+        Assert.All(
+            completions,
+            completion => Assert.Equal(TaskStatusDto.Completed, completion.Task?.Status));
+        var exports = await Task.WhenAll(
+            first.Api.ExportAsync(),
+            second.Api.ExportAsync());
+        Assert.Equal("First circuit task", Assert.Single(exports[0].Tasks).Title);
+        Assert.Equal("Second circuit task", Assert.Single(exports[1].Tasks).Title);
+
+        await Task.WhenAll(
+            first.Api.DeleteAsync(
+                firstTask.Id,
+                completions[0].Task!.Version,
+                "circuit-first-delete"),
+            second.Api.DeleteAsync(
+                secondTask.Id,
+                completions[1].Task!.Version,
+                "circuit-second-delete"));
     }
 
     [Fact]
@@ -368,32 +403,46 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
 
 public sealed class OpenLoopsWebApplicationFactory : WebApplicationFactory<Program>
 {
+    private int handlerBuildCount;
+
+    public int HandlerBuildCount => Volatile.Read(ref handlerBuildCount);
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<AuthenticationStateProvider>();
+            services.AddScoped<CircuitTestIdentity>();
+            services.AddScoped<AuthenticationStateProvider, ScopedAuthenticationStateProvider>();
+            services.ConfigureAll<HttpClientFactoryOptions>(
+                options => options.HttpMessageHandlerBuilderActions.Add(httpBuilder =>
+                {
+                    Interlocked.Increment(ref handlerBuildCount);
+                    httpBuilder.PrimaryHandler = Server.CreateHandler();
+                }));
+        });
     }
 
-    public CircuitClient CreateCircuitApiClient()
+    public CircuitClient CreateCircuitApiClient(
+        Guid tenantId,
+        Guid appUserId,
+        Guid principalId)
     {
-        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+        _ = Server;
+        var scope = Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<CircuitTestIdentity>().Principal =
+            new ClaimsPrincipal(new ClaimsIdentity(
             [
-                new(ClaimTypes.NameIdentifier, TestAppUserId.ToString("D")),
-                new(AndrejaClaimTypes.TenantId, TestTenantId.ToString("D")),
-                new(AndrejaClaimTypes.AppUserId, TestAppUserId.ToString("D")),
-                new(AndrejaClaimTypes.PrincipalId, TestPrincipalId.ToString("D")),
+                new(ClaimTypes.NameIdentifier, appUserId.ToString("D")),
+                new(AndrejaClaimTypes.TenantId, tenantId.ToString("D")),
+                new(AndrejaClaimTypes.AppUserId, appUserId.ToString("D")),
+                new(AndrejaClaimTypes.PrincipalId, principalId.ToString("D")),
             ],
             "circuit-test"));
-        var delegation = new CircuitDelegationHandler(
-            new FixedAuthenticationStateProvider(principal),
-            Services.GetRequiredService<ICircuitDelegationTokenService>())
-        {
-            InnerHandler = Server.CreateHandler(),
-        };
-        var httpClient = new HttpClient(delegation)
-        {
-            BaseAddress = new Uri("https://localhost"),
-        };
-        return new(new OpenLoopsApiClient(httpClient), httpClient);
+        return new(
+            scope.ServiceProvider.GetRequiredService<IOpenLoopsApiClient>(),
+            scope);
     }
 
     public HttpClient CreateAnonymousClient() =>
@@ -427,18 +476,16 @@ public sealed class OpenLoopsWebApplicationFactory : WebApplicationFactory<Progr
         return client;
     }
 
-    private static readonly Guid TestTenantId =
-        Guid.Parse("0198D117-3D00-7000-8000-00000000C001");
-    private static readonly Guid TestAppUserId =
-        Guid.Parse("0198D117-3D00-7000-8000-00000000C002");
-    private static readonly Guid TestPrincipalId =
-        Guid.Parse("0198D117-3D00-7000-8000-00000000C003");
+    private sealed class CircuitTestIdentity
+    {
+        public ClaimsPrincipal Principal { get; set; } = new(new ClaimsIdentity());
+    }
 
-    private sealed class FixedAuthenticationStateProvider(ClaimsPrincipal principal)
+    private sealed class ScopedAuthenticationStateProvider(CircuitTestIdentity identity)
         : AuthenticationStateProvider
     {
         public override Task<AuthenticationState> GetAuthenticationStateAsync() =>
-            Task.FromResult(new AuthenticationState(principal));
+            Task.FromResult(new AuthenticationState(identity.Principal));
     }
 
     public sealed class UnreachableOpenLoopsApiClient : IOpenLoopsApiClient
@@ -484,11 +531,11 @@ public sealed class OpenLoopsWebApplicationFactory : WebApplicationFactory<Progr
 
     public sealed class CircuitClient(
         IOpenLoopsApiClient api,
-        HttpClient httpClient) : IDisposable
+        IServiceScope scope) : IDisposable
     {
         public IOpenLoopsApiClient Api { get; } = api;
 
-        public void Dispose() => httpClient.Dispose();
+        public void Dispose() => scope.Dispose();
     }
 }
 

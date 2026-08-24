@@ -144,7 +144,6 @@ public static class OpenLoopsServiceCollectionExtensions
                 : OpenLoopsSkill.CreateDeterministicProvider());
         services.AddScoped<OpenLoopsAssistantService>();
 
-        services.AddTransient<CircuitDelegationHandler>();
         services.AddHttpClient<IOpenLoopsApiClient, OpenLoopsApiClient>(
                 (provider, client) =>
                 {
@@ -153,8 +152,7 @@ public static class OpenLoopsServiceCollectionExtensions
                     client.Timeout = TimeSpan.FromSeconds(30);
                 })
             .ConfigurePrimaryHttpMessageHandler(
-                () => CreateSameOriginHandler(environment))
-            .AddHttpMessageHandler<CircuitDelegationHandler>();
+                () => CreateSameOriginHandler(environment));
         return services;
     }
 
