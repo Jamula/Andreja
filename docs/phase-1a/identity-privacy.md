@@ -19,6 +19,11 @@ telemetry, export, or application logs. An unavailable or untrusted forwarded
 address falls back to the immediate connection address, which may reduce
 availability by sharing a bucket but cannot create attacker-selected buckets.
 
+Credential management uses a short-lived protected browser marker containing only
+the credential-user ID, security stamp, and fixed audience. It is HttpOnly, Secure,
+SameSite=Strict, omitted from logs/telemetry/exports, invalidated by security-stamp
+rotation, and consumed when a passkey is added or removed.
+
 Identity rows and Data Protection keys follow the operator's encrypted backup,
 restore, retention, and deletion controls. Ordinary application export excludes
 both. Deleting an account must delete its credential and recovery rows under the

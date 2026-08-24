@@ -38,7 +38,10 @@ Use **Sign in with a passkey** at `/Account/Login`. A return URL is accepted onl
 when it is a local absolute-path reference. Use **Manage passkeys** at
 `/Account/Passkeys` to add an independently stored passkey or remove one. The
 configured device limit is enforced, and Andreja refuses to remove the last usable
-passkey/recovery path.
+passkey/recovery path. Adding or removing a passkey also requires a recent passkey
+sign-in; an older application cookie alone is insufficient. The recent marker is
+short-lived, bound to the Identity user and current security stamp, and consumed by
+the mutation.
 
 Sign out through the account form. Cookies are Secure, HttpOnly, SameSite=Strict,
 security-stamp validated, and protected by the separately persisted Data Protection

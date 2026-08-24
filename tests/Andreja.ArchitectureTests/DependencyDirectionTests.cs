@@ -149,14 +149,20 @@ public sealed class DependencyDirectionTests
     [Fact]
     public void ForwardedHeadersRunBeforeSecurityAndNoTrustAllSwitchExists()
     {
-        var repositoryRoot = Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
-        var program = File.ReadAllText(Path.Combine(
-            repositoryRoot,
+        var repositoryRoot = new DirectoryInfo(AppContext.BaseDirectory);
+        for (var level = 0; level < 5; level++)
+        {
+            repositoryRoot = repositoryRoot.Parent
+                ?? throw new DirectoryNotFoundException();
+        }
+        var program = File.ReadAllText(Path.Join(
+            repositoryRoot.FullName,
             "src",
             "Andreja.AppHost",
             "Program.cs"));
-        var compose = File.ReadAllText(Path.Combine(repositoryRoot, "compose.yaml"));
+        var compose = File.ReadAllText(Path.Join(
+            repositoryRoot.FullName,
+            "compose.yaml"));
         var forwarding = program.IndexOf(
             "app.UseForwardedHeaders();",
             StringComparison.Ordinal);

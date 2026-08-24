@@ -1,4 +1,4 @@
-const antiforgeryHeader = "X-Andreja-Antiforgery";
+const antiforgeryHeader = "X-CSRF-TOKEN";
 
 function statusElement() {
     return document.querySelector("[data-identity-status]");
@@ -76,12 +76,8 @@ function showRecoveryCodes(result) {
     }));
     section.hidden = false;
     section.focus();
-    confirm.addEventListener("change", () => {
-        continueButton.disabled = !confirm.checked;
-    });
-    continueButton.addEventListener("click", () => {
-        if (confirm.checked) window.location.assign(result.redirectUrl);
-    });
+    section.dataset.redirectUrl = result.redirectUrl;
+    continueButton.disabled = !confirm.checked;
 }
 
 function handleFailure(error) {
@@ -100,10 +96,8 @@ function disableWhile(form, action) {
     });
 }
 
-document.querySelector("[data-passkey-signin]")?.addEventListener("submit", event => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    disableWhile(form, async () => {
+async function handleSignIn(form) {
+    await disableWhile(form, async () => {
         const options = await postJson("/Account/Passkeys/SignInOptions", {}, form);
         const credentialJson = await requestPasskey(options);
         const result = await postJson("/Account/Passkeys/SignInComplete", {
@@ -111,13 +105,11 @@ document.querySelector("[data-passkey-signin]")?.addEventListener("submit", even
             returnUrl: new FormData(form).get("returnUrl")
         }, form);
         window.location.assign(result.redirectUrl);
-    }).catch(handleFailure);
-});
+    });
+}
 
-document.querySelector("[data-passkey-bootstrap]")?.addEventListener("submit", event => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    disableWhile(form, async () => {
+async function handleBootstrap(form) {
+    await disableWhile(form, async () => {
         const fields = new FormData(form);
         const request = {
             token: fields.get("token"),
@@ -136,13 +128,11 @@ document.querySelector("[data-passkey-bootstrap]")?.addEventListener("submit", e
         form.hidden = true;
         setStatus("Administrator created. Save the recovery codes before continuing.");
         showRecoveryCodes(result);
-    }).catch(handleFailure);
-});
+    });
+}
 
-document.querySelector("[data-passkey-recovery]")?.addEventListener("submit", event => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    disableWhile(form, async () => {
+async function handleRecovery(form) {
+    await disableWhile(form, async () => {
         const recoveryCode = new FormData(form).get("recoveryCode");
         const options = await postJson(
             "/Account/Passkeys/RecoveryOptions",
@@ -157,8 +147,8 @@ document.querySelector("[data-passkey-recovery]")?.addEventListener("submit", ev
         form.hidden = true;
         setStatus("Recovery completed. Existing passkeys and sessions were revoked.");
         showRecoveryCodes(result);
-    }).catch(handleFailure);
-});
+    });
+}
 
 async function loadPasskeys(form) {
     const list = document.querySelector("[data-passkey-list]");
@@ -178,40 +168,96 @@ async function loadPasskeys(form) {
         revoke.type = "button";
         revoke.className = "button danger";
         revoke.textContent = "Remove";
-        revoke.addEventListener("click", async () => {
-            if (!window.confirm(`Remove ${passkey.name}?`)) return;
-            await postJson(
-                "/Account/Passkeys/Revoke",
-                { credentialId: passkey.credentialId },
-                form);
-            await loadPasskeys(form);
-            setStatus("Passkey removed.");
-        });
+        revoke.dataset.passkeyRevoke = passkey.credentialId;
+        revoke.dataset.passkeyName = passkey.name;
         item.append(details, revoke);
         return item;
     }));
 }
 
-const registrationForm = document.querySelector("[data-passkey-register]");
-if (registrationForm) {
-    loadPasskeys(registrationForm).catch(handleFailure);
-    registrationForm.addEventListener("submit", event => {
-        event.preventDefault();
-        const form = event.currentTarget;
-        disableWhile(form, async () => {
-            const deviceName = new FormData(form).get("deviceName");
-            const options = await postJson(
-                "/Account/Passkeys/RegistrationOptions",
-                { deviceName },
-                form);
-            const credentialJson = await createPasskey(options);
-            await postJson("/Account/Passkeys/RegistrationComplete", {
-                deviceName,
-                credentialJson
-            }, form);
-            form.reset();
-            await loadPasskeys(form);
-            setStatus("Passkey added.");
-        }).catch(handleFailure);
+async function handleRegistration(form) {
+    await disableWhile(form, async () => {
+        const deviceName = new FormData(form).get("deviceName");
+        const options = await postJson(
+            "/Account/Passkeys/RegistrationOptions",
+            { deviceName },
+            form);
+        const credentialJson = await createPasskey(options);
+        await postJson("/Account/Passkeys/RegistrationComplete", {
+            deviceName,
+            credentialJson
+        }, form);
+        form.reset();
+        await loadPasskeys(form);
+        setStatus("Passkey added.");
     });
 }
+
+async function handleSubmit(event) {
+    const form = event.target.closest("form");
+    if (!form) return;
+
+    const handler = form.matches("[data-passkey-signin]") ? handleSignIn
+        : form.matches("[data-passkey-bootstrap]") ? handleBootstrap
+            : form.matches("[data-passkey-recovery]") ? handleRecovery
+                : form.matches("[data-passkey-register]") ? handleRegistration
+                    : null;
+    if (!handler) return;
+
+    event.preventDefault();
+    try {
+        await handler(form);
+    } catch (error) {
+        handleFailure(error);
+    }
+}
+
+async function handleClick(event) {
+    const revoke = event.target.closest("[data-passkey-revoke]");
+    if (revoke) {
+        const form = document.querySelector("[data-passkey-register]");
+        if (!form || !window.confirm(`Remove ${revoke.dataset.passkeyName}?`)) return;
+        try {
+            await postJson(
+                "/Account/Passkeys/Revoke",
+                { credentialId: revoke.dataset.passkeyRevoke },
+                form);
+            await loadPasskeys(form);
+            setStatus("Passkey removed.");
+        } catch (error) {
+            handleFailure(error);
+        }
+        return;
+    }
+
+    const continueButton = event.target.closest("[data-recovery-continue]");
+    if (continueButton) {
+        const section = continueButton.closest("[data-recovery-codes]");
+        const confirm = section?.querySelector("[data-recovery-confirm]");
+        if (confirm?.checked && section.dataset.redirectUrl) {
+            window.location.assign(section.dataset.redirectUrl);
+        }
+    }
+}
+
+function handleChange(event) {
+    if (!event.target.matches("[data-recovery-confirm]")) return;
+    const section = event.target.closest("[data-recovery-codes]");
+    const continueButton = section?.querySelector("[data-recovery-continue]");
+    if (continueButton) continueButton.disabled = !event.target.checked;
+}
+
+function initializeIdentityPage() {
+    const form = document.querySelector("[data-passkey-register]");
+    if (form) loadPasskeys(form).catch(handleFailure);
+}
+
+if (!window.andrejaIdentityPasskeysInitialized) {
+    window.andrejaIdentityPasskeysInitialized = true;
+    document.addEventListener("submit", handleSubmit);
+    document.addEventListener("click", handleClick);
+    document.addEventListener("change", handleChange);
+    document.addEventListener("enhancedload", initializeIdentityPage);
+}
+
+initializeIdentityPage();

@@ -42,13 +42,46 @@ public interface ILocalIdentityBootstrapOperations
         CancellationToken cancellationToken = default);
 }
 
+public interface ILocalIdentityRecoveryOperations
+{
+    Task<RecoveryStartResult?> BeginRecoveryAsync(
+        string recoveryCode,
+        CancellationToken cancellationToken = default);
+
+    Task<RecoveryCompletionResult> CompleteRecoveryAsync(
+        RecoveryStartResult recovery,
+        UserPasskeyInfo newPasskey,
+        CancellationToken cancellationToken = default);
+
+    Task AuditRecoveryFailureAsync(
+        Guid? userId,
+        CancellationToken cancellationToken = default);
+}
+
+public interface ILocalPasskeyManagementOperations
+{
+    Task RegisterPasskeyAsync(
+        AspNetIdentityUser user,
+        UserPasskeyInfo passkey,
+        string deviceName,
+        CancellationToken cancellationToken = default);
+
+    Task RevokePasskeyAsync(
+        AspNetIdentityUser user,
+        byte[] credentialId,
+        CancellationToken cancellationToken = default);
+}
+
 public sealed class LocalIdentityOperations(
     AndrejaIdentityDbContext database,
     ScopedTenantPrincipalContext tenantContext,
     UserManager<AspNetIdentityUser> userManager,
     IBootstrapTokenVerifier bootstrapTokenVerifier,
     IOptions<LocalIdentityOptions> options,
-    TimeProvider timeProvider) : ILocalIdentityBootstrapOperations
+    TimeProvider timeProvider)
+    : ILocalIdentityBootstrapOperations,
+        ILocalIdentityRecoveryOperations,
+        ILocalPasskeyManagementOperations
 {
     private const int RecoveryHashIterations = 210_000;
     private const long BootstrapAdvisoryLock = 0x414E4452454A41;

@@ -23,7 +23,7 @@ public static class LocalAccountEndpoints
     public const string RecoveryPath = "/Account/Recovery";
     public const string PasskeysPath = "/Account/Passkeys";
     public const string LogoutPath = "/Account/Logout";
-    public const string AntiforgeryHeader = "X-Andreja-Antiforgery";
+    public const string AntiforgeryHeader = OpenLoopsApi.AntiforgeryHeader;
 
     private const string BootstrapOptionsPath = "/Account/Passkeys/BootstrapOptions";
     private const string BootstrapCompletePath = "/Account/Passkeys/BootstrapComplete";
@@ -54,8 +54,12 @@ public static class LocalAccountEndpoints
         services.Configure<Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationOptions>(
             IdentityConstants.ApplicationScheme,
             ConfigureCookie);
+        services.AddAntiforgery(
+            configured => configured.HeaderName =
+                OpenLoopsApi.AntiforgeryHeader);
         services.AddRateLimiter();
         services.AddScoped<BootstrapCeremonyTicketProtector>();
+        services.AddScoped<RecentPasskeyAuthentication>();
         return services;
     }
 
@@ -96,20 +100,8 @@ public static class LocalAccountEndpoints
 
         endpoints.MapBootstrapAccountEndpoints();
         endpoints.MapPasskeySignInEndpoints();
-        endpoints.MapPost(
-                LocalIdentityNetworkSecurity.RecoveryOptionsPath,
-                RecoveryOptionsAsync)
-            .AllowAnonymous()
-            .RequireRateLimiting(LocalIdentityNetworkSecurity.RecoveryRateLimitPolicy);
-        endpoints.MapPost(
-                LocalIdentityNetworkSecurity.RecoveryCompletePath,
-                RecoveryCompleteAsync)
-            .AllowAnonymous()
-            .RequireRateLimiting(LocalIdentityNetworkSecurity.RecoveryRateLimitPolicy);
-        endpoints.MapPost(RegistrationOptionsPath, RegistrationOptionsAsync)
-            .RequireAuthorization();
-        endpoints.MapPost(RegistrationCompletePath, RegistrationCompleteAsync)
-            .RequireAuthorization();
+        endpoints.MapRecoveryAccountEndpoints();
+        endpoints.MapPasskeyManagementEndpoints();
         endpoints.MapGet(
                 PasskeysPath + "/List",
                 async (
@@ -130,7 +122,6 @@ public static class LocalAccountEndpoints
                         passkey.IsBackedUp)));
                 })
             .RequireAuthorization();
-        endpoints.MapPost(RevokePath, RevokeAsync).RequireAuthorization();
         return endpoints;
     }
 
@@ -148,6 +139,32 @@ public static class LocalAccountEndpoints
         endpoints.MapPost(SignInOptionsPath, SignInOptionsAsync).AllowAnonymous();
         endpoints.MapPost(SignInCompletePath, SignInCompleteAsync).AllowAnonymous();
         endpoints.MapPost(LogoutPath, LogoutAsync).RequireAuthorization();
+        return endpoints;
+    }
+
+    internal static IEndpointRouteBuilder MapRecoveryAccountEndpoints(
+        this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapPost(
+                LocalIdentityNetworkSecurity.RecoveryOptionsPath,
+                RecoveryOptionsAsync)
+            .AllowAnonymous()
+            .RequireRateLimiting(LocalIdentityNetworkSecurity.RecoveryRateLimitPolicy);
+        endpoints.MapPost(
+                LocalIdentityNetworkSecurity.RecoveryCompletePath,
+                RecoveryCompleteAsync)
+            .AllowAnonymous();
+        return endpoints;
+    }
+
+    internal static IEndpointRouteBuilder MapPasskeyManagementEndpoints(
+        this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapPost(RegistrationOptionsPath, RegistrationOptionsAsync)
+            .RequireAuthorization();
+        endpoints.MapPost(RegistrationCompletePath, RegistrationCompleteAsync)
+            .RequireAuthorization();
+        endpoints.MapPost(RevokePath, RevokeAsync).RequireAuthorization();
         return endpoints;
     }
 
@@ -327,7 +344,9 @@ public static class LocalAccountEndpoints
         HttpContext context,
         IAntiforgery antiforgery,
         IOptions<LocalIdentityOptions> configured,
-        SignInManager<AspNetIdentityUser> signInManager)
+        SignInManager<AspNetIdentityUser> signInManager,
+        UserManager<AspNetIdentityUser> users,
+        RecentPasskeyAuthentication recentAuthentication)
     {
         if (!await ValidateAntiforgeryAsync(context, antiforgery)
             || !LocalIdentityOperations.IsAcceptedRelyingPartyRequest(
@@ -338,18 +357,29 @@ public static class LocalAccountEndpoints
         }
 
         var result = await signInManager.PasskeySignInAsync(input.CredentialJson);
-        return result.Succeeded
-            ? Results.Ok(new IdentityCompletionDto(
-                IsLocalReturnUrl(input.ReturnUrl) ? input.ReturnUrl! : "/",
-                null))
-            : IdentityFailure("sign-in-failed");
+        if (!result.Succeeded)
+        {
+            return IdentityFailure("sign-in-failed");
+        }
+
+        var user = await users.GetUserAsync(context.User);
+        if (user is null)
+        {
+            await signInManager.SignOutAsync();
+            return IdentityFailure("sign-in-failed");
+        }
+
+        recentAuthentication.Issue(context, user);
+        return Results.Ok(new IdentityCompletionDto(
+            IsLocalReturnUrl(input.ReturnUrl) ? input.ReturnUrl! : "/",
+            null));
     }
 
     private static async Task<IResult> RecoveryOptionsAsync(
         RecoveryOptionsRequest input,
         HttpContext context,
         IAntiforgery antiforgery,
-        LocalIdentityOperations operations,
+        ILocalIdentityRecoveryOperations operations,
         IOptions<LocalIdentityOptions> configured,
         SignInManager<AspNetIdentityUser> signInManager,
         IDataProtectionProvider dataProtection)
@@ -391,7 +421,7 @@ public static class LocalAccountEndpoints
         CredentialRequest input,
         HttpContext context,
         IAntiforgery antiforgery,
-        LocalIdentityOperations operations,
+        ILocalIdentityRecoveryOperations operations,
         SignInManager<AspNetIdentityUser> signInManager,
         IDataProtectionProvider dataProtection)
     {
@@ -457,7 +487,8 @@ public static class LocalAccountEndpoints
         IAntiforgery antiforgery,
         UserManager<AspNetIdentityUser> users,
         SignInManager<AspNetIdentityUser> signInManager,
-        IOptions<LocalIdentityOptions> configured)
+        IOptions<LocalIdentityOptions> configured,
+        RecentPasskeyAuthentication recentAuthentication)
     {
         if (!await ValidateAntiforgeryAsync(context, antiforgery)
             || !LocalIdentityOperations.IsAcceptedRelyingPartyRequest(
@@ -469,6 +500,7 @@ public static class LocalAccountEndpoints
 
         var user = await users.GetUserAsync(context.User);
         if (user is null
+            || !recentAuthentication.IsValid(context, user)
             || (await users.GetPasskeysAsync(user)).Count
                 >= configured.Value.MaximumPasskeysPerUser)
         {
@@ -490,7 +522,8 @@ public static class LocalAccountEndpoints
         IAntiforgery antiforgery,
         UserManager<AspNetIdentityUser> users,
         SignInManager<AspNetIdentityUser> signInManager,
-        LocalIdentityOperations operations)
+        ILocalPasskeyManagementOperations operations,
+        RecentPasskeyAuthentication recentAuthentication)
     {
         if (!await ValidateAntiforgeryAsync(context, antiforgery))
         {
@@ -498,10 +531,14 @@ public static class LocalAccountEndpoints
         }
 
         var user = await users.GetUserAsync(context.User);
+        if (user is null || !recentAuthentication.TryConsume(context, user))
+        {
+            return IdentityFailure("passkey-registration-failed");
+        }
+
         var attestation =
             await signInManager.PerformPasskeyAttestationAsync(input.CredentialJson);
-        if (user is null
-            || !attestation.Succeeded
+        if (!attestation.Succeeded
             || !string.Equals(
                 attestation.UserEntity.Id,
                 user.Id.ToString("D"),
@@ -531,7 +568,8 @@ public static class LocalAccountEndpoints
         HttpContext context,
         IAntiforgery antiforgery,
         UserManager<AspNetIdentityUser> users,
-        LocalIdentityOperations operations)
+        ILocalPasskeyManagementOperations operations,
+        RecentPasskeyAuthentication recentAuthentication)
     {
         if (!await ValidateAntiforgeryAsync(context, antiforgery))
         {
@@ -556,6 +594,11 @@ public static class LocalAccountEndpoints
 
         try
         {
+            if (!recentAuthentication.TryConsume(context, user))
+            {
+                return IdentityFailure("passkey-revocation-failed");
+            }
+
             await operations.RevokePasskeyAsync(
                 user,
                 credentialId,
@@ -576,7 +619,10 @@ public static class LocalAccountEndpoints
         HttpContext context,
         IAntiforgery antiforgery,
         SignInManager<AspNetIdentityUser> signInManager) =>
-        LogoutCoreAsync(context, antiforgery, signInManager);
+        LogoutCoreAsync(
+            context,
+            antiforgery,
+            signInManager);
 
     private static async Task<IResult> LogoutCoreAsync(
         HttpContext context,
@@ -589,6 +635,7 @@ public static class LocalAccountEndpoints
         }
 
         await signInManager.SignOutAsync();
+        RecentPasskeyAuthentication.Clear(context);
         return Results.LocalRedirect(LoginPath);
     }
 

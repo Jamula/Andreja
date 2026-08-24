@@ -84,14 +84,11 @@ public sealed class LocalIdentityOptionsValidator : IValidateOptions<LocalIdenti
         }
         else
         {
-            foreach (var proxyValue in options.TrustedProxyAddresses)
+            foreach (var proxyValue in options.TrustedProxyAddresses.Where(
+                         value => !IsExactUnicastAddress(value)))
             {
-                if (!System.Net.IPAddress.TryParse(proxyValue, out var proxy)
-                    || !IsExactUnicastAddress(proxy))
-                {
-                    failures.Add(
-                        $"Trusted proxy '{proxyValue}' must be one exact unicast IP address.");
-                }
+                failures.Add(
+                    $"Trusted proxy '{proxyValue}' must be one exact unicast IP address.");
             }
         }
 
@@ -181,4 +178,8 @@ public sealed class LocalIdentityOptionsValidator : IValidateOptions<LocalIdenti
             != System.Net.Sockets.AddressFamily.InterNetwork
             || bytes[0] < 224;
     }
+
+    private static bool IsExactUnicastAddress(string value) =>
+        System.Net.IPAddress.TryParse(value, out var address)
+        && IsExactUnicastAddress(address);
 }

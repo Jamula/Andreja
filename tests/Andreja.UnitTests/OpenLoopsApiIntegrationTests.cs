@@ -391,6 +391,63 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
     }
 
     [Fact]
+    public async Task AccountEnhancedNavigationKeepsIdempotentDelegatedHandlers()
+    {
+        var repositoryRoot = new DirectoryInfo(AppContext.BaseDirectory);
+        for (var level = 0; level < 5; level++)
+        {
+            repositoryRoot = repositoryRoot.Parent
+                ?? throw new DirectoryNotFoundException();
+        }
+        var script = await File.ReadAllTextAsync(Path.Join(
+            repositoryRoot.FullName,
+            "src",
+            "Andreja.AppHost",
+            "wwwroot",
+            "identity-passkeys.js"));
+
+        Assert.Contains(
+            "window.andrejaIdentityPasskeysInitialized",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            $"const antiforgeryHeader = \"{OpenLoopsApi.AntiforgeryHeader}\"",
+            script,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "X-Andreja-Antiforgery",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "document.addEventListener(\"submit\", handleSubmit)",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "document.addEventListener(\"enhancedload\", initializeIdentityPage)",
+            script,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "querySelector(\"[data-passkey-signin]\")?.addEventListener",
+            script,
+            StringComparison.Ordinal);
+
+        using var client = factory.CreateAnonymousClient();
+        foreach (var path in new[]
+                 {
+                     LocalAccountEndpoints.LoginPath,
+                     LocalAccountEndpoints.BootstrapPath,
+                     LocalAccountEndpoints.RecoveryPath,
+                     LocalAccountEndpoints.LoginPath,
+                 })
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, path);
+            request.Headers.TryAddWithoutValidation("blazor-enhanced-nav", "on");
+            using var response = await client.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+        }
+    }
+
+    [Fact]
     public void DevelopmentPublicOriginMatchesCommittedHttpsLaunchProfile()
     {
         var repositoryRoot = Path.GetFullPath(

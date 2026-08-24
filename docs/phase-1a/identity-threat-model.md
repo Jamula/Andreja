@@ -24,6 +24,7 @@ application logging, telemetry, exports, errors, and support evidence.
 | Bootstrap user-handle mismatch or client substitution | The reserved credential-user GUID is placed in creation options and in a separate short-lived Data-Protection ticket that also binds verified token, tenant/display names, and challenge. Completion accepts no client user ID/token, requires exact ticket/user-entity/challenge matches, and creates that same Identity ID. .NET 10 assertion resolves `response.userHandle` through `UserManager.FindByIdAsync` |
 | Credential collision or database exhaustion | Global credential lookup, unique passkey storage, bounded passkeys and names |
 | Open redirect or CSRF | Local-only ReturnUrl, SameSite cookies, antiforgery header/form token on every mutation |
+| Stolen long-lived application cookie changes credentials | Registration and revocation require a separate short-lived Data-Protection marker issued only by successful passkey assertion, bound to user/security stamp/audience and consumed on mutation |
 | Recovery guessing or replay | High-entropy single-use codes, PBKDF2 verification, lookup hash, expiry, fixed-window request limiter, generic responses, audit |
 | Stolen session after recovery | Security-stamp rotation, zero validation interval, old passkey removal |
 | Last authentication path removal | Server-side count of passkeys and unexpired unused recovery codes before revoke |
@@ -58,3 +59,11 @@ user ID committed by the transaction. `BootstrapCeremonyEndpointTests` drives th
 actual bootstrap, sign-out, and discoverable sign-in endpoints and rejects
 tampered, expired, replayed, user-mismatched, and challenge-mismatched protected
 tickets before persistence.
+
+All JSON account mutations use the single API contract header `X-CSRF-TOKEN`.
+Production-DI `WebApplicationFactory` tests use tokens emitted by the real
+antiforgery registration and cover accepted plus missing/wrong-token bootstrap,
+sign-in, recovery, registration, and revoke requests. Recent-auth endpoint tests
+reject absent, tampered, expired, wrong-user, wrong-audience, and stale-security-
+stamp markers. The external identity script uses one idempotent delegated listener
+set and reruns only page initialization after Blazor `enhancedload`.

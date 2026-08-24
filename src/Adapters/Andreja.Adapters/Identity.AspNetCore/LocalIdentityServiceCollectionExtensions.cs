@@ -30,6 +30,10 @@ public static class LocalIdentityServiceCollectionExtensions
         services.AddScoped<LocalIdentityOperations>();
         services.AddScoped<ILocalIdentityBootstrapOperations>(
             provider => provider.GetRequiredService<LocalIdentityOperations>());
+        services.AddScoped<ILocalIdentityRecoveryOperations>(
+            provider => provider.GetRequiredService<LocalIdentityOperations>());
+        services.AddScoped<ILocalPasskeyManagementOperations>(
+            provider => provider.GetRequiredService<LocalIdentityOperations>());
         services.AddOptions<ForwardedHeadersOptions>()
             .Configure<IOptions<LocalIdentityOptions>>(
                 (forwarded, identity) =>
