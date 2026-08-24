@@ -448,7 +448,7 @@ public sealed class OpenAiCompatibleConformanceTests
                 [$"{OpenLoopsOptions.SectionName}:OpenAiCompatible:CredentialHandle"] =
                     "credential://assistant/local",
                 [$"{OpenLoopsOptions.SectionName}:OpenAiCompatible:CredentialFile"] =
-                    Path.Combine(AppContext.BaseDirectory, "not-present-secret"),
+                    Path.Join(AppContext.BaseDirectory, "not-present-secret"),
                 [$"{OpenLoopsOptions.SectionName}:OpenAiCompatible:ProviderDisclosure"] =
                     "Local operator-selected provider receives the request.",
                 [$"{OpenLoopsOptions.SectionName}:OpenAiCompatible:RetentionDisclosure"] =
@@ -480,7 +480,7 @@ public sealed class OpenAiCompatibleConformanceTests
     [Fact]
     public async Task FileCredentialStoreReadsRotationAndTreatsDeletionAsRevocation()
     {
-        var path = Path.Combine(
+        var path = Path.Join(
             AppContext.BaseDirectory,
             $"assistant-credential-{Guid.CreateVersion7():N}");
         try
