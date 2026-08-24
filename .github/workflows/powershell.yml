@@ -24,12 +24,10 @@ jobs:
   build:
     permissions:
       contents: read # for actions/checkout to fetch code
-      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
-      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
     name: PSScriptAnalyzer
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Run PSScriptAnalyzer
         uses: microsoft/psscriptanalyzer-action@6b2948b1944407914a58661c49941824d149734f
@@ -42,8 +40,28 @@ jobs:
           includeRule: '"PSAvoidGlobalAliases", "PSAvoidUsingConvertToSecureStringWithPlainText"'
           output: results.sarif
 
-      # Upload the SARIF file generated in the previous step
-      - name: Upload SARIF results file
-        uses: github/codeql-action/upload-sarif@v3
+      - name: Fail on PSScriptAnalyzer findings
+        shell: pwsh
+        run: |
+          $sarif = Get-Content results.sarif -Raw | ConvertFrom-Json
+          $results = @(
+            foreach ($run in $sarif.runs) {
+              if ($null -ne $run.results) {
+                $run.results
+              }
+            }
+          )
+
+          if ($results.Count -gt 0) {
+            foreach ($result in $results) {
+              Write-Host "::error::$($result.message.text)"
+            }
+            throw "PSScriptAnalyzer reported $($results.Count) finding(s)."
+          }
+
+      - name: Upload SARIF results artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          sarif_file: results.sarif
+          name: psscriptanalyzer-results
+          path: results.sarif
+          if-no-files-found: error
