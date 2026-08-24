@@ -18,7 +18,8 @@ docs/charter.md. Write "Not applicable" only with a reason.
 
 ## Validation
 
-<!-- List automated, live, failure-path, accessibility, and help evidence. -->
+<!-- List exact local commands/results run before this PR, plus automated, live,
+failure-path, accessibility, and help evidence. -->
 
 ## Gates
 
@@ -26,6 +27,7 @@ docs/charter.md. Write "Not applicable" only with a reason.
 - [ ] Security/privacy/legal review recorded or not applicable
 - [ ] Cost/operability impact recorded or not applicable
 - [ ] Company charter impact recorded or not applicable
+- [ ] Applicable local build/test/lint/type/docs/config/scenario checks passed
 - [ ] User help/release notes updated or not applicable
 - [ ] No personal data, prompts, credentials, or connector content included
 
