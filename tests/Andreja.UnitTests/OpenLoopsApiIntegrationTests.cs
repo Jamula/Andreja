@@ -442,18 +442,20 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
             StringComparison.Ordinal);
 
         using var client = factory.CreateAnonymousClient();
-        foreach (var path in new[]
+        foreach (var request in new[]
                  {
                      LocalAccountEndpoints.LoginPath,
                      LocalAccountEndpoints.BootstrapPath,
                      LocalAccountEndpoints.RecoveryPath,
                      LocalAccountEndpoints.LoginPath,
-                 })
+                 }.Select(path => new HttpRequestMessage(HttpMethod.Get, path)))
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, path);
-            request.Headers.TryAddWithoutValidation("blazor-enhanced-nav", "on");
-            using var response = await client.SendAsync(request);
-            response.EnsureSuccessStatusCode();
+            using (request)
+            {
+                request.Headers.TryAddWithoutValidation("blazor-enhanced-nav", "on");
+                using var response = await client.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+            }
         }
     }
 
