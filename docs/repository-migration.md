@@ -3,7 +3,7 @@
 - **Tracking:** [GitHub issue #30](https://github.com/Jamula/Andreja/issues/30)
 - **Canonical repository:** [`Jamula/Andreja`](https://github.com/Jamula/Andreja)
 - **Organization Project:** [Andreja Roadmap](https://github.com/orgs/Jamula/projects/2)
-- **Verified base:** `90970550414279d341f4362f572faec8564b5743`
+- **Verified base:** `d52badda75e2b9c1289d482709d2915cb1d52a52`
 - **Review date:** 2026-08-23
 
 `Jamula/Andreja` is the source of truth. Supported workflows must not depend on
