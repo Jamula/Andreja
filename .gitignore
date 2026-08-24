@@ -79,3 +79,7 @@ nunit-*.xml
 .squad/.first-run
 # Squad: SubSquad activation file (local to this machine)
 .squad-workstream
+
+# Python (docs/CI helper scripts, e.g. .github/scripts/*.py)
+__pycache__/
+*.py[cod]

@@ -84,17 +84,12 @@ ghw api user --jq '.login'   # should show work username
 
 ## Repo-Specific Account Binding
 
-Do not hardcode a repository or account in this skill. Instead, derive the owner
-from the current repo (for example `git remote get-url origin` or `gh repo view
---json owner`) and bind it to whichever account the user confirmed in Step 2 for
-that owner. Re-confirm with the user if the derived owner doesn't match a
-previously confirmed binding.
+This repo (`bradygaster/squad`) is bound to the **bradygaster** (personal) account.
+All `gh` operations in this repo MUST use `ghp` / `gh-personal`.
 
 ## For Squad Agents
-At the TOP of any script touching GitHub, define aliases using the
-user-confirmed usernames from Step 2 (do not embed specific account names in
-this template):
+At the TOP of any script touching GitHub, define:
 ```powershell
-function gh-personal { gh auth switch --user $personal 2>$null | Out-Null; gh @args }
-function gh-work { gh auth switch --user $work 2>$null | Out-Null; gh @args }
+function gh-personal { gh auth switch --user bradygaster 2>$null | Out-Null; gh @args }
+function gh-work { gh auth switch --user bradyg_microsoft 2>$null | Out-Null; gh @args }
 ```
