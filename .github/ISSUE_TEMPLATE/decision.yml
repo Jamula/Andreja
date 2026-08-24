@@ -37,9 +37,7 @@ body:
     id: charter
     attributes:
       label: Charter, ethics, and sustainability impact
-      description: Assess the people, agency, data, inclusion, AI and safety, sustainability, stakeholder incentives, evidence, ownership, and stop conditions required by docs/charter.md.
-    validations:
-      required: true
+      description: Optional until Cyrus explicitly ratifies docs/charter.md. Until then, use the Andreja company charter seed summary in docs/plan.md; after ratification, assess the people, agency, data, inclusion, AI and safety, sustainability, stakeholder incentives, evidence, ownership, and stop conditions required by docs/charter.md.
   - type: textarea
     id: stop
     attributes:

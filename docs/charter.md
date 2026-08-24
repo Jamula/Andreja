@@ -1,6 +1,6 @@
 # Andreja company charter
 
-- **Status:** Proposed for explicit ratification
+- **Status:** Proposed for explicit ratification; not yet authoritative
 - **Final human authority:** Cyrus Jamula
 - **Tracking:** [GitHub issue #3](https://github.com/cyrusjamula/Andreja/issues/3)
 - **Governing context:** [Andreja platform plan](plan.md) and
@@ -8,7 +8,10 @@
 
 This charter governs Andreja's company, platform, products, brand, marketplace,
 Customer Zero operations, staff, contributors, agents, sponsors, and partners.
-It becomes effective only when Cyrus explicitly ratifies it.
+It becomes effective and is the authoritative charter only when Cyrus explicitly
+ratifies it. Until then, the `docs/plan.md` charter section is the seed summary;
+after ratification, that summary will be reconciled with this authoritative file
+in the next plan amendment.
 
 ## Mission
 
@@ -78,13 +81,15 @@ Andreja turns these commitments into daily behavior:
 ### Source and attribution posture
 
 This culture adapts broad ideas associated with
-[Amazon's Leadership Principles](https://www.amazon.jobs/en/principles), such as
-customer focus, ownership, learning, high standards, and long-term
+[Amazon's Leadership
+Principles](https://www.amazon.jobs/content/en/our-workplace/leadership-principles),
+such as customer focus, ownership, learning, high standards, and long-term
 responsibility, and with
-[Microsoft's culture](https://careers.microsoft.com/v2/global/en/culture) and
-[Responsible AI approach](https://www.microsoft.com/en-us/ai/responsible-ai),
-such as growth mindset, empowerment, inclusion, transparency, and
-accountability.
+[Microsoft's mission](https://www.microsoft.com/en-us/about),
+[culture](https://careers.microsoft.com/v2/global/en/culture), and
+[AI principles and
+approach](https://www.microsoft.com/en-us/ai/principles-and-approach), such as
+growth mindset, empowerment, inclusion, transparency, and accountability.
 
 Andreja expresses those influences in original language and adds its own
 requirements for user ownership, data dignity, consent, portability, ethical
@@ -225,3 +230,7 @@ without re-ratification when they do not change meaning.
 Public publication remains blocked until Sarek reviews attribution, trademark,
 reporting, and legal posture. That review informs publication language; it does
 not weaken the commitments in this private-facing charter.
+
+Any repository visibility change requires renewed Sarek review of official-source
+attribution, trademark posture, internal Star Trek codenames, and public-culture
+wording before the visibility change or publication proceeds.
