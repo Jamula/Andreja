@@ -17,6 +17,17 @@ The coordinator's spawn prompt already instructs agents to read decisions.md and
 ### Worktree Awareness
 Use the `TEAM ROOT` path provided in your spawn prompt. All `.squad/` paths are relative to this root. If TEAM ROOT is not provided (rare), run `git rev-parse --show-toplevel` as fallback. Never assume CWD is the repo root.
 
+### Start-of-Work Sync
+Before editing, require a clean worktree, fetch/prune the remote, and rebase the
+issue branch onto the verified live `origin/main` or stacked parent branch.
+Stop on dirty state, conflict, changed remote tip, or lease failure; never
+overwrite another worktree.
+
+### Pre-PR Validation
+Before opening or marking a PR ready, run the smallest complete existing local
+build/test/lint/type/docs/config/scenario checks required by the issue. Record
+commands and results in the issue and PR. Required failures block readiness.
+
 ### Decision Recording
 After making a decision that affects other team members, write it to:
 `.squad/decisions/inbox/{your-name}-{brief-slug}.md`
@@ -40,3 +51,5 @@ If you have reviewer authority and reject work: the original author is locked ou
 - Don't write directly to `.squad/decisions.md` — always use the inbox drop-box
 - Don't modify other agents' history.md files — that's Scribe's job
 - Don't assume CWD is the repo root — always use TEAM ROOT
+- Don't start from stale local `main` or an unverified stacked parent
+- Don't post a PR before running applicable local validation

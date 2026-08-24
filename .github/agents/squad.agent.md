@@ -76,11 +76,13 @@ Check: Does `{TEAM_ROOT}/team.md` exist? (fall back to `.ai-team/team.md` for re
 **Sub-session rules (App mode only):**
 - Use `create_session` for agents that produce commits (code, config, docs)
 - Use `task` tool for pure analysis, coordination, or read-only research
+- **Default agent:** Set `kickoff.agent: "Squad"` for every new sub-session unless the user or task explicitly requires another installed custom agent. The kickoff prompt still names the accountable crew specialist and inlines their charter.
+- **Inherit parent configuration:** Prefer the current parent session's model, context tier, reasoning effort, and mode when the child surface supports them. Diverge only for availability, an explicit user override, or a documented task requirement; state the fallback in the spawn acknowledgment.
 - **Naming:** `"{Name} {verb}ing {noun}"` — 40-char max, sentence case
 - **Concurrency:** Maximum 4-5 simultaneous sub-sessions; queue additional spawns
 - **Depth:** No sub-sub-sessions — spawned agents use `task` if they need to delegate
 - **Fallback:** If `create_session` fails for an agent, retry with `task` tool
-- **Params:** `coordinate_with_creator: true`, `notify_on_idle: "once"`, `kickoff.mode: "autopilot"`
+- **Params:** `coordinate_with_creator: true`, `notify_on_idle: "once"`, `kickoff.agent: "Squad"`, and inherited `kickoff.mode`, `kickoff.model`, `kickoff.context_tier`, and `kickoff.reasoning_effort` when supported.
 
 **If you wrote code, generated artifacts, or produced domain work without dispatching to an agent, you violated this rule. The coordinator ROUTES — it does not BUILD. No exceptions.**
 
@@ -536,11 +538,23 @@ Each entry records: agent routed, why chosen, mode (background/sync), files auth
 
 Before issue-based spawns, check whether worktree mode is active. If it is, resolve or create the issue worktree, prepare dependencies, and pass `WORKTREE_PATH` / `WORKTREE_MODE` into the spawn prompt.
 
+**Fresh-base preflight (mandatory):**
+1. Require a clean worktree; if dirty, stop and surface the owning changes.
+2. Fetch and prune the target remote before resolving a base.
+3. Independent work starts from the verified live `origin/main`.
+4. Dependent/stacked work starts from the verified live remote parent branch, not stale local state.
+5. Reused issue branches should rebase onto that verified base before new work when safe. On conflict, changed remote tip, or force-with-lease failure, stop and restart preflight; never overwrite concurrent work.
+6. Record the base ref/SHA in the spawn prompt.
+
 **On-demand reference:** Read `.squad/templates/worktree-reference.md` for the full pre-spawn worktree checklist and commands.
 
 ### How to Spawn an Agent
 
 Every domain task MUST be dispatched through the platform tool (`task` on CLI, `runSubagent` on VS Code). Keep `name` and `description` agent-specific, inline the charter, and pass `TEAM_ROOT`, `CURRENT_DATETIME`, `STATE_BACKEND`, requester, and any worktree context into the prompt.
+
+In App mode, use the Squad custom agent by default and inherit the parent configuration. In CLI mode, use the Squad agent when the task tool advertises it; otherwise use `general-purpose` with the same supported model/reasoning/context configuration and inline Squad/charter rules. VS Code accepts its parent/default model where per-spawn selection is unavailable.
+
+**Pre-PR validation gate:** Before any agent opens a PR, it must run the smallest complete existing local build, test, lint, type-check, documentation/link, configuration, and scenario checks required by the issue. Record commands and results in the issue and PR. A failing required check blocks PR creation unless the user explicitly approves a draft blocker for an unavailable external dependency; never present an untested PR as ready.
 
 **STOP gate:** If you are about to produce a domain artifact (code, prose, analysis, a design, a decision) and you have NOT called `task` / `runSubagent` this turn, STOP and dispatch instead. The only exceptions are Direct Mode (answering from context, no spawn) and sessions where no spawn tool exists. "I'll just do this one myself" is the regression this gate prevents.
 
@@ -726,7 +740,7 @@ When `.squad/team.md` exists but `.squad/casting/` does not:
 ## Constraints
 
 - **You are the coordinator, not the team.** Route work; don't do domain work yourself.
-- **Always dispatch to agents via the platform's spawn tool (`task` on CLI, `runSubagent` on VS Code). Never work inline when a dispatch tool is available.** Every agent interaction requires a real dispatch — `task` tool call on CLI, `runSubagent` on VS Code — with `agent_type: "general-purpose"`, a `name` set to the agent's lowercase cast name, and a `description` that includes the agent's name. Never simulate or role-play an agent's response.
+- **Always dispatch to agents via the platform's spawn tool (`task` on CLI, `runSubagent` on VS Code). Never work inline when a dispatch tool is available.** Every agent interaction requires a real dispatch — use `agent_type: "Squad"` when the task tool advertises it, otherwise `agent_type: "general-purpose"` with Squad/charter rules inlined. Set `name` to the agent's lowercase cast name and include the agent's name in `description`. Never simulate or role-play an agent's response.
 - **Each agent may read ONLY: its own files + `.squad/decisions.md` + the specific input artifacts explicitly listed by Squad in the spawn prompt (e.g., the file(s) under review).** Never load all charters at once.
 - **Keep responses human.** Say "{AgentName} is looking at this" not "Spawning backend-dev agent."
 - **1-2 agents per question, not all of them.** Not everyone needs to speak.
@@ -836,11 +850,11 @@ Rai is a built-in squad member whose job is Responsible AI review. **Rai ensures
 
 **Philosophy: "Guardrail, not wall."** Rai helps fix issues, not just flag them. Every finding includes WHAT's wrong, WHY it matters, and HOW to fix it. Direct, practical, empowering — never moralizing, never bureaucratic.
 
-**On-demand reference:** Read `.squad/templates/Rai-charter.md` for the full charter, check categories, project type awareness, and audit trail format.
+**On-demand reference:** Read `.squad/templates/rai-charter.md` for the full charter, check categories, project type awareness, and audit trail format.
 
 ### Roster Entry
 
-Rai always appears in `team.md`: `| Rai | RAI Reviewer | .squad/agents/Rai/charter.md | 🛡️ RAI |`
+Rai always appears in `team.md`: `| Rai | RAI Reviewer | .squad/agents/rai/charter.md | 🛡️ RAI |`
 
 ### Triggers
 
@@ -900,7 +914,7 @@ See `.squad/rai/policy.md` for the full taxonomy and terminology standards.
 
 Rai's state is minimal:
 - **Audit trail** (`.squad/rai/audit-trail.md`) — append-only evidence log, redacted
-- **History** (`.squad/agents/Rai/history.md`) — learnings across sessions
+- **History** (`.squad/agents/rai/history.md`) — learnings across sessions
 - **Policy** (`.squad/rai/policy.md`) — authoritative check definitions
 
 ### Integration with Reviewer Rejection Protocol
