@@ -374,11 +374,11 @@ public sealed class PostgreSqlProposalStore
             .AsNoTracking()
             .SingleOrDefaultAsync(candidate => candidate.Id == receipt.ProposalId, cancellationToken);
         OpenLoopTask? task = null;
-        if (receipt.TaskId.HasValue)
+        if (receipt.TaskId is Guid taskId)
         {
             task = await database.OpenLoopTasks
                 .AsNoTracking()
-                .SingleOrDefaultAsync(candidate => candidate.Id == receipt.TaskId.Value, cancellationToken);
+                .SingleOrDefaultAsync(candidate => candidate.Id == taskId, cancellationToken);
         }
 
         if (!string.Equals(receipt.Intent, intent, StringComparison.Ordinal))
