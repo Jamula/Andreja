@@ -1,4 +1,6 @@
 using Andreja.Api.Contracts;
+using Andreja.AppHost.Hosting;
+using Andreja.Adapters.Identity.AspNetCore;
 using Andreja.Modules.OpenLoops;
 using Andreja.Platform.Contracts;
 
@@ -62,6 +64,30 @@ public sealed class DependencyDirectionTests
             .ToArray();
 
         Assert.Empty(outwardReferences);
+    }
+
+    [Fact]
+    public void ProductionAssembliesCannotReferenceTestAuthentication()
+    {
+        var productionAssemblies = new[]
+        {
+            typeof(AndrejaHostOptions).Assembly,
+            typeof(AspNetCoreIdentityAdapter).Assembly,
+        };
+
+        var testAuthenticationReferences = productionAssemblies
+            .SelectMany(assembly => assembly.GetReferencedAssemblies())
+            .Where(reference =>
+                (reference.Name ?? string.Empty).Contains(
+                    "TestAuth",
+                    StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        Assert.Empty(testAuthenticationReferences);
+        Assert.DoesNotContain(
+            typeof(AspNetCoreIdentityAdapter).Assembly.GetTypes(),
+            type => type.Name.Contains("FakeAuth", StringComparison.OrdinalIgnoreCase)
+                || type.Name.Contains("TestAuth", StringComparison.OrdinalIgnoreCase));
     }
 
     private static string[] FindUnapprovedModuleReferences(
