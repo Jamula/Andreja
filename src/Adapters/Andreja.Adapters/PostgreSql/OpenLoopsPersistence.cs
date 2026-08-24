@@ -64,6 +64,7 @@ public sealed class PostgreSqlOpenLoopsTaskStore(
             task.CreatedAt));
         database.OpenLoopTaskReceipts.Add(new(
             context.TenantId,
+            context.PrincipalId,
             idempotencyKey,
             intent,
             TaskMutationOutcome.Applied,
@@ -190,6 +191,7 @@ public sealed class PostgreSqlOpenLoopsTaskStore(
             occurredAt));
         database.OpenLoopTaskReceipts.Add(new(
             context.TenantId,
+            context.PrincipalId,
             idempotencyKey,
             intent,
             TaskMutationOutcome.Applied,
@@ -231,7 +233,9 @@ public sealed class PostgreSqlOpenLoopsTaskStore(
         var receipt = await database.OpenLoopTaskReceipts
             .AsNoTracking()
             .SingleOrDefaultAsync(
-                candidate => candidate.IdempotencyKey == idempotencyKey,
+                candidate =>
+                    candidate.ActorId == context.PrincipalId
+                    && candidate.IdempotencyKey == idempotencyKey,
                 cancellationToken);
         if (receipt is null)
         {
@@ -268,6 +272,7 @@ public sealed class PostgreSqlOpenLoopsTaskStore(
     {
         database.OpenLoopTaskReceipts.Add(new(
             context.TenantId,
+            context.PrincipalId,
             idempotencyKey,
             intent,
             outcome,
@@ -361,6 +366,7 @@ internal sealed class OpenLoopTaskReceipt
 
     public OpenLoopTaskReceipt(
         TenantId tenantId,
+        PrincipalId actorId,
         string idempotencyKey,
         string intent,
         TaskMutationOutcome outcome,
@@ -368,6 +374,7 @@ internal sealed class OpenLoopTaskReceipt
         long? taskVersion)
     {
         TenantId = tenantId;
+        ActorId = actorId;
         IdempotencyKey = idempotencyKey;
         Intent = intent;
         Outcome = outcome;
@@ -376,6 +383,8 @@ internal sealed class OpenLoopTaskReceipt
     }
 
     public TenantId TenantId { get; private set; }
+
+    public PrincipalId ActorId { get; private set; }
 
     public string IdempotencyKey { get; private set; } = string.Empty;
 

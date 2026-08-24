@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Andreja.Adapters.PostgreSql.Migrations
 {
     [DbContext(typeof(AndrejaIdentityDbContext))]
-    [Migration("20260824042232_Phase1AOpenLoopsTasks")]
+    [Migration("20260824043341_Phase1AOpenLoopsTasks")]
     partial class Phase1AOpenLoopsTasks
     {
         /// <inheritdoc />
@@ -148,6 +148,9 @@ namespace Andreja.Adapters.PostgreSql.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("IdempotencyKey")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
@@ -166,7 +169,7 @@ namespace Andreja.Adapters.PostgreSql.Migrations
                     b.Property<long?>("TaskVersion")
                         .HasColumnType("bigint");
 
-                    b.HasKey("TenantId", "IdempotencyKey");
+                    b.HasKey("TenantId", "ActorId", "IdempotencyKey");
 
                     b.ToTable("task_receipts", "open_loops");
                 });

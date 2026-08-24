@@ -132,6 +132,39 @@ public sealed class OpenLoopsVerticalSliceTests
     }
 
     [Fact]
+    public async Task IdempotencyReceiptsArePrincipalScoped()
+    {
+        var fixture = CreateFixture();
+        var proposal = await fixture.Application.ProposeAsync(
+            fixture.Context,
+            new("Shared tenant task", null, null),
+            "assistant:principal-receipt");
+        var confirmed = await fixture.Application.ConfirmAsync(
+            fixture.Context,
+            proposal.ProposalId,
+            proposal.Version,
+            "confirm-principal-receipt");
+        var task = Assert.IsType<OpenLoopTask>(confirmed.Task);
+        var otherPrincipal = fixture.Context with { PrincipalId = PrincipalId.New() };
+
+        var denied = await fixture.TaskStore.CompleteAsync(
+            otherPrincipal,
+            task.Id,
+            task.Version,
+            "same-principal-key",
+            Now);
+        var owner = await fixture.TaskStore.CompleteAsync(
+            fixture.Context,
+            task.Id,
+            task.Version,
+            "same-principal-key",
+            Now);
+
+        Assert.Equal(TaskMutationOutcome.Denied, denied.Outcome);
+        Assert.Equal(TaskMutationOutcome.Applied, owner.Outcome);
+    }
+
+    [Fact]
     public async Task ExpiredProposalProviderFailureAndCancellationHaveNoTaskEffect()
     {
         var fixture = CreateFixture();
@@ -228,7 +261,11 @@ public sealed class OpenLoopsVerticalSliceTests
     public async Task TypedClientObtainsAntiforgeryTokenAndSendsOnlyDtos()
     {
         var handler = new RecordingHandler();
-        var client = new OpenLoopsApiClient(new HttpClient(handler)
+        var forwarding = new AuthenticationCookieForwardingHandler(new HttpContextAccessor())
+        {
+            InnerHandler = handler,
+        };
+        var client = new OpenLoopsApiClient(new HttpClient(forwarding)
         {
             BaseAddress = new Uri("https://andreja.test"),
         });
@@ -239,6 +276,10 @@ public sealed class OpenLoopsVerticalSliceTests
         Assert.Equal(2, handler.Requests.Count);
         Assert.Equal(OpenLoopsApi.AntiforgeryRoute, handler.Requests[0].Path);
         Assert.Equal("test-token", handler.Requests[1].Antiforgery);
+        Assert.Contains(
+            ".AspNetCore.Antiforgery.test=cookie-value",
+            handler.Requests[1].Cookie,
+            StringComparison.Ordinal);
         Assert.Contains("\"message\":\"Call the dentist\"", handler.Requests[1].Body, StringComparison.Ordinal);
     }
 
@@ -326,11 +367,18 @@ public sealed class OpenLoopsVerticalSliceTests
                 request.Headers.TryGetValues(OpenLoopsApi.AntiforgeryHeader, out var values)
                     ? values.Single()
                     : null,
+                request.Headers.TryGetValues("Cookie", out var cookies)
+                    ? cookies.Single()
+                    : null,
                 body));
 
             if (request.RequestUri.AbsolutePath == OpenLoopsApi.AntiforgeryRoute)
             {
-                return Json(HttpStatusCode.OK, new AntiforgeryTokenDto("test-token"));
+                var response = Json(HttpStatusCode.OK, new AntiforgeryTokenDto("test-token"));
+                response.Headers.Add(
+                    "Set-Cookie",
+                    ".AspNetCore.Antiforgery.test=cookie-value; path=/; secure; httponly");
+                return response;
             }
 
             var proposal = new TaskProposalDto(
@@ -357,5 +405,9 @@ public sealed class OpenLoopsVerticalSliceTests
             new(status) { Content = JsonContent.Create(value) };
     }
 
-    private sealed record RecordedRequest(string Path, string? Antiforgery, string? Body);
+    private sealed record RecordedRequest(
+        string Path,
+        string? Antiforgery,
+        string? Cookie,
+        string? Body);
 }

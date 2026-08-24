@@ -41,6 +41,7 @@ namespace Andreja.Adapters.PostgreSql.Migrations
                 columns: table => new
                 {
                     TenantId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ActorId = table.Column<Guid>(type: "uuid", nullable: false),
                     IdempotencyKey = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
                     Intent = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
                     Outcome = table.Column<int>(type: "integer", nullable: false),
@@ -49,7 +50,7 @@ namespace Andreja.Adapters.PostgreSql.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_task_receipts", x => new { x.TenantId, x.IdempotencyKey });
+                    table.PrimaryKey("PK_task_receipts", x => new { x.TenantId, x.ActorId, x.IdempotencyKey });
                 });
 
             migrationBuilder.CreateTable(

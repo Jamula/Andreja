@@ -104,10 +104,11 @@ use `down --volumes` during normal operations.
 
 After local identity bootstrap and sign-in, the Open Loops page supports assistant
 proposal, exact review, confirmation, list, complete, JSON export, and explicit
-two-step deletion. See [Open Loops help](../help/open-loops.md). The API requires
-the authenticated tenant, app-user, and principal claims plus antiforgery on every
-mutation. No development or test authentication handler is present in the
-application image.
+two-step deletion. See [Open Loops help](../help/open-loops.md). The API resolves
+the authenticated Identity user to exactly one active tenant membership and
+principal (or validates server-issued explicit context claims), then requires
+antiforgery on every mutation. No development or test authentication handler is
+present in the application image.
 
 ## Data Protection key contract
 

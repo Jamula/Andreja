@@ -6,7 +6,7 @@ public sealed class InMemoryOpenLoopsTaskStore : IOpenLoopsTaskStore
 {
     private readonly object gate = new();
     private readonly Dictionary<Guid, OpenLoopTask> tasks = [];
-    private readonly Dictionary<(Guid TenantId, string Key), Receipt> receipts = [];
+    private readonly Dictionary<(Guid TenantId, Guid PrincipalId, string Key), Receipt> receipts = [];
 
     public IReadOnlyList<TaskAuditEntry> AuditEntries
     {
@@ -215,7 +215,9 @@ public sealed class InMemoryOpenLoopsTaskStore : IOpenLoopsTaskStore
         out TaskMutationResult result)
     {
         ValidateIdempotencyKey(idempotencyKey);
-        if (!receipts.TryGetValue((context.TenantId.Value, idempotencyKey), out var receipt))
+        if (!receipts.TryGetValue(
+                (context.TenantId.Value, context.PrincipalId.Value, idempotencyKey),
+                out var receipt))
         {
             result = null!;
             return false;
@@ -263,7 +265,9 @@ public sealed class InMemoryOpenLoopsTaskStore : IOpenLoopsTaskStore
         string intent,
         TaskMutationResult result)
     {
-        receipts[(context.TenantId.Value, idempotencyKey)] = new(intent, result);
+        receipts[
+            (context.TenantId.Value, context.PrincipalId.Value, idempotencyKey)] =
+            new(intent, result);
         return result;
     }
 

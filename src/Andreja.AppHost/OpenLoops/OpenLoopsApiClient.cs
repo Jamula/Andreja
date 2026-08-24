@@ -150,19 +150,55 @@ public sealed class OpenLoopsApiException(string code, string message) : Excepti
     public string Code { get; } = code;
 }
 
-public sealed class AuthenticationCookieForwardingHandler(IHttpContextAccessor httpContextAccessor)
-    : DelegatingHandler
+public sealed class AuthenticationCookieForwardingHandler : DelegatingHandler
 {
+    private readonly string? authenticationCookie;
+    private string? antiforgeryCookie;
+
+    public AuthenticationCookieForwardingHandler(IHttpContextAccessor httpContextAccessor)
+    {
+        var incoming = httpContextAccessor.HttpContext?.Request.Headers.Cookie.ToString();
+        authenticationCookie = string.Join(
+            "; ",
+            (incoming ?? string.Empty)
+                .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(value =>
+                    !value.StartsWith(".AspNetCore.Antiforgery.", StringComparison.Ordinal)));
+    }
+
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        var cookie = httpContextAccessor.HttpContext?.Request.Headers.Cookie.ToString();
+        var cookie = string.Join(
+            "; ",
+            new[] { authenticationCookie, antiforgeryCookie }
+                .Where(value => !string.IsNullOrWhiteSpace(value)));
         if (!string.IsNullOrWhiteSpace(cookie))
         {
             request.Headers.TryAddWithoutValidation("Cookie", cookie);
         }
 
-        return base.SendAsync(request, cancellationToken);
+        return SendAndCaptureAsync(request, cancellationToken);
+    }
+
+    private async Task<HttpResponseMessage> SendAndCaptureAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        var response = await base.SendAsync(request, cancellationToken);
+        if (response.Headers.TryGetValues("Set-Cookie", out var values))
+        {
+            var cookie = values
+                .Select(value => value.Split(';', 2)[0])
+                .LastOrDefault(value =>
+                    value.StartsWith(".AspNetCore.Antiforgery.", StringComparison.Ordinal));
+            if (cookie is not null)
+            {
+                antiforgeryCookie = cookie;
+            }
+        }
+
+        return response;
     }
 }

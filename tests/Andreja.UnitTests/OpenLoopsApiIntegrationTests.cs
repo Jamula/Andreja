@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Net;
@@ -109,6 +110,21 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         Assert.Empty(await client.GetFromJsonAsync<TaskDto[]>(
             $"{OpenLoopsApi.RoutePrefix}/tasks") ?? []);
     }
+
+    [Fact]
+    public async Task AuthenticatedHomeRendersAccessibleExplicitControls()
+    {
+        using var client = factory.CreateAuthenticatedClient();
+
+        var html = await client.GetStringAsync("/");
+
+        Assert.Contains("""<label for="task-request">""", html, StringComparison.Ordinal);
+        Assert.Contains("""aria-describedby="task-request-help""", html, StringComparison.Ordinal);
+        Assert.Contains("Prepare proposal", html, StringComparison.Ordinal);
+        Assert.Contains("Export JSON", html, StringComparison.Ordinal);
+        Assert.Contains("""aria-labelledby="tasks-heading""", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Yes, delete", html, StringComparison.Ordinal);
+    }
 }
 
 public sealed class OpenLoopsWebApplicationFactory : WebApplicationFactory<Program>
@@ -122,6 +138,8 @@ public sealed class OpenLoopsWebApplicationFactory : WebApplicationFactory<Progr
         builder.UseEnvironment("Development");
         builder.ConfigureTestServices(services =>
         {
+            services.RemoveAll<IOpenLoopsApiClient>();
+            services.AddSingleton<IOpenLoopsApiClient, EmptyOpenLoopsApiClient>();
             services.AddAuthentication(options =>
                 {
                     options.DefaultAuthenticateScheme = TestAuthenticationHandler.SchemeName;
@@ -131,6 +149,41 @@ public sealed class OpenLoopsWebApplicationFactory : WebApplicationFactory<Progr
                     TestAuthenticationHandler.SchemeName,
                     _ => { });
         });
+    }
+
+    private sealed class EmptyOpenLoopsApiClient : IOpenLoopsApiClient
+    {
+        public Task<IReadOnlyList<TaskDto>> ListAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<TaskDto>>([]);
+
+        public Task<AssistantTaskResponse> ProposeAsync(
+            string message,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<ProposalOutcomeDto> ConfirmAsync(
+            Guid proposalId,
+            long expectedVersion,
+            string idempotencyKey,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<TaskMutationOutcomeDto> CompleteAsync(
+            Guid taskId,
+            long expectedVersion,
+            string idempotencyKey,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<TaskMutationOutcomeDto> DeleteAsync(
+            Guid taskId,
+            long expectedVersion,
+            string idempotencyKey,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<TaskExportDto> ExportAsync(CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 
     public HttpClient CreateAuthenticatedClient()

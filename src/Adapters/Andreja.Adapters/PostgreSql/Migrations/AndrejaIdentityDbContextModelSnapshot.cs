@@ -145,6 +145,9 @@ namespace Andreja.Adapters.PostgreSql.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("IdempotencyKey")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
@@ -163,7 +166,7 @@ namespace Andreja.Adapters.PostgreSql.Migrations
                     b.Property<long?>("TaskVersion")
                         .HasColumnType("bigint");
 
-                    b.HasKey("TenantId", "IdempotencyKey");
+                    b.HasKey("TenantId", "ActorId", "IdempotencyKey");
 
                     b.ToTable("task_receipts", "open_loops");
                 });

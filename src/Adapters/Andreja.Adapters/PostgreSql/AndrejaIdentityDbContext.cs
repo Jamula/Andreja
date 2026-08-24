@@ -303,9 +303,16 @@ public sealed class AndrejaIdentityDbContext(
         builder.Entity<OpenLoopTaskReceipt>(entity =>
         {
             entity.ToTable("task_receipts", "open_loops");
-            entity.HasKey(receipt => new { receipt.TenantId, receipt.IdempotencyKey });
+            entity.HasKey(receipt => new
+            {
+                receipt.TenantId,
+                receipt.ActorId,
+                receipt.IdempotencyKey,
+            });
             entity.Property(receipt => receipt.TenantId)
                 .HasConversion(id => id.Value, value => new TenantId(value));
+            entity.Property(receipt => receipt.ActorId)
+                .HasConversion(id => id.Value, value => new PrincipalId(value));
             entity.Property(receipt => receipt.IdempotencyKey).HasMaxLength(128);
             entity.Property(receipt => receipt.Intent).HasMaxLength(256);
             entity.HasQueryFilter(receipt => receipt.TenantId == CurrentTenantId);

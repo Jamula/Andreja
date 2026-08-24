@@ -124,6 +124,10 @@ public static class OpenLoopsServiceCollectionExtensions
                     client.BaseAddress = new Uri(options.PublicOrigin, UriKind.Absolute);
                     client.Timeout = TimeSpan.FromSeconds(30);
                 })
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+            {
+                UseCookies = false,
+            })
             .AddHttpMessageHandler<AuthenticationCookieForwardingHandler>();
         return services;
     }
