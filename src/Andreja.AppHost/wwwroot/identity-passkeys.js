@@ -125,9 +125,11 @@ document.querySelector("[data-passkey-bootstrap]")?.addEventListener("submit", e
             userDisplayName: fields.get("userDisplayName")
         };
         const options = await postJson("/Account/Passkeys/BootstrapOptions", request, form);
+        request.token = "";
+        fields.delete("token");
+        form.elements.namedItem("token").value = "";
         const credentialJson = await createPasskey(options);
         const result = await postJson("/Account/Passkeys/BootstrapComplete", {
-            ...request,
             credentialJson,
             returnUrl: fields.get("returnUrl")
         }, form);

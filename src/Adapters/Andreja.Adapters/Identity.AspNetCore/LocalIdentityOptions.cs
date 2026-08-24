@@ -19,6 +19,8 @@ public sealed record LocalIdentityOptions
 
     public int BootstrapTokenBytes { get; init; } = 32;
 
+    public TimeSpan BootstrapCeremonyLifetime { get; init; } = TimeSpan.FromMinutes(5);
+
     public int MaximumPasskeysPerUser { get; init; } = 10;
 
     public int RecoveryCodeCount { get; init; } = 10;
@@ -102,6 +104,13 @@ public sealed class LocalIdentityOptionsValidator : IValidateOptions<LocalIdenti
         if (options.BootstrapTokenBytes < 32)
         {
             failures.Add("Bootstrap tokens must contain at least 256 bits of entropy.");
+        }
+
+        if (options.BootstrapCeremonyLifetime < TimeSpan.FromMinutes(1)
+            || options.BootstrapCeremonyLifetime > TimeSpan.FromMinutes(10))
+        {
+            failures.Add(
+                "BootstrapCeremonyLifetime must be between one and ten minutes.");
         }
 
         if (options.MaximumPasskeysPerUser is < 2 or > 20)

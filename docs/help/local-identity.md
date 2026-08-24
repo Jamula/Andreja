@@ -24,9 +24,13 @@ copy of the bootstrap token after successful setup; the database stores only the
 single-use completion marker, never the token.
 
 The bootstrap ceremony reserves the ASP.NET Core Identity user ID before asking the
-authenticator to create a credential. That exact protected user handle is used when
-the transaction creates the credential user. A different handle would make
-discoverable passkey assertion fail and is rejected.
+authenticator to create a credential. A short-lived, Secure, HttpOnly,
+Data-Protection-protected bootstrap cookie binds that ID to the verified token,
+tenant/display names, and WebAuthn challenge. Completion accepts only the
+credential response and local return path; it does not accept a naked client user
+ID or another copy of the bootstrap token. The transaction uses the protected ID
+exactly. A different handle would make discoverable passkey assertion fail and is
+rejected.
 
 ## Sign in, sign out, and passkeys
 

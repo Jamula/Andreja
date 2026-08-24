@@ -1,6 +1,8 @@
 using Andreja.Adapters.PostgreSql;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
@@ -26,6 +28,8 @@ public static class LocalIdentityServiceCollectionExtensions
         services.AddSingleton<IConfigureOptions<IdentityPasskeyOptions>, ConfigurePasskeyOptions>();
         services.AddScoped<IBootstrapTokenVerifier, BootstrapTokenVerifier>();
         services.AddScoped<LocalIdentityOperations>();
+        services.AddScoped<ILocalIdentityBootstrapOperations>(
+            provider => provider.GetRequiredService<LocalIdentityOperations>());
         services.AddOptions<ForwardedHeadersOptions>()
             .Configure<IOptions<LocalIdentityOptions>>(
                 (forwarded, identity) =>
@@ -42,6 +46,20 @@ public static class LocalIdentityServiceCollectionExtensions
         services
             .AddAuthentication(IdentityConstants.ApplicationScheme)
             .AddIdentityCookies();
+        services.AddOptions<CookieAuthenticationOptions>(
+                IdentityConstants.TwoFactorUserIdScheme)
+            .Configure<IOptions<LocalIdentityOptions>>(
+                (cookie, identity) =>
+                {
+                    cookie.ExpireTimeSpan =
+                        identity.Value.BootstrapCeremonyLifetime;
+                    cookie.Cookie.Name = "__Host-Andreja.PasskeyState";
+                    cookie.Cookie.HttpOnly = true;
+                    cookie.Cookie.SameSite = SameSiteMode.Strict;
+                    cookie.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                    cookie.Cookie.Path = "/";
+                    cookie.Cookie.IsEssential = true;
+                });
 
         services
             .AddIdentityCore<AspNetIdentityUser>(

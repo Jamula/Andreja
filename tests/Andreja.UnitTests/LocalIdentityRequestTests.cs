@@ -56,6 +56,7 @@ public sealed class LocalIdentityRequestTests
         var invalid = Options with
         {
             TrustedProxyAddresses = ["0.0.0.0"],
+            BootstrapCeremonyLifetime = TimeSpan.FromSeconds(1),
             RecoveryRateLimitAttempts = 0,
             RecoveryGlobalRateLimitAttempts = 1,
             RecoveryRateLimitWindow = TimeSpan.FromSeconds(1),
@@ -65,6 +66,11 @@ public sealed class LocalIdentityRequestTests
 
         Assert.False(result.Succeeded);
         Assert.NotNull(result.Failures);
+        Assert.Contains(
+            result.Failures!,
+            failure => failure.Contains(
+                "BootstrapCeremonyLifetime",
+                StringComparison.Ordinal));
         Assert.Contains(
             result.Failures!,
             failure => failure.Contains("Trusted proxy", StringComparison.Ordinal));

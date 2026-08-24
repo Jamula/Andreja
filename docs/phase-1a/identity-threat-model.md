@@ -21,7 +21,7 @@ application logging, telemetry, exports, errors, and support evidence.
 | Stolen/replayed bootstrap token | Read-only 256-bit token file, verification before ceremony and completion, PostgreSQL serializable transaction plus advisory lock and singleton row |
 | Concurrent bootstrap | Transaction lock, empty tenant/owner checks inside the transaction, unique state, rollback on any Identity/credential collision |
 | Attestation-state substitution/replay | .NET `SignInManager` Data Protection cookie, user-entity binding, single-use temporary state |
-| Bootstrap user-handle mismatch | The reserved credential-user GUID is placed in creation options and recovered from .NET's protected attestation state; the transaction creates the exact same Identity user ID. .NET 10 assertion resolves `response.userHandle` through `UserManager.FindByIdAsync`, so mismatch tests fail as expected |
+| Bootstrap user-handle mismatch or client substitution | The reserved credential-user GUID is placed in creation options and in a separate short-lived Data-Protection ticket that also binds verified token, tenant/display names, and challenge. Completion accepts no client user ID/token, requires exact ticket/user-entity/challenge matches, and creates that same Identity ID. .NET 10 assertion resolves `response.userHandle` through `UserManager.FindByIdAsync` |
 | Credential collision or database exhaustion | Global credential lookup, unique passkey storage, bounded passkeys and names |
 | Open redirect or CSRF | Local-only ReturnUrl, SameSite cookies, antiforgery header/form token on every mutation |
 | Recovery guessing or replay | High-entropy single-use codes, PBKDF2 verification, lookup hash, expiry, fixed-window request limiter, generic responses, audit |
@@ -54,4 +54,7 @@ The fix is based on the shipped ASP.NET Core 10.0.9 source, not an assumption:
 `PasskeyUserHandleTests` generates a valid ES256 assertion against the built-in
 handler: the reserved/stored ID succeeds and a different user handle fails. The
 PostgreSQL bootstrap test separately proves that the reserved ID is the credential
-user ID committed by the transaction.
+user ID committed by the transaction. `BootstrapCeremonyEndpointTests` drives the
+actual bootstrap, sign-out, and discoverable sign-in endpoints and rejects
+tampered, expired, replayed, user-mismatched, and challenge-mismatched protected
+tickets before persistence.

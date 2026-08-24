@@ -2,6 +2,8 @@ using Andreja.Adapters.Identity.AspNetCore;
 using Andreja.Adapters.PostgreSql;
 using Andreja.Modules.Identity;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -58,6 +60,8 @@ public sealed class IdentityAdapterTests
             [$"{LocalIdentityOptions.SectionName}:AllowedOrigins:0"] = "https://andreja.local",
             [$"{LocalIdentityOptions.SectionName}:BootstrapTokenFile"] =
                 Path.GetFullPath("bootstrap-token"),
+            [$"{LocalIdentityOptions.SectionName}:BootstrapCeremonyLifetime"] =
+                "00:07:00",
         };
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(settings)
@@ -74,8 +78,15 @@ public sealed class IdentityAdapterTests
         var manager = provider.GetRequiredService<UserManager<AspNetIdentityUser>>();
         var schemeProvider = provider.GetRequiredService<IAuthenticationSchemeProvider>();
         var schemes = await schemeProvider.GetAllSchemesAsync();
+        var passkeyStateCookie = provider
+            .GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
+            .Get(IdentityConstants.TwoFactorUserIdScheme);
 
         Assert.True(manager.SupportsUserPasskey);
+        Assert.Equal(TimeSpan.FromMinutes(7), passkeyStateCookie.ExpireTimeSpan);
+        Assert.Equal(
+            CookieSecurePolicy.Always,
+            passkeyStateCookie.Cookie.SecurePolicy);
         Assert.All(
             schemes,
             scheme => Assert.StartsWith(

@@ -32,6 +32,7 @@ public static class LocalAccountEndpoints
     private const string RegistrationOptionsPath = "/Account/Passkeys/RegistrationOptions";
     private const string RegistrationCompletePath = "/Account/Passkeys/RegistrationComplete";
     private const string RevokePath = "/Account/Passkeys/Revoke";
+    private const string BootstrapCookieName = "__Host-Andreja.Bootstrap";
     private const string RecoveryCookieName = "__Host-Andreja.Recovery";
     private const string RecoveryProtectionPurpose = "Andreja.Identity.Recovery.v1";
 
@@ -54,6 +55,7 @@ public static class LocalAccountEndpoints
             IdentityConstants.ApplicationScheme,
             ConfigureCookie);
         services.AddRateLimiter();
+        services.AddScoped<BootstrapCeremonyTicketProtector>();
         return services;
     }
 
@@ -92,10 +94,8 @@ public static class LocalAccountEndpoints
             return endpoints;
         }
 
-        endpoints.MapPost(BootstrapOptionsPath, BootstrapOptionsAsync).AllowAnonymous();
-        endpoints.MapPost(BootstrapCompletePath, BootstrapCompleteAsync).AllowAnonymous();
-        endpoints.MapPost(SignInOptionsPath, SignInOptionsAsync).AllowAnonymous();
-        endpoints.MapPost(SignInCompletePath, SignInCompleteAsync).AllowAnonymous();
+        endpoints.MapBootstrapAccountEndpoints();
+        endpoints.MapPasskeySignInEndpoints();
         endpoints.MapPost(
                 LocalIdentityNetworkSecurity.RecoveryOptionsPath,
                 RecoveryOptionsAsync)
@@ -131,6 +131,22 @@ public static class LocalAccountEndpoints
                 })
             .RequireAuthorization();
         endpoints.MapPost(RevokePath, RevokeAsync).RequireAuthorization();
+        return endpoints;
+    }
+
+    internal static IEndpointRouteBuilder MapBootstrapAccountEndpoints(
+        this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapPost(BootstrapOptionsPath, BootstrapOptionsAsync).AllowAnonymous();
+        endpoints.MapPost(BootstrapCompletePath, BootstrapCompleteAsync).AllowAnonymous();
+        return endpoints;
+    }
+
+    internal static IEndpointRouteBuilder MapPasskeySignInEndpoints(
+        this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapPost(SignInOptionsPath, SignInOptionsAsync).AllowAnonymous();
+        endpoints.MapPost(SignInCompletePath, SignInCompleteAsync).AllowAnonymous();
         endpoints.MapPost(LogoutPath, LogoutAsync).RequireAuthorization();
         return endpoints;
     }
@@ -164,8 +180,9 @@ public static class LocalAccountEndpoints
         BootstrapOptionsRequest input,
         HttpContext context,
         IAntiforgery antiforgery,
-        LocalIdentityOperations operations,
-        SignInManager<AspNetIdentityUser> signInManager)
+        ILocalIdentityBootstrapOperations operations,
+        SignInManager<AspNetIdentityUser> signInManager,
+        BootstrapCeremonyTicketProtector tickets)
     {
         if (!await ValidateAntiforgeryAsync(context, antiforgery)
             || !await operations.CanBeginBootstrapAsync(
@@ -178,12 +195,26 @@ public static class LocalAccountEndpoints
 
         try
         {
+            var reservedCredentialUserId = Guid.CreateVersion7();
+            var tenantName = input.TenantName.Trim();
+            var displayName = input.UserDisplayName.Trim();
             var options = await signInManager.MakePasskeyCreationOptionsAsync(new()
             {
-                Id = Guid.CreateVersion7().ToString("D"),
+                Id = reservedCredentialUserId.ToString("D"),
                 Name = "Andreja owner",
-                DisplayName = input.UserDisplayName.Trim(),
+                DisplayName = displayName,
             });
+            var challenge = ReadJsonString(options, "challenge");
+            var protectedTicket = tickets.Protect(new(
+                reservedCredentialUserId,
+                input.Token,
+                tenantName,
+                displayName,
+                challenge));
+            context.Response.Cookies.Append(
+                BootstrapCookieName,
+                protectedTicket,
+                StrictTemporaryCookie(tickets.Lifetime));
             return TypedResults.Content(options, "application/json");
         }
         catch (Exception exception) when (
@@ -197,12 +228,29 @@ public static class LocalAccountEndpoints
         BootstrapCompleteRequest input,
         HttpContext context,
         IAntiforgery antiforgery,
-        LocalIdentityOperations operations,
-        SignInManager<AspNetIdentityUser> signInManager)
+        ILocalIdentityBootstrapOperations operations,
+        SignInManager<AspNetIdentityUser> signInManager,
+        BootstrapCeremonyTicketProtector tickets)
     {
         if (!await ValidateAntiforgeryAsync(context, antiforgery))
         {
             return IdentityFailure("invalid-request");
+        }
+
+        if (!context.Request.Cookies.TryGetValue(
+                BootstrapCookieName,
+                out var protectedTicket))
+        {
+            return IdentityFailure("bootstrap-unavailable");
+        }
+
+        context.Response.Cookies.Delete(
+            BootstrapCookieName,
+            StrictTemporaryCookie(null));
+        if (!tickets.TryUnprotect(protectedTicket, out var ticket)
+            || ticket is null)
+        {
+            return IdentityFailure("bootstrap-unavailable");
         }
 
         try
@@ -213,10 +261,14 @@ public static class LocalAccountEndpoints
                 || !Guid.TryParse(
                     attestation.UserEntity.Id,
                     out var reservedCredentialUserId)
-                || reservedCredentialUserId == Guid.Empty
+                || reservedCredentialUserId != ticket.CredentialUserId
                 || !string.Equals(
                     attestation.UserEntity.DisplayName,
-                    input.UserDisplayName.Trim(),
+                    ticket.UserDisplayName,
+                    StringComparison.Ordinal)
+                || !string.Equals(
+                    ReadClientChallenge(attestation.Passkey.ClientDataJson),
+                    ticket.Challenge,
                     StringComparison.Ordinal))
             {
                 return IdentityFailure("passkey-verification-failed");
@@ -224,9 +276,9 @@ public static class LocalAccountEndpoints
 
             var result = await operations.CompleteBootstrapAsync(
                 context.Request,
-                input.Token,
-                input.TenantName,
-                input.UserDisplayName,
+                ticket.Token,
+                ticket.TenantName,
+                ticket.UserDisplayName,
                 reservedCredentialUserId,
                 attestation.Passkey,
                 context.RequestAborted);
@@ -244,6 +296,8 @@ public static class LocalAccountEndpoints
         catch (Exception exception) when (
             exception is InvalidOperationException
                 or ArgumentException
+                or InvalidDataException
+                or JsonException
                 or DbUpdateException)
         {
             return IdentityFailure("bootstrap-unavailable");
@@ -549,6 +603,28 @@ public static class LocalAccountEndpoints
             MaxAge = maxAge,
         };
 
+    private static string ReadClientChallenge(byte[] clientDataJson)
+    {
+        using var document = JsonDocument.Parse(clientDataJson);
+        return ReadJsonString(document.RootElement, "challenge");
+    }
+
+    private static string ReadJsonString(string json, string propertyName)
+    {
+        using var document = JsonDocument.Parse(json);
+        return ReadJsonString(document.RootElement, propertyName);
+    }
+
+    private static string ReadJsonString(
+        JsonElement element,
+        string propertyName) =>
+        element.TryGetProperty(propertyName, out var property)
+            && property.ValueKind == JsonValueKind.String
+            && !string.IsNullOrEmpty(property.GetString())
+                ? property.GetString()!
+                : throw new InvalidDataException(
+                    "The passkey ceremony state is invalid.");
+
     private static async Task<bool> ValidateAntiforgeryAsync(
         HttpContext context,
         IAntiforgery antiforgery)
@@ -634,9 +710,6 @@ public static class LocalAccountEndpoints
         string UserDisplayName);
 
     public sealed record BootstrapCompleteRequest(
-        string Token,
-        string TenantName,
-        string UserDisplayName,
         string CredentialJson,
         string? ReturnUrl);
 

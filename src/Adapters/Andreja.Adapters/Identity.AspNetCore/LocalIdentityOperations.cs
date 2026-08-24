@@ -25,13 +25,30 @@ public sealed record RecoveryStartResult(
 public sealed record RecoveryCompletionResult(
     IReadOnlyList<string> RecoveryCodes);
 
+public interface ILocalIdentityBootstrapOperations
+{
+    Task<bool> CanBeginBootstrapAsync(
+        HttpRequest request,
+        string suppliedToken,
+        CancellationToken cancellationToken = default);
+
+    Task<BootstrapIdentityResult> CompleteBootstrapAsync(
+        HttpRequest request,
+        string suppliedToken,
+        string tenantName,
+        string userDisplayName,
+        Guid credentialUserId,
+        UserPasskeyInfo passkey,
+        CancellationToken cancellationToken = default);
+}
+
 public sealed class LocalIdentityOperations(
     AndrejaIdentityDbContext database,
     ScopedTenantPrincipalContext tenantContext,
     UserManager<AspNetIdentityUser> userManager,
     IBootstrapTokenVerifier bootstrapTokenVerifier,
     IOptions<LocalIdentityOptions> options,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider) : ILocalIdentityBootstrapOperations
 {
     private const int RecoveryHashIterations = 210_000;
     private const long BootstrapAdvisoryLock = 0x414E4452454A41;
