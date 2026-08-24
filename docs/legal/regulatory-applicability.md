@@ -257,21 +257,23 @@ website, help, and support; API-first UI boundary).
 | Source | Status | Date checked | Applicability hypothesis |
 |---|---|---|---|
 | [Americans with Disabilities Act, Title III](https://www.ada.gov/topics/intro-to-ada/) (public accommodations) | Effective (statute since 1990); no finalized DOJ Title III web-specific regulation yet | 2026-08-23 | Courts have applied Title III to commercial websites/apps for years even without a dedicated regulation; the safest engineering target is WCAG conformance regardless of the regulatory gap. |
-| [DOJ Title II web/mobile accessibility rule](https://www.federalregister.gov/documents/2024/04/24/2024-07758/nondiscrimination-on-the-basis-of-disability-accessibility-of-web-information-and-services-of-state) | Effective (final rule, April 2024); compliance deadlines April 2026/2027 depending on population served | 2026-08-23 | Applies directly only to state/local government entities, not Andreja. Relevant as a signal: DOJ selected **WCAG 2.1 Level AA** as the operative technical standard, which is the credible baseline to design toward even for private-sector surfaces where Title III's technical standard remains judicially derived rather than codified. |
+| [DOJ Title II web/mobile accessibility rule](https://www.federalregister.gov/documents/2024/04/24/2024-07758/nondiscrimination-on-the-basis-of-disability-accessibility-of-web-information-and-services-of-state) | Effective (final rule, April 2024); compliance deadlines April 2026/2027 depending on population served | 2026-08-23 | Applies directly only to state/local government entities, not Andreja. Relevant as a signal: DOJ selected **WCAG 2.1 Level AA** as the operative technical standard for that rule — the credible regulatory floor to design toward even for private-sector surfaces where Title III's technical standard remains judicially derived rather than codified. `docs/plan.md` already commits to the higher **WCAG 2.2 AA** bar (Public website, help, and support section), which meets or exceeds this floor. |
 | [Section 508](https://www.section508.gov/) | Effective | 2026-08-23 | Applies only if Andreja sells to U.S. federal agencies — not in the current roadmap, but worth tracking if a future government/education customer segment emerges. |
-| [W3C Web Content Accessibility Guidelines (WCAG) 2.1/2.2](https://www.w3.org/WAI/standards-guidelines/wcag/) | Effective (technical standard, not law) | 2026-08-23 | Use as the design/engineering conformance target across public site, help center, and app regardless of which statute ultimately governs a given surface. |
+| [W3C Web Content Accessibility Guidelines (WCAG) 2.1/2.2](https://www.w3.org/WAI/standards-guidelines/wcag/) | Effective (technical standard, not law) | 2026-08-23 | `docs/plan.md`'s own conformance target — WCAG 2.2 AA — is the design/engineering standard to build and evidence against across public site, help center, and app; this is stricter than the WCAG 2.1 AA floor DOJ has codified for government entities. |
 | State accessibility statutes (e.g., California Unruh Act interplay with ADA) | Effective | 2026-08-23 | California's Unruh Civil Rights Act imports ADA violations and adds statutory damages with a private right of action — materially raises exposure for any California user base. |
 
-**Counsel questions:** Should Andreja commit to WCAG 2.1 AA (or 2.2 AA) conformance as a
-public product claim, and if so, what audit/evidence cadence supports that claim safely?
+**Counsel questions:** Does committing publicly to `docs/plan.md`'s stated **WCAG 2.2 AA**
+target (which exceeds the WCAG 2.1 AA floor DOJ selected as its Title II technical
+standard) create a heightened standard of care or an enforceable public representation, and
+if so, what audit/evidence cadence supports that claim safely?
 
 **Obligations/controls/evidence:** accessibility checks already required for Personal
-Brand Studio publication content (`docs/plan.md`); extend WCAG conformance checks to the
-public website/help site design work (Jadzia-led, per `docs/plan.md` Public website
+Brand Studio publication content (`docs/plan.md`); extend WCAG 2.2 AA conformance checks to
+the public website/help site design work (Jadzia-led, per `docs/plan.md` Public website
 section) and to the Blazor app.
 
-**Deadlines:** none binding pre-launch; target WCAG 2.1 AA conformance evidence before the
-public site goes live (Phase 1B).
+**Deadlines:** none binding pre-launch; target WCAG 2.2 AA conformance evidence (meeting or
+exceeding the WCAG 2.1 AA regulatory floor) before the public site goes live (Phase 1B).
 
 **Residual risk:** moderate-to-high litigation exposure once public-facing, especially in
 California; mitigate with conformance testing rather than relying on the regulatory gap.
@@ -286,7 +288,13 @@ rulemaking; on WCAG version updates.
 **Why this matters for Andreja:** email/SMS/notification channels (Gmail, Outlook,
 Discord, WhatsApp), the assistant's outbound reminders, and eventual marketing/sponsorship
 communications all touch anti-spam and telemarketing law (`docs/plan.md`, Channel
-Development Framework; Initial channel connectors).
+Development Framework; Initial channel connectors). Personal Brand Studio's publication
+proposals across GitHub, LinkedIn, portfolio sites, Facebook, and Instagram, and Small
+Business and Entrepreneur Manager's "marketing/support" capability (`docs/plan.md`,
+Initial first-party skill catalog), are the first-party skills most likely to generate
+outbound or public-facing marketing-adjacent content and are cross-referenced here for
+that reason; see also section 4 for Personal Brand Studio's separate FTC
+endorsement/authenticity obligations.
 
 | Source | Status | Date checked | Applicability hypothesis |
 |---|---|---|---|
@@ -388,12 +396,16 @@ comparable consumer-health-app business model; on any new state consumer-health-
 **Why this matters for Andreja:** Finance Administration, Trading Research and Review,
 Lifestyle Rewards and Financial Optimization, and Miles and Points Manager are all
 explicitly gated as "no money movement," "no brokerage data or order execution," and
-"read-only aggregation is the default" (`docs/plan.md`).
+"read-only aggregation is the default" (`docs/plan.md`). The Small Business and
+Entrepreneur Manager skill's "invoices/expenses, cash-flow admin" capability
+(`docs/plan.md`, Initial first-party skill catalog) raises the same read-only/no-money-
+movement questions in a business rather than personal-finance context and is cross-
+referenced here for that reason.
 
 | Source | Status | Date checked | Applicability hypothesis |
 |---|---|---|---|
 | [Gramm-Leach-Bliley Act (GLBA) Safeguards Rule, 16 CFR Part 314](https://www.ftc.gov/business-guidance/resources/ftc-safeguards-rule-what-your-business-needs-know) | Effective | 2026-08-23 | Applies to "financial institutions" as broadly defined by GLBA; a pure aggregation/reminder tool with no lending, money transmission, or brokerage function is unlikely to qualify as a financial institution itself, but any connector partnership with a bank/aggregator inherits their GLBA posture — confirm with counsel before any financial-data connector partnership agreement. |
-| State money transmitter licensing (via [NMLS](https://www.nmlsconsumeraccess.org/)) and [18 U.S.C. §1960](https://www.law.cornell.edu/uscode/text/18/1960) (federal unlicensed money transmitting business crime) | Effective | 2026-08-23 | Triggered by holding, transmitting, or enabling transfer of customer funds/stored value. Andreja's explicit "no money movement" design for Finance Administration and "read-only... consequential actions enabled only for official provider/partner APIs" for rewards (`docs/plan.md`) is the correct control to stay outside this category; any future feature that touches custody or transfer of value must be reviewed against this line before shipping. |
+| State money transmitter licensing (via [NMLS](https://www.nmlsconsumeraccess.org/)) and [18 U.S.C. §1960](https://www.law.cornell.edu/uscode/text/18/1960) (federal unlicensed money transmitting business crime) | Effective | 2026-08-23 | Triggered by holding, transmitting, or enabling transfer of customer funds/stored value. Andreja's explicit "no money movement" design for Finance Administration and Small Business's "cash-flow admin" (both administrative/reminder-only, not custodial), plus "read-only... consequential actions enabled only for official provider/partner APIs" for rewards (`docs/plan.md`), is the correct control to stay outside this category; any future feature that touches custody or transfer of value must be reviewed against this line before shipping. |
 | [Truth in Lending Act (Regulation Z)](https://www.consumerfinance.gov/rules-policy/regulations/1026/) / [Truth in Savings Act (Regulation DD)](https://www.consumerfinance.gov/rules-policy/regulations/1030/) | Effective | 2026-08-23 | Relevant only if Andreja ever originates or services credit/deposit products directly — not in the current roadmap. |
 | [Investment Advisers Act of 1940](https://www.sec.gov/investment/investment-adviser-registration) and state investment-adviser statutes | Effective | 2026-08-23 | "Trading Research and Review... no brokerage data or order execution" and "watchlists, research prompts, thesis/checklist/journal reminders" (`docs/plan.md`) is designed to avoid "investment adviser" status, which generally requires giving individualized advice about securities for compensation. Confirm the feature never crosses into personalized buy/sell recommendations tied to compensation. |
 | State insurance-producer/referral-licensing statutes (see section 10) and card-network/rewards-program terms of service | Effective / contract term | 2026-08-23 | "Personalized insurance steering, ranking, referrals, lead generation or compensation require jurisdiction-specific licensing... review before display or monetization" (`docs/plan.md`) — this line item is the licensing trigger to track before any monetized recommendation. |
@@ -617,37 +629,48 @@ Store submission (guidelines must be re-read fresh, not from this cached summary
 
 **Why this matters for Andreja:** this is already flagged in `docs/plan.md` as "an
 immediate investigation, not a casual file change and not legal advice," and is the
-subject of the separate, parallel license/IP investigation (issue tracked independently;
-see `docs/legal/license-evaluation.md` once that work lands).
+subject of the separate, parallel license/IP investigation tracked under GitHub issue #6.
+That investigation has landed as
+[`docs/legal/license-evaluation.md`](license-evaluation.md) — a counsel-ready research
+packet recommending a private, no-new-recipient posture pending counsel and Cyrus review.
+This section records the dependency rather than re-deriving that document's conclusions.
+Personal Brand Studio's cross-platform publication (GitHub, LinkedIn, portfolio sites,
+Facebook, Instagram) also raises third-party platform-terms and persona/content-ownership
+questions and is cross-referenced here for that reason; see section 4 and section 6 for
+its consumer-protection and marketing-law touchpoints.
 
 | Source | Status | Date checked | Applicability hypothesis |
 |---|---|---|---|
-| [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) | Effective (already present in repository history) | 2026-08-23 | Per `docs/plan.md`: grants broad, perpetual, irrevocable rights to any recipient of code actually distributed under it. Qualified counsel must determine current exposure and the effect of any future relicensing before any collaborator receives code — this document does not resolve that question and defers entirely to the dedicated license/IP investigation. |
-| U.S. Copyright Act (17 U.S.C.) | Effective | 2026-08-23 | Governs ownership of code, documentation, and creative brand assets; interacts with employer invention-assignment obligations that must be separately confirmed (`docs/plan.md`, Licensing section). |
-| Trademark law (Lanham Act, 15 U.S.C. §1051 et seq.) and state trademark registries | Effective | 2026-08-23 | Blocks public use of "Andreja" branding, Star Trek internal codenames, and any adapted Amazon/Microsoft-inspired culture language until clearance is complete (`docs/plan.md`, Licensing section; Squad crew section already requires Sarek's review before any public culture page). |
-| Contributor License Agreement (CLA) vs. Developer Certificate of Origin (DCO) frameworks | Not yet adopted — decision pending | 2026-08-23 | No external contributions are accepted until this policy is decided (`docs/plan.md`, Phase 0 exit gate, already a hard gate). |
+| [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) | Effective (already present in repository history) | 2026-08-23 | Per `docs/plan.md`: grants broad, perpetual, irrevocable rights to any recipient of code actually distributed under it. Qualified counsel must determine current exposure and the effect of any future relicensing before any collaborator receives code — this document does not resolve that question and defers to `docs/legal/license-evaluation.md` and qualified counsel. |
+| U.S. Copyright Act (17 U.S.C.) | Effective | 2026-08-23 | Governs ownership of code, documentation, and creative brand assets; interacts with employer invention-assignment obligations that must be separately confirmed (`docs/legal/license-evaluation.md`). |
+| Trademark law (Lanham Act, 15 U.S.C. §1051 et seq.) and state trademark registries | Effective | 2026-08-23 | Blocks public use of "Andreja" branding, Star Trek internal codenames, any adapted Amazon/Microsoft-inspired culture language, and Personal Brand Studio persona/content publication until clearance is complete (`docs/plan.md`, Licensing section; Squad crew section already requires Sarek's review before any public culture page). |
+| Contributor License Agreement (CLA) vs. Developer Certificate of Origin (DCO) frameworks | Not yet adopted — decision pending | 2026-08-23 | No external contributions are accepted until this policy is decided (`docs/plan.md`, Phase 0 exit gate, already a hard gate; `docs/legal/license-evaluation.md` recommends an inbound CLA with rights matched to the eventual outbound strategy). |
 | Third-party dependency licenses (npm, NuGet, and any AI-model provider terms) | Effective (varies per dependency) | 2026-08-23 | Requires an inbound license-compatibility review before any dependency is added at scale; folded into the same license/IP investigation track. |
 | [GitHub Copilot product terms / acceptable use](https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features) | Contract term | 2026-08-23 | `docs/plan.md` flags this explicitly: entitlement, redistribution, and commercial-use conditions for a paid third-party product used via end-user OAuth, BYOK, or a headless backend must be confirmed before the Assistant Runtime ships broadly. |
+| Third-party social/publishing platform terms of service (GitHub, LinkedIn, portfolio hosts, Facebook, Instagram) | Contract term | 2026-08-23 | Personal Brand Studio's publication proposals must operate through official APIs/OAuth under each platform's developer terms; content ownership, license-back, and API-scraping restrictions vary by platform and require review before any publishing capability ships (`docs/plan.md`, Personal Brand Studio guardrails). |
 
 **Counsel questions:** all items in this section are already explicitly delegated to the
 separate license/IP investigation track named in `docs/plan.md` ("Licensing, IP, and
-project governance"). This document does not duplicate that work; it records the
-dependency so both tracks stay synchronized. When `docs/legal/license-evaluation.md`
-exists, cross-link it here rather than re-deriving its conclusions.
+project governance") and now recorded in `docs/legal/license-evaluation.md`. This document
+does not duplicate that work; it records the dependency so both tracks stay synchronized.
+Additionally: what platform-specific terms govern Personal Brand Studio's content
+ownership and republication rights once publishing (not just drafting) ships?
 
 **Obligations/controls/evidence:** keep the repository private until licensing/trademark
 posture is resolved; no external contributions without an approved CLA/DCO policy; no
 product-name/domain/namespace publication before clearance (`docs/plan.md`, already
-required).
+required); Personal Brand Studio remains draft-only (no automatic publishing) until
+provider access and platform-terms review are complete (`docs/plan.md`).
 
 **Deadlines:** license/IP decision is a Phase 0 exit-gate blocker per `docs/plan.md`.
 
 **Residual risk:** high and already flagged as the top legal priority in `docs/plan.md`.
 
 **Re-review trigger:** on any external-contribution request; before any repository
-visibility change; before any public-name/domain/trademark use; when the parallel
-license/IP investigation issue produces `docs/legal/license-evaluation.md` (link it here
-immediately once it lands).
+visibility change; before any public-name/domain/trademark use; when
+`docs/legal/license-evaluation.md` is updated with counsel's final recommendation and
+Cyrus's decision; before Personal Brand Studio's publication capability moves past
+draft-only.
 
 ---
 
@@ -730,24 +753,30 @@ section must be updated with:
 - On any actual security or data incident (activates the confidential path immediately).
 - On any regulatory inquiry or contact from an agency or attorney general (activates the
   confidential path immediately, not a public GitHub issue).
-- Whenever the parallel license/IP investigation produces `docs/legal/license-evaluation.md`
-  (link it from section 16).
+- Whenever `docs/legal/license-evaluation.md` (already landed, tracked under issue #6) is
+  updated with counsel's final recommendation and Cyrus's decision (section 16).
 
 ## Initial Phase 1A applicability assessment
 
-Phase 1A is the "self-hosted assistant walking skeleton" (`docs/plan.md`, Phase 1A):
-Cyrus-only or small-scale self-hosted use, no managed-cloud tenant, no regulated skill
-(health, rewards, insurance, employment benefits) implemented yet. Applying the matrix
-dimensions to that constrained scope:
+Phase 1A is the "self-hosted assistant walking skeleton" (`docs/plan.md`, Phase 1A -
+Self-hosted assistant walking skeleton). Per that section's deliverables, Phase 1A's scope
+is deliberately narrow: a provider-neutral Assistant Runtime with a BYOK/local
+OpenAI-compatible model path, Identity/Tenancy (passkeys, recovery), Data Ownership and
+Privacy (export, backup/restore, delete), and exactly one MVP skill — Open Loops and Tasks
+— invoked through `ISkillHost`. Calendar and Commitments, Finance Administration, and every
+other catalog skill are later-phase work and are explicitly out of scope for Phase 1A
+(`docs/plan.md`, Phase 1A deliverables; "Explicitly not day-one work" list). No regulated
+skill (health, rewards, insurance, employment benefits) is implemented yet. Applying the
+matrix dimensions to that constrained scope:
 
 | Dimension | Phase 1A value | Resulting applicability |
 |---|---|---|
-| Capability | Assistant Runtime, Identity/Tenancy, Data Ownership/Privacy, Open Loops and Tasks, Calendar and Commitments (bounded), Finance Administration (no money movement) | No regulated-skill exposure yet (health/rewards/insurance/benefits are later phases). |
-| Data class | Ordinary personal data (tasks, calendar, contacts) plus delegated connector tokens; no biometric, no health, no payment-card data by design | Baseline privacy/security hygiene applies; sensitive-category triggers (sections 1, 8) are not yet live. |
+| Capability | Assistant Runtime (BYOK/local OpenAI-compatible provider only), Identity and Tenancy, Data Ownership and Privacy, Open Loops and Tasks. No Calendar and Commitments, no Finance Administration, and no other catalog skill ships in Phase 1A. | No regulated-skill exposure yet (health/rewards/insurance/benefits are later phases); no financial-data or scheduling-data processing to evaluate under sections 9 or elsewhere. |
+| Data class | Ordinary personal data limited to task content (capture, status, reminders) plus local BYOK/runtime configuration; no biometric, no health, no payment-card data, no calendar data, and no live third-party connector/provider tokens by design in Phase 1A | Baseline privacy/security hygiene applies; sensitive-category triggers (sections 1, 8) and connector-specific obligations are not yet live. |
 | User/account type | Cyrus (adult, self-hosted operator) as Customer Zero; no external tenant | Minimal external-facing consumer-protection/privacy-law exposure; Andreja-as-employer/contributor employment law (section 11) not yet triggered. |
 | Actor/role | User-directed assistant actions with human confirmation for consequential steps | Supports, rather than undermines, any future AI/ADMT "human review" argument (section 3), but that argument is not yet load-bearing since no consequential regulated decision exists. |
-| Transaction/action | Read/organize/remind only; no payments, no insurance/benefit enrollment, no biometric capture | Sections 9, 10, 11 remain dormant; section 7 (e-signature) not implicated. |
-| Deployment model | Self-hosted, user-owned data plane, no Andreja cloud provisioning | Breach-notification duty (section 2) likely rests with the operator, not Andreja as a company, pending counsel confirmation; GLBA/state-financial-institution status (section 9) not triggered. |
+| Transaction/action | Create/list/complete/export/delete a task via Open Loops and Tasks only; no payments, no insurance/benefit enrollment, no biometric capture, no calendar sync, and no external connector actions | Sections 9, 10, 11 remain dormant; section 7 (e-signature) not implicated. |
+| Deployment model | Self-hosted, user-owned data plane, no Andreja cloud provisioning, no external connector tokens in scope | Breach-notification duty (section 2) likely rests with the operator, not Andreja as a company, pending counsel confirmation; GLBA/state-financial-institution status (section 9) is not triggered because Finance Administration is out of scope for this phase. |
 | Geography | Wherever Cyrus's self-hosted instance runs; no other jurisdiction has a nexus yet | U.S. federal baseline only; no state-specific launch gate is currently active (see Launch jurisdictions). |
 | Launch stage | Phase 1A, pre-launch, pre-revenue | Confirms this document's domain-by-domain "why this doesn't apply yet" framing throughout sections 1-16. |
 
@@ -761,12 +790,31 @@ into an unreviewed regulatory gap.
 
 **Evidence for "done when":** this document, reviewed by Cyrus, is the first artifact
 required by GitHub issue #8's "Done when" criterion ("every regulated feature has a
-defined legal gate"). Every regulated first-party skill listed in `docs/plan.md`'s
-"Initial first-party skill catalog" now has a corresponding section above with an explicit
-gate (obligations/controls/evidence, deadline, and re-review trigger) that must clear
-before that skill's implementation phase begins. Qualified counsel approval of this
-framework, and Cyrus's sign-off, remain the two conditions this document cannot itself
-satisfy.
+defined legal gate"). Every first-party skill in `docs/plan.md`'s "Initial first-party
+skill catalog" whose Band column reads **Regulated**, **Sensitive**, or
+**Business/sensitive** — Health and Wellbeing Manager (Sensitive/later), Employer Benefits
+and Perks Manager (Sensitive/later), Lifestyle Rewards and Financial Optimization
+(Regulated/later), Miles and Points Manager (Regulated/later), Relationships and
+Communities Map (Sensitive/iterative), and Small Business and Entrepreneur Manager
+(Business/sensitive) — is named and cross-referenced by name in at least one domain
+section above, each with an explicit gate (obligations/controls/evidence, deadline, and
+re-review trigger) that must clear before that skill's implementation phase begins. This
+document also names several skills whose Band label is not itself "Regulated" or
+"Sensitive" but whose capabilities independently implicate a domain here: Household,
+Vehicle, Insurance and Projects Manager (section 10, insurance-producer licensing; also
+section 7, records); Trading Research and Review (section 9, investment-adviser status);
+Life Event Planner (section 7, records retention; section 12, education/elder care); Family
+and Relationships (section 1, children's-data inference; section 12, family/elder-care
+coordination); and Personal Brand Studio (Early band, but carrying FTC
+endorsement/authenticity, marketing, and platform-terms exposure — sections 4, 6, and 16).
+Skills that are neither
+Regulated/Sensitive/Business-sensitive by Band nor implicated by a specific domain today —
+for example Personal Semantic Profile and Travel and Social Planning, both
+"Research/early"/"Early" band with no sensitive-data or regulated-transaction capability
+currently defined — are intentionally not given a dedicated per-skill gate here; re-run
+this cross-reference check if their Band classification or capabilities change. Qualified
+counsel approval of this framework, and Cyrus's sign-off, remain the two conditions this
+document cannot itself satisfy.
 
 ## Governance and maintenance
 
