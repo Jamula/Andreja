@@ -60,6 +60,7 @@ public sealed class OpenLoopsTaskApplication(
     IProposalStore proposalStore,
     TimeProvider timeProvider)
 {
+    private const long CanonicalTimestampResolutionTicks = TimeSpan.TicksPerMicrosecond;
     private static readonly JsonSerializerOptions CanonicalJson = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -75,14 +76,17 @@ public sealed class OpenLoopsTaskApplication(
         ArgumentNullException.ThrowIfNull(input);
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceReference);
 
-        var now = timeProvider.GetUtcNow();
+        var now = CanonicalizeTimestamp(timeProvider.GetUtcNow());
+        DateTimeOffset? dueAt = input.DueAt is DateTimeOffset suppliedDueAt
+            ? CanonicalizeTimestamp(suppliedDueAt)
+            : null;
         var task = new OpenLoopTask(
             Guid.CreateVersion7(),
             context.TenantId,
             context.PrincipalId,
             input.Title,
             input.Details,
-            input.DueAt,
+            dueAt,
             "assistant",
             sourceReference,
             now);
@@ -312,7 +316,10 @@ public sealed class OpenLoopsTaskApplication(
                 payload.SourceReference,
                 proposal.Source.Reference,
                 StringComparison.Ordinal)
-            || payload.CreatedAt != proposal.CreatedAt)
+            || payload.CreatedAt != proposal.CreatedAt
+            || payload.CreatedAt != CanonicalizeTimestamp(payload.CreatedAt)
+            || payload.DueAt is DateTimeOffset dueAt
+                && dueAt != CanonicalizeTimestamp(dueAt))
         {
             throw new InvalidOperationException("The confirmed proposal payload is not exact.");
         }
@@ -343,6 +350,14 @@ public sealed class OpenLoopsTaskApplication(
         {
             throw new ArgumentException("An idempotency key between 8 and 128 characters is required.", nameof(key));
         }
+    }
+
+    private static DateTimeOffset CanonicalizeTimestamp(DateTimeOffset value)
+    {
+        var utc = value.ToUniversalTime();
+        return new(
+            utc.Ticks - (utc.Ticks % CanonicalTimestampResolutionTicks),
+            TimeSpan.Zero);
     }
 
     private sealed record ProposedTaskPayload(

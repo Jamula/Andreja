@@ -18,7 +18,9 @@ fail-closed writes, composite cross-tenant foreign keys, global issuer/subject
 uniqueness, durable Open Loops tasks, idempotent task receipts, and cross-tenant
 task denial. It also proves durable proposal/audit/receipt persistence, atomic task
 confirmation, process restart and simulated crash-before/crash-after-commit recovery,
-concurrent confirmation, conflicting idempotency reuse, exact tenant/user/purpose
-denial, and composite actor/active-resource references. Missing configuration fails
-the run with a `BLOCKED` error; no test is silently skipped. Do not use a shared or
-production database.
+microsecond/UTC canonical payload round-trips, concurrent confirmation, conflicting
+idempotency reuse, exact tenant/user/purpose denial, and composite actor/active-resource
+references. Concurrent distinct and duplicate passkey registrations prove serialized
+device limits without lost updates. Missing configuration fails the run with a
+`BLOCKED` error; no test is silently skipped. Do not use a shared or production
+database.
