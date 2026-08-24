@@ -13,7 +13,8 @@ dotnet test tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrati
 ```
 
 The fixture refuses any other database name, drops it before and after the run,
-applies the real migration from empty, and proves tenant-filtered enumeration,
-fail-closed writes, composite cross-tenant foreign keys, and global issuer/subject
-uniqueness. Missing configuration fails the run with a `BLOCKED` error; no test is
-silently skipped. Do not use a shared or production database.
+applies the real migrations from empty, and proves tenant-filtered enumeration,
+fail-closed writes, composite cross-tenant foreign keys, global issuer/subject
+uniqueness, durable Open Loops tasks, idempotent task receipts, and cross-tenant
+task denial. Missing configuration fails the run with a `BLOCKED` error; no test
+is silently skipped. Do not use a shared or production database.

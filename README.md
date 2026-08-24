@@ -21,6 +21,10 @@ Self-host operators should use the
 [`application export/import contract`](docs/operations/portability.md) defines
 user-owned portability rather than database recovery.
 
+Task users can follow the [Open Loops help](docs/help/open-loops.md). Validation
+coverage and externally blocked evidence are tracked in the
+[testing matrix](docs/testing-matrix.md).
+
 Install Squad CLI 0.11.0 through an approved package source, then validate it:
 
 ```powershell
