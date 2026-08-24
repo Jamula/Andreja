@@ -210,7 +210,7 @@ function Build-OciArchive {
         $env:SOURCE_DATE_EPOCH = [string] $sourceDateEpoch
         Invoke-CheckedCommand -FilePath 'docker' -Arguments @(
             'buildx', 'build',
-            '--quiet',
+            '--progress', 'plain',
             '--no-cache',
             '--platform', $Platform,
             '--build-arg', "SOURCE_REVISION=$sourceRevision",
