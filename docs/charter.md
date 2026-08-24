@@ -3,6 +3,7 @@
 - **Status:** Proposed for explicit ratification; not yet authoritative
 - **Final human authority:** Cyrus Jamula
 - **Tracking:** [GitHub issue #3](https://github.com/Jamula/Andreja/issues/3)
+- **Ratification instrument:** [ADR 0006](adr/0006-charter-ratification.md)
 - **Governing context:** [Andreja platform plan](plan.md) and
   [ADR 0000](adr/0000-plan-ratification.md)
 
@@ -56,6 +57,12 @@ meaningful, consented action.
     a safety or ethics concern, or stop work that appears to cross a gate.
     Approved work proceeds cohesively only after dissent and residual risk are
     recorded rather than concealed.
+11. **Fair ecosystem.** Marketplace ranking, recommendations, sponsorship, and
+    any Andreja self-preferencing are disclosed and governed by transparent
+    criteria. Publishers retain their intellectual-property rights, customers
+    retain effective data portability, and participants receive notice, reasons,
+    and a meaningful appeal before delisting except where immediate action is
+    needed to contain harm or meet law.
 
 ## Operating culture
 
@@ -94,9 +101,12 @@ growth mindset, empowerment, inclusion, transparency, and accountability.
 Andreja expresses those influences in original language and adds its own
 requirements for user ownership, data dignity, consent, portability, ethical
 optimization, sustainability, and protected dissent. Amazon and Microsoft have
-not sponsored, approved, or endorsed Andreja. This attribution is private-facing
-until Sarek reviews whether the wording, source links, and trademark posture are
-appropriate for any public culture page.
+not sponsored, approved, or endorsed Andreja. Before any public culture page,
+Sarek's research on the source links, attribution, and trademark exposure must
+be recorded for Cyrus's decision. Cyrus approves publication, and qualified
+counsel in each relevant jurisdiction must review material legal or trademark
+exposure. Agent research is advisory and is neither trademark clearance nor
+counsel approval.
 
 ## Human and agent authority
 
@@ -135,9 +145,9 @@ review beyond Customer Zero.
 
 Every major ADR, launch gate, sponsorship or partner decision, and public claim
 must include the impact assessment below. Missing evidence blocks approval.
-Tuvok, Deanna Troi, Quark, Sarek, Data, and Rai may challenge work in their
-domains; Cyrus makes the final human decision after required challenges and
-residual risks are recorded.
+Tuvok, Deanna Troi, Quark, Sarek, Data, Rai, and the Fact Checker may challenge
+work in their domains; Cyrus makes the final human decision after required
+challenges and residual risks are recorded.
 
 ### Ethics and sustainability impact assessment
 
@@ -178,19 +188,34 @@ remediation threshold. Targets must not be presented as achieved until measured.
 | Financial and operational sustainability | Burn, runway, unit cost, support load, maintenance burden, recovery evidence, and commitments due | Monthly once operating |
 | Vendor and sponsor independence | Provider concentration, portability and exit-test results, sponsor conflicts, unresolved dependencies, and time to exercise an exit | Quarterly and each material decision |
 | Environmental stewardship | Workload and storage volume, avoidable recomputation, lifecycle resource proxies, and documented reduction actions | Quarterly once operating |
+| Marketplace fairness | Ranking and self-preferencing disclosures, publisher IP complaints and resolution, customer export success, delisting notice and reason coverage, appeal availability, outcomes, and time to decision | Each ranking-policy change and quarterly once operating |
 
 The measurement system must minimize personal data. Aggregate evidence cannot be
 used to conceal severe individual harm, and a favorable average cannot waive a
 failed safety, privacy, accessibility, or consent gate.
 
+Cyrus is the default human owner for every indicator until additional human
+owners are appointed through tracked decisions. An agent may collect or challenge
+evidence but cannot own an indicator or accept its residual risk.
+
 ## Reporting, non-retaliation, and remediation
 
 Andreja will provide a confidential reporting path for staff, contributors,
-users, publishers, partners, and other affected people. Access is limited to
-Cyrus and an independent reviewer when needed; reporters are told the practical
-limits of confidentiality. Conflicts of interest are rerouted. Anonymous or
-pseudonymous reporting will be supported when a safe, sustainable mechanism is
-available.
+users, publishers, partners, and other affected people. Reporters are told the
+practical limits of confidentiality. The fallback recipient class is qualified
+external counsel or an independent reviewer appointed through a tracked issue.
+Before Andreja offers an external reporting path, that appointment, its scope,
+contact method, access boundaries, retention, and handoff process must be in
+place. Andreja must not represent an external path as available before this
+precondition is met.
+
+A report that names Cyrus or creates an actual, potential, or perceived conflict
+for him bypasses Cyrus. He must recuse from access, investigation, findings,
+remediation, and retaliation decisions for that report; the appointed fallback
+recipient controls those steps and any necessary qualified escalation. Other
+access is limited to Cyrus and the appointed recipient on a need-to-know basis.
+Anonymous or pseudonymous reporting will be supported when a safe, sustainable
+mechanism is available.
 
 Retaliation for a good-faith report, refusal to cross a gate, participation in
 an investigation, or evidence-based dissent is prohibited. Performance,
@@ -221,16 +246,28 @@ savings, convenience, and agent recommendations. No revenue, schedule, or
 competitive argument waives a safety, privacy, consent, accessibility, evidence,
 or human-authority gate.
 
+Once ratified, this charter governs mission, ethics, stakeholder rights, and
+human authority; the accepted platform plan governs architecture and roadmap.
+A conflict between them pauses the affected work, becomes a tracked
+`type:decision` issue, and is resolved through a reviewed amendment to the
+governing artifact. The plan's charter seed summary must be reconciled with the
+ratified charter through a plan amendment. Until ratification, the plan's seed
+summary remains authoritative and this proposed charter informs review without
+superseding it.
+
 Cyrus alone ratifies this charter and material amendments. Changes to mission,
 human authority, stakeholder rights, reporting or non-retaliation, enforcement,
 precedence, or public attribution require a tracked issue and reviewed
 documentation pull request. Editorial clarifications may use the same process
 without re-ratification when they do not change meaning.
 
-Public publication remains blocked until Sarek reviews attribution, trademark,
-reporting, and legal posture. That review informs publication language; it does
-not weaken the commitments in this private-facing charter.
+Public publication requires recorded Sarek research on attribution, trademark,
+reporting, and legal posture, Cyrus's approval, and review by qualified counsel
+in each relevant jurisdiction where legal or trademark exposure is material.
+Those inputs inform publication language; they do not weaken the commitments in
+this private-facing charter or constitute a claim that clearance has occurred.
 
-Any repository visibility change requires renewed Sarek review of official-source
+Any repository visibility change uses the same decision path for official-source
 attribution, trademark posture, internal Star Trek codenames, and public-culture
-wording before the visibility change or publication proceeds.
+wording: recorded Sarek research, Cyrus approval, and qualified-jurisdiction
+counsel review where exposure is material.

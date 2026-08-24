@@ -4,10 +4,12 @@
 Fails the build when:
   1. The plan SHA-256 hash recorded in docs/adr/0000-plan-ratification.md no
      longer matches the merged docs/plan.md content.
-  2. The seed skill names in docs/plan.md's "Initial first-party skill
+  2. ADR 0006 is Accepted and its charter SHA-256 no longer matches
+     docs/charter.md. A Proposed ADR does not enforce its candidate hash.
+  3. The seed skill names in docs/plan.md's "Initial first-party skill
      catalog" table drift from the authoritative
      docs/roadmap/first-party-skills.md catalog.
-  3. The seed connector categories in docs/plan.md's "Connector catalog and
+  4. The seed connector categories in docs/plan.md's "Connector catalog and
      release bands" table drift from the authoritative
      docs/roadmap/channel-connectors.md catalog.
 
@@ -24,6 +26,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PLAN_PATH = REPO_ROOT / "docs" / "plan.md"
 ADR_PATH = REPO_ROOT / "docs" / "adr" / "0000-plan-ratification.md"
+CHARTER_PATH = REPO_ROOT / "docs" / "charter.md"
+CHARTER_ADR_PATH = REPO_ROOT / "docs" / "adr" / "0006-charter-ratification.md"
 SKILLS_PATH = REPO_ROOT / "docs" / "roadmap" / "first-party-skills.md"
 CONNECTORS_PATH = REPO_ROOT / "docs" / "roadmap" / "channel-connectors.md"
 
@@ -61,6 +65,47 @@ def check_plan_hash() -> None:
             f"{ADR_PATH.relative_to(REPO_ROOT)} with the new hash."
         )
     print("OK: docs/plan.md hash matches ADR 0000.")
+
+
+def check_charter_hash_content(charter_text: str, adr_text: str) -> None:
+    status_match = re.search(
+        r"^- \*\*Status:\*\*\s*(Proposed|Accepted)\s*$", adr_text, re.MULTILINE
+    )
+    if not status_match:
+        fail(
+            "Could not find a '- **Status:** Proposed' or "
+            "'- **Status:** Accepted' line in "
+            f"{CHARTER_ADR_PATH.relative_to(REPO_ROOT)}."
+        )
+
+    if status_match.group(1) == "Proposed":
+        print("OK: ADR 0006 is Proposed; charter hash enforcement is deferred.")
+        return
+
+    actual_hash = hashlib.sha256(charter_text.encode("utf-8")).hexdigest()
+    hash_match = re.search(
+        r"\*\*Charter SHA-256:\*\*\s*`([0-9a-fA-F]{64})`", adr_text
+    )
+    if not hash_match:
+        fail(
+            "Accepted ADR 0006 must contain a "
+            "'**Charter SHA-256:** `<64-character hash>`' line."
+        )
+
+    recorded_hash = hash_match.group(1).lower()
+    if recorded_hash != actual_hash:
+        fail(
+            "docs/charter.md has changed since ADR 0006 was accepted.\n"
+            f"  Recorded hash: {recorded_hash}\n"
+            f"  Actual hash:   {actual_hash}\n"
+            "Log an amendment (or re-ratify) in "
+            f"{CHARTER_ADR_PATH.relative_to(REPO_ROOT)} with the new hash."
+        )
+    print("OK: docs/charter.md hash matches Accepted ADR 0006.")
+
+
+def check_charter_hash() -> None:
+    check_charter_hash_content(read(CHARTER_PATH), read(CHARTER_ADR_PATH))
 
 
 def extract_table_rows(text: str, section_heading: str, header_prefix: str) -> list[list[str]]:
@@ -156,6 +201,7 @@ def check_connector_catalog() -> None:
 
 def main() -> None:
     check_plan_hash()
+    check_charter_hash()
     check_skill_catalog()
     check_connector_catalog()
     print("All documentation consistency checks passed.")
