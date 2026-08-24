@@ -41,6 +41,14 @@ dotnet format Andreja.slnx --verify-no-changes --no-restore
 The architecture test project enforces inward dependency direction. The unit test
 project verifies composition-root registration and startup-options validation.
 
+### Local PostgreSQL identity evidence
+
+Identity database tests require a disposable local PostgreSQL database and are not
+part of the service-free solution test. Follow
+[`tests\Andreja.PostgreSqlIntegrationTests\README.md`](../tests/Andreja.PostgreSqlIntegrationTests/README.md).
+When PostgreSQL is unavailable, record this evidence as blocked; do not mark it
+skipped or successful.
+
 ## Run the empty host
 
 ```powershell
