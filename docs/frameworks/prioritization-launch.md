@@ -132,27 +132,47 @@ authoritative expansion of
 
 Every roadmap issue records evidence and a 0–5 assessment for:
 
-- User outcome/value and severity of the open loop solved.
-- Strategic fit with assistant/skill differentiation and data ownership.
-- Reach across target users, deployment modes, skills, or connectors.
-- Learning value and uncertainty reduced.
-- Confidence/evidence quality.
+- User outcome/value and severity of the open loop solved (weight ×3).
+- Strategic fit with assistant/skill differentiation and data ownership
+  (weight ×2).
+- Reach across target users, deployment modes, skills, or connectors
+  (weight ×2).
+- Learning value and uncertainty reduced (weight ×1).
+- Confidence/evidence quality (weight ×1).
 - Risk reduction for security, privacy, legal, reliability, portability, or
-  cost.
-- Dependency readiness and ability to ship a complete vertical slice.
+  cost (weight ×2).
+- Dependency readiness and ability to ship a complete vertical slice
+  (weight ×2).
 - Implementation effort, ongoing operating/support cost, technical
-  complexity, and reversibility.
-- Privacy/security exposure and potential user-harm cost.
+  complexity, and reversibility — scored as a **cost** field, weight ×2,
+  subtracted rather than added.
+- Privacy/security exposure and potential user-harm cost — scored as a
+  **cost** field, weight ×3, subtracted rather than added.
 
+#### Scorecard weighting formula
+
+The composite score is:
+
+```
+Score = (3×Value + 2×StrategicFit + 2×Reach + 1×Learning + 1×Confidence
+         + 2×RiskReduction + 2×DependencyReadiness)
+        − (2×Effort + 3×PrivacyExposure)
+```
+
+Each field is the raw 0–5 assessment. Issues are ranked by descending
+`Score`. Ties are broken, in order, by: (1) higher Dependency readiness
+(work that unblocks other issues goes first), (2) higher Risk reduction,
+(3) Picard/Quark judgment call, escalated to Cyrus if still unresolved.
 Scores order eligible work; they never override hard security/privacy/
 legal/data-ownership gates or issue dependencies. Re-score when evidence,
 cost, or provider access changes — including when Guinan's feedback themes
 (issue #10) surface new severity or reach evidence.
 
 Use **Must/Should/Could/Won't** scope per launch stage, with explicit
-kill/de-scope criteria. Prefer the smallest vertical slice that proves a user
-outcome, architecture seam, or market assumption over broad horizontal
-framework work.
+kill/de-scope criteria (see [Launch-stage MoSCoW
+scope](#launch-stage-moscow-scope)). Prefer the smallest vertical slice that
+proves a user outcome, architecture seam, or market assumption over broad
+horizontal framework work.
 
 ## Launch stages and evidence gates
 
@@ -186,6 +206,23 @@ Personal Brand Studio can dogfood as a draft-only skill at stage 2;
 connector-based publishing and social-brand expansion require provider
 access, authenticity/privacy controls, evidence, and later launch gates
 (stage 4+).
+
+### Launch-stage MoSCoW scope
+
+Each launch stage ratifies its own **Must/Should/Could/Won't** scope. Work
+outside a stage's Must/Should bucket is de-scoped or deferred, not silently
+absorbed, per [Program stop and de-scope
+rules](#program-stop-and-de-scope-rules).
+
+| Stage | Must | Should | Could | Won't |
+|---|---|---|---|---|
+| 1. Architecture/Research | Ratified Phase 0 scope, ADRs, threat/privacy/cost/test artifacts | Early skill/channel charters queued for stage 2 | Exploratory spikes within the approved envelope | Any public product claim or provisioned cloud resource |
+| 2. Cyrus self-host technical dogfood | Phase 1A assistant/task/data-ownership/recovery evidence | Personal Brand Studio draft-only dogfood | Additional self-host hardening beyond Phase 1A scope | Managed multi-tenant exposure |
+| 3. Small managed invite dogfood | Six MVP Email Triage and five MVP Group Travel acceptance scenarios | Repeatable onboarding/recovery, tenant isolation, feedback/support, public help | Extra invite-only cohorts beyond the approved envelope | Connector/skill work not tied to the two MVP stories |
+| 4. Invite-only adult alpha | Bounded connector/skill pilots, privacy/security review, support runbooks | Personal Brand Studio connector-based publishing (provider access permitting) | Additional bounded pilots within the approved envelope | Minor accounts, unreviewed pilots |
+| 5. Private beta | Stable self-host/managed upgrades, export/delete, SLO evidence, cost/unit economics | First useful channel set, help/support coverage | Incident and rollback practice expansion | Public product claims |
+| 6. Public beta | Counsel-reviewed license/terms/privacy posture, evidence-controlled public claims | Abuse/support operations, sponsor policy | Capacity/cost guardrail tuning | Unreviewed public claims, uncapped spend |
+| 7. General availability | Proven reliability/recovery, security/privacy gates, support/lifecycle policy | Transparent pricing/hosting terms if offered | Upgrade-compatibility polish | Any gate exception without a decision issue |
 
 ## MVP launch validation
 

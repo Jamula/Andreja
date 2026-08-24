@@ -44,7 +44,7 @@ Per [ADR 0000](../adr/0000-plan-ratification.md) and the
   separately from the $0 cloud-infrastructure cap — never the sole blocking
   assertion, and never used to justify cloud provisioning.
 - Skills that depend on a not-yet-qualified channel (for example, Health and
-  Wellbeing Manager's connected-health channels) cannot pass stage 7
+  Wellbeing Manager's connected-health channels) cannot pass stage 8
   (Dogfood) until that channel clears its own Phase 0 boundary in
   [`channel-development.md`](channel-development.md#phase-0-boundary--0-no-cloud-rule).
 

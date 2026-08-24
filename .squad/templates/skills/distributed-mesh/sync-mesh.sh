@@ -91,13 +91,13 @@ for squad in $(jq -r '.squads | to_entries[] | select(.value.zone == "remote-opa
   auth=$(jq -r ".squads.\"$squad\".auth // \"\"" "$MESH_JSON")
 
   mkdir -p "$target"
-  auth_flag=""
+  curl_args=(--silent --fail)
   if [ "$auth" = "bearer" ]; then
     token_var="$(echo "${squad}" | tr '[:lower:]-' '[:upper:]_')_TOKEN"
-    [ -n "${!token_var:-}" ] && auth_flag="--header \"Authorization: Bearer ${!token_var}\""
+    [ -n "${!token_var:-}" ] && curl_args+=(--header "Authorization: Bearer ${!token_var}")
   fi
 
-  eval curl --silent --fail $auth_flag "$source" -o "$target/SUMMARY.md" 2>/dev/null \
+  curl "${curl_args[@]}" "$source" -o "$target/SUMMARY.md" 2>/dev/null \
     || echo "# ${squad} — unavailable ($(date))" > "$target/SUMMARY.md"
 done
 

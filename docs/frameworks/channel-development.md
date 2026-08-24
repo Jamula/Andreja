@@ -48,11 +48,12 @@ the [Prioritization and Launch Framework](prioritization-launch.md#phase-0-0-no-
 - Any exception (for example, the uncapped `fleet-research` run) is recorded
   explicitly in the relevant ADR, never assumed.
 
-A channel cannot move past stage 6 (Validate) while Phase 0's $0 rule is in
-effect, because validation requires a sandbox account. Stage 2–5 artifacts
-(qualification research, manifest, threat model, adapter design) are the
-correct Phase 0 output; implementation and validation wait for the
-budget-approved phase named in the connector catalog.
+A channel cannot move past stage 4 (Threat/privacy design) while Phase 0's $0
+rule is in effect, because implementation (stage 5) and validation (stage 6)
+both require a sandbox account. Stage 2–4 artifacts (qualification research,
+manifest, threat model) are the correct Phase 0 output; adapter
+implementation and validation wait for the budget-approved phase named in the
+connector catalog.
 
 ## Lifecycle stages
 
