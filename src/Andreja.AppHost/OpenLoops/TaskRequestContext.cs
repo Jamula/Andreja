@@ -9,9 +9,12 @@ namespace Andreja.AppHost.OpenLoops;
 
 public static class AndrejaClaimTypes
 {
-    public const string TenantId = "andreja:tenant_id";
-    public const string AppUserId = "andreja:app_user_id";
-    public const string PrincipalId = "andreja:principal_id";
+    public const string TenantId =
+        Andreja.Adapters.Identity.AspNetCore.LocalIdentityClaimTypes.TenantId;
+    public const string AppUserId =
+        Andreja.Adapters.Identity.AspNetCore.LocalIdentityClaimTypes.AppUserId;
+    public const string PrincipalId =
+        Andreja.Adapters.Identity.AspNetCore.LocalIdentityClaimTypes.PrincipalId;
 }
 
 public static class TaskRequestContext

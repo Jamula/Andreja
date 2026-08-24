@@ -25,6 +25,15 @@ public sealed class AndrejaIdentityDbContext(
 
     public DbSet<Contact> Contacts => Set<Contact>();
 
+    public DbSet<IdentityBootstrapState> IdentityBootstrapStates =>
+        Set<IdentityBootstrapState>();
+
+    public DbSet<IdentityRecoveryCode> IdentityRecoveryCodes =>
+        Set<IdentityRecoveryCode>();
+
+    public DbSet<IdentitySecurityAuditRecord> IdentitySecurityAuditRecords =>
+        Set<IdentitySecurityAuditRecord>();
+
     internal DbSet<OpenLoopTask> OpenLoopTasks => Set<OpenLoopTask>();
 
     internal DbSet<OpenLoopTaskAudit> OpenLoopTaskAudits => Set<OpenLoopTaskAudit>();
@@ -47,6 +56,7 @@ public sealed class AndrejaIdentityDbContext(
         ConfigurePrincipals(builder);
         ConfigureMemberships(builder);
         ConfigureContacts(builder);
+        ConfigureIdentitySecurity(builder);
         ConfigureOpenLoopTasks(builder);
     }
 
@@ -256,6 +266,58 @@ public sealed class AndrejaIdentityDbContext(
                 .HasPrincipalKey(principal => new { principal.TenantId, principal.Id })
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasQueryFilter(contact => contact.TenantId == CurrentTenantId);
+        });
+    }
+
+    private static void ConfigureIdentitySecurity(ModelBuilder builder)
+    {
+        builder.Entity<IdentityBootstrapState>(entity =>
+        {
+            entity.ToTable(
+                "bootstrap_state",
+                table => table.HasCheckConstraint(
+                    "ck_bootstrap_state_singleton",
+                    $"\"Id\" = '{IdentityBootstrapState.SingletonId:D}'::uuid"));
+            entity.HasKey(state => state.Id);
+            entity.Property(state => state.Id).ValueGeneratedNever();
+            entity.HasOne<AspNetIdentityUser>()
+                .WithOne()
+            .HasForeignKey<IdentityBootstrapState>(state => state.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<IdentityRecoveryCode>(entity =>
+        {
+            entity.ToTable("recovery_codes");
+            entity.HasKey(code => code.Id);
+            entity.Property(code => code.Id).ValueGeneratedNever();
+            entity.Property(code => code.LookupHash).HasMaxLength(32);
+            entity.Property(code => code.Salt).HasMaxLength(16);
+            entity.Property(code => code.VerificationHash).HasMaxLength(32);
+            entity.HasIndex(code => code.LookupHash).IsUnique();
+            entity.HasIndex(code => new { code.UserId, code.ConsumedAt, code.ExpiresAt });
+            entity.HasOne<AspNetIdentityUser>()
+                .WithMany()
+                .HasForeignKey(code => code.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<IdentitySecurityAuditRecord>(entity =>
+        {
+            entity.ToTable("security_audit");
+            entity.HasKey(audit => audit.Id);
+            entity.Property(audit => audit.Id).ValueGeneratedNever();
+            entity.Property(audit => audit.Operation).HasMaxLength(64);
+            entity.HasIndex(audit => new
+            {
+                audit.UserId,
+                audit.Operation,
+                audit.OccurredAt,
+            });
+            entity.HasOne<AspNetIdentityUser>()
+                .WithMany()
+                .HasForeignKey(audit => audit.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 

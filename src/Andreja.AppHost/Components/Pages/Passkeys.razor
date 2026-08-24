@@ -1,0 +1,39 @@
+@page "/Account/Passkeys"
+@attribute [Authorize(Policy = "andreja-user")]
+
+<PageTitle>Passkeys | Andreja</PageTitle>
+
+<main class="task-shell account-shell" aria-labelledby="passkeys-heading">
+    <section class="task-card account-card">
+        <p class="eyebrow">Account security</p>
+        <h1 id="passkeys-heading">Manage passkeys</h1>
+        <p class="lede">
+            Add an independent passkey before removing a device. Andreja blocks
+            removal of your last usable sign-in or recovery path.
+        </p>
+
+        <div class="identity-message" data-identity-status role="status" aria-live="polite"></div>
+        <form data-passkey-register>
+            <AntiforgeryToken />
+            <div class="field">
+                <label for="device-name">Passkey name</label>
+                <input id="device-name" name="deviceName" required maxlength="64"
+                       autocomplete="off" placeholder="Laptop or security key" />
+            </div>
+            <button class="button primary" type="submit">Add passkey</button>
+        </form>
+
+        <h2>Your passkeys</h2>
+        <ul class="passkey-list" data-passkey-list aria-live="polite">
+            <li>Loading passkeys…</li>
+        </ul>
+
+        <div class="button-row">
+            <a class="button secondary" href="/">Back to Andreja</a>
+            <form method="post" action="@LocalAccountEndpoints.LogoutPath">
+                <AntiforgeryToken />
+                <button class="button secondary" type="submit">Sign out</button>
+            </form>
+        </div>
+    </section>
+</main>

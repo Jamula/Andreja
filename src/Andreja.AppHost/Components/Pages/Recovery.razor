@@ -1,0 +1,44 @@
+@page "/Account/Recovery"
+@attribute [AllowAnonymous]
+
+<PageTitle>Recover account | Andreja</PageTitle>
+
+<main class="task-shell account-shell" aria-labelledby="recovery-heading">
+    <section class="task-card account-card">
+        <p class="eyebrow">Account recovery</p>
+        <h1 id="recovery-heading">Replace lost passkeys</h1>
+        <p class="lede">
+            A valid single-use recovery code replaces all existing passkeys,
+            signs out existing sessions, and creates a new recovery set.
+        </p>
+
+        <div class="identity-message" data-identity-status role="status" aria-live="polite"></div>
+        <form data-passkey-recovery>
+            <AntiforgeryToken />
+            <div class="field">
+                <label for="recovery-code">Recovery code</label>
+                <input id="recovery-code" name="recoveryCode" type="password" required
+                       autocomplete="off" spellcheck="false" />
+            </div>
+            <button class="button primary" type="submit">
+                Verify code and create a new passkey
+            </button>
+        </form>
+
+        <section class="recovery-codes" data-recovery-codes hidden
+                 aria-labelledby="replacement-codes-heading">
+            <h2 id="replacement-codes-heading">Replace your stored recovery codes</h2>
+            <p>All previous codes are revoked. Store this new set offline now.</p>
+            <ol data-recovery-code-list></ol>
+            <label class="confirmation">
+                <input type="checkbox" data-recovery-confirm />
+                I replaced my offline recovery set.
+            </label>
+            <button class="button primary" type="button" data-recovery-continue disabled>
+                Return to sign in
+            </button>
+        </section>
+
+        <p class="account-links"><a href="@LocalAccountEndpoints.LoginPath">Back to sign in</a></p>
+    </section>
+</main>

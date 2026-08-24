@@ -24,6 +24,28 @@ builder.Host.UseDefaultServiceProvider((context, options) =>
 });
 
 var app = builder.Build();
+app.Use(async (context, next) =>
+{
+    var nonce = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(
+        System.Security.Cryptography.RandomNumberGenerator.GetBytes(24));
+    context.Items["Andreja.CspNonce"] = nonce;
+    context.Response.OnStarting(() =>
+    {
+        context.Response.Headers.ContentSecurityPolicy =
+            "default-src 'self'; "
+            + $"script-src 'self' 'nonce-{nonce}'; "
+            + "style-src 'self'; img-src 'self' data:; "
+            + "connect-src 'self' ws: wss:; "
+            + "object-src 'none'; base-uri 'self'; form-action 'self'; "
+            + "frame-ancestors 'none'";
+        context.Response.Headers["Referrer-Policy"] = "no-referrer";
+        context.Response.Headers["Permissions-Policy"] =
+            "publickey-credentials-get=(self)";
+        context.Response.Headers.XContentTypeOptions = "nosniff";
+        return Task.CompletedTask;
+    });
+    await next();
+});
 using var migrationCancellation = new CancellationTokenSource();
 ConsoleCancelEventHandler cancelMigration = (_, eventArgs) =>
 {
@@ -69,6 +91,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.Use(TaskRequestContext.ResolveAsync);

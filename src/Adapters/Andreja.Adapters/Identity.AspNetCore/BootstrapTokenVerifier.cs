@@ -23,6 +23,7 @@ public sealed class BootstrapTokenVerifier(IOptions<LocalIdentityOptions> option
         cancellationToken.ThrowIfCancellationRequested();
 
         var configured = options.Value;
+        EnsureTokenFileIsReadOnly(configured.BootstrapTokenFile);
         using var encodedExpected = await ReadTokenFileAsync(
             configured.BootstrapTokenFile,
             cancellationToken);
@@ -46,6 +47,29 @@ public sealed class BootstrapTokenVerifier(IOptions<LocalIdentityOptions> option
             & (expectedWritten == configured.BootstrapTokenBytes)
             & (suppliedWritten == configured.BootstrapTokenBytes)
             & tokensMatch;
+    }
+
+    private static void EnsureTokenFileIsReadOnly(string path)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            if (!File.GetAttributes(path).HasFlag(FileAttributes.ReadOnly))
+            {
+                throw new InvalidDataException(
+                    "The bootstrap token file must be mounted read-only.");
+            }
+
+            return;
+        }
+
+        var mode = File.GetUnixFileMode(path);
+        const UnixFileMode writeModes =
+            UnixFileMode.UserWrite | UnixFileMode.GroupWrite | UnixFileMode.OtherWrite;
+        if ((mode & writeModes) != 0)
+        {
+            throw new InvalidDataException(
+                "The bootstrap token file must be mounted read-only.");
+        }
     }
 
     private static async ValueTask<SensitiveBuffer> ReadTokenFileAsync(

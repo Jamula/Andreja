@@ -23,6 +23,7 @@ public static class LocalIdentityServiceCollectionExtensions
         services.AddSingleton<IValidateOptions<LocalIdentityOptions>, LocalIdentityOptionsValidator>();
         services.AddSingleton<IConfigureOptions<IdentityPasskeyOptions>, ConfigurePasskeyOptions>();
         services.AddScoped<IBootstrapTokenVerifier, BootstrapTokenVerifier>();
+        services.AddScoped<LocalIdentityOperations>();
 
         services
             .AddAuthentication(IdentityConstants.ApplicationScheme)
@@ -40,7 +41,11 @@ public static class LocalIdentityServiceCollectionExtensions
             .AddSignInManager()
             .AddDefaultTokenProviders()
             .AddEntityFrameworkStores<AndrejaIdentityDbContext>();
-
+        services.AddScoped<
+            IUserClaimsPrincipalFactory<AspNetIdentityUser>,
+            AndrejaUserClaimsPrincipalFactory>();
+        services.Configure<SecurityStampValidatorOptions>(
+            configured => configured.ValidationInterval = TimeSpan.Zero);
         return services;
     }
 

@@ -3,6 +3,7 @@ using System;
 using Andreja.Adapters.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Andreja.Adapters.PostgreSql.Migrations
 {
     [DbContext(typeof(AndrejaIdentityDbContext))]
-    partial class AndrejaIdentityDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260824075115_ProductionPasskeyIdentity")]
+    partial class ProductionPasskeyIdentity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

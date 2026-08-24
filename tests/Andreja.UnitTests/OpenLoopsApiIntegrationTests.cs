@@ -52,7 +52,7 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
             StringComparison.Ordinal);
 #else
         Assert.Contains(
-            "Production passkey sign-in is not shipped yet.",
+            "Sign in with a passkey",
             await loginResponse.Content.ReadAsStringAsync(),
             StringComparison.Ordinal);
 #endif
@@ -319,12 +319,39 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         var productionLogin = await production.GetAsync(productionRoot.Headers.Location);
         Assert.Equal(HttpStatusCode.OK, productionLogin.StatusCode);
         Assert.Contains(
-            "Production passkey sign-in is not shipped yet.",
+            "Sign in with a passkey",
             await productionLogin.Content.ReadAsStringAsync(),
             StringComparison.Ordinal);
         var developmentEndpoint = await production.GetAsync(
             LocalAccountEndpoints.DevelopmentSignInPath);
         Assert.Equal(HttpStatusCode.NotFound, developmentEndpoint.StatusCode);
+    }
+
+    [Fact]
+    public async Task AccountPagesUseExternalPasskeyScriptAndStrictSecurityHeaders()
+    {
+        using var client = factory.CreateAnonymousClient();
+
+        var response = await client.GetAsync(LocalAccountEndpoints.LoginPath);
+        var content = await response.Content.ReadAsStringAsync();
+
+        response.EnsureSuccessStatusCode();
+        Assert.Contains("identity-passkeys", content, StringComparison.Ordinal);
+        Assert.DoesNotContain("navigator.credentials", content, StringComparison.Ordinal);
+        Assert.Contains("Sign in with a passkey", content, StringComparison.Ordinal);
+        Assert.True(response.Headers.TryGetValues(
+            "Content-Security-Policy",
+            out var policies));
+        var policy = Assert.Single(policies);
+        Assert.Contains("script-src 'self' 'nonce-", policy, StringComparison.Ordinal);
+        Assert.Contains("frame-ancestors 'none'", policy, StringComparison.Ordinal);
+
+        var bootstrap = await client.GetStringAsync(LocalAccountEndpoints.BootstrapPath);
+        Assert.Contains("Create the first administrator", bootstrap, StringComparison.Ordinal);
+        Assert.Contains("Save your recovery codes now", bootstrap, StringComparison.Ordinal);
+        var recovery = await client.GetStringAsync(LocalAccountEndpoints.RecoveryPath);
+        Assert.Contains("Replace lost passkeys", recovery, StringComparison.Ordinal);
+        Assert.Contains("signs out existing sessions", recovery, StringComparison.Ordinal);
     }
 
     [Fact]

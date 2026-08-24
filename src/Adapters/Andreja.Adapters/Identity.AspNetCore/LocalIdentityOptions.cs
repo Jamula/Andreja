@@ -24,6 +24,10 @@ public sealed record LocalIdentityOptions
     public TimeSpan RecoveryCodeLifetime { get; init; } = TimeSpan.FromDays(90);
 
     public TimeSpan RecentAuthenticationWindow { get; init; } = TimeSpan.FromMinutes(10);
+
+    public int RecoveryRateLimitAttempts { get; init; } = 5;
+
+    public TimeSpan RecoveryRateLimitWindow { get; init; } = TimeSpan.FromMinutes(15);
 }
 
 public sealed class LocalIdentityOptionsValidator : IValidateOptions<LocalIdentityOptions>
@@ -98,6 +102,17 @@ public sealed class LocalIdentityOptionsValidator : IValidateOptions<LocalIdenti
             || options.RecentAuthenticationWindow > TimeSpan.FromMinutes(30))
         {
             failures.Add("RecentAuthenticationWindow must be greater than zero and at most 30 minutes.");
+        }
+
+        if (options.RecoveryRateLimitAttempts is < 1 or > 20)
+        {
+            failures.Add("RecoveryRateLimitAttempts must be between 1 and 20.");
+        }
+
+        if (options.RecoveryRateLimitWindow < TimeSpan.FromMinutes(1)
+            || options.RecoveryRateLimitWindow > TimeSpan.FromHours(24))
+        {
+            failures.Add("RecoveryRateLimitWindow must be between one minute and 24 hours.");
         }
 
         return failures.Count == 0

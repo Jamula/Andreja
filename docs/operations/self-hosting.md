@@ -18,10 +18,12 @@ controlling until Cyrus and qualified counsel explicitly decide otherwise.
   validated; runtime portability to Podman or another implementation remains an
   evidence decision.
 - At least 2 CPU cores, 3 GiB free memory, and durable local storage.
-- A trusted HTTPS reverse proxy for any binding other than loopback. The bundle
-  deliberately exposes plain HTTP on `127.0.0.1` by default and does not create or
-  trust a development certificate. Passkey onboarding is owned by the identity
-  slice and is not implemented here.
+- A trusted HTTPS endpoint whose exact origin is configured in
+  `Andreja__Identity__AllowedOrigins__0` and whose host is within
+  `Andreja__Identity__RelyingPartyId`. The bundle exposes plain HTTP only on
+  `127.0.0.1` for an operator-managed same-host TLS reverse proxy. Bootstrap,
+  sign-in, registration, and recovery reject HTTP, a missing `Origin`, a forwarded
+  origin the application has not been configured to trust, and RP/origin mismatch.
 - PostgreSQL 17 client tools for the host-side logical backup scripts.
 - An operator-approved encrypted, access-controlled destination for recovery sets.
 
@@ -39,8 +41,10 @@ New-Item -ItemType Directory -Force deploy\secrets | Out-Null
 ) | Set-Content -NoNewline deploy\secrets\bootstrap_token
 ```
 
-Restrict both secret files to the account running the runtime. On Unix, use mode
-`0600`. The files, `.env`, backup directory, and runtime state are ignored by Git.
+Restrict the password file to the account running the runtime. Mount the bootstrap
+token read-only; on Unix use mode `0400`, and on Windows set the read-only attribute
+after applying an account-only ACL. The application refuses a writable bootstrap
+token file. The files, `.env`, backup directory, and runtime state are ignored by Git.
 
 ## Acquire and verify images
 
@@ -114,17 +118,16 @@ use `down --volumes` during normal operations.
 
 The Open Loops page is implemented for assistant proposal, exact review,
 confirmation, list, complete, JSON export, and explicit two-step deletion. See
-[Open Loops help](../help/open-loops.md). However, production passkey bootstrap,
-sign-in, and recovery are not yet implemented and are tracked by
-[P0 issue #55](https://github.com/Jamula/Andreja/issues/55). **Do not describe this
-production self-host flow as usable until that blocker and its evidence are
-complete.**
+[Open Loops help](../help/open-loops.md) and
+[local identity help](../help/local-identity.md). Production identity uses only
+ASP.NET Core Identity passkeys and hashed, single-use recovery codes. No password,
+header, operator, test, or cloud authentication path is available. The separate
+fixed development helper is compiled only in Debug and mapped only in Development.
 
-Once production identity is complete, the API will resolve the authenticated
-Identity user to exactly one active tenant membership and principal (or validate
-server-issued explicit context claims), then require antiforgery on every mutation.
-No development sign-in endpoint is mapped in Production, and no header-based or
-automatic fake-auth handler exists.
+The API resolves the authenticated Identity user to exactly one active tenant
+membership and principal (or validates server-issued explicit context claims), then
+requires antiforgery on every mutation. No development sign-in endpoint is mapped in
+Production, and no header-based or automatic fake-auth handler exists.
 
 Interactive Server API calls do not forward browser cookies from `HttpContext`.
 The circuit-scoped typed client reads its own authentication state and attaches a
@@ -233,7 +236,7 @@ pwsh -NoProfile -File scripts\operations\migrate-database.ps1 `
   -BackupDumpPath backups\postgres\andreja-<timestamp>.dump `
   -ReviewedMigrationScriptPath .andreja\reviewed-migration.sql `
   -DatabaseName andreja `
-  -ApprovedMigrations 20260824031732_InitialIdentityTenancy,20260824043341_Phase1AOpenLoopsTasks `
+  -ApprovedMigrations 20260824031732_InitialIdentityTenancy,20260824043341_Phase1AOpenLoopsTasks,20260824075115_ProductionPasskeyIdentity `
   -ConfirmBackupRestoreAndMigrationReview
 ```
 

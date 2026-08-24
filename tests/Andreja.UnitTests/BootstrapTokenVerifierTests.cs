@@ -23,7 +23,7 @@ public sealed class BootstrapTokenVerifierTests
         finally
         {
             CryptographicOperations.ZeroMemory(token);
-            File.Delete(path);
+            DeleteTokenFile(path);
         }
     }
 
@@ -44,7 +44,7 @@ public sealed class BootstrapTokenVerifierTests
         {
             CryptographicOperations.ZeroMemory(expected);
             CryptographicOperations.ZeroMemory(supplied);
-            File.Delete(path);
+            DeleteTokenFile(path);
         }
     }
 
@@ -68,7 +68,7 @@ public sealed class BootstrapTokenVerifierTests
         }
         finally
         {
-            File.Delete(path);
+            DeleteTokenFile(path);
         }
     }
 
@@ -89,7 +89,7 @@ public sealed class BootstrapTokenVerifierTests
         }
         finally
         {
-            File.Delete(path);
+            DeleteTokenFile(path);
         }
     }
 
@@ -132,6 +132,25 @@ public sealed class BootstrapTokenVerifierTests
     {
         var path = Path.Combine(AppContext.BaseDirectory, $"{Guid.NewGuid():N}.token");
         await File.WriteAllTextAsync(path, contents);
+        if (OperatingSystem.IsWindows())
+        {
+            File.SetAttributes(path, File.GetAttributes(path) | FileAttributes.ReadOnly);
+        }
+        else
+        {
+            File.SetUnixFileMode(path, UnixFileMode.UserRead);
+        }
+
         return path;
+    }
+
+    private static void DeleteTokenFile(string path)
+    {
+        if (OperatingSystem.IsWindows() && File.Exists(path))
+        {
+            File.SetAttributes(path, FileAttributes.Normal);
+        }
+
+        File.Delete(path);
     }
 }
