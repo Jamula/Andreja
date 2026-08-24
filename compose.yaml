@@ -25,6 +25,7 @@ services:
       Andreja__Operations__Database__PasswordFile: /run/secrets/postgres_password
       Andreja__OpenLoops__Enabled: "true"
       Andreja__OpenLoops__PublicOrigin: http://127.0.0.1:8080
+      Andreja__OpenLoops__AssistantProvider: ${ANDREJA_ASSISTANT_PROVIDER:-deterministic}
       Andreja__Identity__RelyingPartyId: ${ANDREJA_HOSTNAME:-localhost}
       Andreja__Identity__AllowedOrigins__0: https://${ANDREJA_HOSTNAME:-localhost}
       Andreja__Identity__BootstrapTokenFile: /run/secrets/bootstrap_token

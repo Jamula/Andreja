@@ -8,6 +8,8 @@ public interface IOpenLoopsApiClient
 {
     Task<IReadOnlyList<TaskDto>> ListAsync(CancellationToken cancellationToken = default);
 
+    Task<AssistantProviderDto> GetProviderAsync(CancellationToken cancellationToken = default);
+
     Task<AssistantTaskResponse> ProposeAsync(
         string message,
         CancellationToken cancellationToken = default);
@@ -42,6 +44,15 @@ public sealed class OpenLoopsApiClient(HttpClient httpClient) : IOpenLoopsApiCli
         await httpClient.GetFromJsonAsync<TaskDto[]>(
             $"{OpenLoopsApi.RoutePrefix}/tasks",
             cancellationToken) ?? [];
+
+    public async Task<AssistantProviderDto> GetProviderAsync(
+        CancellationToken cancellationToken = default) =>
+        await httpClient.GetFromJsonAsync<AssistantProviderDto>(
+            $"{OpenLoopsApi.RoutePrefix}/assistant/provider",
+            cancellationToken)
+        ?? throw new OpenLoopsApiException(
+            "invalid-response",
+            "The assistant provider response was empty.");
 
     public Task<AssistantTaskResponse> ProposeAsync(
         string message,

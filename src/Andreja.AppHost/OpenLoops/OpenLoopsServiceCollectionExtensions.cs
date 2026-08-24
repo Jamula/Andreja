@@ -1,4 +1,5 @@
 using Andreja.Adapters.Identity.AspNetCore;
+using Andreja.Adapters.Assistant.OpenAiCompatible;
 using Andreja.Adapters.PostgreSql;
 using Andreja.Api.Contracts.OpenLoops;
 using Andreja.AppHost.Hosting;
@@ -24,6 +25,8 @@ public sealed class OpenLoopsOptions
     [Required]
     [Url]
     public string PublicOrigin { get; init; } = "https://localhost:5001";
+
+    public string AssistantProvider { get; init; } = "deterministic";
 }
 
 public static class OpenLoopsServiceCollectionExtensions
@@ -46,6 +49,9 @@ public static class OpenLoopsServiceCollectionExtensions
                 options => Uri.TryCreate(options.PublicOrigin, UriKind.Absolute, out var origin)
                     && origin.Scheme is "http" or "https",
                 "The Open Loops public origin must be an absolute HTTP(S) URI.")
+            .Validate(
+                options => options.AssistantProvider is "deterministic" or "openai-compatible",
+                "The assistant provider must be deterministic or openai-compatible.")
             .ValidateOnStart();
 
         services.AddHttpContextAccessor();
@@ -113,7 +119,10 @@ public static class OpenLoopsServiceCollectionExtensions
         services.AddScoped<ISkillHost>(
             provider => OpenLoopsSkill.CreateHost(
                 provider.GetRequiredService<OpenLoopsTaskApplication>()));
-        services.AddSingleton<IAssistantProvider>(_ => OpenLoopsSkill.CreateDeterministicProvider());
+        services.AddSingleton<IAssistantProvider>(_ =>
+            openLoops.AssistantProvider == "openai-compatible"
+                ? new OpenAiCompatibleAssistantAdapter()
+                : OpenLoopsSkill.CreateDeterministicProvider());
         services.AddScoped<OpenLoopsAssistantService>();
 
         services.AddTransient<AuthenticationCookieForwardingHandler>();

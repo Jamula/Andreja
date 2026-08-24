@@ -12,6 +12,12 @@ change.
 4. Choose **Confirm and save task** to persist it, or **Not now** to dismiss the
    proposal without saving anything.
 
+The page shows the assistant provider and model selected by the self-host operator,
+whether it is ready, and its content-exposure disclosure. The deterministic provider
+is local and ready by default. Selecting `openai-compatible` is an explicit BYOK
+configuration surface; it fails safely until a credential-backed transport is
+configured, and credentials never enter task requests or exports.
+
 The assistant is allowed to call only the versioned
 `open-loops.propose-task` tool. Preparing or dismissing a proposal does not create
 a task. An expired proposal must be prepared again.

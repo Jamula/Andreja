@@ -110,6 +110,12 @@ principal (or validates server-issued explicit context claims), then requires
 antiforgery on every mutation. No development or test authentication handler is
 present in the application image.
 
+`ANDREJA_ASSISTANT_PROVIDER` selects `deterministic` (the local, offline default) or
+`openai-compatible`. The UI exposes the selected provider, model, readiness, and
+disclosure. The existing BYOK adapter fails safely until its credential-backed
+transport is configured; never put a provider secret in `.env` or Compose
+environment values.
+
 ## Data Protection key contract
 
 The `data-protection-keys` volume is separate from the database and application

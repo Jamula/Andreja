@@ -45,6 +45,11 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
     public async Task AuthenticatedTypedApiCompletesTaskScenario()
     {
         using var client = factory.CreateAuthenticatedClient();
+        var provider = Assert.IsType<AssistantProviderDto>(
+            await client.GetFromJsonAsync<AssistantProviderDto>(
+                $"{OpenLoopsApi.RoutePrefix}/assistant/provider"));
+        Assert.True(provider.Ready);
+        Assert.Equal("deterministic", provider.Selection);
         var token = await client.GetFromJsonAsync<AntiforgeryTokenDto>(
             OpenLoopsApi.AntiforgeryRoute);
         Assert.NotNull(token);
@@ -121,6 +126,7 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         Assert.Contains("""<label for="task-request">""", html, StringComparison.Ordinal);
         Assert.Contains("""aria-describedby="task-request-help""", html, StringComparison.Ordinal);
         Assert.Contains("Prepare proposal", html, StringComparison.Ordinal);
+        Assert.Contains("Selected by the self-host operator", html, StringComparison.Ordinal);
         Assert.Contains("Export JSON", html, StringComparison.Ordinal);
         Assert.Contains("""aria-labelledby="tasks-heading""", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Yes, delete", html, StringComparison.Ordinal);
@@ -153,6 +159,15 @@ public sealed class OpenLoopsWebApplicationFactory : WebApplicationFactory<Progr
 
     private sealed class EmptyOpenLoopsApiClient : IOpenLoopsApiClient
     {
+        public Task<AssistantProviderDto> GetProviderAsync(
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new AssistantProviderDto(
+                "deterministic",
+                "open-loops-v1",
+                "deterministic",
+                true,
+                "Local deterministic provider."));
+
         public Task<IReadOnlyList<TaskDto>> ListAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<TaskDto>>([]);
 

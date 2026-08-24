@@ -3,6 +3,8 @@ using Andreja.Modules.Identity;
 using Andreja.Modules.OpenLoops;
 using Andreja.Platform.Contracts.Proposals;
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.Extensions.Options;
+using Andreja.Platform.Contracts.Assistant;
 
 namespace Andreja.AppHost.OpenLoops;
 
@@ -25,6 +27,23 @@ public static class OpenLoopsEndpoints
 
         var group = endpoints.MapGroup(OpenLoopsApi.RoutePrefix)
             .RequireAuthorization("andreja-user");
+
+        group.MapGet("/assistant/provider", async (
+            IAssistantProvider provider,
+            IOptions<OpenLoopsOptions> options,
+            CancellationToken cancellationToken) =>
+        {
+            var capabilities = await provider.GetCapabilitiesAsync(cancellationToken);
+            var deterministic = options.Value.AssistantProvider == "deterministic";
+            return Results.Ok(new AssistantProviderDto(
+                capabilities.Provider,
+                capabilities.Model,
+                options.Value.AssistantProvider,
+                deterministic,
+                deterministic
+                    ? "Local deterministic test provider; no content leaves this process."
+                    : "OpenAI-compatible BYOK is operator-selected but remains unavailable until its credential-backed transport is configured."));
+        });
 
         group.MapGet("/tasks", async (
             HttpContext httpContext,

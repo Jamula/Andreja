@@ -81,6 +81,13 @@ public sealed record AssistantTaskResponse(
     string? Message,
     string? ErrorCode);
 
+public sealed record AssistantProviderDto(
+    string Provider,
+    string Model,
+    string Selection,
+    bool Ready,
+    string Disclosure);
+
 public sealed record ProposalOutcomeDto(
     string Outcome,
     TaskDto? Task,

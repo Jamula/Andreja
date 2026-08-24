@@ -28,7 +28,26 @@
     }
 
     <section class="task-card composer" aria-labelledby="assistant-heading">
-        <h2 id="assistant-heading">Ask the assistant</h2>
+        <div class="section-heading">
+            <div>
+                <h2 id="assistant-heading">Ask the assistant</h2>
+                @if (Provider is not null)
+                {
+                    <p class="field-help">
+                        Provider: <strong>@Provider.Provider / @Provider.Model</strong>
+                        · Selected by the self-host operator
+                    </p>
+                }
+            </div>
+            @if (Provider is not null)
+            {
+                <span class="state-chip">@(Provider.Ready ? "Ready" : "Configuration required")</span>
+            }
+        </div>
+        @if (Provider is not null)
+        {
+            <p class="provider-disclosure">@Provider.Disclosure</p>
+        }
         <EditForm Model="Request" OnValidSubmit="ProposeAsync" FormName="task-proposal">
             <DataAnnotationsValidator />
             <div class="field">
@@ -191,6 +210,7 @@
     private ElementReference proposalHeading;
 
     private TaskProposalDto? Proposal { get; set; }
+    private AssistantProviderDto? Provider { get; set; }
     private Guid? DeleteCandidate { get; set; }
     private string? StatusMessage { get; set; }
     private string? ErrorMessage { get; set; }
@@ -286,6 +306,7 @@
 
     private async Task LoadAsync()
     {
+        Provider ??= await Api.GetProviderAsync();
         var tasks = await Api.ListAsync();
         Tasks.Clear();
         Tasks.AddRange(tasks);
