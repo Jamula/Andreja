@@ -40,8 +40,8 @@ def read(path: Path) -> str:
 
 
 def check_plan_hash() -> None:
-    plan_bytes = PLAN_PATH.read_bytes()
-    actual_hash = hashlib.sha256(plan_bytes).hexdigest()
+    plan_text = read(PLAN_PATH)
+    actual_hash = hashlib.sha256(plan_text.encode("utf-8")).hexdigest()
 
     adr_text = read(ADR_PATH)
     match = re.search(r"\*\*Plan SHA-256:\*\*\s*`([0-9a-fA-F]+)`", adr_text)
