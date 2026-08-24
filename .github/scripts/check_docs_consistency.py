@@ -30,6 +30,7 @@ ADR_PATH = REPO_ROOT / "docs" / "adr" / "0000-plan-ratification.md"
 CHARTER_PATH = REPO_ROOT / "docs" / "charter.md"
 CHARTER_ADR_PATH = REPO_ROOT / "docs" / "adr" / "0006-charter-ratification.md"
 DECISION_TEMPLATE_PATH = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "decision.yml"
+PR_TEMPLATE_PATH = REPO_ROOT / ".github" / "pull_request_template.md"
 SKILLS_PATH = REPO_ROOT / "docs" / "roadmap" / "first-party-skills.md"
 CONNECTORS_PATH = REPO_ROOT / "docs" / "roadmap" / "channel-connectors.md"
 
@@ -146,8 +147,99 @@ def issue_form_field_is_required(form_text: str, field_id: str) -> bool:
     return False
 
 
+def markdown_h2_section(text: str, heading: str) -> str:
+    matches = list(
+        re.finditer(rf"^## {re.escape(heading)}\s*$", text, re.MULTILINE)
+    )
+    if len(matches) != 1:
+        fail(
+            f"{PR_TEMPLATE_PATH.relative_to(REPO_ROOT)} must contain exactly one "
+            f"'## {heading}' section."
+        )
+    start = matches[0].end()
+    next_heading = re.search(r"^##\s+", text[start:], re.MULTILINE)
+    end = start + next_heading.start() if next_heading else len(text)
+    return text[start:end]
+
+
+def markdown_checkbox_text(section: str, label_prefix: str) -> str | None:
+    lines = section.splitlines()
+    matches: list[str] = []
+    index = 0
+    while index < len(lines):
+        item = re.match(r"^- \[ \]\s+(.+)$", lines[index])
+        if not item:
+            index += 1
+            continue
+
+        content = [item.group(1).strip()]
+        index += 1
+        while index < len(lines) and not re.match(r"^- \[ \]\s+", lines[index]):
+            if lines[index].strip():
+                content.append(lines[index].strip())
+            index += 1
+        normalized = " ".join(content)
+        if normalized.startswith(label_prefix):
+            matches.append(normalized)
+
+    return matches[0] if len(matches) == 1 else None
+
+
+def check_pr_template_state(pr_template_text: str, adr_status: str) -> None:
+    impact_section = markdown_h2_section(pr_template_text, "Charter impact")
+    gates_section = markdown_h2_section(pr_template_text, "Gates")
+    markers = re.findall(
+        r"<!--\s*charter-impact-state:\s*(proposed|required)\s*-->",
+        impact_section,
+    )
+    marker = markers[0] if len(markers) == 1 else None
+    impact_text = " ".join(impact_section.split())
+    gate_text = markdown_checkbox_text(
+        gates_section, "Company charter impact recorded or not applicable"
+    )
+
+    if adr_status == "Proposed":
+        required_sentence = (
+            "This section is optional while ADR 0006 is Proposed and required "
+            "after it is Accepted."
+        )
+        required_gate = (
+            "Company charter impact recorded or not applicable "
+            "(required after ADR 0006 acceptance)"
+        )
+        if (
+            marker != "proposed"
+            or required_sentence not in impact_text
+            or gate_text != required_gate
+        ):
+            fail(
+                "While ADR 0006 is Proposed, .github/pull_request_template.md "
+                "must retain the 'charter-impact-state: proposed' marker, the "
+                "explicit optional-before/required-after wording, and the "
+                "pre-ratification charter gate."
+            )
+        return
+
+    required_gate = "Company charter impact recorded or not applicable (required)"
+    if (
+        marker != "required"
+        or "This section is required." not in impact_text
+        or "optional while ADR 0006 is Proposed" in impact_text
+        or gate_text != required_gate
+    ):
+        fail(
+            "When ADR 0006 is Accepted, .github/pull_request_template.md must "
+            "use the 'charter-impact-state: required' marker, state that the "
+            "Charter impact section is required, and make its checklist gate "
+            "unconditionally required."
+        )
+
+
 def check_charter_atomicity_content(
-    charter_text: str, adr_text: str, decision_form_text: str
+    charter_text: str,
+    adr_text: str,
+    decision_form_text: str,
+    pr_template_text: str,
 ) -> None:
     adr_status = charter_adr_status(adr_text)
     status_text = charter_status(charter_text)
@@ -162,7 +254,11 @@ def check_charter_atomicity_content(
                 "While ADR 0006 is Proposed, docs/charter.md must remain "
                 "explicitly Proposed and not authoritative."
             )
-        print("OK: Proposed ADR 0006 keeps the charter non-authoritative.")
+        check_pr_template_state(pr_template_text, adr_status)
+        print(
+            "OK: Proposed ADR 0006 keeps the charter non-authoritative and the "
+            "PR template in its pre-ratification state."
+        )
         return
 
     if says_proposed or says_not_authoritative or not re.search(
@@ -178,7 +274,11 @@ def check_charter_atomicity_content(
             ".github/ISSUE_TEMPLATE/decision.yml must have "
             "'validations: required: true'."
         )
-    print("OK: Accepted ADR 0006 has atomic charter and decision-form state.")
+    check_pr_template_state(pr_template_text, adr_status)
+    print(
+        "OK: Accepted ADR 0006 has atomic charter, decision-form, and "
+        "PR-template state."
+    )
 
 
 def check_charter_hash_content(charter_text: str, adr_text: str) -> None:
@@ -212,7 +312,10 @@ def check_charter_hash() -> None:
     charter_text = read(CHARTER_PATH)
     adr_text = read(CHARTER_ADR_PATH)
     check_charter_atomicity_content(
-        charter_text, adr_text, read(DECISION_TEMPLATE_PATH)
+        charter_text,
+        adr_text,
+        read(DECISION_TEMPLATE_PATH),
+        read(PR_TEMPLATE_PATH),
     )
     check_charter_hash_content(charter_text, adr_text)
 

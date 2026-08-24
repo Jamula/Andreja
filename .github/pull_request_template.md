@@ -10,11 +10,12 @@ Closes #
 
 ## Charter impact
 
+<!-- charter-impact-state: proposed -->
 <!--
 Assess human agency, data dignity, inclusion, AI/safety, sustainability,
 stakeholder incentives, evidence, ownership, and stop conditions against
-docs/charter.md. This section is optional while ADR 0006 is Proposed and required
-after it is Accepted. Write "Not applicable" only with a reason.
+docs/charter.md. This section is optional while ADR 0006 is Proposed and
+required after it is Accepted. Write "Not applicable" only with a reason.
 -->
 
 ## Validation

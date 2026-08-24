@@ -66,32 +66,88 @@ body:
     validations:
       required: true
 """
+    PROPOSED_PR_TEMPLATE = """
+## Charter impact
 
-    def assert_fails(self, charter: str, adr: str, form: str) -> None:
+<!-- charter-impact-state: proposed -->
+<!--
+This section is optional while ADR 0006 is Proposed and required after it is Accepted.
+-->
+
+## Gates
+
+- [ ] Company charter impact recorded or not applicable (required after ADR 0006
+      acceptance)
+"""
+    REQUIRED_PR_TEMPLATE = """
+## Charter impact
+
+<!-- charter-impact-state: required -->
+<!-- This section is required. -->
+
+## Gates
+
+- [ ] Company charter impact recorded or not applicable (required)
+"""
+    HALF_ACCEPTED_PR_TEMPLATE = """
+## Charter impact
+
+<!-- charter-impact-state: required -->
+<!-- This section is required. -->
+
+## Gates
+
+- [ ] Company charter impact recorded or not applicable (required after ADR 0006
+      acceptance)
+"""
+
+    def assert_fails(
+        self, charter: str, adr: str, form: str, pr_template: str
+    ) -> None:
         with redirect_stdout(io.StringIO()):
             with self.assertRaises(SystemExit):
-                CHECKS.check_charter_atomicity_content(charter, adr, form)
+                CHECKS.check_charter_atomicity_content(
+                    charter, adr, form, pr_template
+                )
 
     def test_proposed_state_accepts_non_authoritative_charter(self) -> None:
         CHECKS.check_charter_atomicity_content(
-            self.PROPOSED_CHARTER, self.PROPOSED_ADR, "body: []\n"
+            self.PROPOSED_CHARTER,
+            self.PROPOSED_ADR,
+            "body: []\n",
+            self.PROPOSED_PR_TEMPLATE,
         )
 
     def test_proposed_state_rejects_authoritative_charter(self) -> None:
         self.assert_fails(
-            self.ACCEPTED_CHARTER, self.PROPOSED_ADR, self.REQUIRED_CHARTER_FIELD
+            self.ACCEPTED_CHARTER,
+            self.PROPOSED_ADR,
+            self.REQUIRED_CHARTER_FIELD,
+            self.PROPOSED_PR_TEMPLATE,
         )
 
-    def test_accepted_state_accepts_atomic_charter_and_required_field(self) -> None:
+    def test_proposed_state_rejects_required_pr_template(self) -> None:
+        self.assert_fails(
+            self.PROPOSED_CHARTER,
+            self.PROPOSED_ADR,
+            "body: []\n",
+            self.REQUIRED_PR_TEMPLATE,
+        )
+
+    def test_accepted_state_accepts_all_atomic_requirements(self) -> None:
         CHECKS.check_charter_atomicity_content(
             self.ACCEPTED_CHARTER,
             self.ACCEPTED_ADR,
             self.REQUIRED_CHARTER_FIELD,
+            self.REQUIRED_PR_TEMPLATE,
         )
 
     def test_accepted_state_rejects_proposed_charter(self) -> None:
         self.assert_fails(
-            self.PROPOSED_CHARTER, self.ACCEPTED_ADR, self.REQUIRED_CHARTER_FIELD
+            self.PROPOSED_CHARTER,
+            self.ACCEPTED_ADR,
+            self.REQUIRED_CHARTER_FIELD,
+            self.REQUIRED_PR_TEMPLATE,
         )
 
     def test_accepted_state_rejects_optional_charter_field(self) -> None:
@@ -105,7 +161,10 @@ body:
       required: false
 """
         self.assert_fails(
-            self.ACCEPTED_CHARTER, self.ACCEPTED_ADR, optional_field
+            self.ACCEPTED_CHARTER,
+            self.ACCEPTED_ADR,
+            optional_field,
+            self.REQUIRED_PR_TEMPLATE,
         )
 
     def test_other_required_field_does_not_satisfy_charter_gate(self) -> None:
@@ -118,7 +177,12 @@ body:
   - type: textarea
     id: charter
 """
-        self.assert_fails(self.ACCEPTED_CHARTER, self.ACCEPTED_ADR, form)
+        self.assert_fails(
+            self.ACCEPTED_CHARTER,
+            self.ACCEPTED_ADR,
+            form,
+            self.REQUIRED_PR_TEMPLATE,
+        )
 
     def test_nested_required_text_does_not_satisfy_charter_gate(self) -> None:
         form = """
@@ -129,7 +193,20 @@ body:
       validations:
         required: true
 """
-        self.assert_fails(self.ACCEPTED_CHARTER, self.ACCEPTED_ADR, form)
+        self.assert_fails(
+            self.ACCEPTED_CHARTER,
+            self.ACCEPTED_ADR,
+            form,
+            self.REQUIRED_PR_TEMPLATE,
+        )
+
+    def test_accepted_state_rejects_half_accepted_pr_template(self) -> None:
+        self.assert_fails(
+            self.ACCEPTED_CHARTER,
+            self.ACCEPTED_ADR,
+            self.REQUIRED_CHARTER_FIELD,
+            self.HALF_ACCEPTED_PR_TEMPLATE,
+        )
 
 
 if __name__ == "__main__":
