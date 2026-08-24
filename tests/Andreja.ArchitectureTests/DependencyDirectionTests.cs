@@ -6,27 +6,38 @@ namespace Andreja.ArchitectureTests;
 
 public sealed class DependencyDirectionTests
 {
+    private static readonly HashSet<string> ApprovedModuleAssemblyReferences =
+        new(StringComparer.Ordinal)
+        {
+            "Andreja.Platform.Contracts",
+            // Framework-neutral facade emitted for fundamental BCL types.
+            "System.Runtime",
+        };
+
     [Fact]
     public void ModulesDoNotReferenceOutwardLayers()
     {
-        string[] forbiddenAssemblyPrefixes =
-        [
-            "Andreja.Adapters",
-            "Andreja.Api.Contracts",
-            "Andreja.AppHost",
-            "Microsoft.AspNetCore",
-            "Microsoft.EntityFrameworkCore",
-        ];
+        var unapprovedReferences = FindUnapprovedModuleReferences(
+            typeof(OpenLoopsModule).Assembly.GetReferencedAssemblies());
 
-        var references = typeof(OpenLoopsModule).Assembly
-            .GetReferencedAssemblies()
-            .Select(reference => reference.Name ?? string.Empty)
-            .ToArray();
+        Assert.Empty(unapprovedReferences);
+    }
 
-        Assert.DoesNotContain(
-            references,
-            reference => forbiddenAssemblyPrefixes.Any(
-                prefix => reference.StartsWith(prefix, StringComparison.Ordinal)));
+    [Theory]
+    [InlineData("Andreja.Adapters")]
+    [InlineData("Andreja.Api.Contracts")]
+    [InlineData("Andreja.AppHost")]
+    [InlineData("Microsoft.AspNetCore")]
+    [InlineData("Microsoft.EntityFrameworkCore")]
+    [InlineData("Npgsql")]
+    [InlineData("Azure.AI.OpenAI")]
+    [InlineData("Future.ProviderSdk")]
+    public void ModuleReferenceAllowlistRejectsNonApprovedAssemblies(string assemblyName)
+    {
+        var unapprovedReferences = FindUnapprovedModuleReferences(
+            [new(assemblyName)]);
+
+        Assert.Equal([assemblyName], unapprovedReferences);
     }
 
     [Fact]
@@ -45,5 +56,15 @@ public sealed class DependencyDirectionTests
             .ToArray();
 
         Assert.Empty(outwardReferences);
+    }
+
+    private static string[] FindUnapprovedModuleReferences(
+        IEnumerable<System.Reflection.AssemblyName> references)
+    {
+        return references
+            .Select(reference => reference.Name ?? string.Empty)
+            .Where(reference => !ApprovedModuleAssemblyReferences.Contains(reference))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
     }
 }
