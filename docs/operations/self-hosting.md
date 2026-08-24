@@ -5,6 +5,13 @@ This runbook implements the local-only Phase 1A contract in
 resource. The composition includes the PostgreSQL identity/Open Loops migration,
 authenticated task API, and responsive task UI.
 
+The root `LICENSE` currently contains Apache License 2.0, so the local OCI build
+records `Apache-2.0` as repository license metadata. That factual label is not
+qualified-counsel review, outbound-strategy approval, or permission to publish an
+image. The no-publication gate in
+[`docs/legal/license-evaluation.md`](../legal/license-evaluation.md) remains
+controlling until Cyrus and qualified counsel explicitly decide otherwise.
+
 ## Host and trust prerequisites
 
 - An OCI runtime with Compose support. Docker Compose v5 syntax is statically
@@ -38,10 +45,11 @@ Restrict both secret files to the account running the runtime. On Unix, use mode
 ## Acquire and verify images
 
 The Dockerfile build and runtime bases, PostgreSQL, collector, and optional
-Prometheus backend are pinned by multi-platform manifest digest. A released
-`ANDREJA_IMAGE` must also be a trusted `name@sha256:<64 hex>` reference. Record the
-source revision, image reference, resolved platform digest, acquisition time, and
-release/migration notes in the recovery inventory.
+Prometheus backend are pinned by multi-platform manifest digest. An
+operator-controlled `ANDREJA_IMAGE` must be a trusted `name@sha256:<64 hex>`
+reference or immutable local image ID. Record the source revision, image reference,
+resolved platform digest, acquisition time, and migration notes in the recovery
+inventory. These local evidence instructions do not authorize publication.
 
 For a locally built image:
 
@@ -52,8 +60,10 @@ docker build --pull=false `
 $env:ANDREJA_IMAGE = docker image inspect andreja:local --format '{{.Id}}'
 ```
 
-A local image ID (`sha256:<64 hex>`) is also immutable for that host. Published
-bundles should use the repository digest. Never substitute `latest`.
+A local image ID (`sha256:<64 hex>`) is also immutable for that host. If publication
+is later approved, its separately reviewed distribution contract must use a
+repository digest and approved artifact-specific metadata. Never substitute
+`latest`.
 
 For offline transfer, acquire everything before disconnecting:
 
@@ -89,9 +99,9 @@ Invoke-WebRequest http://127.0.0.1:8080/health/ready
 `/health/live` proves the process can serve. `/health/ready` proves the Data
 Protection directory is writable, the password secret is mounted, and the
 PostgreSQL and enabled local OTLP sockets are reachable. When Open Loops and the
-database are enabled, the single Phase 1A application instance applies pending
-identity/Open Loops EF migrations before accepting traffic. A migration failure
-blocks startup; do not bypass it.
+database are enabled, startup queries EF migration state and refuses to serve when
+any migration is pending; readiness repeats that check to detect drift. Neither
+path applies a migration, and neither may be bypassed.
 
 The application and PostgreSQL run as non-root users with dropped capabilities,
 read-only application filesystems, bounded process/memory/CPU settings, and named
@@ -184,6 +194,57 @@ verification.
 These are logical recovery scripts, not PITR. WAL archiving, managed backups, and
 provider-specific restore are explicitly outside Phase 1A.
 
+## Explicit database migration
+
+Database mutation is an operator command, not application startup behavior. Before
+running it:
+
+1. stop writes and record current image, configuration, and schema versions;
+2. create a fresh logical dump and verify its SHA-256 sidecar;
+3. restore that dump into a clean compatible PostgreSQL instance and complete the
+   documented integrity/key checks;
+4. generate the idempotent SQL from the exact proposed source/image revision, review
+   every statement and release note, and record its SHA-256;
+5. list the exact pending EF migration IDs in application order; and
+6. approve the tested rollback choice. If any artifact, checksum, pending ID, or
+   rollback assumption differs, stop.
+
+The source-side review commands are:
+
+```powershell
+dotnet ef migrations has-pending-model-changes `
+  --project src\Adapters\Andreja.Adapters\Andreja.Adapters.csproj `
+  --context AndrejaIdentityDbContext
+dotnet ef migrations script --idempotent `
+  --project src\Adapters\Andreja.Adapters\Andreja.Adapters.csproj `
+  --context AndrejaIdentityDbContext `
+  --output .andreja\reviewed-migration.sql
+Get-FileHash .andreja\reviewed-migration.sql -Algorithm SHA256
+```
+
+Keep PostgreSQL running, but do not start an unready app revision. Invoke the
+checked-in wrapper with the verified dump, reviewed SQL, database name, and exact
+pending migration IDs:
+
+```powershell
+pwsh -NoProfile -File scripts\operations\migrate-database.ps1 `
+  -BackupDumpPath backups\postgres\andreja-<timestamp>.dump `
+  -ReviewedMigrationScriptPath .andreja\reviewed-migration.sql `
+  -DatabaseName andreja `
+  -ApprovedMigrations 20260824031732_InitialIdentityTenancy,20260824043341_Phase1AOpenLoopsTasks `
+  -ConfirmBackupRestoreAndMigrationReview
+```
+
+The wrapper rechecks the backup sidecar, hashes the reviewed SQL, emits a local
+approval manifest, and starts the same pinned app image only as:
+`--migrate-database --approval-file /run/andreja/migration-approval.json`.
+The command rehashes both read-only mounted artifacts, requires the configured
+database and actual pending migrations to match the approval exactly, applies EF
+migrations, and fails if any remain. Failure or cancellation returns nonzero.
+After success, start the normal app and require `/health/ready` before restoring
+traffic. Preserve the approval manifest, SQL hash, backup inventory, output, and
+result as the migration evidence set.
+
 ## Update and rollback
 
 1. Record the current app/database/collector digests, config checksum, schema
@@ -192,8 +253,9 @@ provider-specific restore are explicitly outside Phase 1A.
    into a clean instance before approving the update.
 3. Acquire the proposed digest and inspect signatures, SBOM/vulnerability results,
    release notes, and migration notes without changing the running reference.
-4. Stop writes. Run the separately reviewed, explicit migration artifact. The web
-   process must never migrate on startup.
+4. Stop writes. Run the exact explicit migration command above with the reviewed
+   SQL, restored backup evidence, checksum approval, and pending-ID list. The web
+   process never migrates on startup.
 5. Set the new digest, run static validation, start, and verify readiness, sign-in,
    persisted data, audit continuity, and telemetry canaries.
 6. Retain the prior image and recovery set until the rollback window closes.

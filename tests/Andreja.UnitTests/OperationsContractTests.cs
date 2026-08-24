@@ -124,6 +124,8 @@ public sealed class OperationsContractTests
         var collector = File.ReadAllText(Path.Combine(root, "deploy", "otel-collector.yaml"));
         var maintenance = File.ReadAllText(
             Path.Combine(root, "deploy", "compose.maintenance.yaml"));
+        var migration = File.ReadAllText(
+            Path.Combine(root, "deploy", "compose.migration.yaml"));
         var schema = File.ReadAllText(
             Path.Combine(root, "docs", "operations", "application-export-v1.schema.json"));
 
@@ -132,10 +134,28 @@ public sealed class OperationsContractTests
         Assert.Contains("POSTGRES_PASSWORD_FILE:", compose, StringComparison.Ordinal);
         Assert.Contains("USER $APP_UID", dockerfile, StringComparison.Ordinal);
         Assert.Equal(2, dockerfile.Split("@sha256:", StringSplitOptions.None).Length - 1);
+        Assert.Contains(
+            "org.opencontainers.image.licenses=\"Apache-2.0\"",
+            dockerfile,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "org.opencontainers.image.licenses=\"MIT\"",
+            dockerfile,
+            StringComparison.Ordinal);
         Assert.DoesNotContain("\n  debug:", collector, StringComparison.Ordinal);
         Assert.DoesNotContain("\n  logging:", collector, StringComparison.Ordinal);
         Assert.Contains("attributes/suppress", collector, StringComparison.Ordinal);
         Assert.Contains("127.0.0.1:", maintenance, StringComparison.Ordinal);
+        Assert.Contains("migration-approval.json:ro", migration, StringComparison.Ordinal);
+        Assert.Contains("backup.dump:ro", migration, StringComparison.Ordinal);
+        Assert.Contains("migration.sql:ro", migration, StringComparison.Ordinal);
+
+        var legalGate = File.ReadAllText(
+            Path.Combine(root, "docs", "legal", "license-evaluation.md"));
+        Assert.Contains(
+            "Do not publish releases, packages, containers",
+            legalGate,
+            StringComparison.Ordinal);
 
         using var document = JsonDocument.Parse(schema);
         Assert.Equal(

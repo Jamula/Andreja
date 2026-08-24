@@ -46,6 +46,11 @@ pwsh -NoProfile -File scripts\operations\validate-contract.ps1
 bash -n scripts/operations/*.sh
 ```
 
+PowerShell parser/PSScriptAnalyzer validation includes the explicit
+`scripts\operations\migrate-database.ps1` wrapper. Normal web startup is
+schema-read-only; see the [self-host operations runbook](operations/self-hosting.md)
+for the backup/review-gated migration command.
+
 The architecture test project enforces inward dependency direction. The unit test
 project verifies composition-root registration and startup-options validation.
 

@@ -1,0 +1,6 @@
+services:
+  app:
+    volumes:
+      - ${MIGRATION_APPROVAL_FILE:?Set MIGRATION_APPROVAL_FILE}:/run/andreja/migration-approval.json:ro
+      - ${MIGRATION_BACKUP_FILE:?Set MIGRATION_BACKUP_FILE}:/run/andreja/backup.dump:ro
+      - ${MIGRATION_SCRIPT_FILE:?Set MIGRATION_SCRIPT_FILE}:/run/andreja/migration.sql:ro

@@ -8,7 +8,8 @@ if (await ContainerHealthProbe.TryRunAsync(args))
     return;
 }
 
-var builder = WebApplication.CreateBuilder(args);
+var migrationCommandRequested = DatabaseMigrationCommand.IsRequested(args);
+var builder = WebApplication.CreateBuilder(migrationCommandRequested ? [] : args);
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -23,7 +24,42 @@ builder.Host.UseDefaultServiceProvider((context, options) =>
 });
 
 var app = builder.Build();
-await app.ApplyAndrejaOpenLoopsMigrationsAsync();
+using var migrationCancellation = new CancellationTokenSource();
+ConsoleCancelEventHandler cancelMigration = (_, eventArgs) =>
+{
+    eventArgs.Cancel = true;
+    migrationCancellation.Cancel();
+};
+if (migrationCommandRequested)
+{
+    Console.CancelKeyPress += cancelMigration;
+}
+
+int? migrationExitCode;
+try
+{
+    migrationExitCode = await DatabaseMigrationCommand.TryRunAsync(
+        args,
+        app.Services,
+        Console.Out,
+        migrationCancellation.Token);
+}
+finally
+{
+    if (migrationCommandRequested)
+    {
+        Console.CancelKeyPress -= cancelMigration;
+    }
+}
+
+if (migrationExitCode is not null)
+{
+    Environment.ExitCode = migrationExitCode.Value;
+    return;
+}
+await DatabaseMigrationStartupVerifier.VerifyAsync(
+    app.Services,
+    app.Lifetime.ApplicationStopping);
 
 if (!app.Environment.IsDevelopment())
 {

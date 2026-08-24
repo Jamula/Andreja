@@ -99,6 +99,11 @@ public static class OpenLoopsServiceCollectionExtensions
                 database.PasswordFile);
             services.AddAndrejaIdentityPostgreSql(connectionString);
             services.AddAndrejaOpenLoopsPostgreSql();
+            services.AddScoped<IDatabaseMigrationExecutor, EfDatabaseMigrationExecutor>();
+            services.AddHealthChecks()
+                .AddCheck<DatabaseMigrationReadinessHealthCheck>(
+                    "database-migrations",
+                    tags: ["ready"]);
 
             var identitySection = configuration.GetSection(LocalIdentityOptions.SectionName);
             if (!identitySection.Exists())
@@ -168,26 +173,5 @@ public static class OpenLoopsServiceCollectionExtensions
         }
 
         return handler;
-    }
-
-    public static async Task ApplyAndrejaOpenLoopsMigrationsAsync(
-        this WebApplication application,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(application);
-        var openLoops = application.Configuration
-            .GetSection(OpenLoopsOptions.SectionName)
-            .Get<OpenLoopsOptions>();
-        var operations = application.Configuration
-            .GetSection(AndrejaOperationsOptions.SectionName)
-            .Get<AndrejaOperationsOptions>();
-        if (openLoops?.Enabled != true || operations?.Database.Enabled != true)
-        {
-            return;
-        }
-
-        await using var scope = application.Services.CreateAsyncScope();
-        var database = scope.ServiceProvider.GetRequiredService<AndrejaIdentityDbContext>();
-        await database.Database.MigrateAsync(cancellationToken);
     }
 }
