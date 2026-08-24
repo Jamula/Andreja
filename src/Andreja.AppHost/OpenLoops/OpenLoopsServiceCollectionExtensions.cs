@@ -121,6 +121,11 @@ public static class OpenLoopsServiceCollectionExtensions
             services.AddScoped<ITenantPrincipalContextAccessor>(
                 provider => provider.GetRequiredService<ScopedTenantPrincipalContext>());
             services.AddSingleton<IOpenLoopsTaskStore, InMemoryOpenLoopsTaskStore>();
+            services.AddSingleton<InMemoryProposalStore>();
+            services.AddSingleton<IProposalStore>(
+                provider => provider.GetRequiredService<InMemoryProposalStore>());
+            services.AddSingleton<IProposalAuditSink>(
+                provider => provider.GetRequiredService<InMemoryProposalStore>());
         }
         else
         {
@@ -128,11 +133,6 @@ public static class OpenLoopsServiceCollectionExtensions
                 "Open Loops requires PostgreSQL outside Development.");
         }
 
-        services.AddSingleton<InMemoryProposalStore>();
-        services.AddSingleton<IProposalStore>(
-            provider => provider.GetRequiredService<InMemoryProposalStore>());
-        services.AddSingleton<IProposalAuditSink>(
-            provider => provider.GetRequiredService<InMemoryProposalStore>());
         services.AddScoped<OpenLoopsTaskApplication>();
         services.AddScoped<ISkillHost>(
             provider => OpenLoopsSkill.CreateHost(

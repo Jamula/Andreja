@@ -256,6 +256,69 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         Assert.Empty(await client.GetFromJsonAsync<TaskDto[]>(
             $"{OpenLoopsApi.RoutePrefix}/tasks") ?? []);
     }
+
+    [Fact]
+    public async Task WebApplicationFactoryPreservesConfirmationReplayAndRejectsKeyReuse()
+    {
+        using var client = await factory.CreateDevelopmentSignedInClientAsync("/");
+        var token = Assert.IsType<AntiforgeryTokenDto>(
+            await client.GetFromJsonAsync<AntiforgeryTokenDto>(
+                OpenLoopsApi.AntiforgeryRoute));
+        using var propose = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"{OpenLoopsApi.RoutePrefix}/assistant/proposals")
+        {
+            Content = JsonContent.Create(new AssistantTaskRequest
+            {
+                Message = "WAF replay task",
+            }),
+        };
+        propose.Headers.Add(OpenLoopsApi.AntiforgeryHeader, token.Token);
+        using var proposedResponse = await client.SendAsync(propose);
+        proposedResponse.EnsureSuccessStatusCode();
+        var proposal = Assert.IsType<TaskProposalDto>(
+            (await proposedResponse.Content.ReadFromJsonAsync<AssistantTaskResponse>())?.Proposal);
+
+        async Task<ProposalOutcomeDto> ConfirmAsync(
+            long version,
+            HttpStatusCode expectedStatus = HttpStatusCode.OK)
+        {
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post,
+                $"{OpenLoopsApi.RoutePrefix}/proposals/{proposal.Id:D}/confirm")
+            {
+                Content = JsonContent.Create(new ConfirmProposalRequest
+                {
+                    ExpectedVersion = version,
+                    IdempotencyKey = "waf-confirm-replay",
+                }),
+            };
+            request.Headers.Add(OpenLoopsApi.AntiforgeryHeader, token.Token);
+            using var response = await client.SendAsync(request);
+            Assert.Equal(expectedStatus, response.StatusCode);
+            return Assert.IsType<ProposalOutcomeDto>(
+                await response.Content.ReadFromJsonAsync<ProposalOutcomeDto>());
+        }
+
+        var applied = await ConfirmAsync(proposal.Version);
+        var replay = await ConfirmAsync(proposal.Version);
+        var conflictingReuse = await ConfirmAsync(
+            proposal.Version + 1,
+            HttpStatusCode.Conflict);
+
+        Assert.Equal("Applied", applied.Outcome);
+        Assert.Equal("IdempotentReplay", replay.Outcome);
+        Assert.Equal(applied.Task?.Id, replay.Task?.Id);
+        Assert.Equal("Conflict", conflictingReuse.Outcome);
+        Assert.Single(await client.GetFromJsonAsync<TaskDto[]>(
+            $"{OpenLoopsApi.RoutePrefix}/tasks") ?? []);
+        using var delete = new HttpRequestMessage(
+            HttpMethod.Delete,
+            $"{OpenLoopsApi.RoutePrefix}/tasks/{applied.Task!.Id:D}?version={applied.Task.Version}&idempotencyKey=waf-replay-delete");
+        delete.Headers.Add(OpenLoopsApi.AntiforgeryHeader, token.Token);
+        using var deleted = await client.SendAsync(delete);
+        deleted.EnsureSuccessStatusCode();
+    }
 #endif
 
     [Fact]

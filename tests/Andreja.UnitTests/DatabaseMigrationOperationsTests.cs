@@ -1,5 +1,8 @@
+using Andreja.Adapters.PostgreSql;
 using Andreja.AppHost.Hosting;
 using Andreja.AppHost.OpenLoops;
+using Andreja.Modules.OpenLoops;
+using Andreja.Platform.Contracts.Proposals;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -191,6 +194,9 @@ public sealed class DatabaseMigrationOperationsTests
             using var scope = provider.CreateScope();
             Assert.IsType<EfDatabaseMigrationExecutor>(
                 scope.ServiceProvider.GetRequiredService<IDatabaseMigrationExecutor>());
+            var proposalStore = Assert.IsType<PostgreSqlProposalStore>(
+                scope.ServiceProvider.GetRequiredService<IProposalStore>());
+            Assert.IsAssignableFrom<IOpenLoopsProposalConfirmationStore>(proposalStore);
             var registrations = provider
                 .GetRequiredService<IOptions<HealthCheckServiceOptions>>()
                 .Value.Registrations;

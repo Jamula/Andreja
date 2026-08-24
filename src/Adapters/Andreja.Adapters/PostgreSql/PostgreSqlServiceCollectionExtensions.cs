@@ -1,5 +1,6 @@
 using Andreja.Modules.Identity;
 using Andreja.Modules.OpenLoops;
+using Andreja.Platform.Contracts.Proposals;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -31,6 +32,11 @@ public static class PostgreSqlServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddScoped<IOpenLoopsTaskStore, PostgreSqlOpenLoopsTaskStore>();
+        services.AddScoped<PostgreSqlProposalStore>();
+        services.AddScoped<IProposalStore>(
+            provider => provider.GetRequiredService<PostgreSqlProposalStore>());
+        services.AddScoped<IProposalAuditSink>(
+            provider => provider.GetRequiredService<PostgreSqlProposalStore>());
         return services;
     }
 

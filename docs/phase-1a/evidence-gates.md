@@ -73,7 +73,7 @@ approves residual risk before dogfood data is entered.
 |---|---|
 | Unit/domain | Task lifecycle, proposal expiry/idempotency, policy combinations, recovery rules |
 | Architecture | Dependency direction, no framework/SDK types inward, no cross-module internals, no UI-to-handler/EF path |
-| PostgreSQL integration | Migrations from empty/prior schema, composite FK/uniqueness, transactional audit, concurrency, delete |
+| PostgreSQL integration | Migrations from empty/prior schema, composite FK/uniqueness, atomic proposal/task/audit/receipt confirmation, restart and crash recovery, concurrency, delete |
 | Contract/conformance | API DTO serialization; assistant fake/failure/cancel; skill/channel manifest and permission negatives; exact `Grant`, `ConsentRecord`, `ShareAuditEntry`, disclosure-ladder, and `IPeerChannel` signed-envelope vectors including consent transitions, least disclosure, tamper, audience, expiry, replay, and idempotent retry |
 | Security/privacy | Cross-tenant enumeration, bootstrap/recovery abuse, CSRF/headers, canary secrets, telemetry/export exclusions |
 | End to end | Passkey bootstrap, BYOK/fake assistant proposal, confirmation, create/list/complete/export/delete |
