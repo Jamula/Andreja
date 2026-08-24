@@ -7,6 +7,7 @@ using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Andreja.Adapters.Assistant.OpenAiCompatible;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 
@@ -76,7 +77,7 @@ public static class OpenTelemetryServiceCollectionExtensions
                 }))
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
-                .AddMeter(AndrejaTelemetry.MeterName)
+                .AddMeter(AndrejaTelemetry.MeterName, OpenAiCompatibleMetrics.MeterName)
                 .AddOtlpExporter(exporter =>
                 {
                     exporter.Endpoint = endpoint;

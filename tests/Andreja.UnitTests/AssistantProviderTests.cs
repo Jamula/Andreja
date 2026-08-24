@@ -100,6 +100,7 @@ public sealed class AssistantProviderTests
             "compatible-model",
             "credential://assistant/byok-primary",
             TimeSpan.FromSeconds(30),
+            "Provider receives submitted task content.",
             "Provider retention disclosed.",
             10_000,
             2_000);

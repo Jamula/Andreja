@@ -35,14 +35,26 @@ public static class OpenLoopsEndpoints
         {
             var capabilities = await provider.GetCapabilitiesAsync(cancellationToken);
             var deterministic = options.Value.AssistantProvider == "deterministic";
+            var compatible = options.Value.OpenAiCompatible;
+            var configuredEndpoint = Uri.TryCreate(
+                compatible.Endpoint,
+                UriKind.Absolute,
+                out var endpoint)
+                ? endpoint
+                : null;
+            var ready = deterministic
+                || (configuredEndpoint is not null
+                    && File.Exists(compatible.CredentialFile)
+                    && (configuredEndpoint.IsLoopback
+                        || HasInitialExternalBudget(compatible)));
             return Results.Ok(new AssistantProviderDto(
                 capabilities.Provider,
                 capabilities.Model,
                 options.Value.AssistantProvider,
-                deterministic,
+                ready,
                 deterministic
                     ? "Local deterministic test provider; no content leaves this process."
-                    : "OpenAI-compatible BYOK is operator-selected but remains unavailable until its credential-backed transport is configured."));
+                    : $"{compatible.ProviderDisclosure} Retention: {compatible.RetentionDisclosure}"));
         });
 
         group.MapGet("/tasks", async (
@@ -286,5 +298,19 @@ public static class OpenLoopsEndpoints
             _ => "The assistant could not create a proposal.",
         };
         return Results.Json(new ApiErrorDto(code, message), statusCode: status);
+    }
+
+    private static bool HasInitialExternalBudget(
+        OpenAiCompatibleProviderOptions options)
+    {
+        try
+        {
+            return options.ApprovedExternalTotalUnits >= checked(
+                options.MaximumInputUnits + options.MaximumOutputUnits);
+        }
+        catch (OverflowException)
+        {
+            return false;
+        }
     }
 }

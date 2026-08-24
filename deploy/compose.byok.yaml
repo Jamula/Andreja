@@ -1,0 +1,28 @@
+services:
+  app:
+    environment:
+      Andreja__OpenLoops__AssistantProvider: openai-compatible
+      Andreja__OpenLoops__OpenAiCompatible__Endpoint: ${ANDREJA_ASSISTANT_ENDPOINT:?Set an exact local-loopback HTTP or HTTPS endpoint}
+      Andreja__OpenLoops__OpenAiCompatible__AllowedEndpoints__0: ${ANDREJA_ASSISTANT_ENDPOINT:?Set the same exact allowlisted endpoint}
+      Andreja__OpenLoops__OpenAiCompatible__Model: ${ANDREJA_ASSISTANT_MODEL:?Set the operator-approved model}
+      Andreja__OpenLoops__OpenAiCompatible__CredentialHandle: credential://assistant/byok-primary
+      Andreja__OpenLoops__OpenAiCompatible__CredentialFile: /run/secrets/assistant_api_key
+      Andreja__OpenLoops__OpenAiCompatible__TimeoutSeconds: ${ANDREJA_ASSISTANT_TIMEOUT_SECONDS:-30}
+      Andreja__OpenLoops__OpenAiCompatible__ProviderDisclosure: ${ANDREJA_ASSISTANT_PROVIDER_DISCLOSURE:?Describe who receives submitted content}
+      Andreja__OpenLoops__OpenAiCompatible__RetentionDisclosure: ${ANDREJA_ASSISTANT_RETENTION_DISCLOSURE:?Describe the selected provider retention policy}
+      Andreja__OpenLoops__OpenAiCompatible__MaximumInputUnits: ${ANDREJA_ASSISTANT_MAX_INPUT_UNITS:-10000}
+      Andreja__OpenLoops__OpenAiCompatible__MaximumOutputUnits: ${ANDREJA_ASSISTANT_MAX_OUTPUT_UNITS:-2000}
+      Andreja__OpenLoops__OpenAiCompatible__MaximumResponseBodyBytes: ${ANDREJA_ASSISTANT_MAX_RESPONSE_BYTES:-1048576}
+      Andreja__OpenLoops__OpenAiCompatible__MaximumRetries: ${ANDREJA_ASSISTANT_MAX_RETRIES:-2}
+      Andreja__OpenLoops__OpenAiCompatible__RetryBaseDelayMilliseconds: ${ANDREJA_ASSISTANT_RETRY_BASE_DELAY_MS:-100}
+      Andreja__OpenLoops__OpenAiCompatible__ApprovedExternalTotalUnits: ${ANDREJA_ASSISTANT_APPROVED_EXTERNAL_TOTAL_UNITS:-0}
+    secrets:
+      - source: assistant_api_key
+        target: assistant_api_key
+        uid: "1654"
+        gid: "1654"
+        mode: 0400
+
+secrets:
+  assistant_api_key:
+    file: ${ANDREJA_ASSISTANT_CREDENTIAL_FILE:?Set an absolute or repository-relative read-only credential file path}

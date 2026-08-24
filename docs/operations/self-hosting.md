@@ -193,11 +193,55 @@ continue to require the approved Identity cookie/passkey path. Delegation tokens
 cookies, and authorization headers must never be logged, exported, or copied into
 support evidence.
 
-`ANDREJA_ASSISTANT_PROVIDER` selects `deterministic` (the local, offline default) or
-`openai-compatible`. The UI exposes the selected provider, model, readiness, and
-disclosure. The existing BYOK adapter fails safely until its credential-backed
-transport is configured; never put a provider secret in `.env` or Compose
-environment values.
+`ANDREJA_ASSISTANT_PROVIDER` selects `deterministic`, the local offline and CI
+default. To opt into BYOK, use the separate override:
+
+```powershell
+New-Item -ItemType Directory -Force deploy\secrets | Out-Null
+# Write the operator-owned API key to deploy\secrets\assistant_api_key without
+# echoing it, passing it as an argument, or placing it in .env.
+docker compose -f compose.yaml -f deploy\compose.byok.yaml config
+docker compose -f compose.yaml -f deploy\compose.byok.yaml up --detach
+```
+
+Set the non-secret values documented in `.env.example`: one exact base endpoint,
+model, provider/content disclosure, retention disclosure, response and unit limits,
+and the credential **file path**. The credential value itself belongs only in the
+read-only file. On Linux its mode must be exactly `0400` for the application UID. On
+Windows direct development the file must have the read-only attribute; Docker Desktop
+operators must stage it with the same Linux ownership/mode contract as the bootstrap
+secret. Do not place the value in JSON, `.env`, Compose environment, source, logs,
+support evidence, exports, or skill configuration.
+
+The configured endpoint must exactly match an entry in `AllowedEndpoints`. Andreja
+appends `/chat/completions`, rejects user-info/query/fragment values and redirects,
+and permits plain HTTP only when the URI is loopback. A model on the Docker host is
+not loopback from inside the app container: expose it through operator-managed HTTPS
+with a system-trusted certificate, or run both in an explicitly reviewed same-network-
+namespace arrangement. HTTPS always uses normal platform certificate and hostname
+validation; there is no trust-all callback.
+
+`ANDREJA_ASSISTANT_APPROVED_EXTERNAL_TOTAL_UNITS` defaults to `0`, so an HTTPS
+profile can be inspected but no external request can run until Cyrus approves and
+records a numeric envelope. Each external attempt reserves the configured maximum
+input plus maximum output units before sending. Loopback conformance/local use does
+not consume that external envelope. This is a stop control, not currency conversion
+or a claim that provider token accounting is exact.
+
+The transport applies one overall timeout, caller/session cancellation, at most the
+configured retry count for HTTP 408, 429, 5xx, and network/read failures, and a
+bounded response body. HTTP redirects, other 4xx responses, malformed JSON, unknown
+or schema-invalid tools, and limit failures are not retried. Provider error bodies
+are discarded and never shown or logged. The Open Loops skill receives only validated
+typed arguments and can create a proposal only; task mutation still requires the
+separate confirmation path.
+
+The credential file is read for each attempt and is never cached in application
+configuration. Replace it atomically with another correctly permissioned file to
+rotate; delete or empty it to revoke. The next request fails with a safe credential
+state and performs no provider call. The provider endpoint reports configuration
+readiness plus the operator-authored provider and retention disclosures without
+returning the handle or path.
 
 ## Data Protection key contract
 
