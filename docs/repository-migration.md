@@ -26,7 +26,7 @@ the former personal-account repository or its redirect.
 
 | Area | Verified state and required follow-up |
 |---|---|
-| Actions | Actions are enabled, all actions are allowed, and SHA pinning is required. Workflows use repository context and contain no former-owner route. Keep reusable workflow references and permissions organization-safe. |
+| Actions | Actions are enabled, all actions are allowed, and SHA pinning is required. Every external action in active workflows and installed Squad workflow templates is pinned to the official major-version tag's full commit SHA, with the readable version retained in a comment. Workflows use repository context and contain no former-owner route. |
 | Branch rules and stacks | Two active repository rulesets protect policy and branch behavior. The repository allows squash merge only and deletes merged branches. Stacked work continues to target `main`; branch and PR links must use the canonical repository. |
 | Security | Code security, Dependabot security updates, secret scanning, validity checks, and push protection are enabled. The issue chooser now routes private reports to the canonical security policy. No secret value was read or changed. |
 | Billing | No billing setting, paid feature, visibility, or production resource was changed. An organization owner must review billing before enabling any paid feature; this migration does not authorize spend. |
