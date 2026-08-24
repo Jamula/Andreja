@@ -77,6 +77,9 @@ public sealed class OpenAiCompatibleProviderOptions
 
 public static class OpenLoopsServiceCollectionExtensions
 {
+    internal const string OpenAiValidationMessage =
+        "The OpenAI-compatible provider requires an allowlisted endpoint, model, credential handle, absolute credential file mapping, disclosures, and bounded transport policy.";
+
     public static IServiceCollection AddAndrejaOpenLoops(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -101,7 +104,7 @@ public static class OpenLoopsServiceCollectionExtensions
             .Validate(
                 options => options.AssistantProvider != "openai-compatible"
                     || IsValidOpenAiConfiguration(options.OpenAiCompatible),
-                "The OpenAI-compatible provider requires an allowlisted endpoint, model, credential handle, absolute credential file mapping, disclosures, and bounded transport policy.")
+                OpenAiValidationMessage)
             .ValidateOnStart();
 
         services.AddCascadingAuthenticationState();
@@ -188,24 +191,28 @@ public static class OpenLoopsServiceCollectionExtensions
                 provider.GetRequiredService<OpenLoopsTaskApplication>()));
         if (openLoops.AssistantProvider == "openai-compatible")
         {
-            var profile = CreateProfile(openLoops.OpenAiCompatible);
-            var transportPolicy = CreateTransportPolicy(openLoops.OpenAiCompatible);
-            services.AddSingleton(transportPolicy);
-            services.AddSingleton<IAssistantCredentialStore>(
-                new FileAssistantCredentialStore(
+            services.AddSingleton(provider =>
+                CreateTransportPolicy(GetValidatedOpenAiOptions(provider)));
+            services.AddSingleton<IAssistantCredentialStore>(provider =>
+            {
+                var options = GetValidatedOpenAiOptions(provider);
+                return new FileAssistantCredentialStore(
                     new Dictionary<string, string>(StringComparer.Ordinal)
                     {
-                        [profile.CredentialHandle] = openLoops.OpenAiCompatible.CredentialFile,
-                    }));
+                        [options.CredentialHandle] = options.CredentialFile,
+                    });
+            });
             services.AddHttpClient<OpenAiCompatibleTransport>(client =>
                 {
                     client.Timeout = Timeout.InfiniteTimeSpan;
                 })
                 .RedactLoggedHeaders(_ => true)
-                .ConfigurePrimaryHttpMessageHandler(() => CreateOpenAiHandler(profile));
+                .ConfigurePrimaryHttpMessageHandler(provider =>
+                    CreateOpenAiHandler(
+                        CreateProfile(GetValidatedOpenAiOptions(provider))));
             services.AddSingleton<IAssistantProvider>(provider =>
                 new OpenAiCompatibleAssistantAdapter(
-                    profile,
+                    CreateProfile(GetValidatedOpenAiOptions(provider)),
                     provider.GetRequiredService<OpenAiCompatibleTransport>()));
         }
         else
@@ -279,42 +286,64 @@ public static class OpenLoopsServiceCollectionExtensions
             PooledConnectionLifetime = TimeSpan.FromMinutes(5),
         };
 
+    private static OpenAiCompatibleProviderOptions GetValidatedOpenAiOptions(
+        IServiceProvider provider) =>
+        provider.GetRequiredService<IOptions<OpenLoopsOptions>>()
+            .Value
+            .OpenAiCompatible;
+
     private static bool IsValidOpenAiConfiguration(
         OpenAiCompatibleProviderOptions options)
     {
+        if (options is null
+            || string.IsNullOrWhiteSpace(options.Endpoint)
+            || !Uri.TryCreate(options.Endpoint, UriKind.Absolute, out var endpoint)
+            || options.AllowedEndpoints is null
+            || options.AllowedEndpoints.Length == 0
+            || string.IsNullOrWhiteSpace(options.CredentialFile)
+            || !Path.IsPathFullyQualified(options.CredentialFile)
+            || options.TimeoutSeconds is < 1 or > 300
+            || options.MaximumInputUnits <= 0
+            || options.MaximumOutputUnits <= 0
+            || options.MaximumResponseBodyBytes is < 1024 or > 16 * 1024 * 1024
+            || options.MaximumRetries is < 0 or > 5
+            || options.RetryBaseDelayMilliseconds is < 0 or > 5000
+            || options.ApprovedExternalTotalUnits < 0)
+        {
+            return false;
+        }
+
         try
         {
-            if (options is null
-                || string.IsNullOrWhiteSpace(options.CredentialFile)
-                || !Path.IsPathFullyQualified(options.CredentialFile))
+            var profile = CreateProfile(options);
+            var canonicalEndpoints = new List<string>(options.AllowedEndpoints.Length);
+            foreach (var allowedEndpoint in options.AllowedEndpoints)
             {
-                return false;
+                if (string.IsNullOrWhiteSpace(allowedEndpoint)
+                    || !Uri.TryCreate(allowedEndpoint, UriKind.Absolute, out var allowedUri))
+                {
+                    return false;
+                }
+
+                canonicalEndpoints.Add(CanonicalEndpoint(allowedUri));
             }
 
-            var profile = CreateProfile(options);
-            var policy = CreateTransportPolicy(options);
-            var canonicalEndpoints = policy.AllowedEndpoints
-                .Select(CanonicalEndpoint)
-                .ToArray();
-            return policy.AllowedEndpoints.Count > 0
+            var reservationUnits = checked(
+                options.MaximumInputUnits + options.MaximumOutputUnits);
+            var budgetIsValid = endpoint.IsLoopback
+                || options.ApprovedExternalTotalUnits == 0
+                || options.ApprovedExternalTotalUnits >= reservationUnits;
+            return budgetIsValid
                 && canonicalEndpoints.Distinct(StringComparer.Ordinal).Count()
-                    == canonicalEndpoints.Length
-                && options.TimeoutSeconds is >= 1 and <= 300
-                && options.MaximumInputUnits > 0
-                && options.MaximumOutputUnits > 0
-                && policy.MaximumResponseBodyBytes is >= 1024 and <= 16 * 1024 * 1024
-                && policy.MaximumRetries is >= 0 and <= 5
-                && policy.RetryBaseDelay >= TimeSpan.Zero
-                && policy.RetryBaseDelay <= TimeSpan.FromSeconds(5)
-                && policy.ApprovedExternalTotalUnits >= 0
-                && canonicalEndpoints.Any(endpoint =>
+                    == canonicalEndpoints.Count
+                && canonicalEndpoints.Any(canonical =>
                     string.Equals(
-                        endpoint,
+                        canonical,
                         CanonicalEndpoint(profile.Endpoint),
                         StringComparison.Ordinal));
         }
         catch (Exception exception) when (
-            exception is ArgumentException or UriFormatException or OverflowException)
+            exception is ArgumentException or OverflowException)
         {
             return false;
         }

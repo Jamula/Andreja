@@ -14,8 +14,9 @@ account.
   environment value.
 - The approved file store opens only the exact path mapped to the handle, requires
   owner-read-only mode (`0400`) on Unix or the read-only attribute on Windows, caps
-  the value at 4096 UTF-8 bytes, rereads it for rotation, and treats missing/empty as
-  revoked.
+  the value at 4096 UTF-8 bytes, rereads it for rotation, and treats an empty file as
+  revoked. A missing, inaccessible, writable, oversized, or invalid-UTF-8 file fails
+  as content-free `credential-unavailable`; paths and exception details are withheld.
 - The authorization value is attached only as the outbound Bearer header. It is not
   copied into the JSON request, prompt, tool schema, skill invocation, response,
   error, metric, trace, audit, export, or support evidence.
@@ -66,9 +67,10 @@ remains blocked.
 
 Rotate by atomically replacing the exact credential file with a newly issued value
 and the same restrictive permissions, then revoke the old value at the provider.
-The next attempt reads the new file. Revoke Andreja access immediately by deleting or
-emptying the file; the next request fails before network I/O. If exposure is
-suspected, pause the provider, revoke it at the provider, preserve only content-free
-timestamps/result classes for investigation, rotate the file, and verify the old
-value no longer authenticates. Never paste either value or provider content into an
-issue, PR, log, or test artifact.
+The next attempt reads the new file. Revoke Andreja access immediately by atomically
+replacing the file with an empty, correctly permissioned file; deleting it instead
+produces the safe `credential-unavailable` configuration failure. Either stops before
+network I/O. If exposure is suspected, pause the provider, revoke it at the provider,
+preserve only content-free timestamps/result classes for investigation, rotate the
+file, and verify the old value no longer authenticates. Never paste either value or
+provider content into an issue, PR, log, or test artifact.

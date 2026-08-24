@@ -50,8 +50,9 @@ Provider output is untrusted. Andreja rejects unknown tools, missing or incorrec
 typed tool arguments, malformed JSON, redirects, oversized responses, and usage above
 the configured limits. Timeout, cancellation, revocation, exhausted budget, and
 provider rejection all leave tasks unchanged. Rotating the file-backed credential
-affects the next call; deleting it revokes use without placing the value in
-configuration.
+affects the next call. An empty secured file revokes use; a missing, inaccessible,
+writable, oversized, or invalid-UTF-8 file reports only `credential-unavailable`.
+Neither condition places the value, path, or store exception in the response.
 
 Task text and proposal payloads are excluded from operational telemetry. Source
 references and audit events identify the operation without copying task content.

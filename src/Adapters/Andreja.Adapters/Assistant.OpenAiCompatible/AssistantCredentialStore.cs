@@ -53,10 +53,17 @@ public sealed class FileAssistantCredentialStore(
         ArgumentException.ThrowIfNullOrWhiteSpace(credentialHandle);
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (!credentialFiles.TryGetValue(credentialHandle, out var path)
-            || !File.Exists(path))
+        if (!credentialFiles.TryGetValue(credentialHandle, out var path))
         {
-            return null;
+            throw new InvalidDataException(
+                "The assistant credential handle is not mapped to the approved secret store.");
+        }
+
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException(
+                "The assistant credential file is unavailable.",
+                path);
         }
 
         EnsureReadOnly(path);
@@ -96,10 +103,11 @@ public sealed class FileAssistantCredentialStore(
                 return null;
             }
 
-            var characterCount = StrictUtf8.GetCharCount(credentialBytes);
-            var characters = ArrayPool<char>.Shared.Rent(characterCount);
+            char[]? characters = null;
             try
             {
+                var characterCount = StrictUtf8.GetCharCount(credentialBytes);
+                characters = ArrayPool<char>.Shared.Rent(characterCount);
                 var written = StrictUtf8.GetChars(credentialBytes, characters);
                 return new AssistantCredential(characters.AsSpan(0, written));
             }
@@ -111,8 +119,11 @@ public sealed class FileAssistantCredentialStore(
             }
             finally
             {
-                CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(characters.AsSpan()));
-                ArrayPool<char>.Shared.Return(characters);
+                if (characters is not null)
+                {
+                    CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(characters.AsSpan()));
+                    ArrayPool<char>.Shared.Return(characters);
+                }
             }
         }
         finally

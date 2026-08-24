@@ -16,9 +16,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 
 namespace Andreja.UnitTests;
@@ -433,28 +435,7 @@ public sealed class OpenAiCompatibleConformanceTests
     [Fact]
     public void OpenLoopsSelectionResolvesConfiguredByokAdapter()
     {
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                [$"{AndrejaOperationsOptions.SectionName}:Database:Enabled"] = "false",
-                [$"{OpenLoopsOptions.SectionName}:Enabled"] = "true",
-                [$"{OpenLoopsOptions.SectionName}:PublicOrigin"] = "https://localhost:5001",
-                [$"{OpenLoopsOptions.SectionName}:AssistantProvider"] = "openai-compatible",
-                [$"{OpenLoopsOptions.SectionName}:OpenAiCompatible:Endpoint"] =
-                    "http://localhost:11434/v1",
-                [$"{OpenLoopsOptions.SectionName}:OpenAiCompatible:AllowedEndpoints:0"] =
-                    "http://localhost:11434/v1",
-                [$"{OpenLoopsOptions.SectionName}:OpenAiCompatible:Model"] = "local-model",
-                [$"{OpenLoopsOptions.SectionName}:OpenAiCompatible:CredentialHandle"] =
-                    "credential://assistant/local",
-                [$"{OpenLoopsOptions.SectionName}:OpenAiCompatible:CredentialFile"] =
-                    Path.Join(AppContext.BaseDirectory, "not-present-secret"),
-                [$"{OpenLoopsOptions.SectionName}:OpenAiCompatible:ProviderDisclosure"] =
-                    "Local operator-selected provider receives the request.",
-                [$"{OpenLoopsOptions.SectionName}:OpenAiCompatible:RetentionDisclosure"] =
-                    "Local provider retention is operator controlled.",
-            })
-            .Build();
+        var configuration = CreateByokConfiguration();
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddAndrejaOpenLoops(
@@ -465,6 +446,44 @@ public sealed class OpenAiCompatibleConformanceTests
         var provider = serviceProvider.GetRequiredService<IAssistantProvider>();
 
         Assert.IsType<OpenAiCompatibleAssistantAdapter>(provider);
+    }
+
+    [Theory]
+    [InlineData("Endpoint", "")]
+    [InlineData("Endpoint", "not a uri")]
+    [InlineData("Endpoint", "https://user@provider.example/v1")]
+    [InlineData("Endpoint", "https://provider.example/v1#fragment")]
+    [InlineData("Endpoint", "http://provider.example/v1")]
+    [InlineData("AllowedEndpoints:0", "")]
+    [InlineData("AllowedEndpoints:0", "not a uri")]
+    [InlineData("AllowedEndpoints:0", "https://other.example/v1")]
+    [InlineData("Model", "")]
+    [InlineData("CredentialHandle", "")]
+    [InlineData("CredentialHandle", "raw-secret-value")]
+    [InlineData("ApprovedExternalTotalUnits", "-1")]
+    [InlineData("ApprovedExternalTotalUnits", "1")]
+    [InlineData("MaximumInputUnits", "0")]
+    public void InvalidByokOptionsFailThroughStableOptionsValidation(
+        string option,
+        string value)
+    {
+        var configuration = CreateByokConfiguration(option, value);
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        var registrationFailure = Record.Exception(() =>
+            services.AddAndrejaOpenLoops(
+                configuration,
+                new TestEnvironment { EnvironmentName = Environments.Development }));
+
+        Assert.Null(registrationFailure);
+        using var serviceProvider = services.BuildServiceProvider();
+        var exception = Assert.Throws<OptionsValidationException>(
+            () => serviceProvider.GetRequiredService<IAssistantProvider>());
+        Assert.Contains(
+            OpenLoopsServiceCollectionExtensions.OpenAiValidationMessage,
+            exception.Failures);
+        Assert.Null(exception.InnerException);
     }
 
     [Fact]
@@ -478,7 +497,7 @@ public sealed class OpenAiCompatibleConformanceTests
     }
 
     [Fact]
-    public async Task FileCredentialStoreReadsRotationAndTreatsDeletionAsRevocation()
+    public async Task FileCredentialStoreReadsRotationAndEmptyFileAsRevocation()
     {
         var path = Path.Join(
             AppContext.BaseDirectory,
@@ -509,10 +528,17 @@ public sealed class OpenAiCompatibleConformanceTests
             }
 
             MakeWritable(path);
-            File.Delete(path);
+            await WriteReadOnlySecretAsync(path, string.Empty);
             Assert.Null(await store.ResolveAsync(
                 "credential://assistant/file-test",
                 CancellationToken.None));
+
+            MakeWritable(path);
+            File.Delete(path);
+            await Assert.ThrowsAsync<FileNotFoundException>(async () =>
+                await store.ResolveAsync(
+                    "credential://assistant/file-test",
+                    CancellationToken.None));
         }
         finally
         {
@@ -523,6 +549,163 @@ public sealed class OpenAiCompatibleConformanceTests
             }
         }
     }
+
+    [Fact]
+    public async Task CredentialFileFailuresAreContentFreeTypedFailures()
+    {
+        var missingPath = Path.Join(
+            AppContext.BaseDirectory,
+            $"missing-assistant-credential-{Guid.CreateVersion7():N}");
+        var missingStore = Store(missingPath);
+        await AssertCredentialUnavailableAsync(
+            missingStore,
+            missingPath,
+            "missing-secret-canary");
+
+        var writablePath = Path.Join(
+            AppContext.BaseDirectory,
+            $"writable-assistant-credential-{Guid.CreateVersion7():N}");
+        var oversizedPath = Path.Join(
+            AppContext.BaseDirectory,
+            $"oversized-assistant-credential-{Guid.CreateVersion7():N}");
+        var invalidUtf8Path = Path.Join(
+            AppContext.BaseDirectory,
+            $"invalid-utf8-assistant-credential-{Guid.CreateVersion7():N}");
+        try
+        {
+            await File.WriteAllTextAsync(writablePath, "writable-secret-canary");
+            MakeWritable(writablePath);
+            await AssertCredentialUnavailableAsync(
+                Store(writablePath),
+                writablePath,
+                "writable-secret-canary");
+
+            await WriteReadOnlyBytesAsync(
+                oversizedPath,
+                Enumerable.Repeat((byte)'x', 4097).ToArray());
+            await AssertCredentialUnavailableAsync(
+                Store(oversizedPath),
+                oversizedPath,
+                new string('x', 32));
+
+            byte[] invalidUtf8 = [0xC3, 0x28];
+            await WriteReadOnlyBytesAsync(invalidUtf8Path, invalidUtf8);
+            var invalidStore = Store(invalidUtf8Path);
+            var invalidException = await Assert.ThrowsAsync<InvalidDataException>(async () =>
+                await invalidStore.ResolveAsync(
+                    "credential://assistant/conformance",
+                    CancellationToken.None));
+            Assert.IsType<DecoderFallbackException>(invalidException.InnerException);
+            await AssertCredentialUnavailableAsync(
+                invalidStore,
+                invalidUtf8Path,
+                Convert.ToHexString(invalidUtf8));
+        }
+        finally
+        {
+            DeleteCredentialFile(writablePath);
+            DeleteCredentialFile(oversizedPath);
+            DeleteCredentialFile(invalidUtf8Path);
+        }
+    }
+
+    [Fact]
+    public async Task AccessDeniedIsTypedButProgrammerFailureIsNotCaught()
+    {
+        const string deniedDetail = "denied-path-and-secret-canary";
+        await AssertCredentialUnavailableAsync(
+            new ThrowingCredentialStore(new UnauthorizedAccessException(deniedDetail)),
+            deniedDetail);
+
+        var programmerFailure = new InvalidOperationException("programmer-failure-canary");
+        using var client = CreateNeverSendClient();
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            CompleteAsync(
+                Provider(
+                    client,
+                    new ThrowingCredentialStore(programmerFailure))));
+        Assert.Same(programmerFailure, exception);
+    }
+
+    [Fact]
+    public void AssistantCredentialDisposalZeroesObservableBuffer()
+    {
+        var credential = new AssistantCredential("buffer-secret-canary");
+        var field = typeof(AssistantCredential).GetField(
+            "value",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var buffer = Assert.IsType<char[]>(field!.GetValue(credential));
+
+        credential.Dispose();
+
+        Assert.All(buffer, character => Assert.Equal('\0', character));
+        Assert.Throws<ObjectDisposedException>(() => _ = credential.Value.Length);
+    }
+
+    private static IConfiguration CreateByokConfiguration(
+        string? overrideOption = null,
+        string? overrideValue = null)
+    {
+        var prefix = $"{OpenLoopsOptions.SectionName}:OpenAiCompatible";
+        var values = new Dictionary<string, string?>
+        {
+            [$"{AndrejaOperationsOptions.SectionName}:Database:Enabled"] = "false",
+            [$"{OpenLoopsOptions.SectionName}:Enabled"] = "true",
+            [$"{OpenLoopsOptions.SectionName}:PublicOrigin"] = "https://localhost:5001",
+            [$"{OpenLoopsOptions.SectionName}:AssistantProvider"] = "openai-compatible",
+            [$"{prefix}:Endpoint"] = "https://provider.example/v1",
+            [$"{prefix}:AllowedEndpoints:0"] = "https://provider.example/v1",
+            [$"{prefix}:Model"] = "conformance-model",
+            [$"{prefix}:CredentialHandle"] = "credential://assistant/conformance",
+            [$"{prefix}:CredentialFile"] =
+                Path.Join(AppContext.BaseDirectory, "not-present-secret"),
+            [$"{prefix}:ProviderDisclosure"] =
+                "The selected provider receives submitted task content.",
+            [$"{prefix}:RetentionDisclosure"] =
+                "The selected provider retention policy was reviewed.",
+            [$"{prefix}:MaximumInputUnits"] = "10000",
+            [$"{prefix}:MaximumOutputUnits"] = "2000",
+            [$"{prefix}:ApprovedExternalTotalUnits"] = "0",
+        };
+        if (overrideOption is not null)
+        {
+            values[$"{prefix}:{overrideOption}"] = overrideValue;
+        }
+
+        return new ConfigurationBuilder()
+            .AddInMemoryCollection(values)
+            .Build();
+    }
+
+    private static FileAssistantCredentialStore Store(string path) =>
+        new(
+            new Dictionary<string, string>
+            {
+                ["credential://assistant/conformance"] = path,
+            });
+
+    private static async Task AssertCredentialUnavailableAsync(
+        IAssistantCredentialStore store,
+        params string[] forbiddenValues)
+    {
+        using var client = CreateNeverSendClient();
+        var response = await CompleteAsync(Provider(client, store));
+
+        Assert.Equal(AssistantResponseStatus.Failed, response.Status);
+        Assert.Equal("credential-unavailable", response.Failure?.Code);
+        Assert.False(response.Failure?.IsTransient);
+        var serialized = JsonSerializer.Serialize(response);
+        foreach (var forbidden in forbiddenValues)
+        {
+            Assert.DoesNotContain(forbidden, serialized, StringComparison.Ordinal);
+        }
+    }
+
+    private static HttpClient CreateNeverSendClient() =>
+        new(new NeverSendHandler())
+        {
+            Timeout = Timeout.InfiniteTimeSpan,
+        };
 
     private static OpenAiCompatibleAssistantAdapter Provider(
         HttpClient client,
@@ -667,6 +850,17 @@ public sealed class OpenAiCompatibleConformanceTests
     private static async Task WriteReadOnlySecretAsync(string path, string value)
     {
         await File.WriteAllTextAsync(path, value);
+        MakeReadOnly(path);
+    }
+
+    private static async Task WriteReadOnlyBytesAsync(string path, byte[] value)
+    {
+        await File.WriteAllBytesAsync(path, value);
+        MakeReadOnly(path);
+    }
+
+    private static void MakeReadOnly(string path)
+    {
         if (OperatingSystem.IsWindows())
         {
             File.SetAttributes(path, File.GetAttributes(path) | FileAttributes.ReadOnly);
@@ -675,6 +869,17 @@ public sealed class OpenAiCompatibleConformanceTests
         {
             File.SetUnixFileMode(path, UnixFileMode.UserRead);
         }
+    }
+
+    private static void DeleteCredentialFile(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return;
+        }
+
+        MakeWritable(path);
+        File.Delete(path);
     }
 
     private static void MakeWritable(string path)
@@ -707,6 +912,24 @@ public sealed class OpenAiCompatibleConformanceTests
         public void Rotate(string value) => Volatile.Write(ref credential, value);
 
         public void Revoke() => Volatile.Write(ref credential, null);
+    }
+
+    private sealed class ThrowingCredentialStore(Exception exception)
+        : IAssistantCredentialStore
+    {
+        public ValueTask<AssistantCredential?> ResolveAsync(
+            string credentialHandle,
+            CancellationToken cancellationToken) =>
+            ValueTask.FromException<AssistantCredential?>(exception);
+    }
+
+    private sealed class NeverSendHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken) =>
+            Task.FromException<HttpResponseMessage>(
+                new InvalidOperationException("A credential failure attempted network I/O."));
     }
 
     private sealed class ConformanceServer : IAsyncDisposable

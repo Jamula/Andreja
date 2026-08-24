@@ -140,7 +140,9 @@ public sealed class OpenAiCompatibleTransport : IOpenAiCompatibleTransport
                         cancellationToken);
                 }
                 catch (Exception exception) when (
-                    exception is IOException or UnauthorizedAccessException)
+                    exception is InvalidDataException
+                        or IOException
+                        or UnauthorizedAccessException)
                 {
                     return Failure(
                         request,

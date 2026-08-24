@@ -238,10 +238,12 @@ separate confirmation path.
 
 The credential file is read for each attempt and is never cached in application
 configuration. Replace it atomically with another correctly permissioned file to
-rotate; delete or empty it to revoke. The next request fails with a safe credential
-state and performs no provider call. The provider endpoint reports configuration
-readiness plus the operator-authored provider and retention disclosures without
-returning the handle or path.
+rotate; atomically replace it with an empty correctly permissioned file to revoke.
+Deleting, making writable/inaccessible, exceeding 4096 bytes, or using invalid UTF-8
+instead produces the content-free `credential-unavailable` configuration failure.
+All fail before provider I/O without returning the value, path, or store exception.
+The provider endpoint reports configuration readiness plus the operator-authored
+provider and retention disclosures without returning the handle or path.
 
 ## Data Protection key contract
 
