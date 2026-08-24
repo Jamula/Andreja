@@ -1,5 +1,363 @@
 @page "/"
+@attribute [Authorize(Policy = "andreja-user")]
+@rendermode InteractiveServer
+@inject IOpenLoopsApiClient Api
 
-<PageTitle>Andreja</PageTitle>
+<PageTitle>Open Loops | Andreja</PageTitle>
 
-<h1>Andreja</h1>
+<main class="task-shell" aria-labelledby="page-title">
+    <header class="task-hero">
+        <p class="eyebrow">Open Loops</p>
+        <h1 id="page-title">Capture what matters, then choose what changes.</h1>
+        <p class="lede">
+            Ask the assistant to prepare a task. Nothing is saved until you inspect
+            the exact proposal and confirm it.
+        </p>
+    </header>
+
+    @if (!string.IsNullOrEmpty(StatusMessage))
+    {
+        <p class="status-message" role="status" aria-live="polite">@StatusMessage</p>
+    }
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="error-message" role="alert">
+            <strong>That did not work.</strong>
+            <span>@ErrorMessage</span>
+        </div>
+    }
+
+    <section class="task-card composer" aria-labelledby="assistant-heading">
+        <div class="section-heading">
+            <div>
+                <h2 id="assistant-heading">Ask the assistant</h2>
+                @if (Provider is not null)
+                {
+                    <p class="field-help">
+                        Provider: <strong>@Provider.Provider / @Provider.Model</strong>
+                        · Selected by the self-host operator
+                    </p>
+                }
+            </div>
+            @if (Provider is not null)
+            {
+                <span class="state-chip">@(Provider.Ready ? "Ready" : "Configuration required")</span>
+            }
+        </div>
+        @if (Provider is not null)
+        {
+            <p class="provider-disclosure">@Provider.Disclosure</p>
+        }
+        <EditForm Model="Request" OnValidSubmit="ProposeAsync" FormName="task-proposal">
+            <DataAnnotationsValidator />
+            <div class="field">
+                <label for="task-request">What do you need to do?</label>
+                <InputTextArea id="task-request"
+                               @bind-Value="Request.Message"
+                               aria-describedby="task-request-help"
+                               disabled="@Busy" />
+                <p id="task-request-help" class="field-help">
+                    Use a clear task title. The assistant can only prepare one task proposal.
+                </p>
+                <ValidationMessage For="() => Request.Message" />
+            </div>
+            <button class="button primary" type="submit" disabled="@Busy">
+                @(Busy ? "Preparing…" : "Prepare proposal")
+            </button>
+        </EditForm>
+    </section>
+
+    @if (Proposal is not null)
+    {
+        <section class="task-card proposal" aria-labelledby="proposal-heading">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">Review required</p>
+                    <h2 id="proposal-heading" tabindex="-1" @ref="proposalHeading">Exact proposed change</h2>
+                </div>
+                <span class="state-chip">@Proposal.State</span>
+            </div>
+
+            <dl class="proposal-facts">
+                <div>
+                    <dt>Operation</dt>
+                    <dd><code>@Proposal.Operation</code></dd>
+                </div>
+                <div>
+                    <dt>Source</dt>
+                    <dd>@Proposal.SourceKind</dd>
+                </div>
+                <div>
+                    <dt>Expires</dt>
+                    <dd>@Proposal.ExpiresAt.ToLocalTime().ToString("g")</dd>
+                </div>
+            </dl>
+
+            <h3>Before</h3>
+            <pre class="change-preview" aria-label="Current value">@Proposal.BeforeCanonical</pre>
+            <h3>After</h3>
+            <pre class="change-preview" aria-label="Proposed value">@Proposal.AfterCanonical</pre>
+
+            <aside class="policy-note" aria-labelledby="policy-heading">
+                <h3 id="policy-heading">Policy check</h3>
+                <p>@Proposal.Policy.Explanation</p>
+                <dl>
+                    <dt>Purpose</dt>
+                    <dd>@Proposal.Policy.Purpose</dd>
+                    <dt>Required capability</dt>
+                    <dd>@Proposal.Policy.RequiredCapability</dd>
+                </dl>
+            </aside>
+
+            <div class="button-row">
+                <button class="button primary" type="button" @onclick="ConfirmAsync" disabled="@Busy">
+                    Confirm and save task
+                </button>
+                <button class="button secondary" type="button" @onclick="DismissProposal" disabled="@Busy">
+                    Not now
+                </button>
+            </div>
+        </section>
+    }
+
+    <section class="task-card task-list" aria-labelledby="tasks-heading">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">Your data</p>
+                <h2 id="tasks-heading">Tasks</h2>
+            </div>
+            <button class="button secondary" type="button" @onclick="ExportAsync" disabled="@(Busy || Tasks.Count == 0)">
+                Export JSON
+            </button>
+        </div>
+
+        @if (ExportHref is not null)
+        {
+            <p class="download-callout" role="status">
+                Your export is ready.
+                <a href="@ExportHref" download="andreja-open-loops.json">Download task export</a>
+            </p>
+        }
+
+        @if (!Loaded)
+        {
+            <p role="status">Loading tasks…</p>
+        }
+        else if (Tasks.Count == 0)
+        {
+            <div class="empty-state">
+                <h3>No open loops yet</h3>
+                <p>Prepare a proposal above. You remain in control of every saved change.</p>
+            </div>
+        }
+        else
+        {
+            <ul class="tasks">
+                @foreach (var task in Tasks)
+                {
+                    <li class="task-item">
+                        <div class="task-content">
+                            <div class="task-title-row">
+                                <h3>@task.Title</h3>
+                                <span class="state-chip">@task.Status</span>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(task.Details))
+                            {
+                                <p>@task.Details</p>
+                            }
+                            <p class="task-meta">
+                                Source: @task.SourceKind · Created @task.CreatedAt.ToLocalTime().ToString("g")
+                            </p>
+                        </div>
+                        <div class="button-row">
+                            @if (task.Status == TaskStatusDto.Open)
+                            {
+                                <button class="button primary" type="button"
+                                        @onclick="() => CompleteAsync(task)" disabled="@Busy">
+                                    Mark complete
+                                </button>
+                            }
+                            @if (DeleteCandidate == task.Id)
+                            {
+                                <span class="delete-confirmation">Delete permanently?</span>
+                                <button class="button danger" type="button"
+                                        @onclick="() => DeleteAsync(task)" disabled="@Busy">
+                                    Yes, delete
+                                </button>
+                                <button class="button secondary" type="button"
+                                        @onclick="CancelDelete" disabled="@Busy">
+                                    Cancel
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="button secondary" type="button"
+                                        @onclick="() => BeginDelete(task.Id)" disabled="@Busy">
+                                    Delete
+                                </button>
+                            }
+                        </div>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+</main>
+
+@code {
+    private readonly ProposalForm Request = new();
+    private readonly List<TaskDto> Tasks = [];
+    private ElementReference proposalHeading;
+
+    private TaskProposalDto? Proposal { get; set; }
+    private AssistantProviderDto? Provider { get; set; }
+    private Guid? DeleteCandidate { get; set; }
+    private string? StatusMessage { get; set; }
+    private string? ErrorMessage { get; set; }
+    private string? ExportHref { get; set; }
+    private bool Busy { get; set; }
+    private bool Loaded { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task ProposeAsync()
+    {
+        await RunAsync(async () =>
+        {
+            var response = await Api.ProposeAsync(Request.Message);
+            Proposal = response.Proposal;
+            StatusMessage = response.Message ?? "Proposal ready for review.";
+            if (Proposal is not null)
+            {
+                await Task.Yield();
+                await proposalHeading.FocusAsync();
+            }
+        });
+    }
+
+    private async Task ConfirmAsync()
+    {
+        if (Proposal is null)
+        {
+            return;
+        }
+
+        await RunAsync(async () =>
+        {
+            var result = await Api.ConfirmAsync(
+                Proposal.Id,
+                Proposal.Version,
+                NewIdempotencyKey("confirm"));
+            Proposal = null;
+            Request.Message = string.Empty;
+            StatusMessage = result.Outcome == "IdempotentReplay"
+                ? "That confirmation was already applied. No duplicate task was created."
+                : "Task saved.";
+            await LoadAsync();
+        });
+    }
+
+    private async Task CompleteAsync(TaskDto task)
+    {
+        await RunAsync(async () =>
+        {
+            var result = await Api.CompleteAsync(
+                task.Id,
+                task.Version,
+                NewIdempotencyKey("complete"));
+            StatusMessage = result.Outcome == "IdempotentReplay"
+                ? "That completion was already applied."
+                : "Task completed.";
+            await LoadAsync();
+        });
+    }
+
+    private async Task DeleteAsync(TaskDto task)
+    {
+        await RunAsync(async () =>
+        {
+            var result = await Api.DeleteAsync(
+                task.Id,
+                task.Version,
+                NewIdempotencyKey("delete"));
+            DeleteCandidate = null;
+            StatusMessage = result.Outcome == "IdempotentReplay"
+                ? "That deletion was already applied."
+                : "Task deleted.";
+            await LoadAsync();
+        });
+    }
+
+    private async Task ExportAsync()
+    {
+        await RunAsync(async () =>
+        {
+            var export = await Api.ExportAsync();
+            var json = System.Text.Json.JsonSerializer.Serialize(
+                export,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            ExportHref = $"data:application/json;charset=utf-8,{Uri.EscapeDataString(json)}";
+            StatusMessage = "Task export prepared locally in your browser.";
+        });
+    }
+
+    private async Task LoadAsync()
+    {
+        Provider ??= await Api.GetProviderAsync();
+        var tasks = await Api.ListAsync();
+        Tasks.Clear();
+        Tasks.AddRange(tasks);
+        Loaded = true;
+    }
+
+    private async Task RunAsync(Func<Task> action)
+    {
+        Busy = true;
+        ErrorMessage = null;
+        StatusMessage = null;
+        ExportHref = null;
+        try
+        {
+            await action();
+        }
+        catch (OpenLoopsApiException exception)
+        {
+            ErrorMessage = exception.Message;
+        }
+        catch (OperationCanceledException)
+        {
+            ErrorMessage = "The request was cancelled. Nothing was changed.";
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }
+
+    private void DismissProposal()
+    {
+        Proposal = null;
+        StatusMessage = "Proposal dismissed. Nothing was saved.";
+    }
+
+    private void BeginDelete(Guid taskId) => DeleteCandidate = taskId;
+
+    private void CancelDelete() => DeleteCandidate = null;
+
+    private static string NewIdempotencyKey(string operation) =>
+        $"{operation}-{Guid.CreateVersion7():N}";
+
+    private sealed class ProposalForm
+    {
+        [System.ComponentModel.DataAnnotations.Required(
+            ErrorMessage = "Enter what you need to do.")]
+        [System.ComponentModel.DataAnnotations.StringLength(
+            500,
+            MinimumLength = 1,
+            ErrorMessage = "Use between 1 and 500 characters.")]
+        public string Message { get; set; } = string.Empty;
+    }
+}

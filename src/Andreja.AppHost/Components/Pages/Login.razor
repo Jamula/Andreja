@@ -1,0 +1,51 @@
+@page "/Account/Login"
+@attribute [AllowAnonymous]
+@inject IWebHostEnvironment Environment
+
+<PageTitle>Sign in | Andreja</PageTitle>
+
+<main class="task-shell account-shell" aria-labelledby="sign-in-heading">
+    <section class="task-card account-card">
+        <p class="eyebrow">Local identity</p>
+        <h1 id="sign-in-heading">Sign in to Andreja</h1>
+
+        @if (LocalAccountEndpoints.IsDevelopmentSignInAvailable(Environment))
+        {
+            <div class="development-warning" role="note">
+                <strong>Development only</strong>
+                <p>
+                    This explicit local sign-in uses a fixed in-memory development
+                    identity. It is compiled only into Debug builds, mapped only in
+                    the Development environment, and is not a production
+                    authentication path.
+                </p>
+            </div>
+            <form method="post" action="@LocalAccountEndpoints.DevelopmentSignInPath">
+                <AntiforgeryToken />
+                <input type="hidden" name="returnUrl" value="@SafeReturnUrl" />
+                <button class="button primary" type="submit">
+                    Sign in to the development workspace
+                </button>
+            </form>
+        }
+        else
+        {
+            <div class="error-message" role="alert">
+                <strong>Production passkey sign-in is not shipped yet.</strong>
+                <span>
+                    This build does not provide a production sign-in bypass.
+                    Complete the Phase 1A passkey bootstrap, sign-in, and recovery
+                    blocker before treating this self-host as usable.
+                </span>
+            </div>
+        }
+    </section>
+</main>
+
+@code {
+    [SupplyParameterFromQuery(Name = "ReturnUrl")]
+    public string? ReturnUrl { get; set; }
+
+    private string SafeReturnUrl =>
+        LocalAccountEndpoints.IsLocalReturnUrl(ReturnUrl) ? ReturnUrl! : "/";
+}
