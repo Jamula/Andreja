@@ -46,7 +46,7 @@ not match the merged `docs/plan.md`.
 ### 2026-08-23 — organization repository migration
 
 - **Tracking issue:** [#30](https://github.com/Jamula/Andreja/issues/30)
-- **Pull request:** Pending
+- **Pull request:** [#34](https://github.com/Jamula/Andreja/pull/34)
 - **Plan SHA-256:** `9dfe3e8f81d140082270de0517ecc3f15d2a2090c5b6c530f83fe461ff8798c0`
 - **Approver:** Cyrus Jamula
 - **Decision:** Logged amendment; no architecture or ratification change.
