@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "squad_state": {
+      "command": "squad",
+      "args": [
+        "state-mcp"
+      ],
+      "env": {},
+      "tools": [
+        "squad_state_*",
+        "memory.*"
+      ]
+    }
+  }
+}

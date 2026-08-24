@@ -1,0 +1,43 @@
+name: Product or project feedback
+description: Share sanitized feedback and the outcome you want
+title: "[Feedback]: "
+labels:
+  - feedback
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This repository is not a private support channel. Do not include personal
+        data, prompts, task or file content, credentials, or private diagnostics.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Product or user experience
+        - Public website or help
+        - Skill or channel
+        - Self-hosting or operations
+        - Developer or marketplace experience
+        - Company or project process
+    validations:
+      required: true
+  - type: textarea
+    id: feedback
+    attributes:
+      label: Feedback
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed personal data, credentials, prompts, and connector content.
+          required: true

@@ -36,6 +36,9 @@ ScaffoldingReadMe.txt
 # NuGet Symbol Packages
 *.snupkg
 
+# Node.js development tooling
+node_modules/
+
 # dotenv environment variables file
 .env
 
@@ -55,3 +58,24 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+# Squad: ignore runtime state (logs, inbox, sessions)
+# Casting policy and registry are committed; assignment history is runtime state
+.squad/orchestration-log/
+.squad/log/
+.squad/decisions/inbox/
+.squad/sessions/
+.squad/.scratch/
+.squad/.cache/
+# Squad: state owned by squad-state branch (two-layer/orphan backend)
+.squad/decisions.md
+.squad/agents/*/history.md
+.squad/casting/history.json
+.squad/identity/
+.squad/memory/
+.squad/rai/audit-trail.md
+.squad/fact-checker/audit-trail.md
+# /Squad: state owned by squad-state branch
+# Squad: local initialization marker
+.squad/.first-run
+# Squad: SubSquad activation file (local to this machine)
+.squad-workstream

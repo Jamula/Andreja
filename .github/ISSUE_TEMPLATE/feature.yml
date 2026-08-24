@@ -1,0 +1,56 @@
+name: Feature, skill, or channel proposal
+description: Propose a user outcome and the smallest evidence-producing slice
+title: "[Proposal]: "
+labels:
+  - enhancement
+body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: Proposal type
+      options:
+        - Product capability
+        - First-party skill
+        - Channel or connector
+        - Platform or developer ecosystem
+        - Public website, help, or support
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem and outcome
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Smallest complete scope
+      description: Include explicit non-goals.
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: Data, permissions, and consequential actions
+      description: Identify sensitive data, channels, sharing, model exposure, or actions.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Acceptance and evidence
+      description: Scenarios, tests, help, metrics, and stop criteria.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and affected contracts
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: This proposal contains no user or connector content.
+          required: true
