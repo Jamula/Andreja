@@ -160,6 +160,11 @@ if ((Get-Content -LiteralPath (Join-Path $bundleRoot 'image.digest') -Raw).Trim(
     throw 'Human-readable image digest does not match the signed evidence.'
 }
 
+if ($evidence.signing.status -eq 'unsigned') {
+    Write-Output 'Hosted unsigned evidence validated structurally; it is not trusted for startup, update, or release.'
+    return
+}
+
 Invoke-CheckedCommand -FilePath 'docker' -Arguments @(
     'load', '--input', $archivePath
 ) -FailureMessage 'Verified OCI archive could not be loaded into the local image store.'
@@ -177,9 +182,5 @@ if ($loadedImage.Count -ne 1 -or
     throw 'Loaded image descriptor or source/base labels do not match the verified OCI archive.'
 }
 
-if ($evidence.signing.status -eq 'signed') {
-    Write-Output "Verified offline image: $($evidence.image.immutableReference)"
-    Write-Output "Set ANDREJA_IMAGE=$($evidence.image.immutableReference) before Compose start/update."
-} else {
-    Write-Output 'Hosted unsigned evidence validated structurally; it is not trusted for startup, update, or release.'
-}
+Write-Output "Verified offline image: $($evidence.image.immutableReference)"
+Write-Output "Set ANDREJA_IMAGE=$($evidence.image.immutableReference) before Compose start/update."
