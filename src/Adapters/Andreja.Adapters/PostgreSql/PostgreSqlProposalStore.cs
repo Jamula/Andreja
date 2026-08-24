@@ -5,18 +5,50 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Andreja.Adapters.PostgreSql;
 
-public sealed class PostgreSqlProposalStore(
-    AndrejaIdentityDbContext database,
-    ITenantPrincipalContextAccessor contextAccessor,
-    IProposalConfirmationFaultInjector? faultInjector = null)
+public sealed class PostgreSqlProposalStore
     : IProposalStore, IProposalAuditSink, IOpenLoopsProposalConfirmationStore
 {
+    private readonly AndrejaIdentityDbContext database;
+    private readonly ITenantPrincipalContextAccessor contextAccessor;
+    private readonly IProposalConfirmationFaultInjector? faultInjector;
+
+    public PostgreSqlProposalStore(
+        AndrejaIdentityDbContext database,
+        ITenantPrincipalContextAccessor contextAccessor)
+        : this(database, contextAccessor, null)
+    {
+    }
+
+    internal PostgreSqlProposalStore(
+        AndrejaIdentityDbContext database,
+        ITenantPrincipalContextAccessor contextAccessor,
+        IProposalConfirmationFaultInjector? faultInjector)
+    {
+        this.database = database;
+        this.contextAccessor = contextAccessor;
+        this.faultInjector = faultInjector;
+    }
+
     public async ValueTask<bool> TryCreateAsync(
         Proposal proposal,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(proposal);
+        if (proposal.ProposalId == Guid.Empty
+            || proposal.Version < 1
+            || proposal.State != ProposalState.Pending
+            || proposal.ExpiresAt <= proposal.CreatedAt)
+        {
+            throw new ArgumentException("The proposal is invalid.", nameof(proposal));
+        }
+
         var context = RequireCurrent(proposal.TenantId, proposal.ActorId, proposal.Purpose);
+        if (!await HasActorBindingAsync(context, cancellationToken))
+        {
+            throw new IdentityAccessDeniedException(
+                "The proposal actor is not an active tenant membership.");
+        }
+
         _ = OpenLoopsTaskApplication.MaterializeTask(context, proposal);
         database.Proposals.Add(ProposalRecord.FromDomain(proposal, context.AppUserId));
         try
@@ -44,16 +76,23 @@ public sealed class PostgreSqlProposalStore(
         CancellationToken cancellationToken)
     {
         var current = TenantPrincipalContext.Require(contextAccessor);
+        OpenLoopsPolicy.Require(current);
         if (current.TenantId.Value != tenantId)
         {
             throw new IdentityAccessDeniedException(
                 "The requested proposal tenant does not match the resolved request context.");
         }
 
+        if (!await HasActorBindingAsync(current, cancellationToken))
+        {
+            return null;
+        }
+
         var proposal = await database.Proposals
             .AsNoTracking()
             .SingleOrDefaultAsync(candidate => candidate.Id == proposalId, cancellationToken);
         return proposal?.ActorAppUserId == current.AppUserId
+               && proposal.ActorId == current.PrincipalId
             ? proposal.ToDomain()
             : null;
     }
@@ -64,6 +103,11 @@ public sealed class PostgreSqlProposalStore(
     {
         var context = RequireCurrent(request.TenantId, request.ActorId, OpenLoopsPolicy.Purpose);
         ValidateIdempotencyKey(request.IdempotencyKey);
+        if (!await HasActorBindingAsync(context, cancellationToken))
+        {
+            return new(ProposalTransitionOutcome.Denied, null);
+        }
+
         var intent = TransitionIntent(request);
         var replay = await FindTransitionReplayAsync(
             context,
@@ -142,6 +186,11 @@ public sealed class PostgreSqlProposalStore(
     {
         EnsureCurrent(context);
         ValidateIdempotencyKey(idempotencyKey);
+        if (!await HasActorBindingAsync(context, cancellationToken))
+        {
+            return new(ProposalTransitionOutcome.Denied, null, null);
+        }
+
         var intent = ConfirmationIntent(proposalId, expectedVersion);
         var replay = await FindConfirmationReplayAsync(
             context,
@@ -357,6 +406,18 @@ public sealed class PostgreSqlProposalStore(
                     && candidate.IdempotencyKey == idempotencyKey,
                 cancellationToken);
 
+    private Task<bool> HasActorBindingAsync(
+        TenantPrincipalContext context,
+        CancellationToken cancellationToken) =>
+        database.Memberships
+            .AsNoTracking()
+            .AnyAsync(
+                membership =>
+                    membership.AppUserId == context.AppUserId
+                    && membership.PrincipalId == context.PrincipalId
+                    && membership.Status == MembershipStatus.Active,
+                cancellationToken);
+
     private static ProposalTransitionOutcome? ValidateTransition(
         ProposalRecord proposal,
         ProposalTransitionRequest request)
@@ -445,13 +506,13 @@ public sealed class PostgreSqlProposalStore(
     }
 }
 
-public enum ProposalConfirmationCheckpoint
+internal enum ProposalConfirmationCheckpoint
 {
     BeforeCommit,
     AfterCommit,
 }
 
-public interface IProposalConfirmationFaultInjector
+internal interface IProposalConfirmationFaultInjector
 {
     ValueTask OnCheckpointAsync(
         ProposalConfirmationCheckpoint checkpoint,

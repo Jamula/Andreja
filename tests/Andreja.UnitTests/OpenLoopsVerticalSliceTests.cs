@@ -253,6 +253,26 @@ public sealed class OpenLoopsVerticalSliceTests
     }
 
     [Fact]
+    public async Task ConfirmationRejectsPayloadDigestMismatch()
+    {
+        var fixture = CreateFixture();
+        var proposal = await fixture.Application.ProposeAsync(
+            fixture.Context,
+            new("Digest mismatch", null, null),
+            "assistant:digest-mismatch");
+        var tampered = proposal with
+        {
+            Operation = proposal.Operation with
+            {
+                PayloadDigest = new string('0', 64),
+            },
+        };
+
+        Assert.Throws<InvalidOperationException>(
+            () => OpenLoopsTaskApplication.MaterializeTask(fixture.Context, tampered));
+    }
+
+    [Fact]
     public void TaskDomainRejectsInvalidContentAndDuplicateCompletion()
     {
         var context = NewContext();

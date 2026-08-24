@@ -370,7 +370,7 @@ namespace Andreja.Adapters.PostgreSql.Migrations
 
                     b.HasKey("TenantId", "ActorId", "IdempotencyKey");
 
-                    b.HasIndex("TenantId", "ProposalId");
+                    b.HasIndex("TenantId", "ProposalId", "ActorId");
 
                     b.HasIndex("TenantId", "TaskId", "ActorId");
 
@@ -923,8 +923,8 @@ namespace Andreja.Adapters.PostgreSql.Migrations
 
                     b.HasOne("Andreja.Adapters.PostgreSql.ProposalRecord", null)
                         .WithMany()
-                        .HasForeignKey("TenantId", "ProposalId")
-                        .HasPrincipalKey("TenantId", "Id")
+                        .HasForeignKey("TenantId", "ProposalId", "ActorId")
+                        .HasPrincipalKey("TenantId", "Id", "ActorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

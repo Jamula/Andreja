@@ -448,6 +448,12 @@ public sealed class AndrejaIdentityDbContext(
             entity.Property(proposal => proposal.AfterCanonical).HasMaxLength(8192);
             entity.Property(proposal => proposal.Version).IsConcurrencyToken();
             entity.HasAlternateKey(proposal => new { proposal.TenantId, proposal.Id });
+            entity.HasAlternateKey(proposal => new
+            {
+                proposal.TenantId,
+                proposal.Id,
+                proposal.ActorId,
+            });
             entity.HasIndex(proposal => new
             {
                 proposal.TenantId,
@@ -544,8 +550,18 @@ public sealed class AndrejaIdentityDbContext(
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<ProposalRecord>()
                 .WithMany()
-                .HasForeignKey(receipt => new { receipt.TenantId, receipt.ProposalId })
-                .HasPrincipalKey(proposal => new { proposal.TenantId, proposal.Id })
+                .HasForeignKey(receipt => new
+                {
+                    receipt.TenantId,
+                    receipt.ProposalId,
+                    receipt.ActorId,
+                })
+                .HasPrincipalKey(proposal => new
+                {
+                    proposal.TenantId,
+                    proposal.Id,
+                    proposal.ActorId,
+                })
                 .OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<OpenLoopTask>()
                 .WithMany()

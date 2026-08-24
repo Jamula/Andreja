@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Andreja.Adapters.PostgreSql.Migrations
 {
     [DbContext(typeof(AndrejaIdentityDbContext))]
-    [Migration("20260824153212_DurableProposalConfirmation")]
+    [Migration("20260824154149_DurableProposalConfirmation")]
     partial class DurableProposalConfirmation
     {
         /// <inheritdoc />
@@ -373,7 +373,7 @@ namespace Andreja.Adapters.PostgreSql.Migrations
 
                     b.HasKey("TenantId", "ActorId", "IdempotencyKey");
 
-                    b.HasIndex("TenantId", "ProposalId");
+                    b.HasIndex("TenantId", "ProposalId", "ActorId");
 
                     b.HasIndex("TenantId", "TaskId", "ActorId");
 
@@ -926,8 +926,8 @@ namespace Andreja.Adapters.PostgreSql.Migrations
 
                     b.HasOne("Andreja.Adapters.PostgreSql.ProposalRecord", null)
                         .WithMany()
-                        .HasForeignKey("TenantId", "ProposalId")
-                        .HasPrincipalKey("TenantId", "Id")
+                        .HasForeignKey("TenantId", "ProposalId", "ActorId")
+                        .HasPrincipalKey("TenantId", "Id", "ActorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

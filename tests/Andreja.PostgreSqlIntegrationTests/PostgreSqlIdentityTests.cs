@@ -242,6 +242,11 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             proposal.ProposalId,
             proposal.Version + 1,
             "restart-confirmation");
+        var invalidState = await restarted.ConfirmAsync(
+            context,
+            proposal.ProposalId,
+            proposal.Version + 1,
+            "restart-invalid-state");
         var database = restartedScope.ServiceProvider
             .GetRequiredService<AndrejaIdentityDbContext>();
 
@@ -249,10 +254,17 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
         Assert.Equal(ProposalTransitionOutcome.IdempotentReplay, replay.Outcome);
         Assert.Equal(applied.Task?.Id, replay.Task?.Id);
         Assert.Equal(ProposalTransitionOutcome.Conflict, conflictingReuse.Outcome);
+        Assert.Equal(ProposalTransitionOutcome.InvalidState, invalidState.Outcome);
         Assert.Equal(ProposalState.Confirmed, replay.Proposal?.State);
         Assert.Single(await database.OpenLoopTasks.AsNoTracking().ToArrayAsync());
-        Assert.Single(await database.ProposalAudits.AsNoTracking().ToArrayAsync());
-        Assert.Single(await database.ProposalReceipts.AsNoTracking().ToArrayAsync());
+        var audits = await database.ProposalAudits.AsNoTracking().ToArrayAsync();
+        Assert.Equal(2, audits.Length);
+        Assert.Single(
+            audits,
+            audit => audit.Outcome == ProposalTransitionOutcome.Applied);
+        Assert.Equal(
+            2,
+            await database.ProposalReceipts.AsNoTracking().CountAsync());
     }
 
     [Fact]
@@ -393,6 +405,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
         var owner = await SeedTenantAsync("PROPOSAL-OWNER");
         var otherTenant = await SeedTenantAsync("PROPOSAL-OTHER");
         var context = owner.Context with { Purpose = OpenLoopsPolicy.Purpose };
+        var otherPrincipal = await SeedAdditionalPrincipalAsync(owner, "PROPOSAL-PEER");
         Proposal proposal;
         await using (var scope = CreateScope(context))
         {
@@ -427,6 +440,18 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                     proposal.ProposalId,
                     proposal.Version,
                     "wrong-user-confirm");
+            Assert.Equal(ProposalTransitionOutcome.Denied, result.Outcome);
+        }
+
+        await using (var scope = CreateScope(otherPrincipal))
+        {
+            var result = await scope.ServiceProvider
+                .GetRequiredService<OpenLoopsTaskApplication>()
+                .ConfirmAsync(
+                    otherPrincipal,
+                    proposal.ProposalId,
+                    proposal.Version,
+                    "wrong-principal-confirm");
             Assert.Equal(ProposalTransitionOutcome.Denied, result.Outcome);
         }
 
@@ -923,6 +948,34 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
         await database.SaveChangesAsync();
     }
 
+    private async Task<TenantPrincipalContext> SeedAdditionalPrincipalAsync(
+        SeededIdentity tenant,
+        string displayName)
+    {
+        var context = new TenantPrincipalContext(
+            tenant.Context.TenantId,
+            AppUserId.New(),
+            PrincipalId.New(),
+            OpenLoopsPolicy.Purpose);
+        await using var scope = CreateScope(tenant.Context);
+        var database = scope.ServiceProvider.GetRequiredService<AndrejaIdentityDbContext>();
+        database.AddRange(
+            new AppUser(context.AppUserId, displayName),
+            new Principal(
+                context.PrincipalId,
+                context.TenantId,
+                context.AppUserId,
+                displayName),
+            new Membership(
+                MembershipId.New(),
+                context.TenantId,
+                context.AppUserId,
+                context.PrincipalId,
+                MembershipRole.Member));
+        await database.SaveChangesAsync();
+        return context;
+    }
+
     private AsyncServiceScope CreateScope(TenantPrincipalContext context)
     {
         var scope = services.CreateAsyncScope();
@@ -942,7 +995,10 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
         collection.AddScoped<OpenLoopsTaskApplication>();
         if (faultInjector is not null)
         {
-            collection.AddSingleton(faultInjector);
+            collection.AddScoped<PostgreSqlProposalStore>(provider => new(
+                provider.GetRequiredService<AndrejaIdentityDbContext>(),
+                provider.GetRequiredService<ITenantPrincipalContextAccessor>(),
+                faultInjector));
         }
 
         return collection.BuildServiceProvider(

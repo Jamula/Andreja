@@ -53,6 +53,7 @@ namespace Andreja.Adapters.PostgreSql.Migrations
                 {
                     table.PrimaryKey("PK_proposals", x => x.Id);
                     table.UniqueConstraint("AK_proposals_TenantId_Id", x => new { x.TenantId, x.Id });
+                    table.UniqueConstraint("AK_proposals_TenantId_Id_ActorId", x => new { x.TenantId, x.Id, x.ActorId });
                     table.ForeignKey(
                         name: "FK_proposals_memberships_TenantId_ActorAppUserId_ActorId",
                         columns: x => new { x.TenantId, x.ActorAppUserId, x.ActorId },
@@ -137,11 +138,11 @@ namespace Andreja.Adapters.PostgreSql.Migrations
                         principalColumns: new[] { "TenantId", "Id" },
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_proposal_receipts_proposals_TenantId_ProposalId",
-                        columns: x => new { x.TenantId, x.ProposalId },
+                        name: "FK_proposal_receipts_proposals_TenantId_ProposalId_ActorId",
+                        columns: x => new { x.TenantId, x.ProposalId, x.ActorId },
                         principalSchema: "open_loops",
                         principalTable: "proposals",
-                        principalColumns: new[] { "TenantId", "Id" },
+                        principalColumns: new[] { "TenantId", "Id", "ActorId" },
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_proposal_receipts_tasks_TenantId_TaskId_ActorId",
@@ -165,10 +166,10 @@ namespace Andreja.Adapters.PostgreSql.Migrations
                 columns: new[] { "TenantId", "ProposalId", "OccurredAt" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_proposal_receipts_TenantId_ProposalId",
+                name: "IX_proposal_receipts_TenantId_ProposalId_ActorId",
                 schema: "open_loops",
                 table: "proposal_receipts",
-                columns: new[] { "TenantId", "ProposalId" });
+                columns: new[] { "TenantId", "ProposalId", "ActorId" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_proposal_receipts_TenantId_TaskId_ActorId",
