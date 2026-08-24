@@ -13,6 +13,9 @@ pending explicit ratification and takes effect only if Cyrus approves it.
 - PostgreSQL is the Phase 1A self-hosted reference.
 - Squad coordinates the project through GitHub Issues and isolated worktrees.
 
+See [`docs/development.md`](docs/development.md) for the pinned SDK, solution
+layout, local validation commands, and foundation scope.
+
 Install Squad CLI 0.11.0 through an approved package source, then validate it:
 
 ```powershell
