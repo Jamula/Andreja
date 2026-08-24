@@ -11,7 +11,13 @@ public sealed class DependencyDirectionTests
         {
             "Andreja.Platform.Contracts",
             // Framework-neutral facade emitted for fundamental BCL types.
+            "System.Collections",
+            "System.Linq",
+            "System.Memory",
             "System.Runtime",
+            "System.Security.Cryptography",
+            "System.Text.Json",
+            "System.Threading",
         };
 
     [Fact]
