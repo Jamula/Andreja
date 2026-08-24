@@ -54,6 +54,13 @@ service:
   telemetry:
     logs:
       level: warn
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888
   pipelines:
     traces:
       receivers:
@@ -73,3 +80,12 @@ service:
         - batch
       exporters:
         - prometheus
+    logs:
+      receivers:
+        - otlp
+      processors:
+        - memory_limiter
+        - attributes/suppress
+        - batch
+      exporters:
+        - nop

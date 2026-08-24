@@ -1,0 +1,73 @@
+services:
+  app:
+    environment:
+      Andreja__Identity__AllowedOrigins__0: https://localhost:8443
+      Andreja__Identity__TrustedProxyAddresses__0: 172.30.44.10
+      Andreja__Identity__BootstrapTokenFile: /run/evidence-bootstrap/bootstrap_token
+    volumes:
+      - evidence-bootstrap:/run/evidence-bootstrap:ro
+  tls-proxy:
+    image: caddy@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    user: "1000:1000"
+    read_only: true
+    restart: unless-stopped
+    command:
+      - caddy
+      - run
+      - --config
+      - /etc/caddy/Caddyfile
+      - --adapter
+      - caddyfile
+    depends_on:
+      app:
+        condition: service_healthy
+    volumes:
+      - ./deploy/Caddyfile.evidence:/etc/caddy/Caddyfile:ro
+    secrets:
+      - tls_certificate
+      - tls_private_key
+    tmpfs:
+      - /config:size=8m,mode=0700,uid=1000,gid=1000
+      - /data:size=8m,mode=0700,uid=1000,gid=1000
+      - /tmp:size=8m,mode=1700,uid=1000,gid=1000
+    ports:
+      - "127.0.0.1:${ANDREJA_HTTPS_PORT:-8443}:8443"
+    networks:
+      edge:
+        ipv4_address: 172.30.44.10
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 128m
+    cpus: 0.25
+
+  otel-collector:
+    ports:
+      - "127.0.0.1:${OTEL_INTERNAL_METRICS_PORT:-8888}:8888"
+    networks:
+      - backend
+      - edge
+
+  prometheus:
+    networks:
+      - backend
+      - edge
+
+secrets:
+  tls_certificate:
+    file: ${ANDREJA_TLS_CERTIFICATE_FILE:?Set ANDREJA_TLS_CERTIFICATE_FILE}
+  tls_private_key:
+    file: ${ANDREJA_TLS_PRIVATE_KEY_FILE:?Set ANDREJA_TLS_PRIVATE_KEY_FILE}
+
+networks:
+  edge:
+    ipam:
+      config:
+        - subnet: 172.30.44.0/24
+
+volumes:
+  evidence-bootstrap:
