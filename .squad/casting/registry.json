@@ -1,0 +1,109 @@
+{
+  "agents": {
+    "lead-ceo": {
+      "persistent_name": "Picard",
+      "universe": "Star Trek",
+      "created_at": "2026-08-23T12:45:53-07:00",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "architect": {
+      "persistent_name": "Spock",
+      "universe": "Star Trek",
+      "created_at": "2026-08-23T12:45:53-07:00",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "security": {
+      "persistent_name": "Tuvok",
+      "universe": "Star Trek",
+      "created_at": "2026-08-23T12:45:53-07:00",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "privacy": {
+      "persistent_name": "Deanna Troi",
+      "universe": "Star Trek",
+      "created_at": "2026-08-23T12:45:53-07:00",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "platform": {
+      "persistent_name": "Jett Reno",
+      "universe": "Star Trek",
+      "created_at": "2026-08-23T12:45:53-07:00",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "quality": {
+      "persistent_name": "Data",
+      "universe": "Star Trek",
+      "created_at": "2026-08-23T12:45:53-07:00",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "finops-cfo": {
+      "persistent_name": "Quark",
+      "universe": "Star Trek",
+      "created_at": "2026-08-23T12:45:53-07:00",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "domain": {
+      "persistent_name": "T'Pol",
+      "universe": "Star Trek",
+      "created_at": "2026-08-23T12:45:53-07:00",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "experience": {
+      "persistent_name": "Jadzia Dax",
+      "universe": "Star Trek",
+      "created_at": "2026-08-23T12:45:53-07:00",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "assistant-ecosystem": {
+      "persistent_name": "Seven of Nine",
+      "universe": "Star Trek",
+      "created_at": "2026-08-23T12:45:53-07:00",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "mobile": {
+      "persistent_name": "Hoshi Sato",
+      "universe": "Star Trek",
+      "created_at": "2026-08-23T12:45:53-07:00",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "health": {
+      "persistent_name": "Beverly Crusher",
+      "universe": "Star Trek",
+      "created_at": "2026-08-23T12:45:53-07:00",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "legal": {
+      "persistent_name": "Sarek",
+      "universe": "Star Trek",
+      "created_at": "2026-08-23T12:45:53-07:00",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "marketing": {
+      "persistent_name": "Neelix",
+      "universe": "Star Trek",
+      "created_at": "2026-08-23T12:45:53-07:00",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "feedback-support": {
+      "persistent_name": "Guinan",
+      "universe": "Star Trek",
+      "created_at": "2026-08-23T12:45:53-07:00",
+      "legacy_named": false,
+      "status": "active"
+    }
+  }
+}
