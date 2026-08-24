@@ -1,0 +1,30 @@
+name: Docs Consistency
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '.github/scripts/check_docs_consistency.py'
+      - '.github/workflows/docs-consistency.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - '.github/scripts/check_docs_consistency.py'
+      - '.github/workflows/docs-consistency.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Check plan hash and catalog/seed-table consistency
+        run: python3 .github/scripts/check_docs_consistency.py
