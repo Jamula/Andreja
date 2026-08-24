@@ -1,6 +1,7 @@
 using Andreja.Adapters.Assistant.OpenAiCompatible;
 using Andreja.Modules.Assistant;
 using Andreja.Platform.Contracts.Assistant;
+using Andreja.Platform.Contracts.Sharing;
 using Andreja.Platform.Contracts.Skills;
 
 namespace Andreja.UnitTests;
@@ -60,7 +61,11 @@ public sealed class AssistantProviderTests
     private static AssistantSessionRequest SessionRequest() =>
         new(
             Guid.CreateVersion7(),
-            new(Guid.CreateVersion7(), Guid.CreateVersion7(), "task.capture"),
+            new(
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                "task.capture"),
             [Tool()]);
 
     private static AssistantRequest Request() =>
@@ -69,8 +74,11 @@ public sealed class AssistantProviderTests
     private static ToolDefinition Tool() =>
         new(
             "open-loops.propose-task",
-            "1",
+            "1.0.0",
             "Propose a task.",
+            "propose",
+            "tasks",
+            DisclosureLevel.Summary,
             [],
             ["tasks.propose"],
             ["task.capture"]);

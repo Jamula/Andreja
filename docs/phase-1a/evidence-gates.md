@@ -29,8 +29,8 @@ the canonical owner; this index must then be corrected.
 | Bootstrap or recovery takeover | Single-use bootstrap, HTTPS/RP validation, rate limits, session invalidation, collision tests, recovery audit, and clean restore drill |
 | BYOK theft or provider confusion | External key custody, encrypted credentials, endpoint allowlist, separate grants, redaction tests, revoke/rotate test |
 | Prompt/tool injection | Untrusted content separation, exact typed-tool allowlist, schema validation, purpose/capability checks, proposal confirmation, adversarial tests |
-| Skill confused deputy | No ambient services/secrets, scoped `ISkillHost`, permission-negative and manifest tampering tests |
-| Grant, consent, or disclosure escalation | Bilateral consent state machine, active purpose-bound grant, ordered disclosure intersection, expiry/revocation, allow/deny audit, and negative tests for stale consent, wrong principal/purpose/operation, and every attempted ladder escalation |
+| Skill/channel confused deputy | No ambient services/secrets, scoped `ISkillHost`/`IChannelHost`, distinct tenant/app-user/principal identity, complete manifest metadata, permission-negative and manifest digest/version tampering tests |
+| Grant, consent, or disclosure escalation | One evaluator shared by skill/channel hosts; user policy, bilateral consent, active purpose-bound grant, capability, operation, data class and ordered disclosure intersection; expiry/revocation; content-minimized allow/deny audit; negative tests for wrong tenant/app user/principal/purpose/grant/capability/operation/data class and every attempted ladder escalation |
 | Peer-envelope spoof, replay, or confused audience | Canonical signed-envelope vectors; tamper, signature/key/algorithm, sender/recipient, time, nonce replay, idempotency conflict, grant/purpose, payload type, and version rejection tests using local fixtures only |
 | Malicious/failed update or restore | Immutable digests, checksums, explicit migration, backup-before-update, clean restore, rollback exercise |
 | Telemetry leakage | Attribute allowlist, content suppression, canary-secret redaction test, bounded cardinality and local query review |
@@ -74,7 +74,7 @@ approves residual risk before dogfood data is entered.
 | Unit/domain | Task lifecycle, proposal expiry/idempotency, policy combinations, recovery rules |
 | Architecture | Dependency direction, no framework/SDK types inward, no cross-module internals, no UI-to-handler/EF path |
 | PostgreSQL integration | Migrations from empty/prior schema, composite FK/uniqueness, atomic proposal/task/audit/receipt confirmation, restart and crash recovery, concurrency, delete |
-| Contract/conformance | API DTO serialization; assistant fake/failure/cancel; skill/channel manifest and permission negatives; exact `Grant`, `ConsentRecord`, `ShareAuditEntry`, disclosure-ladder, and `IPeerChannel` signed-envelope vectors including consent transitions, least disclosure, tamper, audience, expiry, replay, and idempotent retry |
+| Contract/conformance | API DTO serialization; assistant fake/failure/cancel; complete skill/channel manifest serialization, semantic/schema versions, explicit non-applicable metadata, permission negatives, digest mutation, concurrency and no-ambient-service checks; exact `Grant`, `ConsentRecord`, `ShareAuditEntry`, disclosure-ladder, and `IPeerChannel` signed-envelope vectors including consent transitions, least disclosure, tamper, audience, expiry, replay, and idempotent retry |
 | Security/privacy | Cross-tenant enumeration, bootstrap/recovery abuse, CSRF/headers, canary secrets, telemetry/export exclusions |
 | End to end | Passkey bootstrap, BYOK/fake assistant proposal, confirmation, create/list/complete/export/delete |
 | Operations | Offline startup after image acquisition from a preloaded/locally built image or local registry, restart, update, provider outage, dump/restore plus keys, app import, readiness |

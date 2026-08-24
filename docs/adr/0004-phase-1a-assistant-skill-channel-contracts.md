@@ -86,6 +86,26 @@ These tests create no grant, consent, share-audit, channel, or federation databa
 tables or migrations. Phase 1A runs no peer listener, discovery, relay, remote trust
 exchange, or live federation traffic.
 
+### Implemented contract mapping
+
+The Phase 1A implementation keeps `TenantId`, authoritative `AppUserId`, and
+`PrincipalId` distinct on assistant, skill, and channel execution boundaries.
+`SkillManifest` and `ChannelManifest` use semantic artifact versions plus explicit
+schema versions and describe lifecycle stage, publisher, purpose/capability/data-class
+permissions, disclosure ceiling, execution mode, retention, help/support,
+compatibility, integrity/provenance, and explicit reasons for every non-applicable
+field.
+
+One application-owned evaluator is used by both in-memory hosts. It denies unless the
+invocation, user policy, active grant, active bilateral consent, declared capability,
+operation, data class, purpose, time window, revocation state, and ordered disclosure
+ceiling intersect. Manifest/schema/version mismatches and pre-policy denials use the
+same content-minimized audit shape. The channel fixture is deterministic and local:
+provider, account, OAuth, query/sync/publish, webhook/change-feed, cache, cost, and
+delivery-topology fields are explicitly non-applicable. This mapping introduces no
+connector, provider credential, network execution, marketplace publication,
+federation traffic, or persistence migration.
+
 ### Independent BYOK path
 
 The required provider adapter is an OpenAI-compatible BYOK profile selected by the

@@ -3,8 +3,13 @@ using Andreja.AppHost.Hosting;
 using Andreja.AppHost.Components.Pages;
 using Andreja.AppHost.OpenLoops;
 using Andreja.Adapters.Identity.AspNetCore;
+using Andreja.Modules.Channels;
 using Andreja.Modules.OpenLoops;
+using Andreja.Modules.Skills;
 using Andreja.Platform.Contracts;
+using Andreja.Platform.Contracts.Assistant;
+using Andreja.Platform.Contracts.Channels;
+using Andreja.Platform.Contracts.Skills;
 
 namespace Andreja.ArchitectureTests;
 
@@ -16,11 +21,13 @@ public sealed class DependencyDirectionTests
             "Andreja.Platform.Contracts",
             // Framework-neutral facade emitted for fundamental BCL types.
             "System.Collections",
+            "System.Collections.Concurrent",
             "System.Linq",
             "System.Memory",
             "System.Runtime",
             "System.Security.Cryptography",
             "System.Text.Json",
+            "System.Text.RegularExpressions",
             "System.Threading",
         };
 
@@ -112,6 +119,76 @@ public sealed class DependencyDirectionTests
             type => type.Namespace?.StartsWith("Andreja.Modules", StringComparison.Ordinal) == true
                 || type.Namespace?.StartsWith("Andreja.Adapters", StringComparison.Ordinal) == true
                 || type.Name.Contains("DbContext", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void EveryExecutionAndInvocationBoundaryCarriesDistinctIdentityIds()
+    {
+        var boundaries = new[]
+        {
+            typeof(AssistantExecutionContext),
+            typeof(SkillExecutionContext),
+            typeof(SkillInvocation),
+            typeof(ChannelExecutionContext),
+            typeof(ChannelInvocation),
+        };
+
+        var boundaryProperties = boundaries.Select(boundary =>
+            boundary.GetProperties().ToDictionary(
+                property => property.Name,
+                property => property.PropertyType,
+                StringComparer.Ordinal));
+        foreach (var properties in boundaryProperties)
+        {
+            Assert.Equal(typeof(Guid), properties["TenantId"]);
+            Assert.Equal(typeof(Guid), properties["AppUserId"]);
+            Assert.Equal(typeof(Guid), properties["PrincipalId"]);
+        }
+    }
+
+    [Fact]
+    public void SkillAndChannelHostsExposeNoAmbientServiceOrSecretBoundary()
+    {
+        var boundaryTypes = new[]
+        {
+            typeof(ISkillHost),
+            typeof(IChannelHost),
+            typeof(SkillExecutionContext),
+            typeof(ChannelExecutionContext),
+            typeof(SkillInvocation),
+            typeof(ChannelInvocation),
+            typeof(SkillToolHandler),
+            typeof(ChannelOperationHandler),
+        };
+        var forbiddenNames = new[]
+        {
+            "IServiceProvider",
+            "DbContext",
+            "Credential",
+            "Secret",
+            "AccessToken",
+            "RefreshToken",
+            "HttpClient",
+        };
+
+        var exposedTypes = boundaryTypes
+            .SelectMany(type =>
+                type.GetMethods().SelectMany(method =>
+                    method.GetParameters().Select(parameter => parameter.ParameterType))
+                .Concat(type.GetProperties().Select(property => property.PropertyType)))
+            .Select(type => type.FullName ?? type.Name)
+            .ToArray();
+
+        Assert.All(
+            forbiddenNames,
+            forbidden => Assert.DoesNotContain(
+                exposedTypes,
+                name => name.Contains(forbidden, StringComparison.Ordinal)));
+        Assert.DoesNotContain(
+            typeof(InMemorySkillHost).GetConstructors()
+                .Concat(typeof(InMemoryChannelHost).GetConstructors())
+                .SelectMany(constructor => constructor.GetParameters()),
+            parameter => parameter.ParameterType == typeof(IServiceProvider));
     }
 
     [Fact]
