@@ -103,6 +103,13 @@ development and transport-boundary tests, while `DS162092` flags the words
 shipping in Release. Their exclusion is recorded in every SAST artifact.
 Re-evaluate both exclusions and CodeQL if the code or entitlement changes.
 
+GitHub may also attach a platform-managed dynamic `Analyze (csharp)` CodeQL
+check to a pull request. That supplementary check ran successfully while this
+gate was introduced, but it is not a repository-owned substitute: the committed
+CodeQL workflow remains manually disabled, the repository API still denies
+CodeQL configuration, and the dynamic check does not establish committed
+push-to-`main` or `merge_group` coverage.
+
 Default-branch required-check and merge-queue enforcement is deliberately
 tracked in [issue #67](https://github.com/Jamula/Andreja/issues/67). OCI SBOM,
 image scanning, and provenance remain in
