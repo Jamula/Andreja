@@ -24,7 +24,7 @@
     "tenantReference": { "type": "string", "minLength": 1 },
     "artifacts": {
       "type": "array",
-      "minItems": 6,
+      "minItems": 7,
       "items": { "$ref": "#/$defs/artifact" },
       "allOf": [
         { "contains": { "properties": { "dataArea": { "const": "Records" } } } },
@@ -32,12 +32,13 @@
         { "contains": { "properties": { "dataArea": { "const": "Grants" } } } },
         { "contains": { "properties": { "dataArea": { "const": "Audit" } } } },
         { "contains": { "properties": { "dataArea": { "const": "Settings" } } } },
+        { "contains": { "properties": { "dataArea": { "const": "Semantic" } } } },
         { "contains": { "properties": { "dataArea": { "const": "Provenance" } } } }
       ]
     },
     "exclusions": {
       "type": "array",
-      "minItems": 6,
+      "minItems": 7,
       "items": { "$ref": "#/$defs/exclusion" },
       "allOf": [
         { "contains": { "properties": { "code": { "const": "credentials" } } } },
@@ -45,7 +46,8 @@
         { "contains": { "properties": { "code": { "const": "recovery-secrets" } } } },
         { "contains": { "properties": { "code": { "const": "provider-tokens" } } } },
         { "contains": { "properties": { "code": { "const": "data-protection-keys" } } } },
-        { "contains": { "properties": { "code": { "const": "caches" } } } }
+        { "contains": { "properties": { "code": { "const": "caches" } } } },
+        { "contains": { "properties": { "code": { "const": "sensitive-inferences" } } } }
       ]
     },
     "reauthorization": {
@@ -65,11 +67,27 @@
     "artifact": {
       "type": "object",
       "additionalProperties": false,
-      "required": [ "dataArea", "path", "sha256", "byteLength", "recordCount" ],
+      "required": [
+        "dataArea",
+        "contractVersion",
+        "path",
+        "sha256",
+        "byteLength",
+        "recordCount"
+      ],
       "properties": {
         "dataArea": {
-          "enum": [ "Records", "Attachments", "Grants", "Audit", "Settings", "Provenance" ]
+          "enum": [
+            "Records",
+            "Attachments",
+            "Grants",
+            "Audit",
+            "Settings",
+            "Semantic",
+            "Provenance"
+          ]
         },
+        "contractVersion": { "type": "string", "minLength": 1 },
         "path": {
           "type": "string",
           "minLength": 1,
@@ -78,7 +96,17 @@
         "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "byteLength": { "type": "integer", "minimum": 0 },
         "recordCount": { "type": "integer", "minimum": 0 }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "dataArea": { "const": "Semantic" } } },
+          "then": { "properties": { "contractVersion": { "const": "1.0" } } }
+        },
+        {
+          "if": { "properties": { "dataArea": { "const": "Provenance" } } },
+          "then": { "properties": { "contractVersion": { "const": "1.0" } } }
+        }
+      ]
     },
     "exclusion": {
       "type": "object",

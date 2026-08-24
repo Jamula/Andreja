@@ -45,12 +45,18 @@ The v1 encoding and compatibility window require human approval.
 | Assistant sessions and content | User-owned session metadata, retained prompts/responses, proposal provenance, and content the user elects to export under the approved retention/model-exposure policy | Provider runtime/session handles, transient streaming state, caches, hidden provider metadata, and any content already deleted or never retained |
 | Channel and connector state | User-visible non-secret configuration, account labels, declared scopes, grant references, provenance, and portable cursors only when the channel contract declares them portable | OAuth/access/refresh tokens, provider credentials, webhook secrets, provider-side subscriptions, nonportable delivery leases, and caches; import marks the channel disconnected pending reauthorization |
 | Grants, consent, and share audit | Active, expired, and revoked `Grant` records, bilateral `ConsentRecord` decision history, and content-minimized `ShareAuditEntry` records needed to explain prior access | Signing private keys, peer trust-store secrets, live transport/replay caches, and authority to resume sharing; imported grants remain inactive until identities are resolved and consent is revalidated |
+| Semantic profile and provenance | Separately versioned JSON-LD-compatible user-approved assertions, minimized source references/digests, review and lineage state, configured tombstones, and content-minimized audit | Credentials, raw source payloads, sensitive inference by default, model transcripts, embeddings, caches, and authority to share or expose data to a model |
 | Import instructions | Human-readable and machine-readable prerequisites, archive/schema versions, checksums, exclusions, conflict policy, dry-run steps, reauthorization/key-restoration steps, and post-import verification | Host-specific commands presented as universally portable or any instruction that silently recreates credentials or external authority |
 
 Grant/consent/share and channel collections are present in the archive schema only
 when an approved active slice has durable records. Phase 1A conformance fixture
 archives may prove their shape, but the production export is empty for those
 inactive capabilities and does not justify persistence migrations.
+
+Semantic and provenance artifact descriptors require contract version `1.0`.
+Issue #63 supplies only immutable contracts, a deterministic in-memory ledger, and
+serialization fixtures. It does not add a durable collection, importer, or
+migration; relational domain records remain authoritative.
 
 Import first verifies the archive and emits a dry-run report without writes. The
 operator resolves tenant/identity mapping and declared conflicts, restores identity

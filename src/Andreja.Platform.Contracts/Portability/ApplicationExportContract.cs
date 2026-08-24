@@ -20,6 +20,14 @@ public static class ApplicationExportContract
             "provider-tokens",
             "data-protection-keys",
             "caches",
+            "sensitive-inferences",
+        };
+
+    public static readonly IReadOnlyDictionary<PortableDataArea, string>
+        RequiredContractVersions = new Dictionary<PortableDataArea, string>
+        {
+            [PortableDataArea.Semantic] = "1.0",
+            [PortableDataArea.Provenance] = "1.0",
         };
 }
 
@@ -52,12 +60,15 @@ public enum PortableDataArea
     Grants,
     Audit,
     Settings,
+    Semantic,
     Provenance,
 }
 
 public sealed record PortableArtifactDescriptor
 {
     public required PortableDataArea DataArea { get; init; }
+
+    public required string ContractVersion { get; init; }
 
     public required string Path { get; init; }
 
@@ -165,6 +176,19 @@ public static class ApplicationExportVerifier
             if (!IsSha256(artifact.Sha256) || artifact.ByteLength < 0 || artifact.RecordCount < 0)
             {
                 errors.Add($"invalid-artifact-metadata:{artifact.Path}");
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(artifact.ContractVersion)
+                || (ApplicationExportContract.RequiredContractVersions.TryGetValue(
+                    artifact.DataArea,
+                    out var requiredVersion)
+                    && !string.Equals(
+                        artifact.ContractVersion,
+                        requiredVersion,
+                        StringComparison.Ordinal)))
+            {
+                errors.Add($"unsupported-artifact-contract-version:{artifact.Path}");
                 continue;
             }
 

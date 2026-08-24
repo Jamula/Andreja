@@ -60,6 +60,9 @@ Defaults are:
   user ID, or token;
 - deletion removes eligible primary and derived data and emits a content-free audit
   receipt; export reports every exclusion;
+- semantic assertions distinguish user-stated or verified facts from unreviewed
+  hypotheses, keep source references content-minimized, and default model exposure,
+  sharing, and sensitive-inference export to denied;
 - grant/consent/share-audit fixtures contain no shared payload; future persisted
   records require the canonical privacy inventory and active-slice approval;
 - no cloud processor or Andreja service receives self-host content by default.
@@ -74,7 +77,7 @@ approves residual risk before dogfood data is entered.
 | Unit/domain | Task lifecycle, proposal expiry/idempotency, policy combinations, recovery rules |
 | Architecture | Dependency direction, no framework/SDK types inward, no cross-module internals, no UI-to-handler/EF path |
 | PostgreSQL integration | Migrations from empty/prior schema, composite FK/uniqueness, atomic proposal/task/audit/receipt confirmation, restart and crash recovery, concurrency, delete |
-| Contract/conformance | API DTO serialization; assistant fake/failure/cancel; complete skill/channel manifest serialization, semantic/schema versions, explicit non-applicable metadata, permission negatives, digest mutation, concurrency and no-ambient-service checks; exact `Grant`, `ConsentRecord`, `ShareAuditEntry`, disclosure-ladder, and `IPeerChannel` signed-envelope vectors including consent transitions, least disclosure, tamper, audience, expiry, replay, and idempotent retry |
+| Contract/conformance | API DTO serialization; assistant fake/failure/cancel; complete skill/channel manifest serialization, semantic/schema versions, explicit non-applicable metadata, permission negatives, digest mutation, concurrency and no-ambient-service checks; exact `Grant`, `ConsentRecord`, `ShareAuditEntry`, disclosure-ladder, and `IPeerChannel` signed-envelope vectors including consent transitions, least disclosure, tamper, audience, expiry, replay, and idempotent retry; semantic assertion and pinned JSON-LD fixtures covering typed ownership, append-only provenance, raw-lineage rejection, atomic single-winner correction/retraction, dependency invalidation, safe predicate IRIs, coexistence, least exposure, isolation/purpose denial, default-sensitive exclusion, delete/tombstone, serialized content-minimization canaries, unknown versions/classes, tamper, and concurrent updates |
 | Security/privacy | Cross-tenant enumeration, bootstrap/recovery abuse, CSRF/headers, canary secrets, telemetry/export exclusions |
 | End to end | Passkey bootstrap, BYOK/fake assistant proposal, confirmation, create/list/complete/export/delete |
 | Operations | Offline startup after image acquisition from a preloaded/locally built image or local registry, restart, update, provider outage, dump/restore plus keys, app import, readiness |

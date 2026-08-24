@@ -14,7 +14,7 @@ or external services.
 - `src\Andreja.Api.Contracts`: the versioned HTTP contract boundary.
 - `src\Andreja.Platform.Contracts`: framework-neutral shared boundary contracts.
 - `src\Modules\Andreja.Modules`: capability seams for Identity, Open Loops,
-  Assistant, Skills, Channels, and Portability.
+  Assistant, Skills, Channels, Portability, and in-memory semantic conformance.
 - `src\Adapters\Andreja.Adapters`: outer seams for PostgreSQL, ASP.NET Core
   Identity, OpenAI-compatible assistants, and OpenTelemetry.
 - `tests\Andreja.ArchitectureTests` and `tests\Andreja.UnitTests`: dependency
@@ -102,6 +102,15 @@ destination, query/sync/publish mode, webhook/change feed, external execution,
 marketplace path, live federation traffic, or persistence migration. Open Loops
 continues to return a proposal without writing and now propagates the authoritative
 app-user identifier rather than substituting the principal identifier.
+
+### Semantic profile and provenance fixtures
+
+`SemanticAssertionConformanceTests` exercises the version `1.0` contracts and the
+pinned `Fixtures\semantic-profile-v1.jsonld` projection. The in-memory ledger proves
+append-only source references, explicit lineage/lifecycle, scope and purpose
+failures, least exposure, privacy-preserving export/delete behavior, tamper and
+concurrency handling. It is not production persistence or automatic inference and
+requires no database, graph provider, embedding, model, credential, or network.
 
 ### Local PostgreSQL identity evidence
 

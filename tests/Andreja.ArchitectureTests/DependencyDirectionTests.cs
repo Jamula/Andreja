@@ -5,11 +5,13 @@ using Andreja.AppHost.OpenLoops;
 using Andreja.Adapters.Identity.AspNetCore;
 using Andreja.Modules.Channels;
 using Andreja.Modules.OpenLoops;
+using Andreja.Modules.Semantics;
 using Andreja.Modules.Skills;
 using Andreja.Platform.Contracts;
 using Andreja.Platform.Contracts.Assistant;
 using Andreja.Platform.Contracts.Channels;
 using Andreja.Platform.Contracts.Skills;
+using Andreja.Platform.Contracts.Semantics;
 
 namespace Andreja.ArchitectureTests;
 
@@ -22,6 +24,7 @@ public sealed class DependencyDirectionTests
             // Framework-neutral facade emitted for fundamental BCL types.
             "System.Collections",
             "System.Collections.Concurrent",
+            "System.Collections.Immutable",
             "System.Linq",
             "System.Memory",
             "System.Runtime",
@@ -144,6 +147,49 @@ public sealed class DependencyDirectionTests
             Assert.Equal(typeof(Guid), properties["AppUserId"]);
             Assert.Equal(typeof(Guid), properties["PrincipalId"]);
         }
+    }
+
+    [Fact]
+    public void SemanticContractsKeepTenantUserAndPrincipalAsDistinctTypedIds()
+    {
+        Assert.NotEqual(typeof(SemanticTenantId), typeof(SemanticAppUserId));
+        Assert.NotEqual(typeof(SemanticTenantId), typeof(SemanticPrincipalId));
+        Assert.NotEqual(typeof(SemanticAppUserId), typeof(SemanticPrincipalId));
+
+        var properties = typeof(ProfileAssertion).GetProperties()
+            .ToDictionary(property => property.Name, property => property.PropertyType);
+        Assert.Equal(typeof(SemanticTenantId), properties[nameof(ProfileAssertion.TenantId)]);
+        Assert.Equal(typeof(SemanticAppUserId), properties[nameof(ProfileAssertion.AppUserId)]);
+        Assert.Equal(
+            typeof(SemanticPrincipalId),
+            properties[nameof(ProfileAssertion.PrincipalId)]);
+    }
+
+    [Fact]
+    public void SemanticConformanceHasNoPersistenceOrGraphProviderBoundary()
+    {
+        var semanticTypes = typeof(InMemorySemanticAssertionLedger).Assembly.GetTypes()
+            .Where(type => type.Namespace == "Andreja.Modules.Semantics")
+            .ToArray();
+        var forbiddenFragments = new[]
+        {
+            "DbContext",
+            "EntityFramework",
+            "Npgsql",
+            "Neo4j",
+            "Gremlin",
+            "Sparql",
+            "Embedding",
+        };
+
+        Assert.All(
+            semanticTypes,
+            type => Assert.All(
+                forbiddenFragments,
+                fragment => Assert.DoesNotContain(
+                    fragment,
+                    type.FullName,
+                    StringComparison.OrdinalIgnoreCase)));
     }
 
     [Fact]

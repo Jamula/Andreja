@@ -88,6 +88,32 @@ public sealed class OperationsContractTests
     }
 
     [Fact]
+    public async Task ExportVerifierRejectsUnsupportedSemanticContractVersion()
+    {
+        var files = CreateArtifacts();
+        var complete = CreateManifest(files);
+        var semantic = complete.Artifacts.Single(
+            artifact => artifact.DataArea == PortableDataArea.Semantic);
+        var manifest = complete with
+        {
+            Artifacts = complete.Artifacts
+                .Where(artifact => artifact.DataArea != PortableDataArea.Semantic)
+                .Append(semantic with { ContractVersion = "99" })
+                .ToArray(),
+        };
+
+        var result = await ApplicationExportVerifier.ValidateAsync(
+            manifest,
+            new CleanInstanceProbe(isClean: true),
+            (path, _) => ValueTask.FromResult<Stream>(new MemoryStream(files[path])));
+
+        Assert.False(result.IsValid);
+        Assert.Contains(
+            $"unsupported-artifact-contract-version:{semantic.Path}",
+            result.Errors);
+    }
+
+    [Fact]
     public async Task ReadinessRequiresWritableKeyState()
     {
         var path = Path.Combine(Path.GetTempPath(), $"andreja-{Guid.NewGuid():N}");
@@ -168,6 +194,12 @@ public sealed class OperationsContractTests
         {
             Assert.Contains(exclusion, schema, StringComparison.Ordinal);
         }
+        Assert.Equal(
+            "1.0",
+            ApplicationExportContract.RequiredContractVersions[PortableDataArea.Semantic]);
+        Assert.Equal(
+            "1.0",
+            ApplicationExportContract.RequiredContractVersions[PortableDataArea.Provenance]);
     }
 
     private static Dictionary<string, byte[]> CreateArtifacts() =>
@@ -193,6 +225,10 @@ public sealed class OperationsContractTests
                 return new PortableArtifactDescriptor
                 {
                     DataArea = area,
+                    ContractVersion =
+                        ApplicationExportContract.RequiredContractVersions.GetValueOrDefault(
+                            area,
+                            "1"),
                     Path = path,
                     Sha256 = Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant(),
                     ByteLength = content.LongLength,
