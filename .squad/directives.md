@@ -26,8 +26,16 @@
 
 - `main` is the integration/release branch.
 - One issue, `squad/{issue}-{slug}` branch, worktree, owner and draft PR.
+- Before creating/reusing a worktree, fetch/prune and rebase from live
+  `origin/main` or the verified remote stacked parent; stop on dirty state,
+  conflicts, changed remote tips, or lease failure.
+- New App sub-sessions use the `Squad` agent by default and inherit the parent
+  model, context tier, reasoning effort, and mode where supported; any fallback
+  is explicit.
 - Parallelize independent ready issues; agree shared contracts first.
 - Use native stacked PRs for dependent slices when available.
+- Before opening or marking a PR ready, run the issue's applicable local build,
+  tests, lint/type/config/docs/E2E checks and record commands/results.
 - Require issue-linked acceptance, tests, help and artifact gates.
 - Apply reviewer lockout after rejection.
 
