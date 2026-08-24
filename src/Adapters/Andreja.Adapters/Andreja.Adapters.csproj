@@ -1,0 +1,8 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Andreja.Platform.Contracts\Andreja.Platform.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\Andreja.Modules\Andreja.Modules.csproj" />
+  </ItemGroup>
+
+</Project>
