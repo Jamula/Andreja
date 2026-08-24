@@ -8,7 +8,7 @@
     <ResourcePreloader />
     <link rel="stylesheet" href="@Assets["app.css"]" />
     <link rel="stylesheet" href="@Assets["Andreja.AppHost.styles.css"]" />
-    <ImportMap />
+    <ImportMap AdditionalAttributes="@ImportMapAttributes" />
     <HeadOutlet />
 </head>
 
@@ -16,6 +16,19 @@
     <Routes />
     <ReconnectModal />
     <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script src="@Assets["identity-passkeys.js"]"></script>
 </body>
-
 </html>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private IReadOnlyDictionary<string, object>? ImportMapAttributes =>
+        HttpContext?.Items.TryGetValue("Andreja.CspNonce", out var nonce) == true
+            ? new Dictionary<string, object>
+            {
+                ["nonce"] = nonce?.ToString() ?? string.Empty,
+            }
+            : null;
+}

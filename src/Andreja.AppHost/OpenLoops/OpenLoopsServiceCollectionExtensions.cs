@@ -56,7 +56,6 @@ public static class OpenLoopsServiceCollectionExtensions
             .ValidateOnStart();
 
         services.AddCascadingAuthenticationState();
-        services.AddAntiforgery(options => options.HeaderName = OpenLoopsApi.AntiforgeryHeader);
         services.AddSingleton<TimeProvider>(TimeProvider.System);
         services.AddSingleton<
             ICircuitDelegationTokenService,

@@ -1,0 +1,62 @@
+@page "/Account/Bootstrap"
+@attribute [AllowAnonymous]
+
+<PageTitle>First administrator setup | Andreja</PageTitle>
+
+<main class="task-shell account-shell" aria-labelledby="bootstrap-heading">
+    <section class="task-card account-card">
+        <p class="eyebrow">One-time setup</p>
+        <h1 id="bootstrap-heading">Create the first administrator</h1>
+        <p class="lede">
+            This works once, over the configured HTTPS origin, on an empty identity
+            database. Keep the host-mounted bootstrap token private.
+        </p>
+
+        <div class="identity-message" data-identity-status role="status" aria-live="polite"></div>
+        <form method="post" data-passkey-bootstrap>
+            <AntiforgeryToken />
+            <div class="field">
+                <label for="tenant-name">Workspace name</label>
+                <input id="tenant-name" name="tenantName" required maxlength="128"
+                       autocomplete="organization" />
+            </div>
+            <div class="field">
+                <label for="user-display-name">Your display name</label>
+                <input id="user-display-name" name="userDisplayName" required maxlength="200"
+                       autocomplete="name" />
+            </div>
+            <div class="field">
+                <label for="bootstrap-token">One-time bootstrap token</label>
+                <input id="bootstrap-token" name="token" type="password" required
+                       autocomplete="off" spellcheck="false"
+                       aria-describedby="bootstrap-token-help" />
+                <p id="bootstrap-token-help" class="field-help">
+                    Read it from the protected host file. It is never stored by Andreja.
+                </p>
+            </div>
+            <input type="hidden" name="returnUrl" value="/" />
+            <button class="button primary" type="submit">
+                Create administrator passkey
+            </button>
+        </form>
+
+        <section class="recovery-codes" data-recovery-codes hidden tabindex="-1"
+                 aria-labelledby="recovery-codes-heading">
+            <h2 id="recovery-codes-heading">Save your recovery codes now</h2>
+            <p>
+                Each code works once. Store them offline, separately from this device.
+                Andreja cannot display them again.
+            </p>
+            <ol data-recovery-code-list></ol>
+            <label class="confirmation">
+                <input type="checkbox" data-recovery-confirm />
+                I stored these recovery codes offline.
+            </label>
+            <button class="button primary" type="button" data-recovery-continue disabled>
+                Continue to Andreja
+            </button>
+        </section>
+
+        <p class="account-links"><a href="@LocalAccountEndpoints.LoginPath">Back to sign in</a></p>
+    </section>
+</main>

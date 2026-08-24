@@ -18,10 +18,14 @@ controlling until Cyrus and qualified counsel explicitly decide otherwise.
   validated; runtime portability to Podman or another implementation remains an
   evidence decision.
 - At least 2 CPU cores, 3 GiB free memory, and durable local storage.
-- A trusted HTTPS reverse proxy for any binding other than loopback. The bundle
-  deliberately exposes plain HTTP on `127.0.0.1` by default and does not create or
-  trust a development certificate. Passkey onboarding is owned by the identity
-  slice and is not implemented here.
+- A trusted HTTPS endpoint whose exact origin is configured in
+  `Andreja__Identity__AllowedOrigins__0` and whose host is within
+  `Andreja__Identity__RelyingPartyId`. The bundle exposes plain HTTP only on
+  `127.0.0.1` for an operator-managed same-host TLS reverse proxy. Set
+  `ANDREJA_TRUSTED_PROXY_IP` to the one exact source IP Kestrel observes for that
+  proxy. Bootstrap, sign-in, registration, and recovery reject HTTP, a missing
+  `Origin`, an untrusted forwarder, a forwarded origin/host the application has not
+  been configured to trust, and RP/origin/port mismatch.
 - PostgreSQL 17 client tools for the host-side logical backup scripts.
 - An operator-approved encrypted, access-controlled destination for recovery sets.
 
@@ -39,8 +43,63 @@ New-Item -ItemType Directory -Force deploy\secrets | Out-Null
 ) | Set-Content -NoNewline deploy\secrets\bootstrap_token
 ```
 
-Restrict both secret files to the account running the runtime. On Unix, use mode
-`0600`. The files, `.env`, backup directory, and runtime state are ignored by Git.
+Restrict the password file to the accounts running the runtime. The app container
+runs as numeric UID/GID `1654:1654`, and file-backed Compose secrets preserve host
+ownership. On a Linux host, provision the bootstrap token for that exact container
+identity:
+
+```bash
+sudo chown 1654:1654 deploy/secrets/bootstrap_token
+sudo chmod 0400 deploy/secrets/bootstrap_token
+test "$(stat -c '%u:%g:%a' deploy/secrets/bootstrap_token)" = "1654:1654:400"
+```
+
+Do not leave the file owned only by the interactive host operator: Kestrel's
+non-root user could not read it. On Docker Desktop, stage the file in the Linux/WSL
+filesystem with numeric owner `1654:1654`; an NTFS ACL/read-only attribute alone
+does not establish the in-container Unix ownership/mode contract. Stop if the
+runtime presents any mode other than `0400`. The application verifies exact
+owner-read permission before reading. The files, `.env`, backup directory, and
+runtime state are ignored by Git.
+
+## Same-host TLS reverse proxy
+
+Kestrel intentionally listens on plain HTTP inside the loopback-published container
+port. It trusts `X-Forwarded-For`, `X-Forwarded-Proto`, and `X-Forwarded-Host` only
+when the immediate source is an exact IP in
+`Andreja:Identity:TrustedProxyAddresses`. No network range or trust-all fallback is
+configured. The middleware requires all three headers, processes one nearest-proxy
+entry, and accepts forwarded hosts only from the configured WebAuthn origins.
+
+Determine the address that the app container actually observes for the same-host
+proxy (for example, the exact Compose edge-network gateway) and put only that
+address in `ANDREJA_TRUSTED_PROXY_IP`. Do not use `0.0.0.0`, `::`, a CIDR, a Docker
+address pool, or a client-controlled value. If the proxy source address changes,
+Kestrel ignores the forwarded headers and passkey requests fail closed as HTTP.
+
+The proxy must **replace**, not append to, all three headers. For nginx at the
+configured public HTTPS virtual host:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-Host $http_host;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-For $remote_addr;
+}
+```
+
+Use `$host` instead of `$http_host` only for the default HTTPS port. Set
+`ANDREJA_HOSTNAME` to the exact public host (without a port) and keep the allowed
+origin, TLS virtual host, and `AllowedHosts` aligned. Do not enable framework
+environment switches that trust all forwarded headers.
+
+Before bootstrap, send a request through the proxy and confirm the application
+accepts the configured HTTPS origin. A direct request to
+`http://127.0.0.1:8080`, an untrusted source with spoofed forwarding headers, or a
+wrong host/origin must not start a passkey ceremony. A spoofed earlier chain entry
+must not override the single nearest value Kestrel processes.
 
 ## Acquire and verify images
 
@@ -114,17 +173,16 @@ use `down --volumes` during normal operations.
 
 The Open Loops page is implemented for assistant proposal, exact review,
 confirmation, list, complete, JSON export, and explicit two-step deletion. See
-[Open Loops help](../help/open-loops.md). However, production passkey bootstrap,
-sign-in, and recovery are not yet implemented and are tracked by
-[P0 issue #55](https://github.com/Jamula/Andreja/issues/55). **Do not describe this
-production self-host flow as usable until that blocker and its evidence are
-complete.**
+[Open Loops help](../help/open-loops.md) and
+[local identity help](../help/local-identity.md). Production identity uses only
+ASP.NET Core Identity passkeys and hashed, single-use recovery codes. No password,
+header, operator, test, or cloud authentication path is available. The separate
+fixed development helper is compiled only in Debug and mapped only in Development.
 
-Once production identity is complete, the API will resolve the authenticated
-Identity user to exactly one active tenant membership and principal (or validate
-server-issued explicit context claims), then require antiforgery on every mutation.
-No development sign-in endpoint is mapped in Production, and no header-based or
-automatic fake-auth handler exists.
+The API resolves the authenticated Identity user to exactly one active tenant
+membership and principal (or validates server-issued explicit context claims), then
+requires antiforgery on every mutation. No development sign-in endpoint is mapped in
+Production, and no header-based or automatic fake-auth handler exists.
 
 Interactive Server API calls do not forward browser cookies from `HttpContext`.
 The circuit-scoped typed client reads its own authentication state and attaches a
@@ -233,7 +291,7 @@ pwsh -NoProfile -File scripts\operations\migrate-database.ps1 `
   -BackupDumpPath backups\postgres\andreja-<timestamp>.dump `
   -ReviewedMigrationScriptPath .andreja\reviewed-migration.sql `
   -DatabaseName andreja `
-  -ApprovedMigrations 20260824031732_InitialIdentityTenancy,20260824043341_Phase1AOpenLoopsTasks `
+  -ApprovedMigrations 20260824031732_InitialIdentityTenancy,20260824043341_Phase1AOpenLoopsTasks,20260824075115_ProductionPasskeyIdentity,20260824102012_DurableRecentAuthenticationGrants `
   -ConfirmBackupRestoreAndMigrationReview
 ```
 

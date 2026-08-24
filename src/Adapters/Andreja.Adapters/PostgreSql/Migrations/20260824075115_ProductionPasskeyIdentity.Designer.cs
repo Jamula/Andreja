@@ -3,6 +3,7 @@ using System;
 using Andreja.Adapters.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Andreja.Adapters.PostgreSql.Migrations
 {
     [DbContext(typeof(AndrejaIdentityDbContext))]
-    partial class AndrejaIdentityDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260824075115_ProductionPasskeyIdentity")]
+    partial class ProductionPasskeyIdentity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -115,35 +118,6 @@ namespace Andreja.Adapters.PostgreSql.Migrations
                         {
                             t.HasCheckConstraint("ck_bootstrap_state_singleton", "\"Id\" = '0198d19e-5d34-7000-8000-000000000001'::uuid");
                         });
-                });
-
-            modelBuilder.Entity("Andreja.Adapters.PostgreSql.IdentityRecentAuthenticationGrant", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("ConsumedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<byte[]>("NonceHash")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("bytea");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NonceHash")
-                        .IsUnique();
-
-                    b.HasIndex("UserId", "ConsumedAt", "ExpiresAt");
-
-                    b.ToTable("recent_authentication_grants", "identity");
                 });
 
             modelBuilder.Entity("Andreja.Adapters.PostgreSql.IdentityRecoveryCode", b =>
@@ -687,15 +661,6 @@ namespace Andreja.Adapters.PostgreSql.Migrations
                         .WithOne()
                         .HasForeignKey("Andreja.Adapters.PostgreSql.IdentityBootstrapState", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Andreja.Adapters.PostgreSql.IdentityRecentAuthenticationGrant", b =>
-                {
-                    b.HasOne("Andreja.Adapters.PostgreSql.AspNetIdentityUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

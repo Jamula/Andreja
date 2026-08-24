@@ -138,11 +138,12 @@ if its environment is misconfigured as Development. It is not passkey evidence a
 must never be enabled as a production workaround.
 
 Production refuses to enable Open Loops without PostgreSQL. The self-host bundle
-enables PostgreSQL and ASP.NET Core Identity cookies, but production passkey
-bootstrap/sign-in/recovery is tracked by
-[P0 issue #55](https://github.com/Jamula/Andreja/issues/55) and is required before
-Phase 1A exit. Until that blocker is complete, the production login page truthfully
-states that sign-in is unavailable; the self-host task flow is not production-usable.
+enables PostgreSQL, persisted Data Protection keys, and ASP.NET Core Identity
+passkey bootstrap/sign-in/recovery. Apply the explicit identity migration, configure
+the exact HTTPS RP origin, and follow
+[local identity help](help/local-identity.md). Real browser/authenticator,
+PostgreSQL runtime, backup/restore, and hosted checks remain required evidence; the
+implementation alone does not establish Phase 1A exit.
 
 The API routes are under `/api/v1/open-loops`; Blazor components use only
 `IOpenLoopsApiClient` and versioned DTOs. See the

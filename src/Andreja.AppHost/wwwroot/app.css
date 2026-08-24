@@ -57,11 +57,11 @@ body {
     margin: 0;
 }
 
-button, textarea {
+button, input, textarea {
     font: inherit;
 }
 
-button:focus-visible, textarea:focus-visible, a:focus-visible, [tabindex="-1"]:focus-visible {
+button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible, [tabindex="-1"]:focus-visible {
     outline: 3px solid var(--focus);
     outline-offset: 3px;
 }
@@ -70,6 +70,19 @@ button:focus-visible, textarea:focus-visible, a:focus-visible, [tabindex="-1"]:f
     margin: 0 auto;
     max-width: 72rem;
     padding: clamp(1rem, 4vw, 3rem);
+}
+
+.account-nav {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 auto;
+    max-width: 72rem;
+    padding: 1rem clamp(1rem, 4vw, 3rem) 0;
+}
+
+.account-nav a {
+    color: var(--accent-dark);
+    font-weight: 750;
 }
 
 .task-hero {
@@ -128,6 +141,73 @@ button:focus-visible, textarea:focus-visible, a:focus-visible, [tabindex="-1"]:f
     min-height: 7rem;
     padding: 0.85rem;
     resize: vertical;
+}
+
+.field input {
+    border: 2px solid var(--border);
+    border-radius: 0.65rem;
+    min-height: 2.75rem;
+    padding: 0 0.85rem;
+}
+
+.account-shell {
+    max-width: 46rem;
+}
+
+.account-card {
+    margin-top: clamp(1rem, 7vw, 5rem);
+}
+
+.account-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
+    margin-top: 1.5rem;
+}
+
+.development-warning,
+.recovery-codes {
+    background: #fff8df;
+    border: 1px solid #dcc66d;
+    border-radius: 0.75rem;
+    margin-top: 1.5rem;
+    padding: 1rem;
+}
+
+.identity-message:not(:empty) {
+    background: #eef6f1;
+    border-left: 0.3rem solid var(--accent);
+    margin: 1rem 0;
+    padding: 0.85rem 1rem;
+}
+
+.recovery-codes code {
+    overflow-wrap: anywhere;
+    user-select: all;
+}
+
+.confirmation {
+    align-items: start;
+    display: flex;
+    font-weight: 700;
+    gap: 0.65rem;
+    margin: 1rem 0;
+}
+
+.passkey-list {
+    display: grid;
+    gap: 0.75rem;
+    list-style: none;
+    padding: 0;
+}
+
+.passkey-item {
+    align-items: center;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    padding-top: 0.75rem;
 }
 
 .field-help, .task-meta {

@@ -8,35 +8,36 @@
     <section class="task-card account-card">
         <p class="eyebrow">Local identity</p>
         <h1 id="sign-in-heading">Sign in to Andreja</h1>
+        <p class="lede">Use a passkey stored on this device or in your passkey provider.</p>
 
-        @if (LocalAccountEndpoints.IsDevelopmentSignInAvailable(Environment))
+        <div class="identity-message" data-identity-status role="status" aria-live="polite"></div>
+        <form data-passkey-signin>
+            <AntiforgeryToken />
+            <input type="hidden" name="returnUrl" value="@SafeReturnUrl" />
+            <button class="button primary" type="submit">Sign in with a passkey</button>
+        </form>
+
+        <nav class="account-links" aria-label="Account access">
+            <a href="@LocalAccountEndpoints.RecoveryPath">Use a recovery code</a>
+            <a href="@LocalAccountEndpoints.BootstrapPath">Set up the first administrator</a>
+        </nav>
+
+        @if (DevelopmentPath is not null)
         {
             <div class="development-warning" role="note">
                 <strong>Development only</strong>
                 <p>
-                    This explicit local sign-in uses a fixed in-memory development
-                    identity. It is compiled only into Debug builds, mapped only in
-                    the Development environment, and is not a production
-                    authentication path.
+                    This separate helper uses a fixed in-memory identity. It is
+                    compiled only into Debug builds, mapped only in Development,
+                    and is never a production authentication path.
                 </p>
-            </div>
-            <form method="post" action="@LocalAccountEndpoints.DevelopmentSignInPath">
-                <AntiforgeryToken />
-                <input type="hidden" name="returnUrl" value="@SafeReturnUrl" />
-                <button class="button primary" type="submit">
-                    Sign in to the development workspace
-                </button>
-            </form>
-        }
-        else
-        {
-            <div class="error-message" role="alert">
-                <strong>Production passkey sign-in is not shipped yet.</strong>
-                <span>
-                    This build does not provide a production sign-in bypass.
-                    Complete the Phase 1A passkey bootstrap, sign-in, and recovery
-                    blocker before treating this self-host as usable.
-                </span>
+                <form method="post" action="@DevelopmentPath">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="returnUrl" value="@SafeReturnUrl" />
+                    <button class="button secondary" type="submit">
+                        Sign in to the development workspace
+                    </button>
+                </form>
             </div>
         }
     </section>
@@ -48,4 +49,18 @@
 
     private string SafeReturnUrl =>
         LocalAccountEndpoints.IsLocalReturnUrl(ReturnUrl) ? ReturnUrl! : "/";
+
+    private string? DevelopmentPath
+    {
+        get
+        {
+#if DEBUG
+            return Environment.IsDevelopment()
+                ? LocalAccountEndpoints.DevelopmentSignInPath
+                : null;
+#else
+            return null;
+#endif
+        }
+    }
 }

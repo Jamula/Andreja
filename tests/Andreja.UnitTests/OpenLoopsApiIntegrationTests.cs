@@ -52,7 +52,7 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
             StringComparison.Ordinal);
 #else
         Assert.Contains(
-            "Production passkey sign-in is not shipped yet.",
+            "Sign in with a passkey",
             await loginResponse.Content.ReadAsStringAsync(),
             StringComparison.Ordinal);
 #endif
@@ -86,6 +86,67 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         Assert.Equal(HttpStatusCode.BadRequest, unsafeResponse.StatusCode);
         var error = await unsafeResponse.Content.ReadFromJsonAsync<ApiErrorDto>();
         Assert.Equal("invalid-antiforgery-token", error?.Code);
+    }
+
+    [Fact]
+    public async Task SignOutClearsTheAuthenticatedCookie()
+    {
+        using var client = await factory.CreateDevelopmentSignedInClientAsync("/");
+        var repositoryRoot = new DirectoryInfo(AppContext.BaseDirectory);
+        for (var level = 0; level < 5; level++)
+        {
+            repositoryRoot = repositoryRoot.Parent
+                ?? throw new DirectoryNotFoundException();
+        }
+        var home = await File.ReadAllTextAsync(Path.Join(
+            repositoryRoot.FullName,
+            "src",
+            "Andreja.AppHost",
+            "Components",
+            "Pages",
+            "Home.razor"));
+        var passkeys = await File.ReadAllTextAsync(Path.Join(
+            repositoryRoot.FullName,
+            "src",
+            "Andreja.AppHost",
+            "Components",
+            "Pages",
+            "Passkeys.razor"));
+        using var passkeysResponse =
+            await client.GetAsync(LocalAccountEndpoints.PasskeysPath);
+        passkeysResponse.EnsureSuccessStatusCode();
+        Assert.Contains(
+            "href=\"@LocalAccountEndpoints.PasskeysPath\"",
+            home,
+            StringComparison.Ordinal);
+        Assert.Contains("Account and security", home, StringComparison.Ordinal);
+        Assert.Contains(
+            "action=\"@LocalAccountEndpoints.LogoutPath\"",
+            passkeys,
+            StringComparison.Ordinal);
+        Assert.Contains("Sign out", passkeys, StringComparison.Ordinal);
+        var login = await client.GetStringAsync(LocalAccountEndpoints.LoginPath);
+        var tokenMatch = Regex.Match(
+            login,
+            "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"",
+            RegexOptions.CultureInvariant);
+        Assert.True(tokenMatch.Success);
+
+        var response = await client.PostAsync(
+            LocalAccountEndpoints.LogoutPath,
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] =
+                    WebUtility.HtmlDecode(tokenMatch.Groups[1].Value),
+            }));
+        using var anonymousHome = await client.GetAsync("/");
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(LocalAccountEndpoints.LoginPath, response.Headers.Location?.OriginalString);
+        Assert.Equal(HttpStatusCode.Redirect, anonymousHome.StatusCode);
+        Assert.Equal(
+            LocalAccountEndpoints.LoginPath,
+            anonymousHome.Headers.Location?.AbsolutePath);
     }
 #endif
 
@@ -287,6 +348,9 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
     [InlineData("/tasks?view=today", true)]
     [InlineData("//example.test", false)]
     [InlineData("/\\example.test", false)]
+    [InlineData("/\n/evil.example", false)]
+    [InlineData("/\r/evil.example", false)]
+    [InlineData("/\t/evil.example", false)]
     [InlineData("https://example.test", false)]
     [InlineData("", false)]
     public void ReturnUrlMustBeLocal(string returnUrl, bool expected) =>
@@ -298,15 +362,11 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         using var development = factory.CreateAnonymousClient();
         var login = await development.GetStringAsync(
             "/Account/Login?ReturnUrl=https%3A%2F%2Fexample.test");
-#if DEBUG
         Assert.Contains("""name="returnUrl" value="/" """.Trim(), login, StringComparison.Ordinal);
         Assert.DoesNotContain(
             """name="returnUrl" value="https://example.test" """.Trim(),
             login,
             StringComparison.Ordinal);
-#else
-        Assert.DoesNotContain("returnUrl", login, StringComparison.OrdinalIgnoreCase);
-#endif
 
         using var productionFactory = new ProductionWebApplicationFactory();
         using var production = productionFactory.CreateClient(
@@ -319,12 +379,147 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         var productionLogin = await production.GetAsync(productionRoot.Headers.Location);
         Assert.Equal(HttpStatusCode.OK, productionLogin.StatusCode);
         Assert.Contains(
-            "Production passkey sign-in is not shipped yet.",
+            "Sign in with a passkey",
             await productionLogin.Content.ReadAsStringAsync(),
             StringComparison.Ordinal);
         var developmentEndpoint = await production.GetAsync(
-            LocalAccountEndpoints.DevelopmentSignInPath);
+            "/Account/DevelopmentSignIn");
         Assert.Equal(HttpStatusCode.NotFound, developmentEndpoint.StatusCode);
+#if !DEBUG
+        Assert.Null(typeof(LocalAccountEndpoints).GetField(
+            "DevelopmentSignInPath",
+            BindingFlags.Public | BindingFlags.Static));
+#endif
+    }
+
+    [Fact]
+    public async Task AccountPagesUseExternalPasskeyScriptAndStrictSecurityHeaders()
+    {
+        using var client = factory.CreateAnonymousClient();
+
+        var response = await client.GetAsync(LocalAccountEndpoints.LoginPath);
+        var content = await response.Content.ReadAsStringAsync();
+
+        response.EnsureSuccessStatusCode();
+        Assert.Contains("identity-passkeys", content, StringComparison.Ordinal);
+        Assert.DoesNotContain("navigator.credentials", content, StringComparison.Ordinal);
+        Assert.Contains("Sign in with a passkey", content, StringComparison.Ordinal);
+        Assert.DoesNotContain("Account and security", content, StringComparison.Ordinal);
+        Assert.True(response.Headers.TryGetValues(
+            "Content-Security-Policy",
+            out var policies));
+        var policy = Assert.Single(policies);
+        Assert.Contains("script-src 'self' 'nonce-", policy, StringComparison.Ordinal);
+        Assert.Contains("frame-ancestors 'none'", policy, StringComparison.Ordinal);
+        var nonce = Regex.Match(
+            policy,
+            """script-src 'self' 'nonce-([^']+)'""",
+            RegexOptions.CultureInvariant);
+        Assert.True(nonce.Success);
+        Assert.Contains(
+            $"nonce=\"{nonce.Groups[1].Value}\"",
+            content,
+            StringComparison.Ordinal);
+
+        var bootstrap = await client.GetStringAsync(LocalAccountEndpoints.BootstrapPath);
+        Assert.Contains("Create the first administrator", bootstrap, StringComparison.Ordinal);
+        Assert.Contains("Save your recovery codes now", bootstrap, StringComparison.Ordinal);
+        Assert.Contains(
+            "method=\"post\" data-passkey-bootstrap",
+            bootstrap,
+            StringComparison.Ordinal);
+        Assert.Contains("tabindex=\"-1\"", bootstrap, StringComparison.Ordinal);
+        var recovery = await client.GetStringAsync(LocalAccountEndpoints.RecoveryPath);
+        Assert.Contains("Replace lost passkeys", recovery, StringComparison.Ordinal);
+        Assert.Contains("signs out existing sessions", recovery, StringComparison.Ordinal);
+        Assert.Contains(
+            "method=\"post\" data-passkey-recovery",
+            recovery,
+            StringComparison.Ordinal);
+        Assert.Contains("tabindex=\"-1\"", recovery, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AccountEnhancedNavigationKeepsIdempotentDelegatedHandlers()
+    {
+        var repositoryRoot = new DirectoryInfo(AppContext.BaseDirectory);
+        for (var level = 0; level < 5; level++)
+        {
+            repositoryRoot = repositoryRoot.Parent
+                ?? throw new DirectoryNotFoundException();
+        }
+        var script = await File.ReadAllTextAsync(Path.Join(
+            repositoryRoot.FullName,
+            "src",
+            "Andreja.AppHost",
+            "wwwroot",
+            "identity-passkeys.js"));
+
+        Assert.Contains(
+            "window.andrejaIdentityPasskeysInitialized",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            $"const antiforgeryHeader = \"{OpenLoopsApi.AntiforgeryHeader}\"",
+            script,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "X-Andreja-Antiforgery",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "document.addEventListener(\"submit\", handleSubmit)",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Blazor.addEventListener(\"enhancedload\", initializeIdentityPage)",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "globalThis.Blazor?.addEventListener",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "window.andrejaIdentityEnhancedLoadSubscribed",
+            script,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "document.addEventListener(\"enhancedload\"",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "form.querySelectorAll(\"button\")",
+            script,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "querySelectorAll(\"button, input\")",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "revoke.setAttribute(\"aria-label\", `Remove passkey ${passkey.name}`)",
+            script,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "querySelector(\"[data-passkey-signin]\")?.addEventListener",
+            script,
+            StringComparison.Ordinal);
+
+        using var client = factory.CreateAnonymousClient();
+        foreach (var request in new[]
+                 {
+                     LocalAccountEndpoints.LoginPath,
+                     LocalAccountEndpoints.BootstrapPath,
+                     LocalAccountEndpoints.RecoveryPath,
+                     LocalAccountEndpoints.LoginPath,
+                 }.Select(path => new HttpRequestMessage(HttpMethod.Get, path)))
+        {
+            using (request)
+            {
+                request.Headers.TryAddWithoutValidation("blazor-enhanced-nav", "on");
+                using var response = await client.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+            }
+        }
     }
 
     [Fact]
@@ -453,6 +648,7 @@ public sealed class OpenLoopsWebApplicationFactory : WebApplicationFactory<Progr
             BaseAddress = new Uri("https://localhost"),
         });
 
+#if DEBUG
     public async Task<HttpClient> CreateDevelopmentSignedInClientAsync(string returnUrl)
     {
         var client = CreateAnonymousClient();
@@ -475,6 +671,7 @@ public sealed class OpenLoopsWebApplicationFactory : WebApplicationFactory<Progr
         Assert.Equal(returnUrl, response.Headers.Location?.OriginalString);
         return client;
     }
+#endif
 
     private sealed class CircuitTestIdentity
     {
