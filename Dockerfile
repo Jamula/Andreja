@@ -7,27 +7,6 @@ ARG SOURCE_DATE_EPOCH=0
 ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
 WORKDIR /source
 COPY . .
-RUN find . -exec touch --date="@${SOURCE_DATE_EPOCH}" {} + \
-    && dotnet restore src/Andreja.AppHost/Andreja.AppHost.csproj \
-    && dotnet publish src/Andreja.AppHost/Andreja.AppHost.csproj \
-        --configuration Release \
-        --no-restore \
-        --output /app/publish \
-        /p:UseAppHost=false \
-        /p:ContinuousIntegrationBuild=true \
-        /p:Deterministic=true \
-        /p:PathMap=/source=/_/src \
-    && fixed_date="$(date --utc --date="@${SOURCE_DATE_EPOCH}" "+%a, %d %b %Y %H:%M:%S GMT")" \
-    && sed --in-place --regexp-extended \
-        "s/(\"Name\":\"Last-Modified\",\"Value\":)\"[^\"]+\"/\1\"${fixed_date}\"/g" \
-        /app/publish/*.staticwebassets.endpoints.json \
-    && mkdir -p /app/state/keys /app/state/attachments
-
-FROM ${DOTNET_SDK_IMAGE} AS supply-build
-ARG SOURCE_DATE_EPOCH=0
-ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
-WORKDIR /source
-COPY . .
 RUN --mount=type=bind,from=nuget-cache,target=/nuget-cache,readonly \
     mkdir -p /root/.nuget/packages \
     && cp -a /nuget-cache/. /root/.nuget/packages/ \
@@ -70,10 +49,6 @@ EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=6s --start-period=20s --retries=4 \
     CMD ["dotnet", "Andreja.AppHost.dll", "--health-check", "http://127.0.0.1:8080/health/ready"]
 ENTRYPOINT ["dotnet", "Andreja.AppHost.dll"]
-
-FROM runtime-base AS supply-final
-COPY --from=supply-build --chown=$APP_UID:$APP_UID /app/publish .
-COPY --from=supply-build --chown=$APP_UID:$APP_UID /app/state /var/lib/andreja
 
 FROM runtime-base AS final
 COPY --from=build --chown=$APP_UID:$APP_UID /app/publish .

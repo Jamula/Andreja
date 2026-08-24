@@ -31,10 +31,10 @@ if ((Get-FileSha256 -Path $policyPath) -ne $evidence.policy.sha256) {
     throw 'Supply-chain policy checksum does not match the evidence manifest.'
 }
 
-if ($evidence.source.repository -ne $policy.sourceRepository -or
-    $evidence.image.platform -notin @($policy.platforms)) {
-    throw 'Evidence source or platform is outside the signed policy.'
+if ($evidence.source.repository -ne $policy.sourceRepository) {
+    throw 'Evidence source is outside the signed policy.'
 }
+Assert-PlatformApproved -Platform $evidence.image.platform -Policy $policy
 
 $evidenceBaseImages = @($evidence.build.baseImages) -join "`n"
 $policyBaseImages = @($policy.baseImages.PSObject.Properties.Value) -join "`n"
@@ -142,7 +142,9 @@ $indexText = Invoke-CheckedCommand -FilePath 'tar' -Arguments @(
     '-xOf', $archivePath, 'index.json'
 ) -FailureMessage 'Unable to inspect the OCI archive.' -CaptureOutput
 $index = $indexText | ConvertFrom-Json -Depth 100
-if (@($index.manifests).Count -ne 1 -or $index.manifests[0].digest -ne $evidence.image.digest) {
+if (@($index.manifests).Count -ne 1 -or
+    $index.manifests[0].digest -ne $evidence.image.digest -or
+    $index.manifests[0].mediaType -ne 'application/vnd.oci.image.manifest.v1+json') {
     throw 'OCI archive digest does not match the signed evidence.'
 }
 
@@ -151,9 +153,20 @@ $manifestText = Invoke-CheckedCommand -FilePath 'tar' -Arguments @(
     '-xOf', $archivePath, $manifestBlob
 ) -FailureMessage 'Unable to inspect the OCI manifest.' -CaptureOutput
 $manifest = $manifestText | ConvertFrom-Json -Depth 100
-if ($manifest.config.digest -ne $evidence.image.configDigest) {
+if ($manifest.mediaType -ne 'application/vnd.oci.image.manifest.v1+json' -or
+    -not ($manifest.PSObject.Properties.Name -contains 'config') -or
+    $manifest.config.digest -ne $evidence.image.configDigest) {
     throw 'OCI config digest does not match the signed evidence.'
 }
+
+$configBlob = "blobs/sha256/$($evidence.image.configDigest.Substring(7))"
+$configText = Invoke-CheckedCommand -FilePath 'tar' -Arguments @(
+    '-xOf', $archivePath, $configBlob
+) -FailureMessage 'Unable to inspect the OCI config.' -CaptureOutput
+$config = $configText | ConvertFrom-Json -Depth 100
+Assert-OciPlatformBinding -ExpectedPlatform $evidence.image.platform -Index $index `
+    -Manifest $manifest -Config $config -ExpectedManifestDigest $evidence.image.digest `
+    -ExpectedConfigDigest $evidence.image.configDigest
 
 if ((Get-Content -LiteralPath (Join-Path $bundleRoot 'image.digest') -Raw).Trim() -ne
     $evidence.image.digest) {
@@ -173,8 +186,11 @@ $loadedImageJson = Invoke-CheckedCommand -FilePath 'docker' -Arguments @(
     'image', 'inspect', $evidence.image.immutableReference
 ) -FailureMessage 'The loaded image is not resolvable by its immutable digest reference.' -CaptureOutput
 $loadedImage = @($loadedImageJson | ConvertFrom-Json -Depth 100)
+$platformParts = $evidence.image.platform.Split('/', 2)
 if ($loadedImage.Count -ne 1 -or
     $loadedImage[0].Descriptor.digest -ne $evidence.image.digest -or
+    $loadedImage[0].Os -ne $platformParts[0] -or
+    $loadedImage[0].Architecture -ne $platformParts[1] -or
     $loadedImage[0].Config.Labels.'org.opencontainers.image.revision' -ne $evidence.source.commit -or
     $loadedImage[0].Config.Labels.'org.opencontainers.image.source' -ne $evidence.source.repository -or
     $loadedImage[0].Config.Labels.'org.opencontainers.image.base.digest' -ne

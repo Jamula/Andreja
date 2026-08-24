@@ -8,6 +8,13 @@ function Get-FileSha256 {
         throw "Required file is missing: $Path"
     }
 
+    $item = Get-Item -LiteralPath $Path -Force
+    $isLink = $item.Attributes.HasFlag([IO.FileAttributes]::ReparsePoint) -or
+        (($item.PSObject.Properties.Name -contains 'LinkType') -and $null -ne $item.LinkType)
+    if ($isLink) {
+        throw "Artifact must be a regular file, not a symlink or reparse point: $Path"
+    }
+
     (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
@@ -78,6 +85,89 @@ function Read-SupplyChainPolicy {
     $policy
 }
 
+function Assert-PlatformApproved {
+    param(
+        [Parameter(Mandatory)][string] $Platform,
+        [Parameter(Mandatory)] $Policy
+    )
+
+    if ($Platform -notmatch '^linux/(amd64|arm64)$' -or $Platform -notin @($Policy.platforms)) {
+        throw "Platform '$Platform' is outside the supply-chain policy."
+    }
+}
+
+function Assert-DockerfileProductionTarget {
+    param([Parameter(Mandatory)][string] $Path)
+
+    $dockerfile = Get-Content -LiteralPath $Path -Raw
+    $stageMatches = [regex]::Matches(
+        $dockerfile,
+        '(?im)^FROM\s+\S+\s+AS\s+([A-Za-z0-9._-]+)\s*$')
+    $stages = @($stageMatches | ForEach-Object { $_.Groups[1].Value })
+    if (($stages -join ',') -ne 'build,runtime-base,final') {
+        throw "Dockerfile must contain only the audited build, runtime-base, and final stages in that order."
+    }
+
+    if ($stages[-1] -ne 'final' -or
+        ([regex]::Matches($dockerfile, '(?im)^COPY\s+--from=build\b.*?/app/publish\s+\.\s*$')).Count -ne 1 -or
+        ([regex]::Matches($dockerfile, '(?im)^COPY\s+--from=build\b.*?/app/state\s+/var/lib/andreja\s*$')).Count -ne 1) {
+        throw 'The audited final stage must be the sole/default production image target.'
+    }
+
+    if (($dockerfile | Select-String -Pattern 'dotnet restore' -AllMatches).Matches.Count -ne 1 -or
+        -not $dockerfile.Contains('from=nuget-cache') -or
+        -not $dockerfile.Contains('target=/nuget-cache,readonly')) {
+        throw 'The sole build stage must use the explicit read-only NuGet cache context.'
+    }
+}
+
+function Assert-OciPlatformBinding {
+    param(
+        [Parameter(Mandatory)][string] $ExpectedPlatform,
+        [Parameter(Mandatory)] $Index,
+        [Parameter(Mandatory)] $Manifest,
+        [Parameter(Mandatory)] $Config,
+        [string] $ExpectedManifestDigest,
+        [string] $ExpectedConfigDigest
+    )
+
+    $parts = $ExpectedPlatform.Split('/', 2)
+    if ($parts.Count -ne 2) {
+        throw "Invalid expected OCI platform '$ExpectedPlatform'."
+    }
+
+    $descriptors = @($Index.manifests)
+    if ($Index.schemaVersion -ne 2 -or $descriptors.Count -ne 1) {
+        throw 'OCI archive must resolve unambiguously to exactly one platform manifest.'
+    }
+
+    $descriptor = $descriptors[0]
+    if ($descriptor.mediaType -ne 'application/vnd.oci.image.manifest.v1+json' -or
+        $Manifest.schemaVersion -ne 2 -or
+        $Manifest.mediaType -ne 'application/vnd.oci.image.manifest.v1+json' -or
+        $Manifest.config.mediaType -ne 'application/vnd.oci.image.config.v1+json') {
+        throw 'OCI archive must contain a direct image manifest, not a nested index or manifest list.'
+    }
+
+    if ($ExpectedManifestDigest -and $descriptor.digest -ne $ExpectedManifestDigest) {
+        throw 'OCI manifest digest does not match the expected evidence digest.'
+    }
+    if ($ExpectedConfigDigest -and $Manifest.config.digest -ne $ExpectedConfigDigest) {
+        throw 'OCI config digest does not match the expected evidence digest.'
+    }
+
+    if ($Config.os -ne $parts[0] -or $Config.architecture -ne $parts[1]) {
+        throw "OCI config platform '$($Config.os)/$($Config.architecture)' does not match '$ExpectedPlatform'."
+    }
+
+    if ($descriptor.PSObject.Properties.Name -contains 'platform') {
+        if ($descriptor.platform.os -ne $parts[0] -or
+            $descriptor.platform.architecture -ne $parts[1]) {
+            throw 'OCI descriptor platform does not match its config and expected evidence platform.'
+        }
+    }
+}
+
 function Invoke-CheckedCommand {
     param(
         [Parameter(Mandatory)][string] $FilePath,
@@ -135,7 +225,27 @@ function Assert-ArtifactInventory {
         }
     }
 
-    $actual = @(Get-ChildItem -LiteralPath $Root -File | Select-Object -ExpandProperty Name)
+    $rootItem = Get-Item -LiteralPath $Root -Force
+    $rootIsLink = $rootItem.Attributes.HasFlag([IO.FileAttributes]::ReparsePoint) -or
+        (($rootItem.PSObject.Properties.Name -contains 'LinkType') -and $null -ne $rootItem.LinkType)
+    if ($rootIsLink) {
+        throw 'Evidence bundle root cannot be a symlink or reparse point.'
+    }
+
+    $entries = @(Get-ChildItem -LiteralPath $Root -Force)
+    foreach ($entry in $entries) {
+        $isLink = $entry.Attributes.HasFlag([IO.FileAttributes]::ReparsePoint) -or
+            (($entry.PSObject.Properties.Name -contains 'LinkType') -and $null -ne $entry.LinkType)
+        if ($isLink) {
+            throw "Evidence bundle contains a symlink or reparse point: $($entry.Name)."
+        }
+        if ($entry.PSIsContainer) {
+            throw "Evidence bundle schema permits no directories: $($entry.Name)."
+        }
+    }
+
+    $actual = @(Get-ChildItem -LiteralPath $Root -Force -File |
+        Select-Object -ExpandProperty Name)
     $difference = @(Compare-Object ($expected | Sort-Object) ($actual | Sort-Object))
     if ($difference.Count -gt 0) {
         throw "Evidence inventory drift detected: $($difference.InputObject -join ', ')."
@@ -242,6 +352,11 @@ function Assert-ProvenanceBinding {
     if ($source.Count -ne 1 -or $source[0].digest.gitTree -ne $Evidence.source.tree) {
         throw 'Provenance source commit/tree binding is missing or mismatched.'
     }
+
+    if ($Provenance.predicate.buildDefinition.externalParameters.platform -ne
+        $Evidence.image.platform) {
+        throw 'Provenance platform does not match the evidence image platform.'
+    }
 }
 
 function Assert-SigningStatus {
@@ -273,8 +388,11 @@ function Assert-SigningStatus {
 
 Export-ModuleMember -Function @(
     'Assert-ArtifactInventory',
+    'Assert-DockerfileProductionTarget',
     'Assert-NoForbiddenFinding',
+    'Assert-OciPlatformBinding',
     'Assert-PinnedImageReference',
+    'Assert-PlatformApproved',
     'Assert-ProvenanceBinding',
     'Assert-RequiredCommand',
     'Assert-SbomDocument',

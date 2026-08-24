@@ -65,9 +65,7 @@ if ([string]::IsNullOrWhiteSpace($Platform)) {
         default { throw "Unsupported Docker architecture '$dockerArchitecture'." }
     }
 }
-if ($Platform -notin @($policy.platforms)) {
-    throw "Platform '$Platform' is outside the supply-chain policy."
-}
+Assert-PlatformApproved -Platform $Platform -Policy $policy
 $buildxVersionOutput = Invoke-CheckedCommand -FilePath 'docker' -Arguments @(
     'buildx', 'version'
 ) -FailureMessage 'Docker Buildx is unavailable; reproducible OCI output cannot be built.' -CaptureOutput
@@ -217,7 +215,7 @@ function Build-OciArchive {
             '--build-arg', "SOURCE_REVISION=$sourceRevision",
             '--build-arg', "SOURCE_DATE_EPOCH=$sourceDateEpoch",
             '--build-context', "nuget-cache=$nugetCache",
-            '--target', 'supply-final',
+            '--target', 'final',
             '--provenance=false',
             '--sbom=false',
             '--metadata-file', $MetadataPath,
@@ -250,9 +248,20 @@ function Read-OciArtifact {
         throw 'OCI image manifest has no valid config digest.'
     }
 
+    $configDigest = [string] $manifest.config.digest
+    $configBlob = "blobs/sha256/$($configDigest.Substring(7))"
+    $configText = Invoke-CheckedCommand -FilePath 'tar' -Arguments @(
+        '-xOf', $Archive, $configBlob
+    ) -FailureMessage 'Unable to read OCI image config.' -CaptureOutput
+    $config = $configText | ConvertFrom-Json -Depth 100
+    Assert-OciPlatformBinding -ExpectedPlatform $Platform -Index $index `
+        -Manifest $manifest -Config $config -ExpectedManifestDigest $manifestDigest `
+        -ExpectedConfigDigest $configDigest
+
     [ordered]@{
         digest = $manifestDigest
-        configDigest = [string] $manifest.config.digest
+        configDigest = $configDigest
+        platform = "$($config.os)/$($config.architecture)"
     }
 }
 
@@ -379,7 +388,7 @@ $provenance = [ordered]@{
             buildType = 'https://andreja.local/buildtypes/oci-buildx/v1'
             externalParameters = [ordered]@{
                 dockerfile = 'Dockerfile'
-                platform = $Platform
+                platform = $firstOci.platform
                 sourceRevision = $sourceRevision
                 sourceDateEpoch = $sourceDateEpoch
             }
@@ -498,7 +507,7 @@ $evidence = [ordered]@{
         digest = $firstOci.digest
         configDigest = $firstOci.configDigest
         immutableReference = "$ImageName@$($firstOci.digest)"
-        platform = $Platform
+        platform = $firstOci.platform
         archive = Get-ChecksummedFile -Root $outputRoot -Name 'image.oci.tar'
     }
     build = [ordered]@{

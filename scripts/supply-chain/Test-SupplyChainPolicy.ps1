@@ -9,7 +9,9 @@ Import-Module (Join-Path $PSScriptRoot 'SupplyChain.Common.psm1') -Force
 
 $policyPath = Join-Path $RepositoryRoot 'supply-chain-policy.json'
 $policy = Read-SupplyChainPolicy -Path $policyPath
-$dockerfile = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'Dockerfile') -Raw
+$dockerfilePath = Join-Path $RepositoryRoot 'Dockerfile'
+$dockerfile = Get-Content -LiteralPath $dockerfilePath -Raw
+Assert-DockerfileProductionTarget -Path $dockerfilePath
 
 foreach ($baseImage in $policy.baseImages.PSObject.Properties.Value) {
     if (-not $dockerfile.Contains($baseImage)) {
@@ -48,6 +50,11 @@ foreach ($requiredText in @('pull_request:', 'merge_group:', 'contents: read', '
 foreach ($forbiddenText in @('id-token: write', 'actions/upload-artifact', 'docker push', 'cosign sign')) {
     if ($supplyWorkflow.Contains($forbiddenText)) {
         throw "Hosted OCI workflow contains forbidden publication/signing text '$forbiddenText'."
+    }
+
+    $generator = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'scripts\supply-chain\New-OciEvidence.ps1') -Raw
+    if (-not $generator.Contains("'--target', 'final'") -or $generator.Contains("'--target', 'supply-final'")) {
+        throw 'Supply-chain generation must build the sole/default final target.'
     }
 }
 

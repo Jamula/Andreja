@@ -181,6 +181,27 @@ error. The SDK records publish wall-clock times in static-asset endpoint
 `Last-Modified` headers, so the Dockerfile normalizes only those metadata values to
 the reviewed commit epoch after deterministic precompression. Asset bytes,
 fingerprints, ETags, and cache policy remain unchanged.
+
+The audited `final` stage is the only application-image target and is the
+Dockerfile default. A plain `docker build .` intentionally fails because it cannot
+silently use a network restore. For an untrusted local developer image, explicitly
+provide the already-restored package cache; this exercises the same final target
+but does not create signed evidence and must not be used as `ANDREJA_IMAGE`:
+
+```powershell
+dotnet restore src\Andreja.AppHost\Andreja.AppHost.csproj
+$revision = git rev-parse HEAD
+$epoch = git show -s --format=%ct HEAD
+docker buildx build --load --network none `
+  --build-context "nuget-cache=$HOME\.nuget\packages" `
+  --build-arg "SOURCE_REVISION=$revision" `
+  --build-arg "SOURCE_DATE_EPOCH=$epoch" `
+  --tag andreja:developer .
+```
+
+Trusted/operator use must go through `New-OciEvidence.ps1`, which supplies a
+minimal exact package context, selects that same `final` target, builds twice,
+scans, and signs.
 The hosted job is read-only, receives no secrets, uploads nothing, and deliberately
 does not sign. Trusted evidence uses the local operator-held key workflow in the
 [self-host runbook](operations/self-hosting.md); unsigned hosted output cannot

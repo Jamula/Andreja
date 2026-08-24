@@ -165,13 +165,15 @@ $env:ANDREJA_IMAGE = $evidence.image.immutableReference
 ```
 
 Verification runs Cosign with `--network none`, validates the externally trusted
-key fingerprint and signature, checks the schema and exact artifact inventory,
+key fingerprint and signature, checks the schema and exact flat artifact inventory
+(including hidden entries and rejecting directories, links, and reparse points),
 recomputes every checksum, parses both SBOMs and all scanner reports against the
 signed severity policy, binds provenance to the commit/tree/base/image/tool
-digests, requires commit-specific migration notes, checks the OCI manifest/config
-digests, loads the archive, and resolves it by immutable digest. Missing or extra
-files, invalid/unsigned provenance, an untrusted key, forbidden findings, policy
-or checksum drift, unavailable tools, or an unresolved digest blocks startup.
+digests and approved platform, requires commit-specific migration notes, checks the
+single-platform OCI manifest/config OS and architecture, loads the archive, and
+requires the loaded image platform to match. Missing or extra files,
+invalid/unsigned provenance, an untrusted key, forbidden findings, policy,
+platform or checksum drift, unavailable tools, or an unresolved digest blocks startup.
 There is no unsigned, tag-based, online, or scanner fallback.
 
 The hosted workflow performs the same reproducible build and scans with read-only
