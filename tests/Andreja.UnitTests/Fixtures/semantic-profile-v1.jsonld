@@ -1,0 +1,73 @@
+{
+  "@context": {
+    "and": "https://andreja.invalid/ns/v1#",
+    "prov": "http://www.w3.org/ns/prov#",
+    "id": "@id",
+    "type": "@type"
+  },
+  "and:contractVersion": "1.0",
+  "and:contextVersion": "1.0",
+  "and:tenantReference": "tenant-local-1",
+  "and:exportedAt": "2026-08-24T19:00:00+00:00",
+  "@graph": [
+    {
+      "id": "urn:uuid:018f0000-0000-7000-8000-000000000005",
+      "type": "and:Source",
+      "and:sourceKind": "interaction-receipt",
+      "and:sourceReference": "receipt:local-minimized-reference",
+      "and:sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "and:version": 1,
+      "and:capturedAt": "2026-08-24T17:59:00+00:00",
+      "prov:wasAttributedTo": {
+        "id": "urn:uuid:018f0000-0000-7000-8000-000000000003"
+      },
+      "and:purpose": "task-management",
+      "and:method": "user-entry",
+      "and:methodVersion": "1"
+    },
+    {
+      "id": "urn:uuid:018f0000-0000-7000-8000-000000000006",
+      "type": "and:ProfileAssertion",
+      "and:version": 1,
+      "and:subject": {
+        "id": "urn:uuid:018f0000-0000-7000-8000-000000000004"
+      },
+      "and:predicate": {
+        "id": "and:preferredTime"
+      },
+      "and:value": {
+        "@value": "morning",
+        "@type": "http://www.w3.org/2001/XMLSchema#string",
+        "@language": "en"
+      },
+      "and:dataClass": "Preference",
+      "and:epistemicStatus": "UserStated",
+      "and:verificationState": "UserStated",
+      "and:reviewState": "UserApproved",
+      "and:sensitivity": "Personal",
+      "and:modelExposure": "Denied",
+      "and:sharing": "Denied",
+      "and:recordDigest": "bd8ee4ce36de1ef27a10d432ebac697f53c28c43e885ac233e889ad99d8aff9f",
+      "prov:wasAttributedTo": {
+        "id": "urn:uuid:018f0000-0000-7000-8000-000000000003"
+      },
+      "and:purposes": [
+        "task-management"
+      ],
+      "prov:generatedAtTime": "2026-08-24T18:00:00+00:00",
+      "and:validFrom": "2026-08-24T18:00:00+00:00",
+      "and:retention": {
+        "and:export": "Include",
+        "and:delete": "Tombstone",
+        "and:audit": "ContentMinimized",
+        "and:retainUntil": "2027-08-24T18:00:00+00:00"
+      },
+      "prov:wasDerivedFrom": [
+        {
+          "id": "urn:uuid:018f0000-0000-7000-8000-000000000005"
+        }
+      ],
+      "https://skills.example.invalid/ns#bounded": "bounded-extension-value"
+    }
+  ]
+}

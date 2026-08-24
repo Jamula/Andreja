@@ -26,4 +26,8 @@
     <ProjectReference Include="..\..\src\Adapters\Andreja.Adapters\Andreja.Adapters.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Fixtures\semantic-profile-v1.jsonld" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
