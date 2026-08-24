@@ -47,6 +47,82 @@ body:
     id: dependencies
     attributes:
       label: Dependencies and affected contracts
+  - type: dropdown
+    id: portfolio-lane
+    attributes:
+      label: Portfolio lane
+      description: See [Portfolio lanes](../../docs/frameworks/prioritization-launch.md#portfolio-lanes).
+      options:
+        - 1. Core assistant and user experience
+        - 2. User-owned data, identity, privacy, security, backup, and portability
+        - 3. First-party skills and personal semantic graph
+        - 4. Connectors and ingestion
+        - 5. Federation, sharing, and third-party ecosystem
+        - 6. Public site, help/support, personal brand, community, and growth
+        - 7. Platform reliability, testing, observability, FinOps, and business operations
+    validations:
+      required: true
+  - type: dropdown
+    id: workstream-owner
+    attributes:
+      label: Workstream owner
+      description: See [Workstream ownership](../../docs/frameworks/prioritization-launch.md#workstream-ownership).
+      options:
+        - Executive, Product and Business
+        - Product Discovery and User Research
+        - Core Platform and Architecture
+        - Web, Public Site and User Experience
+        - Native Mobile and Device Experience
+        - Platform Operations, Hosting and FinOps
+        - Quality, Performance and Release
+        - Channels and Connectors
+        - First-party Skills and Developer Ecosystem
+        - Trust, Security, Privacy and Legal
+        - Customer Success, Feedback and Support
+        - Marketing, Community and Partnerships
+        - Future Research and Innovation
+    validations:
+      required: true
+  - type: input
+    id: phase-milestone
+    attributes:
+      label: Phase / milestone
+      description: One of the phase codes from the [phase-to-milestone map](../../docs/frameworks/prioritization-launch.md#phase-to-milestone-map) (for example `0`, `1A`, `1B`, `2`, `3A`, `3B`, `4`–`12`).
+      placeholder: "e.g. 1A"
+    validations:
+      required: true
+  - type: dropdown
+    id: launch-stage
+    attributes:
+      label: Launch stage
+      description: See [Launch stages and evidence gates](../../docs/frameworks/prioritization-launch.md#launch-stages-and-evidence-gates).
+      options:
+        - 1. Architecture/Research
+        - 2. Cyrus self-host technical dogfood
+        - 3. Small managed invite dogfood
+        - 4. Invite-only adult alpha
+        - 5. Private beta
+        - 6. Public beta
+        - 7. General availability
+    validations:
+      required: true
+  - type: textarea
+    id: scorecard
+    attributes:
+      label: Issue scorecard (0-5 each)
+      description: Score each field 0-5 per [Issue scorecard](../../docs/frameworks/prioritization-launch.md#issue-scorecard); used with the [scorecard weighting formula](../../docs/frameworks/prioritization-launch.md#scorecard-weighting-formula).
+      value: |
+        - User outcome/value and severity:
+        - Strategic fit:
+        - Reach:
+        - Learning value:
+        - Confidence/evidence quality:
+        - Risk reduction:
+        - Dependency readiness:
+        - Effort (cost, subtracted):
+        - Privacy/security exposure (cost, subtracted):
+    validations:
+      required: true
   - type: checkboxes
     id: privacy
     attributes:
