@@ -27,6 +27,7 @@ public sealed class OpenAiCompatibleAssistantAdapter(
                 "credential://assistant/not-configured",
                 TimeSpan.FromSeconds(30),
                 "No provider has been configured.",
+                "No provider has been configured.",
                 0,
                 0),
             new DisabledTransport())
@@ -51,6 +52,11 @@ public sealed class OpenAiCompatibleAssistantAdapter(
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (request.SessionId == Guid.Empty)
+        {
+            throw new ArgumentException("A session ID is required.", nameof(request));
+        }
+
         IAssistantSession session = new Session(profile, request, transport);
         return ValueTask.FromResult(session);
     }
@@ -60,7 +66,9 @@ public sealed class OpenAiCompatibleAssistantAdapter(
         ArgumentNullException.ThrowIfNull(candidate);
 
         if (!candidate.Endpoint.IsAbsoluteUri
+            || candidate.Endpoint.OriginalString.Length > 2048
             || !string.IsNullOrEmpty(candidate.Endpoint.UserInfo)
+            || !string.IsNullOrEmpty(candidate.Endpoint.Query)
             || !string.IsNullOrEmpty(candidate.Endpoint.Fragment)
             || (candidate.Endpoint.Scheme != Uri.UriSchemeHttps
                 && !(candidate.Endpoint.Scheme == Uri.UriSchemeHttp && candidate.Endpoint.IsLoopback)))
@@ -70,12 +78,15 @@ public sealed class OpenAiCompatibleAssistantAdapter(
                 nameof(candidate));
         }
 
-        if (string.IsNullOrWhiteSpace(candidate.Model))
+        if (string.IsNullOrWhiteSpace(candidate.Model)
+            || candidate.Model.Length > 256)
         {
             throw new ArgumentException("A model is required.", nameof(candidate));
         }
 
-        if (!Uri.TryCreate(candidate.CredentialHandle, UriKind.Absolute, out var handle)
+        if (string.IsNullOrWhiteSpace(candidate.CredentialHandle)
+            || candidate.CredentialHandle.Length > 512
+            || !Uri.TryCreate(candidate.CredentialHandle, UriKind.Absolute, out var handle)
             || handle.Scheme != "credential"
             || !string.IsNullOrEmpty(handle.UserInfo)
             || !string.IsNullOrEmpty(handle.Query)
@@ -89,7 +100,11 @@ public sealed class OpenAiCompatibleAssistantAdapter(
         }
 
         if (candidate.Timeout <= TimeSpan.Zero
+            || candidate.Timeout > TimeSpan.FromMinutes(5)
+            || string.IsNullOrWhiteSpace(candidate.ProviderDisclosure)
+            || candidate.ProviderDisclosure.Length > 2000
             || string.IsNullOrWhiteSpace(candidate.RetentionDisclosure)
+            || candidate.RetentionDisclosure.Length > 2000
             || candidate.MaximumInputUnits is < 0
             || candidate.MaximumOutputUnits is < 0)
         {
@@ -101,7 +116,7 @@ public sealed class OpenAiCompatibleAssistantAdapter(
 
     private sealed class Session(
         AssistantProviderProfile profile,
-        AssistantSessionRequest request,
+        AssistantSessionRequest sessionRequest,
         IOpenAiCompatibleTransport transport)
         : IAssistantSession
     {
@@ -113,16 +128,55 @@ public sealed class OpenAiCompatibleAssistantAdapter(
             CancellationToken cancellationToken)
         {
             ObjectDisposedException.ThrowIf(disposed, this);
+            if (assistantRequest.RequestId == Guid.Empty)
+            {
+                throw new ArgumentException("A request ID is required.", nameof(assistantRequest));
+            }
+
+            if (assistantRequest.AllowedToolNames.Any(
+                requested => !sessionRequest.AllowedTools.Any(
+                    allowed => string.Equals(allowed.Name, requested, StringComparison.Ordinal))))
+            {
+                throw new InvalidOperationException("The request widened the session tool allowlist.");
+            }
+
             using var timeout = new CancellationTokenSource(profile.Timeout);
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(
                 cancellationToken,
                 sessionCancellation.Token,
                 timeout.Token);
-            return await transport.CompleteAsync(
-                profile,
-                request,
-                assistantRequest,
-                linked.Token).ConfigureAwait(false);
+            try
+            {
+                return await transport.CompleteAsync(
+                    profile,
+                    sessionRequest,
+                    assistantRequest,
+                    linked.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (
+                timeout.IsCancellationRequested
+                && !cancellationToken.IsCancellationRequested
+                && !sessionCancellation.IsCancellationRequested)
+            {
+                return Failure(
+                    assistantRequest.RequestId,
+                    "provider-timeout",
+                    "The assistant provider timed out.",
+                    isTransient: true,
+                    profile);
+            }
+            catch (OperationCanceledException)
+            {
+                var usage = Usage(profile, "cancelled");
+                OpenAiCompatibleMetrics.Record(usage);
+                return new(
+                    assistantRequest.RequestId,
+                    AssistantResponseStatus.Cancelled,
+                    null,
+                    [],
+                    usage,
+                    null);
+            }
         }
 
         public ValueTask CancelAsync(CancellationToken cancellationToken)
@@ -145,6 +199,37 @@ public sealed class OpenAiCompatibleAssistantAdapter(
         }
     }
 
+    private static AssistantResponse Failure(
+        Guid requestId,
+        string code,
+        string message,
+        bool isTransient,
+        AssistantProviderProfile profile)
+    {
+        var usage = Usage(profile, code);
+        OpenAiCompatibleMetrics.Record(usage);
+        return new(
+            requestId,
+            AssistantResponseStatus.Failed,
+            null,
+            [],
+            usage,
+            new(code, message, isTransient));
+    }
+
+    private static AssistantUsage Usage(
+        AssistantProviderProfile profile,
+        string resultClass) =>
+        new(
+            "openai-compatible",
+            profile.Model,
+            null,
+            null,
+            TimeSpan.Zero,
+            resultClass,
+            0,
+            0);
+
     private sealed class DisabledTransport : IOpenAiCompatibleTransport
     {
         public ValueTask<AssistantResponse> CompleteAsync(
@@ -159,15 +244,7 @@ public sealed class OpenAiCompatibleAssistantAdapter(
                 AssistantResponseStatus.Failed,
                 null,
                 [],
-                new(
-                    "openai-compatible",
-                    profile.Model,
-                    null,
-                    null,
-                    TimeSpan.Zero,
-                    "not-configured",
-                    0,
-                    0),
+                Usage(profile, "not-configured"),
                 new(
                     "provider-not-configured",
                     "The OpenAI-compatible provider is not configured.",

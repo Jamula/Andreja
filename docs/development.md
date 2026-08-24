@@ -61,6 +61,26 @@ for the backup/review-gated migration command.
 The architecture test project enforces inward dependency direction. The unit test
 project verifies composition-root registration and startup-options validation.
 
+### OpenAI-compatible transport conformance
+
+`OpenAiCompatibleConformanceTests` hosts an OpenAI-shaped `/v1/chat/completions`
+endpoint entirely in-process. It exercises local and HTTPS URI handling without DNS,
+external traffic, provider accounts, funded proxies, paid tokens, connector
+credentials, or Copilot entitlement. The deterministic provider remains the normal
+offline test and CI default.
+
+```powershell
+dotnet test tests\Andreja.UnitTests\Andreja.UnitTests.csproj `
+  --filter "FullyQualifiedName~OpenAiCompatibleConformanceTests|FullyQualifiedName~AssistantProviderTests"
+```
+
+The fixture verifies the exact typed Open Loops proposal boundary and never confirms
+or writes the proposed task. It also covers timeout versus caller cancellation,
+bounded retries, nonretryable rejection, oversized and malformed bodies, unknown or
+invalid tool calls, redirect/allowlist confusion, secret redaction, provider-reported
+usage, read-only file rotation/revocation, zero-budget stop, and deterministic
+fallback. No live-provider smoke is authorized by these tests.
+
 ### Skill and channel contract fixtures
 
 `Andreja.Platform.Contracts` owns provider-neutral `ISkillHost` and `IChannelHost`

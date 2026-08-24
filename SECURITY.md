@@ -1,21 +1,26 @@
 # Security Policy
 
-## Supported Versions
+## Supported versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+Andreja is pre-release software. No public version currently carries a production
+security-support commitment. Security fixes are applied to the private `main` branch
+and reviewed release candidates; this statement must be replaced before any public
+supported release.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+## Reporting a vulnerability
 
-## Reporting a Vulnerability
+Use the repository's private vulnerability-reporting surface when it is available.
+Do not put a vulnerability, credential, prompt, task content, provider response,
+personal data, or private diagnostic in a public issue or pull request. If private
+reporting is unavailable, contact the repository owner through an already approved
+private channel and provide only the minimum reproduction data.
 
-Use this section to tell people how to report a vulnerability.
+## Assistant provider boundary
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+The deterministic assistant is the offline default. OpenAI-compatible BYOK is an
+explicit operator choice with an exact endpoint allowlist, normal TLS validation,
+loopback-only HTTP, no redirects, a read-only file-backed credential, timeout and
+response limits, bounded retries, typed-tool validation, and a default-zero external
+usage envelope. Credentials and provider bodies must not enter logs, telemetry,
+exports, configuration values, skill inputs, or support artifacts. See the
+[Phase 1A security/privacy contract](docs/phase-1a/byok-security-privacy.md).

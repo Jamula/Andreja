@@ -16,10 +16,11 @@ change.
    proposal without saving anything.
 
 The page shows the assistant provider and model selected by the self-host operator,
-whether it is ready, and its content-exposure disclosure. The deterministic provider
-is local and ready by default. Selecting `openai-compatible` is an explicit BYOK
-configuration surface; it fails safely until a credential-backed transport is
-configured, and credentials never enter task requests or exports.
+whether it is ready, who receives submitted content, and the operator-recorded
+retention disclosure. The deterministic provider is local, offline, and ready by
+default. A configured `openai-compatible` profile sends only the current request and
+the exact typed tool schema to its one allowlisted endpoint. It does not send the
+credential in the JSON body or expose it to the skill.
 
 The assistant is allowed to call only the versioned
 `open-loops.propose-task` tool. Preparing or dismissing a proposal does not create
@@ -45,8 +46,20 @@ If a provider is temporarily unavailable, retry later. Authentication,
 tenant/principal authorization, validation, proposal policy, and antiforgery checks
 are enforced by the server even when the browser has already validated the form.
 
+Provider output is untrusted. Andreja rejects unknown tools, missing or incorrectly
+typed tool arguments, malformed JSON, redirects, oversized responses, and usage above
+the configured limits. Timeout, cancellation, revocation, exhausted budget, and
+provider rejection all leave tasks unchanged. Rotating the file-backed credential
+affects the next call. An empty secured file revokes use; a missing, inaccessible,
+writable, oversized, or invalid-UTF-8 file reports only `credential-unavailable`.
+Neither condition places the value, path, or store exception in the response.
+
 Task text and proposal payloads are excluded from operational telemetry. Source
 references and audit events identify the operation without copying task content.
+Assistant metrics contain only bounded result class, duration, retry events, and
+provider-reported input/output units; the typed usage response also reports retry and
+tool counts. Neither contains prompt, response, tool arguments, credential,
+authorization header, or raw user identifier.
 
 ## Current production sign-in limitation
 

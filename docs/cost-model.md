@@ -164,6 +164,17 @@ spend:
    call and issues a no-go recommendation if spend is unmeasured or exceeds the
    approved envelope.
 
+The Phase 1A OpenAI-compatible transport enforces this gate locally:
+`ApprovedExternalTotalUnits` defaults to zero and stops a non-loopback request before
+credential resolution or network I/O. A positive value is configuration evidence of
+the separately recorded human approval, not approval by itself. Each attempt reserves
+the profile's maximum input plus output units; completed calls reconcile the
+provider-reported units into an in-process content-free counter. This conservative
+process-local stop does not replace provider billing reconciliation or survive a
+restart, so production spend remains blocked until a durable envelope design and
+numeric approval are recorded. Loopback conformance traffic has no external spend and
+does not consume the envelope.
+
 ## Phase 1B: cloud-spike approval gate
 
 Phase 1B (managed reference deployment, invite cohort) is the first phase that may

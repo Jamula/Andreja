@@ -88,6 +88,7 @@ public sealed record AssistantProviderProfile(
     string Model,
     string CredentialHandle,
     TimeSpan Timeout,
+    string ProviderDisclosure,
     string RetentionDisclosure,
     long? MaximumInputUnits,
     long? MaximumOutputUnits);
