@@ -1,7 +1,12 @@
 # ADR 0005: Phase 1A independent self-host operations
 
 - **Status:** Proposed
+- **Date:** 2026-08-23
 - **Issue:** [#9](https://github.com/cyrusjamula/Andreja/issues/9)
+- **Governing:** [Platform plan](../plan.md#phase-1a---self-hosted-assistant-walking-skeleton),
+  [company charter](../charter.md#commitments), and
+  [ADR 0000](0000-plan-ratification.md)
+- **Proposed by:** Jett Reno
 - **Decision owner:** Cyrus
 
 ## Context
@@ -24,6 +29,14 @@ health/readiness checks, dependency order, resource guidance, named durable path
 network boundaries, and validated configuration. The supported Docker-, Podman-, or
 other Compose implementation remains a measured host-matrix decision; OCI/Compose
 does not select a cloud runtime or orchestrator.
+
+The offline-start proof begins **after image acquisition**. It uses either an image
+already preloaded into the host content store, an image built locally from the
+checked-out source, or a digest-pinned image served by an operator-controlled local
+registry. The proof then removes internet access and starts/restarts the bundle.
+“Without GitHub” means startup, operation, restart, backup, and restore do not call
+GitHub after the source/image/release metadata has been acquired; it does not claim
+first acquisition can occur without a distribution source.
 
 ```mermaid
 flowchart LR
@@ -71,6 +84,15 @@ This ADR is documentation only. Phase 0 may inspect OCI/Compose/PostgreSQL/OTel
 documentation and existing local capabilities, but creates no cloud account,
 subscription, free tier, trial, or provisioned resource. No runtime, tool, provider,
 or package is installed by this decision.
+
+## Alternatives considered
+
+- **Build or pull from GitHub on every start:** rejected because distribution
+  availability would become a runtime dependency and make offline evidence invalid.
+- **Use mutable tags:** rejected because update, rollback, and evidence could not bind
+  to one artifact.
+- **Require Kubernetes or a managed control plane:** rejected because one-user Phase
+  1A has no measured need and must remain independently operable.
 
 ## Human decision
 

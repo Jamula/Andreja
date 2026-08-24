@@ -1,7 +1,12 @@
 # ADR 0001: Phase 1A modular boundaries
 
 - **Status:** Proposed
+- **Date:** 2026-08-23
 - **Issue:** [#9](https://github.com/cyrusjamula/Andreja/issues/9)
+- **Governing:** [Platform plan](../plan.md#non-negotiable-engineering-principles),
+  [company charter](../charter.md#decision-and-launch-enforcement), and
+  [ADR 0000](0000-plan-ratification.md)
+- **Proposed by:** Spock
 - **Decision owner:** Cyrus
 
 ## Context
@@ -76,6 +81,16 @@ Open Loops application use case -> PostgreSQL -> audit/projection -> typed clien
 - Contract duplication is preferable to leaking an internal domain model across
   the API boundary.
 - Interactive Server is a client rendering choice, not permission to bypass HTTP.
+
+## Alternatives considered
+
+- **Microservices or one project per Onion ring:** rejected because Phase 1A has one
+  deployable and no measured scaling or trust boundary that justifies distributed
+  operations or project ceremony.
+- **Let co-hosted Blazor call handlers directly:** rejected because it would leave the
+  typed API, authorization, serialization, and independent-client boundary unproven.
+- **Share EF/domain types across modules and API contracts:** rejected because it
+  couples portability and public shapes to persistence internals.
 
 ## Deferred
 

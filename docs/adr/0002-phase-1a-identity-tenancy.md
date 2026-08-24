@@ -1,7 +1,12 @@
 # ADR 0002: Phase 1A identity and tenant isolation
 
 - **Status:** Proposed
+- **Date:** 2026-08-23
 - **Issue:** [#9](https://github.com/cyrusjamula/Andreja/issues/9)
+- **Governing:** [Platform plan](../plan.md#identity-tenancy-and-authorization-foundations),
+  [company charter](../charter.md#commitments), and
+  [ADR 0000](0000-plan-ratification.md)
+- **Proposed by:** Tuvok
 - **Decision owner:** Cyrus
 
 ## Context
@@ -65,6 +70,16 @@ bring-your-own OIDC remains behind the identity port. No CIAM provider is select
 Cross-tenant references fail in PostgreSQL even if application filtering regresses.
 Restores are incomplete until key and identity recovery drills pass. The first
 admin UX is intentionally unavailable on an already initialized database.
+
+## Alternatives considered
+
+- **Use provider subjects as domain IDs:** rejected because provider replacement,
+  account linking, and tenant ownership would become provider-coupled.
+- **Rely on application query filters alone:** rejected because a missed filter could
+  cross tenants; composite constraints provide an independent database boundary.
+- **Require a second passkey or ship break-glass immediately:** rejected for Phase 1A
+  pending usability and custody evidence. Recovery codes are required; a second
+  passkey is recommended, and break-glass is conditional on separate Cyrus approval.
 
 ## Human decision
 
