@@ -101,6 +101,11 @@ Use `$host` instead of `$http_host` only for the default HTTPS port. Set
 origin, TLS virtual host, and `AllowedHosts` aligned. Do not enable framework
 environment switches that trust all forwarded headers.
 
+By default Compose derives the allowed HTTPS origin from `ANDREJA_HOSTNAME`.
+Leave `ANDREJA_PUBLIC_ORIGIN` unset unless an explicit port is required. If it
+is set, its host must still equal the RP ID or be within that RP domain; startup
+validation fails closed on divergence.
+
 The repository evidence profile supplies a pinned Caddy reverse proxy, a fixed
 evidence-only network, loopback-only TLS port `8443`, and exact source address
 `172.30.44.10`:
