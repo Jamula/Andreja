@@ -39,9 +39,16 @@ Run these commands from the repository root:
 
 ```powershell
 dotnet restore Andreja.slnx
-dotnet build Andreja.slnx --no-restore
-dotnet test Andreja.slnx --no-build
+dotnet restore tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj
+dotnet build Andreja.slnx --configuration Debug --no-restore
+dotnet build tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --configuration Debug --no-restore
+dotnet test Andreja.slnx --configuration Debug --no-build
+dotnet build Andreja.slnx --configuration Release --no-restore
+dotnet build tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --configuration Release --no-restore
+dotnet test Andreja.slnx --configuration Release --no-build
 dotnet format Andreja.slnx --verify-no-changes --no-restore
+dotnet format tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --verify-no-changes --no-restore
+pwsh -NoProfile -File .github\scripts\invoke-nuget-vulnerability-scan.ps1
 pwsh -NoProfile -File scripts\operations\validate-contract.ps1
 bash -n scripts/operations/*.sh
 ```
@@ -61,6 +68,45 @@ part of the service-free solution test. Follow
 [`tests\Andreja.PostgreSqlIntegrationTests\README.md`](../tests/Andreja.PostgreSqlIntegrationTests/README.md).
 When PostgreSQL is unavailable, record this evidence as blocked; do not mark it
 skipped or successful.
+
+### Hosted .NET validation
+
+`.github\workflows\dotnet-validation.yml` runs on pull requests, pushes to
+`main`, and merge-queue groups. It uses the exact SDK in `global.json` on the
+explicit `ubuntu-24.04` runner, immutable action SHAs, read-only repository
+permissions, non-persisted checkout credentials, concurrency cancellation, and
+14-day evidence retention. Fork pull requests receive no secrets or
+write-capable token.
+
+Debug and Release each restore, build, and test the service-free solution, then
+compile `Andreja.PostgreSqlIntegrationTests` separately. The hosted workflow
+does not provision PostgreSQL or receive a database credential, so the database
+runtime evidence remains **unavailable**, never passed or skipped. Every job
+summary and machine-readable artifact enumerates:
+
+- **Included runtime projects:** `Andreja.ArchitectureTests` and
+  `Andreja.UnitTests`.
+- **Excluded from solution runtime but compiled:**
+  `Andreja.PostgreSqlIntegrationTests`.
+- **Unavailable runtime projects:** `Andreja.PostgreSqlIntegrationTests`, with
+  the missing disposable PostgreSQL dependency recorded.
+
+The private repository currently reports `code_security.status=disabled`, and
+the CodeQL configuration endpoint returns `403` with “Code Security must be
+enabled for this repository to use code scanning.” The existing disabled CodeQL
+workflow is therefore not presented as C# evidence. The hosted gate instead
+runs the pinned Microsoft DevSkim CLI `1.0.90` locally on the runner, uploads no
+source, and fails on remaining C# findings. Two noisy lexical rules are excluded
+explicitly: `DS137138` flags the intentional loopback HTTP URLs used by local
+development and transport-boundary tests, while `DS162092` flags the words
+`Debug` and `Development` in safeguards that prevent development behavior from
+shipping in Release. Their exclusion is recorded in every SAST artifact.
+Re-evaluate both exclusions and CodeQL if the code or entitlement changes.
+
+Default-branch required-check and merge-queue enforcement is deliberately
+tracked in [issue #67](https://github.com/Jamula/Andreja/issues/67). OCI SBOM,
+image scanning, and provenance remain in
+[issue #71](https://github.com/Jamula/Andreja/issues/71).
 
 ## Run the host
 
