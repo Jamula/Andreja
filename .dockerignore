@@ -1,0 +1,10 @@
+.git
+.github
+.squad
+.andreja
+**/bin
+**/obj
+artifacts
+backups
+deploy/secrets
+TestResults

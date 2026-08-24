@@ -16,6 +16,11 @@ pending explicit ratification and takes effect only if Cyrus approves it.
 See [`docs/development.md`](docs/development.md) for the pinned SDK, solution
 layout, local validation commands, and foundation scope.
 
+Self-host operators should use the
+[`operations runbook`](docs/operations/self-hosting.md). The separate, versioned
+[`application export/import contract`](docs/operations/portability.md) defines
+user-owned portability rather than database recovery.
+
 Install Squad CLI 0.11.0 through an approved package source, then validate it:
 
 ```powershell

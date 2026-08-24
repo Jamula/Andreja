@@ -1,11 +1,17 @@
 using Andreja.AppHost.Components;
 using Andreja.AppHost.Hosting;
 
+if (await ContainerHealthProbe.TryRunAsync(args))
+{
+    return;
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddAndrejaFoundation(builder.Configuration);
+builder.Services.AddAndrejaOperations(builder.Configuration);
 builder.Host.UseDefaultServiceProvider((context, options) =>
 {
     options.ValidateScopes = context.HostingEnvironment.IsDevelopment();
@@ -26,6 +32,7 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+app.MapAndrejaOperationalEndpoints();
 
 app.Run();
 

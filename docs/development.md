@@ -19,6 +19,11 @@ or external services.
   Identity, OpenAI-compatible assistants, and OpenTelemetry.
 - `tests\Andreja.ArchitectureTests` and `tests\Andreja.UnitTests`: dependency
   direction and unit baselines.
+- `compose.yaml`, `Dockerfile`, `deploy`, and `scripts\operations`: the local-only
+  self-host, observability, backup, and recovery contract. See the
+  [operations runbook](operations/self-hosting.md).
+- `docs\operations\application-export-v1.schema.json`: the versioned,
+  inspectable [application portability contract](operations/portability.md).
 
 Modules and adapters begin as one assembly each. They should split only when a
 real forbidden reference or adapter isolation requirement needs a compiler
@@ -36,6 +41,8 @@ dotnet restore Andreja.slnx
 dotnet build Andreja.slnx --no-restore
 dotnet test Andreja.slnx --no-build
 dotnet format Andreja.slnx --verify-no-changes --no-restore
+pwsh -NoProfile -File scripts\operations\validate-contract.ps1
+bash -n scripts/operations/*.sh
 ```
 
 The architecture test project enforces inward dependency direction. The unit test
@@ -55,5 +62,6 @@ skipped or successful.
 dotnet run --project src\Andreja.AppHost\Andreja.AppHost.csproj
 ```
 
-This starts only the empty Blazor foundation host. Identity, persistence,
-assistant, tasks, containers, and provider integrations are intentionally absent.
+This starts only the empty Blazor foundation host plus local health/readiness,
+Data Protection persistence, and opt-in OpenTelemetry composition seams. Identity,
+persistence behavior, assistant, and tasks remain intentionally absent.
