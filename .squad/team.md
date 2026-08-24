@@ -51,8 +51,8 @@
 ## Project Context
 
 - **Project:** Andreja
-- **Owner:** Cyrus Jamula
-- **Repository:** `cyrusjamula/Andreja`
+- **Owner:** Jamula organization (human steward: Cyrus Jamula)
+- **Repository:** `Jamula/Andreja`
 - **Stack:** .NET 10, Blazor, PostgreSQL reference persistence, OCI/OpenTofu portability
 - **Workflow:** GitHub Issues, protected-main target, one issue/branch/worktree/agent, stacked PRs for dependent slices
 - **Created:** 2026-08-23

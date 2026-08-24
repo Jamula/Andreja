@@ -55,7 +55,7 @@ The following are point-in-time technical observations, not legal conclusions:
 
 | Fact as of 2026-08-23 | Evidence |
 |---|---|
-| GitHub reports `cyrusjamula/Andreja` as a private personal-account repository created 2026-08-22. | GitHub repository API |
+| GitHub reported the predecessor repository under Cyrus Jamula's personal account as private and created 2026-08-22; the canonical repository is now `Jamula/Andreja`. | GitHub repository API |
 | GitHub identifies the repository license as Apache-2.0. | GitHub repository API and root `LICENSE` |
 | The complete Apache License 2.0 text has been present since the initial commit. | Commit `3f576b3ac4418e9975d858e303094e24672aacda`; `LICENSE` SHA-256 `c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4` |
 | The evaluated branch head was `a875f926095b3194a92e06b86b0d15dfaa0a2d7a`, with seven commits and one human Git author identity. | Local Git history at preparation time |

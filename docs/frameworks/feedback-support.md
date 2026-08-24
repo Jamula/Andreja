@@ -394,6 +394,12 @@ The user chooses no follow-up or an approved channel. Messages:
 
 Publication is optional and never required to receive support.
 
+The configurable publication target defaults to `Jamula/Andreja`. Implementations
+must accept the repository owner and name through deployment configuration rather
+than compile a personal account into the publisher. An override must identify an
+approved repository with equivalent privacy, security, and retention controls;
+tests must cover both the canonical default and an override.
+
 1. Complete privacy screening, private incident routing, and dedupe.
 2. Create a sanitized draft containing only the proposed title, body, labels,
    acceptance evidence, and safe source reference.

@@ -5,8 +5,8 @@
 - **Owner:** Quark (financial terms) drafts with Sarek (terms/licensing), Deanna
   Troi (privacy/trust), Tuvok (integration security), and Neelix (public
   communication) reviewing; Cyrus approves
-- **Issue:** [#11 - Establish burn, usage, and sponsorship controls](https://github.com/cyrusjamula/Andreja/issues/11)
-- **Milestone:** [Phase 0 - Govern and decide](https://github.com/cyrusjamula/Andreja/milestone/1)
+- **Issue:** [#11 - Establish burn, usage, and sponsorship controls](https://github.com/Jamula/Andreja/issues/11)
+- **Milestone:** [Phase 0 - Govern and decide](https://github.com/Jamula/Andreja/milestone/1)
 - **Depends on / referenced by:** [`docs/plan.md`](../plan.md) (`### Initial
   sustainability model`, `## Public website, help, and support`),
   [`docs/adr/0000-plan-ratification.md`](../adr/0000-plan-ratification.md),
