@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using System.Text.Json;
 
 namespace Andreja.PostgreSqlIntegrationTests;
 
@@ -265,6 +266,105 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
         Assert.Equal(
             2,
             await database.ProposalReceipts.AsNoTracking().CountAsync());
+    }
+
+    [Fact]
+    public async Task ProposalCanonicalPayloadSurvivesTimestampPrecisionAndRestart()
+    {
+        var identity = await SeedTenantAsync("PROPOSAL-PRECISION");
+        var context = identity.Context with { Purpose = OpenLoopsPolicy.Purpose };
+        var preciseNow = new DateTimeOffset(
+                2026,
+                8,
+                24,
+                21,
+                14,
+                33,
+                TimeSpan.Zero)
+            .AddTicks(1_234_567);
+        var suppliedDueAt = new DateTimeOffset(
+                2026,
+                8,
+                25,
+                9,
+                30,
+                0,
+                TimeSpan.FromHours(5.5))
+            .AddTicks(765_437);
+        Proposal proposal;
+        await using (var proposingServices = CreateProposalServiceProvider(
+                         timeProvider: new FixedTimeProvider(preciseNow)))
+        await using (var proposingScope = proposingServices.CreateAsyncScope())
+        {
+            proposingScope.ServiceProvider
+                .GetRequiredService<ScopedTenantPrincipalContext>()
+                .Set(context);
+            proposal = await proposingScope.ServiceProvider
+                .GetRequiredService<OpenLoopsTaskApplication>()
+                .ProposeAsync(
+                    context,
+                    new("Canonical precision", "PostgreSQL round-trip", suppliedDueAt),
+                    "assistant:canonical-precision");
+        }
+
+        Assert.Equal(TimeSpan.Zero, proposal.CreatedAt.Offset);
+        Assert.Equal(0, proposal.CreatedAt.Ticks % TimeSpan.TicksPerMicrosecond);
+        using (var payload = JsonDocument.Parse(proposal.Operation.CanonicalPayload))
+        {
+            var root = payload.RootElement;
+            var payloadCreatedAt = root.GetProperty("createdAt").GetDateTimeOffset();
+            var payloadDueAt = root.GetProperty("dueAt").GetDateTimeOffset();
+            Assert.Equal(proposal.CreatedAt, payloadCreatedAt);
+            Assert.Equal(TimeSpan.Zero, payloadDueAt.Offset);
+            Assert.Equal(0, payloadDueAt.Ticks % TimeSpan.TicksPerMicrosecond);
+        }
+
+        ProposalConfirmationResult applied;
+        await using (var confirmingServices = CreateProposalServiceProvider(
+                         timeProvider: new FixedTimeProvider(preciseNow.AddMinutes(1))))
+        await using (var persistedScope = confirmingServices.CreateAsyncScope())
+        {
+            persistedScope.ServiceProvider
+                .GetRequiredService<ScopedTenantPrincipalContext>()
+                .Set(context);
+            var application = persistedScope.ServiceProvider
+                .GetRequiredService<OpenLoopsTaskApplication>();
+            var persisted = await application.GetProposalAsync(context, proposal.ProposalId);
+            Assert.NotNull(persisted);
+            Assert.Equal(proposal.CreatedAt, persisted.CreatedAt);
+            Assert.Equal(
+                proposal.Operation.CanonicalPayload,
+                persisted.Operation.CanonicalPayload);
+            Assert.Equal(proposal.Operation.PayloadDigest, persisted.Operation.PayloadDigest);
+            applied = await application.ConfirmAsync(
+                context,
+                proposal.ProposalId,
+                proposal.Version,
+                "precision-confirmation");
+        }
+
+        await using var restartedServices = CreateProposalServiceProvider(
+            timeProvider: new FixedTimeProvider(preciseNow.AddMinutes(2)));
+        await using var restartedScope = restartedServices.CreateAsyncScope();
+        restartedScope.ServiceProvider
+            .GetRequiredService<ScopedTenantPrincipalContext>()
+            .Set(context);
+        var restarted = restartedScope.ServiceProvider
+            .GetRequiredService<OpenLoopsTaskApplication>();
+        var replay = await restarted.ConfirmAsync(
+            context,
+            proposal.ProposalId,
+            proposal.Version,
+            "precision-confirmation");
+        var persistedTask = Assert.Single(await restarted.ListAsync(context));
+
+        Assert.Equal(ProposalTransitionOutcome.Applied, applied.Outcome);
+        Assert.Equal(ProposalTransitionOutcome.IdempotentReplay, replay.Outcome);
+        Assert.Equal(applied.Task?.Id, replay.Task?.Id);
+        Assert.Equal(TimeSpan.Zero, persistedTask.CreatedAt.Offset);
+        Assert.Equal(0, persistedTask.CreatedAt.Ticks % TimeSpan.TicksPerMicrosecond);
+        Assert.Equal(TimeSpan.Zero, persistedTask.DueAt?.Offset);
+        Assert.Equal(0, persistedTask.DueAt?.Ticks % TimeSpan.TicksPerMicrosecond);
     }
 
     [Fact]
@@ -703,7 +803,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ConcurrentRegistrationCannotExceedPasskeyLimit()
+    public async Task ConcurrentDistinctRegistrationsSerializeToPasskeyLimit()
     {
         BootstrapIdentityResult bootstrap;
         await using (var scope = services.CreateAsyncScope())
@@ -720,6 +820,10 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                     CancellationToken.None);
         }
 
+        var ready = 0;
+        var allUsersLoaded = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
         async Task<bool> RegisterAsync(byte discriminator)
         {
             await using var scope = services.CreateAsyncScope();
@@ -727,6 +831,12 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                 .GetRequiredService<UserManager<AspNetIdentityUser>>();
             var user = await users.FindByIdAsync(bootstrap.User.Id.ToString("D"));
             Assert.NotNull(user);
+            if (Interlocked.Increment(ref ready) == 3)
+            {
+                allUsersLoaded.SetResult();
+            }
+
+            await allUsersLoaded.Task;
             try
             {
                 await scope.ServiceProvider
@@ -759,7 +869,91 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
         var persisted = await verificationUsers.FindByIdAsync(
             bootstrap.User.Id.ToString("D"));
         Assert.NotNull(persisted);
-        Assert.Equal(3, (await verificationUsers.GetPasskeysAsync(persisted)).Count);
+        var passkeys = await verificationUsers.GetPasskeysAsync(persisted);
+        Assert.Equal(3, passkeys.Count);
+        Assert.Contains(
+            passkeys,
+            passkey => passkey.CredentialId.SequenceEqual(new byte[] { 60, 61, 62 }));
+        Assert.Equal(
+            2,
+            passkeys.Count(passkey =>
+                passkey.CredentialId.Length == 3
+                && passkey.CredentialId[1] == 70
+                && passkey.CredentialId[2] == 71));
+    }
+
+    [Fact]
+    public async Task ConcurrentDuplicatePasskeyRegistrationFailsClosed()
+    {
+        BootstrapIdentityResult bootstrap;
+        await using (var scope = services.CreateAsyncScope())
+        {
+            bootstrap = await scope.ServiceProvider
+                .GetRequiredService<LocalIdentityOperations>()
+                .CompleteBootstrapAsync(
+                    CreateSecureRequest(),
+                    bootstrapToken,
+                    "Concurrent duplicate",
+                    "Concurrent owner",
+                    Guid.CreateVersion7(),
+                    CreatePasskey([72, 73, 74]),
+                    CancellationToken.None);
+        }
+
+        var ready = 0;
+        var bothUsersLoaded = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        byte[] duplicateCredentialId = [75, 76, 77];
+
+        async Task<bool> RegisterAsync(string deviceName)
+        {
+            await using var scope = services.CreateAsyncScope();
+            var users = scope.ServiceProvider
+                .GetRequiredService<UserManager<AspNetIdentityUser>>();
+            var user = await users.FindByIdAsync(bootstrap.User.Id.ToString("D"));
+            Assert.NotNull(user);
+            if (Interlocked.Increment(ref ready) == 2)
+            {
+                bothUsersLoaded.SetResult();
+            }
+
+            await bothUsersLoaded.Task;
+            try
+            {
+                await scope.ServiceProvider
+                    .GetRequiredService<LocalIdentityOperations>()
+                    .RegisterPasskeyAsync(
+                        user,
+                        CreatePasskey(duplicateCredentialId),
+                        deviceName,
+                        CancellationToken.None);
+                return true;
+            }
+            catch (Exception exception) when (
+                exception is InvalidOperationException
+                    or DbUpdateException
+                    or Npgsql.PostgresException)
+            {
+                return false;
+            }
+        }
+
+        var outcomes = await Task.WhenAll(
+            RegisterAsync("Duplicate one"),
+            RegisterAsync("Duplicate two"));
+
+        Assert.Single(outcomes, outcome => outcome);
+        await using var verificationScope = services.CreateAsyncScope();
+        var verificationUsers = verificationScope.ServiceProvider
+            .GetRequiredService<UserManager<AspNetIdentityUser>>();
+        var persisted = await verificationUsers.FindByIdAsync(
+            bootstrap.User.Id.ToString("D"));
+        Assert.NotNull(persisted);
+        var passkeys = await verificationUsers.GetPasskeysAsync(persisted);
+        Assert.Equal(2, passkeys.Count);
+        Assert.Single(
+            passkeys,
+            passkey => passkey.CredentialId.SequenceEqual(duplicateCredentialId));
     }
 
     [Fact]
@@ -984,12 +1178,13 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
     }
 
     private ServiceProvider CreateProposalServiceProvider(
-        IProposalConfirmationFaultInjector? faultInjector = null)
+        IProposalConfirmationFaultInjector? faultInjector = null,
+        TimeProvider? timeProvider = null)
     {
         var collection = new ServiceCollection();
         collection.AddLogging();
         collection.AddOptions();
-        collection.AddSingleton(TimeProvider.System);
+        collection.AddSingleton(timeProvider ?? TimeProvider.System);
         collection.AddAndrejaIdentityPostgreSql(connectionString);
         collection.AddAndrejaOpenLoopsPostgreSql();
         collection.AddScoped<OpenLoopsTaskApplication>();
@@ -1010,6 +1205,11 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
     }
 
     private sealed record SeededIdentity(TenantPrincipalContext Context);
+
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
+    }
 
     private sealed class ThrowAtCheckpoint(ProposalConfirmationCheckpoint target)
         : IProposalConfirmationFaultInjector

@@ -409,20 +409,22 @@ public sealed class LocalIdentityOperations(
             IsolationLevel.ReadCommitted,
             cancellationToken);
         await AcquireUserMutationLockAsync(user.Id, cancellationToken);
-        var passkeys = await userManager.GetPasskeysAsync(user);
+        var lockedUser = await ReloadUserAfterMutationLockAsync(user.Id, cancellationToken);
+        var passkeys = await userManager.GetPasskeysAsync(lockedUser);
         var recoveryCount = await database.IdentityRecoveryCodes.CountAsync(
             code =>
-                code.UserId == user.Id
+                code.UserId == lockedUser.Id
                 && code.ConsumedAt == null
                 && code.ExpiresAt > timeProvider.GetUtcNow(),
             cancellationToken);
         IdentityCredentialPolicy.EnsureCanRevokePasskey(
             new(passkeys.Count, ExternalIdentityCount: 0, recoveryCount));
-        ThrowIfIdentityFailed(await userManager.RemovePasskeyAsync(user, credentialId));
+        ThrowIfIdentityFailed(
+            await userManager.RemovePasskeyAsync(lockedUser, credentialId));
         database.IdentitySecurityAuditRecords.Add(
             new IdentitySecurityAuditRecord(
                 Guid.CreateVersion7(),
-                user.Id,
+                lockedUser.Id,
                 "passkey-revoke",
                 succeeded: true,
                 timeProvider.GetUtcNow()));
@@ -443,18 +445,20 @@ public sealed class LocalIdentityOperations(
             IsolationLevel.ReadCommitted,
             cancellationToken);
         await AcquireUserMutationLockAsync(user.Id, cancellationToken);
+        var lockedUser = await ReloadUserAfterMutationLockAsync(user.Id, cancellationToken);
         var existing = await userManager.FindByPasskeyIdAsync(passkey.CredentialId);
-        var passkeys = await userManager.GetPasskeysAsync(user);
+        var passkeys = await userManager.GetPasskeysAsync(lockedUser);
         IdentityCredentialPolicy.EnsureCanRegisterPasskey(
             passkeys.Count,
             options.Value.MaximumPasskeysPerUser,
             existing is not null);
         passkey.Name = NormalizeDeviceName(deviceName);
-        ThrowIfIdentityFailed(await userManager.AddOrUpdatePasskeyAsync(user, passkey));
+        ThrowIfIdentityFailed(
+            await userManager.AddOrUpdatePasskeyAsync(lockedUser, passkey));
         database.IdentitySecurityAuditRecords.Add(
             new IdentitySecurityAuditRecord(
                 Guid.CreateVersion7(),
-                user.Id,
+                lockedUser.Id,
                 "passkey-register",
                 succeeded: true,
                 timeProvider.GetUtcNow()));
@@ -543,6 +547,28 @@ public sealed class LocalIdentityOperations(
             CryptographicOperations.ZeroMemory(userBytes);
             CryptographicOperations.ZeroMemory(digest);
         }
+    }
+
+    private async Task<AspNetIdentityUser> ReloadUserAfterMutationLockAsync(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        var tracked = database.ChangeTracker
+            .Entries<AspNetIdentityUser>()
+            .SingleOrDefault(entry => entry.Entity.Id == userId);
+        if (tracked is not null)
+        {
+            await tracked.ReloadAsync(cancellationToken);
+            if (tracked.State == EntityState.Detached)
+            {
+                throw new InvalidOperationException("The credential user does not exist.");
+            }
+
+            return tracked.Entity;
+        }
+
+        return await userManager.FindByIdAsync(userId.ToString("D"))
+            ?? throw new InvalidOperationException("The credential user does not exist.");
     }
 
     private List<string> AddReplacementRecoveryCodes(
