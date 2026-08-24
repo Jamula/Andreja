@@ -2,7 +2,7 @@
 
 - **Status:** Proposed
 - **Date:** 2026-08-23
-- **Issue:** [#9](https://github.com/cyrusjamula/Andreja/issues/9)
+- **Issue:** [#9](https://github.com/Jamula/Andreja/issues/9)
 - **Governing:** [Platform plan](../plan.md#deployment-data-ownership-hosting-and-scale),
   [company charter](../charter.md#commitments), and
   [ADR 0000](0000-plan-ratification.md)
