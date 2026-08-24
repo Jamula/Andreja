@@ -170,7 +170,9 @@ image scanning, and provenance are implemented by the entitlement-neutral
 twice from a clean commit, generates SPDX and CycloneDX inventories, applies the
 High/Critical dependency/image/container/IaC policy, and generates provenance.
 The host first restores with the pinned SDK, then the BuildKit stage receives only
-the exact resolved package directories as a read-only named context. Container
+the exact resolved package directories as a read-only named context, copies them
+into a transient writable cache, runs with network disabled, and removes the cache
+before committing the build layer. Container
 restore disables NuGet's online audit because that isolated stage may have no
 trusted network path; the separate direct/transitive NuGet audit and pinned Grype
 scans remain mandatory and fail closed. Only the source-unavailable `NU1801`

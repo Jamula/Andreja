@@ -28,8 +28,10 @@ ARG SOURCE_DATE_EPOCH=0
 ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
 WORKDIR /source
 COPY . .
-RUN --mount=type=bind,from=nuget-cache,target=/root/.nuget/packages,readonly \
-    find . -exec touch --date="@${SOURCE_DATE_EPOCH}" {} + \
+RUN --mount=type=bind,from=nuget-cache,target=/nuget-cache,readonly \
+    mkdir -p /root/.nuget/packages \
+    && cp -a /nuget-cache/. /root/.nuget/packages/ \
+    && find . -exec touch --date="@${SOURCE_DATE_EPOCH}" {} + \
     && dotnet restore src/Andreja.AppHost/Andreja.AppHost.csproj \
         --ignore-failed-sources \
         /p:NuGetAudit=false \
@@ -46,6 +48,7 @@ RUN --mount=type=bind,from=nuget-cache,target=/root/.nuget/packages,readonly \
     && sed --in-place --regexp-extended \
         "s/(\"Name\":\"Last-Modified\",\"Value\":)\"[^\"]+\"/\1\"${fixed_date}\"/g" \
         /app/publish/*.staticwebassets.endpoints.json \
+    && rm -rf /root/.nuget/packages \
     && mkdir -p /app/state/keys /app/state/attachments
 
 FROM ${DOTNET_RUNTIME_IMAGE} AS runtime-base

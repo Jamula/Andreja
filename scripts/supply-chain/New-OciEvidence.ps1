@@ -213,6 +213,7 @@ function Build-OciArchive {
             '--progress', 'plain',
             '--no-cache',
             '--platform', $Platform,
+            '--network', 'none',
             '--build-arg', "SOURCE_REVISION=$sourceRevision",
             '--build-arg', "SOURCE_DATE_EPOCH=$sourceDateEpoch",
             '--build-context', "nuget-cache=$nugetCache",
