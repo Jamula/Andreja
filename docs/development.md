@@ -60,14 +60,35 @@ skipped or successful.
 ## Run the host
 
 ```powershell
-dotnet run --project src\Andreja.AppHost\Andreja.AppHost.csproj
+dotnet dev-certs https --trust
+dotnet run --project src\Andreja.AppHost\Andreja.AppHost.csproj --launch-profile https
 ```
 
-Development enables the Open Loops UI with an in-memory task store for deterministic
-local work. Production refuses to enable Open Loops without PostgreSQL. The
-self-host bundle enables PostgreSQL, ASP.NET Core Identity cookies, tenant/principal
-claim enforcement, antiforgery, and the task migration.
+The committed `https` launch profile listens deterministically on
+`https://localhost:5001` (and redirects the `http://localhost:5000` listener), which
+matches `Andreja:OpenLoops:PublicOrigin`. Trust the standard ASP.NET Core development
+certificate before starting. Do not change only one side of this origin contract.
+For development self-calls only, the typed client accepts the development
+certificate exclusively when the target URI is loopback. Production retains normal
+certificate validation and never receives this relaxation.
+
+Development enables the Open Loops UI with an in-memory task store and an explicit
+**Sign in to the development workspace** action. That action uses a fixed local
+development identity, is compiled only in Debug builds, and is mapped only when
+`IWebHostEnvironment.IsDevelopment()` is true. A Release build cannot expose it even
+if its environment is misconfigured as Development. It is not passkey evidence and
+must never be enabled as a production workaround.
+
+Production refuses to enable Open Loops without PostgreSQL. The self-host bundle
+enables PostgreSQL and ASP.NET Core Identity cookies, but production passkey
+bootstrap/sign-in/recovery is tracked by
+[P0 issue #55](https://github.com/Jamula/Andreja/issues/55) and is required before
+Phase 1A exit. Until that blocker is complete, the production login page truthfully
+states that sign-in is unavailable; the self-host task flow is not production-usable.
 
 The API routes are under `/api/v1/open-loops`; Blazor components use only
 `IOpenLoopsApiClient` and versioned DTOs. See the
 [Open Loops help](help/open-loops.md) and [testing matrix](testing-matrix.md).
+Cookie challenges under `/api/**` return safe JSON `401`/`403` responses and never
+redirect to an HTML login page. Browser UI challenges redirect only to the existing
+`/Account/Login` route with a locally validated `ReturnUrl`.

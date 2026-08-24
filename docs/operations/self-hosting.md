@@ -102,13 +102,19 @@ Use `docker compose restart app` for a process restart and prove both endpoints
 again. Use `docker compose down` to stop while retaining named volumes. **Do not**
 use `down --volumes` during normal operations.
 
-After local identity bootstrap and sign-in, the Open Loops page supports assistant
-proposal, exact review, confirmation, list, complete, JSON export, and explicit
-two-step deletion. See [Open Loops help](../help/open-loops.md). The API resolves
-the authenticated Identity user to exactly one active tenant membership and
-principal (or validates server-issued explicit context claims), then requires
-antiforgery on every mutation. No development or test authentication handler is
-present in the application image.
+The Open Loops page is implemented for assistant proposal, exact review,
+confirmation, list, complete, JSON export, and explicit two-step deletion. See
+[Open Loops help](../help/open-loops.md). However, production passkey bootstrap,
+sign-in, and recovery are not yet implemented and are tracked by
+[P0 issue #55](https://github.com/Jamula/Andreja/issues/55). **Do not describe this
+production self-host flow as usable until that blocker and its evidence are
+complete.**
+
+Once production identity is complete, the API will resolve the authenticated
+Identity user to exactly one active tenant membership and principal (or validate
+server-issued explicit context claims), then require antiforgery on every mutation.
+No development sign-in endpoint is mapped in Production, and no header-based or
+automatic fake-auth handler exists.
 
 `ANDREJA_ASSISTANT_PROVIDER` selects `deterministic` (the local, offline default) or
 `openai-compatible`. The UI exposes the selected provider, model, readiness, and

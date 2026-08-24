@@ -1,6 +1,7 @@
 using Andreja.AppHost.Components;
 using Andreja.AppHost.Hosting;
 using Andreja.AppHost.OpenLoops;
+using Andreja.AppHost.Identity;
 
 if (await ContainerHealthProbe.TryRunAsync(args))
 {
@@ -14,6 +15,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddAndrejaFoundation(builder.Configuration);
 builder.Services.AddAndrejaOperations(builder.Configuration);
 builder.Services.AddAndrejaOpenLoops(builder.Configuration, builder.Environment);
+builder.Services.ConfigureAndrejaCookieBehavior();
 builder.Host.UseDefaultServiceProvider((context, options) =>
 {
     options.ValidateScopes = context.HostingEnvironment.IsDevelopment();
@@ -39,6 +41,7 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 app.MapAndrejaOperationalEndpoints();
+app.MapLocalAccountEndpoints(app.Environment);
 if (app.Configuration.GetValue<bool>($"{OpenLoopsOptions.SectionName}:Enabled"))
 {
     app.MapOpenLoopsEndpoints();

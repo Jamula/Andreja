@@ -1,17 +1,21 @@
 using Andreja.Api.Contracts.OpenLoops;
+using Andreja.AppHost.Identity;
 using Andreja.AppHost.OpenLoops;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Net;
 using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Net.Security;
 
 namespace Andreja.UnitTests;
 
@@ -25,13 +29,43 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
     }
 
     [Fact]
-    public async Task AnonymousAndMissingAntiforgeryRequestsFailClosed()
+    public async Task AnonymousUiRedirectsToExistingLoginAndApiReturnsJson401()
     {
-        using var anonymous = factory.CreateClient();
-        var anonymousResponse = await anonymous.GetAsync($"{OpenLoopsApi.RoutePrefix}/tasks");
-        Assert.Equal(HttpStatusCode.Unauthorized, anonymousResponse.StatusCode);
+        using var anonymous = factory.CreateAnonymousClient();
 
-        using var authenticated = factory.CreateAuthenticatedClient();
+        var uiResponse = await anonymous.GetAsync("/");
+
+        Assert.Equal(HttpStatusCode.Redirect, uiResponse.StatusCode);
+        Assert.Equal("/Account/Login", uiResponse.Headers.Location?.AbsolutePath);
+        Assert.Equal("?ReturnUrl=%2F", uiResponse.Headers.Location?.Query);
+        var loginResponse = await anonymous.GetAsync(uiResponse.Headers.Location);
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+        Assert.Contains(
+            "Sign in to the development workspace",
+            await loginResponse.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+
+        var apiResponse = await anonymous.GetAsync($"{OpenLoopsApi.RoutePrefix}/tasks");
+        Assert.Equal(HttpStatusCode.Unauthorized, apiResponse.StatusCode);
+        Assert.Null(apiResponse.Headers.Location);
+        Assert.Equal("application/json", apiResponse.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(
+            "authentication-required",
+            (await apiResponse.Content.ReadFromJsonAsync<ApiErrorDto>())?.Code);
+
+        anonymous.DefaultRequestHeaders.Add("X-Andreja-Test-Authenticate", "true");
+        var fakeHeaderResponse = await anonymous.GetAsync($"{OpenLoopsApi.RoutePrefix}/tasks");
+        Assert.Equal(HttpStatusCode.Unauthorized, fakeHeaderResponse.StatusCode);
+        Assert.Null(fakeHeaderResponse.Headers.Location);
+    }
+
+    [Fact]
+    public async Task DevelopmentSignInUsesLocalReturnUrlAndEnablesUiAndApi()
+    {
+        using var authenticated = await factory.CreateDevelopmentSignedInClientAsync("/");
+
+        var home = await authenticated.GetAsync("/");
+        Assert.Equal(HttpStatusCode.OK, home.StatusCode);
         var unsafeResponse = await authenticated.PostAsJsonAsync(
             $"{OpenLoopsApi.RoutePrefix}/assistant/proposals",
             new AssistantTaskRequest { Message = "Must not be accepted" });
@@ -42,9 +76,40 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
     }
 
     [Fact]
+    public async Task CookieAccessDeniedEventReturnsJson403ForApiWithoutRedirect()
+    {
+        var options = factory.Services
+            .GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
+            .Get(IdentityConstants.ApplicationScheme);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Path = "/api/v1/open-loops/forbidden";
+        httpContext.Response.Body = new MemoryStream();
+        var redirectContext = new RedirectContext<CookieAuthenticationOptions>(
+            httpContext,
+            new(
+                IdentityConstants.ApplicationScheme,
+                displayName: null,
+                typeof(CookieAuthenticationHandler)),
+            options,
+            new AuthenticationProperties(),
+            "https://localhost/Account/Login?ReturnUrl=%2Fapi");
+
+        await options.Events.RedirectToAccessDenied(redirectContext);
+
+        Assert.Equal(StatusCodes.Status403Forbidden, httpContext.Response.StatusCode);
+        Assert.False(httpContext.Response.Headers.ContainsKey("Location"));
+        httpContext.Response.Body.Position = 0;
+        using var reader = new StreamReader(httpContext.Response.Body);
+        Assert.Contains(
+            "\"code\":\"access-denied\"",
+            await reader.ReadToEndAsync(),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task AuthenticatedTypedApiCompletesTaskScenario()
     {
-        using var client = factory.CreateAuthenticatedClient();
+        using var client = await factory.CreateDevelopmentSignedInClientAsync("/");
         var provider = Assert.IsType<AssistantProviderDto>(
             await client.GetFromJsonAsync<AssistantProviderDto>(
                 $"{OpenLoopsApi.RoutePrefix}/assistant/provider"));
@@ -119,7 +184,7 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
     [Fact]
     public async Task AuthenticatedHomeRendersAccessibleExplicitControls()
     {
-        using var client = factory.CreateAuthenticatedClient();
+        using var client = await factory.CreateDevelopmentSignedInClientAsync("/");
 
         var html = await client.GetStringAsync("/");
 
@@ -131,14 +196,124 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         Assert.Contains("""aria-labelledby="tasks-heading""", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Yes, delete", html, StringComparison.Ordinal);
     }
+
+    [Theory]
+    [InlineData("/", true)]
+    [InlineData("/tasks?view=today", true)]
+    [InlineData("//example.test", false)]
+    [InlineData("/\\example.test", false)]
+    [InlineData("https://example.test", false)]
+    [InlineData("", false)]
+    public void ReturnUrlMustBeLocal(string returnUrl, bool expected) =>
+        Assert.Equal(expected, LocalAccountEndpoints.IsLocalReturnUrl(returnUrl));
+
+    [Fact]
+    public async Task UnsafeReturnUrlIsReplacedAndDevelopmentSignInIsAbsentInProduction()
+    {
+        using var development = factory.CreateAnonymousClient();
+        var login = await development.GetStringAsync(
+            "/Account/Login?ReturnUrl=https%3A%2F%2Fexample.test");
+        Assert.Contains("""name="returnUrl" value="/" """.Trim(), login, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            """name="returnUrl" value="https://example.test" """.Trim(),
+            login,
+            StringComparison.Ordinal);
+
+        using var productionFactory = new ProductionWebApplicationFactory();
+        using var production = productionFactory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var productionRoot = await production.GetAsync("/");
+        Assert.Equal(HttpStatusCode.Redirect, productionRoot.StatusCode);
+        Assert.Equal(
+            LocalAccountEndpoints.LoginPath,
+            productionRoot.Headers.Location?.AbsolutePath);
+        var productionLogin = await production.GetAsync(productionRoot.Headers.Location);
+        Assert.Equal(HttpStatusCode.OK, productionLogin.StatusCode);
+        Assert.Contains(
+            "Production passkey sign-in is not shipped yet.",
+            await productionLogin.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+        var developmentEndpoint = await production.GetAsync(
+            LocalAccountEndpoints.DevelopmentSignInPath);
+        Assert.Equal(HttpStatusCode.NotFound, developmentEndpoint.StatusCode);
+    }
+
+    [Fact]
+    public void DevelopmentPublicOriginMatchesCommittedHttpsLaunchProfile()
+    {
+        var repositoryRoot = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+        var developmentSettings = JsonDocument.Parse(File.ReadAllText(Path.Combine(
+            repositoryRoot,
+            "src",
+            "Andreja.AppHost",
+            "appsettings.Development.json")));
+        var launchSettings = JsonDocument.Parse(File.ReadAllText(Path.Combine(
+            repositoryRoot,
+            "src",
+            "Andreja.AppHost",
+            "Properties",
+            "launchSettings.json")));
+
+        var publicOrigin = developmentSettings.RootElement
+            .GetProperty("Andreja")
+            .GetProperty("OpenLoops")
+            .GetProperty("PublicOrigin")
+            .GetString();
+        var applicationUrl = launchSettings.RootElement
+            .GetProperty("profiles")
+            .GetProperty("https")
+            .GetProperty("applicationUrl")
+            .GetString();
+
+        Assert.Equal("https://localhost:5001", publicOrigin);
+        Assert.Contains(publicOrigin!, applicationUrl!, StringComparison.Ordinal);
+        Assert.Equal(
+            "Development",
+            launchSettings.RootElement
+                .GetProperty("profiles")
+                .GetProperty("https")
+                .GetProperty("environmentVariables")
+                .GetProperty("ASPNETCORE_ENVIRONMENT")
+                .GetString());
+    }
+
+    [Fact]
+    public void DevelopmentTrustRelaxationIsLoopbackOnlyAndProductionRemainsStrict()
+    {
+        var developmentEnvironment = factory.Services
+            .GetRequiredService<IWebHostEnvironment>();
+        using var developmentHandler =
+            OpenLoopsServiceCollectionExtensions.CreateSameOriginHandler(
+                developmentEnvironment);
+        var callback = Assert.IsType<
+            Func<HttpRequestMessage, System.Security.Cryptography.X509Certificates.X509Certificate2?,
+                System.Security.Cryptography.X509Certificates.X509Chain?, SslPolicyErrors, bool>>(
+                developmentHandler.ServerCertificateCustomValidationCallback);
+
+        Assert.True(callback(
+            new(HttpMethod.Get, "https://localhost:5001"),
+            null,
+            null,
+            SslPolicyErrors.RemoteCertificateChainErrors));
+        Assert.False(callback(
+            new(HttpMethod.Get, "https://example.test"),
+            null,
+            null,
+            SslPolicyErrors.RemoteCertificateChainErrors));
+
+        using var productionFactory = new ProductionWebApplicationFactory();
+        var productionEnvironment = productionFactory.Services
+            .GetRequiredService<IWebHostEnvironment>();
+        using var productionHandler =
+            OpenLoopsServiceCollectionExtensions.CreateSameOriginHandler(
+                productionEnvironment);
+        Assert.Null(productionHandler.ServerCertificateCustomValidationCallback);
+    }
 }
 
 public sealed class OpenLoopsWebApplicationFactory : WebApplicationFactory<Program>
 {
-    private static readonly Guid TenantId = Guid.Parse("0198D117-3D00-7000-8000-000000000001");
-    private static readonly Guid AppUserId = Guid.Parse("0198D117-3D00-7000-8000-000000000002");
-    private static readonly Guid PrincipalId = Guid.Parse("0198D117-3D00-7000-8000-000000000003");
-
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
@@ -146,14 +321,6 @@ public sealed class OpenLoopsWebApplicationFactory : WebApplicationFactory<Progr
         {
             services.RemoveAll<IOpenLoopsApiClient>();
             services.AddSingleton<IOpenLoopsApiClient, EmptyOpenLoopsApiClient>();
-            services.AddAuthentication(options =>
-                {
-                    options.DefaultAuthenticateScheme = TestAuthenticationHandler.SchemeName;
-                    options.DefaultChallengeScheme = TestAuthenticationHandler.SchemeName;
-                })
-                .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
-                    TestAuthenticationHandler.SchemeName,
-                    _ => { });
         });
     }
 
@@ -201,40 +368,40 @@ public sealed class OpenLoopsWebApplicationFactory : WebApplicationFactory<Progr
             throw new NotSupportedException();
     }
 
-    public HttpClient CreateAuthenticatedClient()
+    public HttpClient CreateAnonymousClient() =>
+        CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true,
+            BaseAddress = new Uri("https://localhost"),
+        });
+
+    public async Task<HttpClient> CreateDevelopmentSignedInClientAsync(string returnUrl)
     {
-        var client = CreateClient();
-        client.DefaultRequestHeaders.Add(TestAuthenticationHandler.Header, "true");
+        var client = CreateAnonymousClient();
+        var login = await client.GetStringAsync(
+            $"{LocalAccountEndpoints.LoginPath}?ReturnUrl={Uri.EscapeDataString(returnUrl)}");
+        var tokenMatch = Regex.Match(
+            login,
+            "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"",
+            RegexOptions.CultureInvariant);
+        Assert.True(tokenMatch.Success);
+        var token = WebUtility.HtmlDecode(tokenMatch.Groups[1].Value);
+        var response = await client.PostAsync(
+            LocalAccountEndpoints.DevelopmentSignInPath,
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = token,
+                ["returnUrl"] = returnUrl,
+            }));
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(returnUrl, response.Headers.Location?.OriginalString);
         return client;
     }
+}
 
-    private sealed class TestAuthenticationHandler(
-        IOptionsMonitor<AuthenticationSchemeOptions> options,
-        ILoggerFactory logger,
-        UrlEncoder encoder)
-        : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
-    {
-        public const string SchemeName = "andreja-test-only";
-        public const string Header = "X-Andreja-Test-Authenticate";
-
-        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
-        {
-            if (!Request.Headers.TryGetValue(Header, out var value)
-                || !string.Equals(value, "true", StringComparison.Ordinal))
-            {
-                return Task.FromResult(AuthenticateResult.NoResult());
-            }
-
-            var claims = new[]
-            {
-                new Claim(ClaimTypes.NameIdentifier, AppUserId.ToString("D")),
-                new Claim(AndrejaClaimTypes.TenantId, TenantId.ToString("D")),
-                new Claim(AndrejaClaimTypes.AppUserId, AppUserId.ToString("D")),
-                new Claim(AndrejaClaimTypes.PrincipalId, PrincipalId.ToString("D")),
-            };
-            var identity = new ClaimsIdentity(claims, SchemeName);
-            return Task.FromResult(AuthenticateResult.Success(
-                new(new ClaimsPrincipal(identity), SchemeName)));
-        }
-    }
+public sealed class ProductionWebApplicationFactory : WebApplicationFactory<Program>
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder) =>
+        builder.UseEnvironment("Production");
 }

@@ -50,6 +50,12 @@ public static class TaskRequestContext
         if (httpContext.Request.Path.StartsWithSegments("/api/v1/open-loops")
             || httpContext.Request.Path.StartsWithSegments("/api/v1/security/antiforgery"))
         {
+            if (httpContext.User.Identity?.IsAuthenticated != true)
+            {
+                await next(httpContext);
+                return;
+            }
+
             try
             {
                 TenantPrincipalContext context;

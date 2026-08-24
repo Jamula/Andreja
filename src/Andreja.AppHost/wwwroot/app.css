@@ -294,6 +294,29 @@ dd {
     font-weight: 750;
 }
 
+.account-shell {
+    align-items: center;
+    display: grid;
+    min-height: 80vh;
+}
+
+.account-card {
+    margin-inline: auto;
+    max-width: 38rem;
+    width: 100%;
+}
+
+.development-warning {
+    background: #fff7dc;
+    border-left: 0.3rem solid #8a6400;
+    margin: 1rem 0 1.5rem;
+    padding: 1rem;
+}
+
+.development-warning p {
+    margin-bottom: 0;
+}
+
 @media (max-width: 48rem) {
     .proposal-facts {
         grid-template-columns: 1fr;

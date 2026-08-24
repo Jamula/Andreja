@@ -65,6 +65,8 @@ public static class OpenLoopsServiceCollectionExtensions
 
         if (!openLoops.Enabled)
         {
+            services.AddAuthentication()
+                .AddCookie(IdentityConstants.ApplicationScheme);
             return services;
         }
 
@@ -133,12 +135,27 @@ public static class OpenLoopsServiceCollectionExtensions
                     client.BaseAddress = new Uri(options.PublicOrigin, UriKind.Absolute);
                     client.Timeout = TimeSpan.FromSeconds(30);
                 })
-            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-            {
-                UseCookies = false,
-            })
+            .ConfigurePrimaryHttpMessageHandler(
+                () => CreateSameOriginHandler(environment))
             .AddHttpMessageHandler<AuthenticationCookieForwardingHandler>();
         return services;
+    }
+
+    public static HttpClientHandler CreateSameOriginHandler(
+        IWebHostEnvironment environment)
+    {
+        ArgumentNullException.ThrowIfNull(environment);
+        var handler = new HttpClientHandler
+        {
+            UseCookies = false,
+        };
+        if (environment.IsDevelopment())
+        {
+            handler.ServerCertificateCustomValidationCallback =
+                static (request, _, _, _) => request.RequestUri?.IsLoopback == true;
+        }
+
+        return handler;
     }
 
     public static async Task ApplyAndrejaOpenLoopsMigrationsAsync(
