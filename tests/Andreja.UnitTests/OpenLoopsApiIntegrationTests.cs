@@ -433,7 +433,19 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
             script,
             StringComparison.Ordinal);
         Assert.Contains(
-            "document.addEventListener(\"enhancedload\", initializeIdentityPage)",
+            "Blazor.addEventListener(\"enhancedload\", initializeIdentityPage)",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "globalThis.Blazor?.addEventListener",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "window.andrejaIdentityEnhancedLoadSubscribed",
+            script,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "document.addEventListener(\"enhancedload\"",
             script,
             StringComparison.Ordinal);
         Assert.DoesNotContain(

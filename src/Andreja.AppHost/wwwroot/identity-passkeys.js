@@ -252,12 +252,27 @@ function initializeIdentityPage() {
     if (form) loadPasskeys(form).catch(handleFailure);
 }
 
+let enhancedLoadRegistrationAttempts = 0;
+function registerEnhancedLoadHandler() {
+    if (window.andrejaIdentityEnhancedLoadSubscribed) return;
+    if (globalThis.Blazor?.addEventListener) {
+        Blazor.addEventListener("enhancedload", initializeIdentityPage);
+        window.andrejaIdentityEnhancedLoadSubscribed = true;
+        return;
+    }
+
+    enhancedLoadRegistrationAttempts++;
+    if (enhancedLoadRegistrationAttempts < 100) {
+        window.setTimeout(registerEnhancedLoadHandler, 50);
+    }
+}
+
 if (!window.andrejaIdentityPasskeysInitialized) {
     window.andrejaIdentityPasskeysInitialized = true;
     document.addEventListener("submit", handleSubmit);
     document.addEventListener("click", handleClick);
     document.addEventListener("change", handleChange);
-    document.addEventListener("enhancedload", initializeIdentityPage);
+    registerEnhancedLoadHandler();
 }
 
 initializeIdentityPage();
