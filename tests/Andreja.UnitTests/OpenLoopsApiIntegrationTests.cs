@@ -298,15 +298,11 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         using var development = factory.CreateAnonymousClient();
         var login = await development.GetStringAsync(
             "/Account/Login?ReturnUrl=https%3A%2F%2Fexample.test");
-#if DEBUG
         Assert.Contains("""name="returnUrl" value="/" """.Trim(), login, StringComparison.Ordinal);
         Assert.DoesNotContain(
             """name="returnUrl" value="https://example.test" """.Trim(),
             login,
             StringComparison.Ordinal);
-#else
-        Assert.DoesNotContain("returnUrl", login, StringComparison.OrdinalIgnoreCase);
-#endif
 
         using var productionFactory = new ProductionWebApplicationFactory();
         using var production = productionFactory.CreateClient(
@@ -323,8 +319,13 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
             await productionLogin.Content.ReadAsStringAsync(),
             StringComparison.Ordinal);
         var developmentEndpoint = await production.GetAsync(
-            LocalAccountEndpoints.DevelopmentSignInPath);
+            "/Account/DevelopmentSignIn");
         Assert.Equal(HttpStatusCode.NotFound, developmentEndpoint.StatusCode);
+#if !DEBUG
+        Assert.Null(typeof(LocalAccountEndpoints).GetField(
+            "DevelopmentSignInPath",
+            BindingFlags.Public | BindingFlags.Static));
+#endif
     }
 
     [Fact]
@@ -345,6 +346,15 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         var policy = Assert.Single(policies);
         Assert.Contains("script-src 'self' 'nonce-", policy, StringComparison.Ordinal);
         Assert.Contains("frame-ancestors 'none'", policy, StringComparison.Ordinal);
+        var nonce = Regex.Match(
+            policy,
+            """script-src 'self' 'nonce-([^']+)'""",
+            RegexOptions.CultureInvariant);
+        Assert.True(nonce.Success);
+        Assert.Contains(
+            $"nonce=\"{nonce.Groups[1].Value}\"",
+            content,
+            StringComparison.Ordinal);
 
         var bootstrap = await client.GetStringAsync(LocalAccountEndpoints.BootstrapPath);
         Assert.Contains("Create the first administrator", bootstrap, StringComparison.Ordinal);
@@ -480,6 +490,7 @@ public sealed class OpenLoopsWebApplicationFactory : WebApplicationFactory<Progr
             BaseAddress = new Uri("https://localhost"),
         });
 
+#if DEBUG
     public async Task<HttpClient> CreateDevelopmentSignedInClientAsync(string returnUrl)
     {
         var client = CreateAnonymousClient();
@@ -502,6 +513,7 @@ public sealed class OpenLoopsWebApplicationFactory : WebApplicationFactory<Progr
         Assert.Equal(returnUrl, response.Headers.Location?.OriginalString);
         return client;
     }
+#endif
 
     private sealed class CircuitTestIdentity
     {

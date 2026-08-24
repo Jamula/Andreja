@@ -202,208 +202,208 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
         }
     }
 
-        [Fact]
-        public async Task BootstrapIsAtomicSingleUseAndPersistsPasskeyAndHashedRecoveryCodes()
+    [Fact]
+    public async Task BootstrapIsAtomicSingleUseAndPersistsPasskeyAndHashedRecoveryCodes()
+    {
+        BootstrapIdentityResult created;
+        byte[] credentialId = [1, 2, 3, 4, 5, 6, 7, 8];
+        await using (var scope = services.CreateAsyncScope())
         {
-            BootstrapIdentityResult created;
-            byte[] credentialId = [1, 2, 3, 4, 5, 6, 7, 8];
-            await using (var scope = services.CreateAsyncScope())
-            {
-                var operations = scope.ServiceProvider.GetRequiredService<LocalIdentityOperations>();
-                created = await operations.CompleteBootstrapAsync(
-                    CreateSecureRequest(),
-                    bootstrapToken,
-                    "Personal workspace",
-                    "Local owner",
-                    CreatePasskey(credentialId),
-                    CancellationToken.None);
-            }
-
-            await using (var scope = services.CreateAsyncScope())
-            {
-                var database = scope.ServiceProvider.GetRequiredService<AndrejaIdentityDbContext>();
-                Assert.Single(await database.Tenants.IgnoreQueryFilters().ToArrayAsync());
-                Assert.Single(await database.Memberships.IgnoreQueryFilters().ToArrayAsync());
-                Assert.Single(await database.IdentityBootstrapStates.ToArrayAsync());
-                var storedCodes = await database.IdentityRecoveryCodes.ToArrayAsync();
-                Assert.Equal(8, storedCodes.Length);
-                Assert.All(storedCodes, code =>
-                {
-                    Assert.Equal(32, code.LookupHash.Length);
-                    Assert.Equal(16, code.Salt.Length);
-                    Assert.Equal(32, code.VerificationHash.Length);
-                });
-                Assert.DoesNotContain(
-                    created.RecoveryCodes,
-                    plaintext => storedCodes.Any(code =>
-                        Convert.ToBase64String(code.LookupHash) == plaintext
-                        || Convert.ToBase64String(code.VerificationHash) == plaintext));
-
-                var users = scope.ServiceProvider.GetRequiredService<UserManager<AspNetIdentityUser>>();
-                var persisted = Assert.Single(
-                    await users.Users.Where(user => user.Id == created.User.Id).ToArrayAsync());
-                var passkey = Assert.Single(await users.GetPasskeysAsync(persisted));
-                Assert.Equal(credentialId, passkey.CredentialId);
-
-                var operations = scope.ServiceProvider.GetRequiredService<LocalIdentityOperations>();
-                await Assert.ThrowsAsync<InvalidOperationException>(
-                    () => operations.CompleteBootstrapAsync(
-                        CreateSecureRequest(),
-                        bootstrapToken,
-                        "Replay",
-                        "Replay",
-                        CreatePasskey([9, 9, 9]),
-                        CancellationToken.None));
-            }
+            var operations = scope.ServiceProvider.GetRequiredService<LocalIdentityOperations>();
+            created = await operations.CompleteBootstrapAsync(
+                CreateSecureRequest(),
+                bootstrapToken,
+                "Personal workspace",
+                "Local owner",
+                CreatePasskey(credentialId),
+                CancellationToken.None);
         }
 
-        [Fact]
-        public async Task ConcurrentBootstrapAllowsExactlyOneCommit()
+        await using (var scope = services.CreateAsyncScope())
         {
-            async Task<bool> AttemptAsync(byte discriminator)
-            {
-                await using var scope = services.CreateAsyncScope();
-                try
-                {
-                    await scope.ServiceProvider.GetRequiredService<LocalIdentityOperations>()
-                        .CompleteBootstrapAsync(
-                            CreateSecureRequest(),
-                            bootstrapToken,
-                            $"Workspace {discriminator}",
-                            $"Owner {discriminator}",
-                            CreatePasskey([discriminator, 1, 2, 3]),
-                            CancellationToken.None);
-                    return true;
-                }
-                catch (Exception exception) when (
-                    exception is InvalidOperationException
-                        or DbUpdateException
-                        or Npgsql.PostgresException)
-                {
-                    return false;
-                }
-            }
-
-            var outcomes = await Task.WhenAll(AttemptAsync(1), AttemptAsync(2));
-
-            Assert.Single(outcomes, outcome => outcome);
-            await using var scope = services.CreateAsyncScope();
             var database = scope.ServiceProvider.GetRequiredService<AndrejaIdentityDbContext>();
-            Assert.Single(await database.IdentityBootstrapStates.ToArrayAsync());
             Assert.Single(await database.Tenants.IgnoreQueryFilters().ToArrayAsync());
             Assert.Single(await database.Memberships.IgnoreQueryFilters().ToArrayAsync());
-        }
-
-        [Fact]
-        public async Task RecoveryRotatesCodesReplacesPasskeysAndInvalidatesSecurityStamp()
-        {
-            byte[] initialCredential = [10, 11, 12, 13];
-            BootstrapIdentityResult bootstrap;
-            await using (var scope = services.CreateAsyncScope())
+            Assert.Single(await database.IdentityBootstrapStates.ToArrayAsync());
+            var storedCodes = await database.IdentityRecoveryCodes.ToArrayAsync();
+            Assert.Equal(8, storedCodes.Length);
+            Assert.All(storedCodes, code =>
             {
-                bootstrap = await scope.ServiceProvider
-                    .GetRequiredService<LocalIdentityOperations>()
+                Assert.Equal(32, code.LookupHash.Length);
+                Assert.Equal(16, code.Salt.Length);
+                Assert.Equal(32, code.VerificationHash.Length);
+            });
+            Assert.DoesNotContain(
+                created.RecoveryCodes,
+                plaintext => storedCodes.Any(code =>
+                    Convert.ToBase64String(code.LookupHash) == plaintext
+                    || Convert.ToBase64String(code.VerificationHash) == plaintext));
+
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<AspNetIdentityUser>>();
+            var persisted = Assert.Single(
+                await users.Users.Where(user => user.Id == created.User.Id).ToArrayAsync());
+            var passkey = Assert.Single(await users.GetPasskeysAsync(persisted));
+            Assert.Equal(credentialId, passkey.CredentialId);
+
+            var operations = scope.ServiceProvider.GetRequiredService<LocalIdentityOperations>();
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => operations.CompleteBootstrapAsync(
+                    CreateSecureRequest(),
+                    bootstrapToken,
+                    "Replay",
+                    "Replay",
+                    CreatePasskey([9, 9, 9]),
+                    CancellationToken.None));
+        }
+    }
+
+    [Fact]
+    public async Task ConcurrentBootstrapAllowsExactlyOneCommit()
+    {
+        async Task<bool> AttemptAsync(byte discriminator)
+        {
+            await using var scope = services.CreateAsyncScope();
+            try
+            {
+                await scope.ServiceProvider.GetRequiredService<LocalIdentityOperations>()
                     .CompleteBootstrapAsync(
                         CreateSecureRequest(),
                         bootstrapToken,
-                        "Recovery workspace",
-                        "Recovery owner",
-                        CreatePasskey(initialCredential),
+                        $"Workspace {discriminator}",
+                        $"Owner {discriminator}",
+                        CreatePasskey([discriminator, 1, 2, 3]),
                         CancellationToken.None);
+                return true;
             }
-
-            await using var recoveryScope = services.CreateAsyncScope();
-            var operations =
-                recoveryScope.ServiceProvider.GetRequiredService<LocalIdentityOperations>();
-            var users = recoveryScope.ServiceProvider
-                .GetRequiredService<UserManager<AspNetIdentityUser>>();
-            var before = await users.FindByIdAsync(bootstrap.User.Id.ToString("D"));
-            Assert.NotNull(before);
-            var oldStamp = before.SecurityStamp;
-            var start = await operations.BeginRecoveryAsync(
-                bootstrap.RecoveryCodes[0],
-                CancellationToken.None);
-            Assert.NotNull(start);
-            byte[] replacementCredential = [20, 21, 22, 23];
-
-            var recovered = await operations.CompleteRecoveryAsync(
-                start,
-                CreatePasskey(replacementCredential),
-                CancellationToken.None);
-
-            Assert.Equal(8, recovered.RecoveryCodes.Count);
-            var after = await users.FindByIdAsync(bootstrap.User.Id.ToString("D"));
-            Assert.NotNull(after);
-            Assert.NotEqual(oldStamp, after.SecurityStamp);
-            var passkey = Assert.Single(await users.GetPasskeysAsync(after));
-            Assert.Equal(replacementCredential, passkey.CredentialId);
-            Assert.Null(await operations.BeginRecoveryAsync(
-                bootstrap.RecoveryCodes[0],
-                CancellationToken.None));
-            await Assert.ThrowsAsync<InvalidOperationException>(
-                () => operations.CompleteRecoveryAsync(
-                    start,
-                    CreatePasskey([30, 31, 32]),
-                    CancellationToken.None));
-        }
-
-        [Fact]
-        public async Task PasskeyLimitAndLastAuthenticationPathFailClosed()
-        {
-            BootstrapIdentityResult bootstrap;
-            await using var scope = services.CreateAsyncScope();
-            var operations = scope.ServiceProvider.GetRequiredService<LocalIdentityOperations>();
-            bootstrap = await operations.CompleteBootstrapAsync(
-                CreateSecureRequest(),
-                bootstrapToken,
-                "Limits workspace",
-                "Limits owner",
-                CreatePasskey([40, 41, 42]),
-                CancellationToken.None);
-            await operations.RegisterPasskeyAsync(
-                bootstrap.User,
-                CreatePasskey([43, 44, 45]),
-                "Backup one",
-                CancellationToken.None);
-            await operations.RegisterPasskeyAsync(
-                bootstrap.User,
-                CreatePasskey([46, 47, 48]),
-                "Backup two",
-                CancellationToken.None);
-            await Assert.ThrowsAsync<InvalidOperationException>(
-                () => operations.RegisterPasskeyAsync(
-                    bootstrap.User,
-                    CreatePasskey([49, 50, 51]),
-                    "Over limit",
-                    CancellationToken.None));
-
-            var users = scope.ServiceProvider.GetRequiredService<UserManager<AspNetIdentityUser>>();
-            var passkeys = await users.GetPasskeysAsync(bootstrap.User);
-            await operations.RevokePasskeyAsync(
-                bootstrap.User,
-                passkeys[0].CredentialId,
-                CancellationToken.None);
-            await operations.RevokePasskeyAsync(
-                bootstrap.User,
-                passkeys[1].CredentialId,
-                CancellationToken.None);
-            var database = scope.ServiceProvider.GetRequiredService<AndrejaIdentityDbContext>();
-            var now = DateTimeOffset.UtcNow;
-            foreach (var code in await database.IdentityRecoveryCodes
-                         .Where(code => code.ConsumedAt == null)
-                         .ToArrayAsync())
+            catch (Exception exception) when (
+                exception is InvalidOperationException
+                    or DbUpdateException
+                    or Npgsql.PostgresException)
             {
-                code.Consume(now);
+                return false;
             }
-
-            await database.SaveChangesAsync(CancellationToken.None);
-            var remaining = Assert.Single(await users.GetPasskeysAsync(bootstrap.User));
-            await Assert.ThrowsAsync<InvalidOperationException>(
-                () => operations.RevokePasskeyAsync(
-                    bootstrap.User,
-                    remaining.CredentialId,
-                    CancellationToken.None));
         }
+
+        var outcomes = await Task.WhenAll(AttemptAsync(1), AttemptAsync(2));
+
+        Assert.Single(outcomes, outcome => outcome);
+        await using var scope = services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<AndrejaIdentityDbContext>();
+        Assert.Single(await database.IdentityBootstrapStates.ToArrayAsync());
+        Assert.Single(await database.Tenants.IgnoreQueryFilters().ToArrayAsync());
+        Assert.Single(await database.Memberships.IgnoreQueryFilters().ToArrayAsync());
+    }
+
+    [Fact]
+    public async Task RecoveryRotatesCodesReplacesPasskeysAndInvalidatesSecurityStamp()
+    {
+        byte[] initialCredential = [10, 11, 12, 13];
+        BootstrapIdentityResult bootstrap;
+        await using (var scope = services.CreateAsyncScope())
+        {
+            bootstrap = await scope.ServiceProvider
+                .GetRequiredService<LocalIdentityOperations>()
+                .CompleteBootstrapAsync(
+                    CreateSecureRequest(),
+                    bootstrapToken,
+                    "Recovery workspace",
+                    "Recovery owner",
+                    CreatePasskey(initialCredential),
+                    CancellationToken.None);
+        }
+
+        await using var recoveryScope = services.CreateAsyncScope();
+        var operations =
+            recoveryScope.ServiceProvider.GetRequiredService<LocalIdentityOperations>();
+        var users = recoveryScope.ServiceProvider
+            .GetRequiredService<UserManager<AspNetIdentityUser>>();
+        var before = await users.FindByIdAsync(bootstrap.User.Id.ToString("D"));
+        Assert.NotNull(before);
+        var oldStamp = before.SecurityStamp;
+        var start = await operations.BeginRecoveryAsync(
+            bootstrap.RecoveryCodes[0],
+            CancellationToken.None);
+        Assert.NotNull(start);
+        byte[] replacementCredential = [20, 21, 22, 23];
+
+        var recovered = await operations.CompleteRecoveryAsync(
+            start,
+            CreatePasskey(replacementCredential),
+            CancellationToken.None);
+
+        Assert.Equal(8, recovered.RecoveryCodes.Count);
+        var after = await users.FindByIdAsync(bootstrap.User.Id.ToString("D"));
+        Assert.NotNull(after);
+        Assert.NotEqual(oldStamp, after.SecurityStamp);
+        var passkey = Assert.Single(await users.GetPasskeysAsync(after));
+        Assert.Equal(replacementCredential, passkey.CredentialId);
+        Assert.Null(await operations.BeginRecoveryAsync(
+            bootstrap.RecoveryCodes[0],
+            CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => operations.CompleteRecoveryAsync(
+                start,
+                CreatePasskey([30, 31, 32]),
+                CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task PasskeyLimitAndLastAuthenticationPathFailClosed()
+    {
+        BootstrapIdentityResult bootstrap;
+        await using var scope = services.CreateAsyncScope();
+        var operations = scope.ServiceProvider.GetRequiredService<LocalIdentityOperations>();
+        bootstrap = await operations.CompleteBootstrapAsync(
+            CreateSecureRequest(),
+            bootstrapToken,
+            "Limits workspace",
+            "Limits owner",
+            CreatePasskey([40, 41, 42]),
+            CancellationToken.None);
+        await operations.RegisterPasskeyAsync(
+            bootstrap.User,
+            CreatePasskey([43, 44, 45]),
+            "Backup one",
+            CancellationToken.None);
+        await operations.RegisterPasskeyAsync(
+            bootstrap.User,
+            CreatePasskey([46, 47, 48]),
+            "Backup two",
+            CancellationToken.None);
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => operations.RegisterPasskeyAsync(
+                bootstrap.User,
+                CreatePasskey([49, 50, 51]),
+                "Over limit",
+                CancellationToken.None));
+
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<AspNetIdentityUser>>();
+        var passkeys = await users.GetPasskeysAsync(bootstrap.User);
+        await operations.RevokePasskeyAsync(
+            bootstrap.User,
+            passkeys[0].CredentialId,
+            CancellationToken.None);
+        await operations.RevokePasskeyAsync(
+            bootstrap.User,
+            passkeys[1].CredentialId,
+            CancellationToken.None);
+        var database = scope.ServiceProvider.GetRequiredService<AndrejaIdentityDbContext>();
+        var now = DateTimeOffset.UtcNow;
+        foreach (var code in await database.IdentityRecoveryCodes
+                     .Where(code => code.ConsumedAt == null)
+                     .ToArrayAsync())
+        {
+            code.Consume(now);
+        }
+
+        await database.SaveChangesAsync(CancellationToken.None);
+        var remaining = Assert.Single(await users.GetPasskeysAsync(bootstrap.User));
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => operations.RevokePasskeyAsync(
+                bootstrap.User,
+                remaining.CredentialId,
+                CancellationToken.None));
+    }
 
     private async Task<SeededIdentity> SeedTenantAsync(string normalizedName)
     {

@@ -23,7 +23,6 @@ public static class LocalAccountEndpoints
     public const string BootstrapPath = "/Account/Bootstrap";
     public const string RecoveryPath = "/Account/Recovery";
     public const string PasskeysPath = "/Account/Passkeys";
-    public const string DevelopmentSignInPath = "/Account/DevelopmentSignIn";
     public const string LogoutPath = "/Account/Logout";
     public const string AntiforgeryHeader = "X-Andreja-Antiforgery";
 
@@ -40,6 +39,8 @@ public static class LocalAccountEndpoints
     private const string RecoveryProtectionPurpose = "Andreja.Identity.Recovery.v1";
 
 #if DEBUG
+    public const string DevelopmentSignInPath = "/Account/DevelopmentSignIn";
+
     private static readonly Guid DevelopmentTenantId =
         Guid.Parse("0198D117-3D00-7000-8000-00000000D001");
     private static readonly Guid DevelopmentAppUserId =
@@ -81,7 +82,7 @@ public static class LocalAccountEndpoints
         ArgumentNullException.ThrowIfNull(environment);
 
 #if DEBUG
-        if (IsDevelopmentSignInAvailable(environment))
+        if (environment.IsDevelopment())
         {
             endpoints.MapPost(DevelopmentSignInPath, DevelopmentSignInAsync)
                 .AllowAnonymous();
@@ -152,16 +153,6 @@ public static class LocalAccountEndpoints
         && returnUrl[0] == '/'
         && (returnUrl.Length == 1 || returnUrl[1] is not ('/' or '\\'))
         && !returnUrl.Contains('\\');
-
-    public static bool IsDevelopmentSignInAvailable(IWebHostEnvironment environment)
-    {
-        ArgumentNullException.ThrowIfNull(environment);
-#if DEBUG
-        return environment.IsDevelopment();
-#else
-        return false;
-#endif
-    }
 
     private static void ConfigureCookie(
         Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationOptions options)

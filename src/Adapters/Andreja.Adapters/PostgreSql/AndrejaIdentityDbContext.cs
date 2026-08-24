@@ -383,15 +383,12 @@ public sealed class AndrejaIdentityDbContext(
 
     private void ValidateTenantWrites()
     {
-        var current = TenantPrincipalContext.Require(contextAccessor);
-
-        foreach (var entry in ChangeTracker.Entries()
-                     .Where(entry =>
-                         entry.State is EntityState.Added
-                             or EntityState.Modified
-                             or EntityState.Deleted))
-        {
-            var tenantId = entry.Entity switch
+        var tenantWrites = ChangeTracker.Entries()
+            .Where(entry =>
+                entry.State is EntityState.Added
+                    or EntityState.Modified
+                    or EntityState.Deleted)
+            .Select(entry => entry.Entity switch
             {
                 Tenant tenant => tenant.Id,
                 Membership membership => membership.TenantId,
@@ -401,9 +398,19 @@ public sealed class AndrejaIdentityDbContext(
                 OpenLoopTaskAudit audit => audit.TenantId,
                 OpenLoopTaskReceipt receipt => receipt.TenantId,
                 _ => (TenantId?)null,
-            };
+            })
+            .Where(tenantId => tenantId.HasValue)
+            .Select(tenantId => tenantId.GetValueOrDefault())
+            .ToArray();
+        if (tenantWrites.Length == 0)
+        {
+            return;
+        }
 
-            if (tenantId.HasValue && tenantId.Value != current.TenantId)
+        var current = TenantPrincipalContext.Require(contextAccessor);
+        foreach (var tenantId in tenantWrites)
+        {
+            if (tenantId != current.TenantId)
             {
                 throw new IdentityAccessDeniedException(
                     "A write attempted to cross the resolved tenant boundary.");

@@ -22,7 +22,7 @@
             <a href="@LocalAccountEndpoints.BootstrapPath">Set up the first administrator</a>
         </nav>
 
-        @if (LocalAccountEndpoints.IsDevelopmentSignInAvailable(Environment))
+        @if (DevelopmentPath is not null)
         {
             <div class="development-warning" role="note">
                 <strong>Development only</strong>
@@ -31,7 +31,7 @@
                     compiled only into Debug builds, mapped only in Development,
                     and is never a production authentication path.
                 </p>
-                <form method="post" action="@LocalAccountEndpoints.DevelopmentSignInPath">
+                <form method="post" action="@DevelopmentPath">
                     <AntiforgeryToken />
                     <input type="hidden" name="returnUrl" value="@SafeReturnUrl" />
                     <button class="button secondary" type="submit">
@@ -49,4 +49,18 @@
 
     private string SafeReturnUrl =>
         LocalAccountEndpoints.IsLocalReturnUrl(ReturnUrl) ? ReturnUrl! : "/";
+
+    private string? DevelopmentPath
+    {
+        get
+        {
+#if DEBUG
+            return Environment.IsDevelopment()
+                ? LocalAccountEndpoints.DevelopmentSignInPath
+                : null;
+#else
+            return null;
+#endif
+        }
+    }
 }
