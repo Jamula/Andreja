@@ -8,6 +8,11 @@ You are working on a project that uses **Squad**, an AI team framework. When pic
   assigned crew charter before changing code.
 - `main` is the integration branch. Use one issue, `squad/{issue}-{slug}`
   branch, isolated worktree, and draft PR.
+- At issue start, require a clean worktree, fetch/prune, and rebase from the
+  verified live `origin/main` or stacked parent branch. Stop on conflict or a
+  changed remote tip; never overwrite concurrent work.
+- New App sub-sessions default to the `Squad` agent and inherit the parent
+  model/context/reasoning/mode when supported.
 - Use dependent/stacked PRs only when work truly depends on an unmerged layer.
 - Never post personal data, prompts, connector content, tokens, or private
   diagnostics in issues, PRs, logs, telemetry, or committed Squad state.
@@ -66,6 +71,9 @@ When opening a PR:
 - If this is a 🟡 needs-review task, add to the PR description: `⚠️ This task was flagged as "needs review" — please have a squad member review before merging.`
 - Follow any project conventions in `.squad/decisions.md`
 - Target `main` unless the issue explicitly identifies a lower stacked PR.
+- Run the smallest complete existing local validation for the issue first and
+  record exact commands/results. Required failures block readiness and normally
+  block PR creation.
 
 ## Decisions
 
