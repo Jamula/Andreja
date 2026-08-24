@@ -2,7 +2,7 @@
 
 - **Status:** Proposed
 - **Date:** 2026-08-23
-- **Issue:** [#9](https://github.com/cyrusjamula/Andreja/issues/9)
+- **Issue:** [#9](https://github.com/Jamula/Andreja/issues/9)
 
 ## Packet approval
 

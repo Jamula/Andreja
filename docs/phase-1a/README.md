@@ -2,7 +2,7 @@
 
 - **Status:** Proposed; Cyrus approval required
 - **Date:** 2026-08-23
-- **Issue:** [#9](https://github.com/cyrusjamula/Andreja/issues/9)
+- **Issue:** [#9](https://github.com/Jamula/Andreja/issues/9)
 - **Scope:** Independent self-hosted assistant walking skeleton
 - **Governing:** [Platform plan](../plan.md), [company charter](../charter.md),
   and [ADR 0000](../adr/0000-plan-ratification.md)
@@ -42,10 +42,10 @@ free tier, trial, package installation, or live paid model call.
 The packet was checked against ADR 0000, the plan, the static Squad directives,
 the Spock charter, issue #9, and these available Phase 0 drafts:
 
-- [PR #19 — catalog and launch frameworks](https://github.com/cyrusjamula/Andreja/pull/19)
-- [PR #20 — burn and sponsorship controls](https://github.com/cyrusjamula/Andreja/pull/20)
-- [PR #21 — regulatory applicability](https://github.com/cyrusjamula/Andreja/pull/21)
-- [PR #25 — Phase 1A semantic graph contract](https://github.com/cyrusjamula/Andreja/pull/25)
+- [PR #19 — catalog and launch frameworks](https://github.com/Jamula/Andreja/pull/19)
+- [PR #20 — burn and sponsorship controls](https://github.com/Jamula/Andreja/pull/20)
+- [PR #21 — regulatory applicability](https://github.com/Jamula/Andreja/pull/21)
+- [PR #25 — Phase 1A semantic graph contract](https://github.com/Jamula/Andreja/pull/25)
 
 Draft material is informative until separately reviewed and merged. In
 particular, this packet follows PR #25's proposed relational-source-of-truth

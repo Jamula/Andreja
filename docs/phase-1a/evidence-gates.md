@@ -2,7 +2,7 @@
 
 - **Status:** Proposed
 - **Date:** 2026-08-23
-- **Issue:** [#9](https://github.com/cyrusjamula/Andreja/issues/9)
+- **Issue:** [#9](https://github.com/Jamula/Andreja/issues/9)
 
 This is a phase-scoped acceptance index, not a replacement threat model, privacy
 inventory, testing matrix, or financial ledger. These are internal dogfood gates,
@@ -15,7 +15,7 @@ not public SLAs or production claims.
 | Threat | The plan requires [`docs/threat-model.md`](../plan.md#documentation-structure); until that standalone artifact lands, [Security engineering](../plan.md#security-engineering) is the governing baseline. Tuvok owns challenge. | The threat rows below index the Phase 1A controls and proof that the canonical model must contain. |
 | Privacy | The plan requires [`docs/privacy.md`](../plan.md#documentation-structure); until it lands, [Privacy engineering](../plan.md#privacy-engineering) and the [charter](../charter.md#ethics-and-sustainability-impact-assessment) govern. Deanna Troi owns challenge. | The privacy gate below is a Phase 1A field/test overlay, not a second data inventory. |
 | Testing | The plan requires [`docs/testing-matrix.md`](../plan.md#documentation-structure) and defines the [validation strategy](../plan.md#validation-and-regression-strategy). Data owns challenge. | The table below supplies Phase 1A rows/test IDs to the canonical matrix. |
-| Cost | [PR #20](https://github.com/cyrusjamula/Andreja/pull/20) proposes `docs/cost-model.md` as Quark's canonical ledger/budget source; until merged, the [plan's Cost and FinOps rules](../plan.md#cost-and-finops) govern. | This file only links the Phase 1A usage query and stop checks. It neither duplicates price/SKU figures nor changes PR #20's ledgers or authority. |
+| Cost | [PR #20](https://github.com/Jamula/Andreja/pull/20) proposes `docs/cost-model.md` as Quark's canonical ledger/budget source; until merged, the [plan's Cost and FinOps rules](../plan.md#cost-and-finops) govern. | This file only links the Phase 1A usage query and stop checks. It neither duplicates price/SKU figures nor changes PR #20's ledgers or authority. |
 
 When a canonical artifact is merged, its evidence identifier and revision replace the
 interim plan link here. Conflicts resolve in favor of the governing plan/charter and
