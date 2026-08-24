@@ -2,8 +2,8 @@
 
 - **Status:** Draft for ratification
 - **Owner:** Picard (CEO and Lead/Captain), with Quark (CFO/FinOps)
-- **Issue:** [#14 - Ratify cohesive workstreams and MVP operating model](https://github.com/cyrusjamula/Andreja/issues/14)
-- **Milestone:** [Phase 0 - Govern and decide](https://github.com/cyrusjamula/Andreja/milestone/1)
+- **Issue:** [#14 - Ratify cohesive workstreams and MVP operating model](https://github.com/Jamula/Andreja/issues/14)
+- **Milestone:** [Phase 0 - Govern and decide](https://github.com/Jamula/Andreja/milestone/1)
 - **Depends on / referenced by:** [`docs/plan.md`](plan.md) (`## Operating model and cohesive workstreams`,
   `## Roadmap prioritization and launch framework`, `## Phased execution`),
   [`docs/charter.md`](charter.md), [`docs/adr/0000-plan-ratification.md`](adr/0000-plan-ratification.md),
@@ -22,7 +22,7 @@ and stop/de-scope rules, and executive-versus-Cyrus authority.
 It is explicitly **not authoritative** for, and does not define or duplicate,
 scoring, sequencing, or launch: the issue scorecard, portfolio lanes,
 Must/Should/Could/Won't stage scope, and launch-stage evidence gates remain owned
-by [issue #5](https://github.com/cyrusjamula/Andreja/issues/5) and its ratified
+by [issue #5](https://github.com/Jamula/Andreja/issues/5) and its ratified
 `docs/frameworks/prioritization-launch.md` (see `docs/plan.md`
 `## Roadmap prioritization and launch framework`). Where the two documents
 describe the same workstream, issue #5's ratified framework is authoritative for
@@ -42,7 +42,7 @@ and executive-versus-Cyrus authority.
 
 It does **not** define or duplicate the issue scorecard, portfolio lanes,
 Must/Should/Could/Won't stage scope, or launch-stage evidence gates. Those are owned
-by [issue #5](https://github.com/cyrusjamula/Andreja/issues/5) and live in
+by [issue #5](https://github.com/Jamula/Andreja/issues/5) and live in
 `docs/frameworks/prioritization-launch.md` once ratified (see `docs/plan.md`
 `## Roadmap prioritization and launch framework`). This document references that
 framework by name and label (`type:decision` + `area:product` issues that ratify
@@ -54,7 +54,7 @@ weights, lanes, or gate checklists.
 | Domain | Source of truth | Owner |
 |---|---|---|
 | Architecture, roadmap, phased scope | [`docs/plan.md`](plan.md) and accepted ADRs (`docs/adr/`) | Spock (architecture); Picard (roadmap) |
-| Execution state (what's being worked, by whom, when done) | GitHub Issues and milestones in `cyrusjamula/Andreja` | Coordinator (Squad) |
+| Execution state (what's being worked, by whom, when done) | GitHub Issues and milestones in `Jamula/Andreja` | Coordinator (Squad) |
 | Prioritization, scoring, launch-stage gates | `docs/frameworks/prioritization-launch.md` (issue #5) | Picard/Quark |
 | Charters, routing, ceremonies, non-negotiable directives | `.squad/directives.md`, `.squad/team.md`, `.squad/routing.md`, `.squad/ceremonies.md`, `.squad/agents/*/charter.md` | Coordinator (Squad) |
 | Who owns which work right now | This document's workstream table + `squad:{member}` / `area:*` labels | Picard (triage) |
@@ -258,9 +258,9 @@ creating a second backlog; Scribe logs automatically and never blocks.
   separate budget approval and Phase 1A's exit checklist is proven; it adds the
   managed deployment, public site, feedback intake, and the first managed
   dogfood cohort without touching Phase 1A's invariants.
-- Milestone mapping: `phase:0` -> [milestone #1](https://github.com/cyrusjamula/Andreja/milestone/1);
-  Phase 1A -> [milestone #2](https://github.com/cyrusjamula/Andreja/milestone/2);
-  Phase 1B -> [milestone #3](https://github.com/cyrusjamula/Andreja/milestone/3).
+- Milestone mapping: `phase:0` -> [milestone #1](https://github.com/Jamula/Andreja/milestone/1);
+  Phase 1A -> [milestone #2](https://github.com/Jamula/Andreja/milestone/2);
+  Phase 1B -> [milestone #3](https://github.com/Jamula/Andreja/milestone/3).
   Later phases (`4`-`15`) exist as milestones today and are sequenced, not
   reordered, except through an issue + ADR/plan update that preserves
   dependencies and user-data guarantees.
@@ -321,7 +321,7 @@ creating a second backlog; Scribe logs automatically and never blocks.
 - **Quark (CFO) — ledger and spend path:** Quark owns the financial-controls
   source of truth (burn/income ledger, budgets, forecast/runway, unit
   economics — `docs/plan.md` `## Cost and FinOps`; durable artifact pending
-  ratification under [issue #11](https://github.com/cyrusjamula/Andreja/issues/11)
+  ratification under [issue #11](https://github.com/Jamula/Andreja/issues/11)
   as `docs/cost-model.md` and `docs/business/sponsorship-policy.md`). Quark
   facilitates the per-session Session Close Efficiency Review ledger entry
   (below) and posts aggregate findings to the relevant FinOps/retrospective

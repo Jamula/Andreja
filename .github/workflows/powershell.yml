@@ -1,0 +1,67 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+#
+# https://github.com/microsoft/action-psscriptanalyzer
+# For more information on PSScriptAnalyzer in general, see
+# https://github.com/PowerShell/PSScriptAnalyzer
+
+name: PSScriptAnalyzer
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '00 00 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    permissions:
+      contents: read # for actions/checkout to fetch code
+    name: PSScriptAnalyzer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Run PSScriptAnalyzer
+        uses: microsoft/psscriptanalyzer-action@6b2948b1944407914a58661c49941824d149734f
+        with:
+          # Check https://github.com/microsoft/action-psscriptanalyzer for more info about the options.
+          # The below set up runs PSScriptAnalyzer to your entire repository and runs some basic security rules.
+          path: .\
+          recurse: true
+          # Include your own basic security rules. Removing this option will run all the rules
+          includeRule: '"PSAvoidGlobalAliases", "PSAvoidUsingConvertToSecureStringWithPlainText"'
+          output: results.sarif
+
+      - name: Fail on PSScriptAnalyzer findings
+        shell: pwsh
+        run: |
+          $sarif = Get-Content results.sarif -Raw | ConvertFrom-Json
+          $results = @(
+            foreach ($run in $sarif.runs) {
+              if ($null -ne $run.results) {
+                $run.results
+              }
+            }
+          )
+
+          if ($results.Count -gt 0) {
+            foreach ($result in $results) {
+              Write-Host "::error::$($result.message.text)"
+            }
+            throw "PSScriptAnalyzer reported $($results.Count) finding(s)."
+          }
+
+      - name: Upload SARIF results artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: psscriptanalyzer-results
+          path: results.sarif
+          if-no-files-found: error

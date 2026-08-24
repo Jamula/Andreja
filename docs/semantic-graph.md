@@ -3,7 +3,7 @@
 - **Status:** Decision recommendation; pending Seven, Spock, T'Pol, Deanna Troi,
   Tuvok, Data, and Cyrus review
 - **Prepared:** 2026-08-23
-- **Tracking:** [GitHub issue #4](https://github.com/cyrusjamula/Andreja/issues/4)
+- **Tracking:** [GitHub issue #4](https://github.com/Jamula/Andreja/issues/4)
 - **Governing sources:** [platform plan](plan.md),
   [company charter](charter.md), and
   [ADR 0000](adr/0000-plan-ratification.md)

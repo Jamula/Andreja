@@ -845,11 +845,12 @@ The approved implementation creates:
 - `docs/legal/regulatory-applicability.md`: Sarek's jurisdiction/capability applicability and horizon register with counsel decisions.
 - `docs/business/sponsorship-policy.md`: eligibility, disclosures, recognition, conflicts, independence, termination and prohibited sponsors.
 - `docs/marketplace/governance.md`: publisher/user rights, review/ranking/appeal, portability, commercial and trust rules.
+- `docs/repository-migration.md`: canonical repository ownership, roadmap Project, migration checks, and operations follow-ups.
 
 ## GitHub project management
 
-- Keep planning repository-native for now: Issues, milestones, labels, issue forms, pull requests, and repository automation all live in `cyrusjamula/Andreja`.
-- Defer a GitHub Project board until the repository moves into an organization. Then create an organization-owned Project and add the existing repository issues without changing their canonical home.
+- Keep planning repository-native: Issues, milestones, labels, issue forms, pull requests, and repository automation all live in `Jamula/Andreja`.
+- Use the organization-owned [Andreja Roadmap](https://github.com/orgs/Jamula/projects/2) Project for portfolio views. Repository issues remain canonical, milestones represent delivery phases, and the Project exposes only useful built-in planning fields.
 - Create one roadmap/epic issue that links `docs/plan.md`, every phase milestone, open ADR decision, and the current risk register.
 - Represent each delivery phase as a GitHub milestone with an explicit exit-gate issue.
 - Convert the tracking todos into scoped GitHub Issues with:
