@@ -34,6 +34,13 @@ body:
       label: Required artifact gates
       description: Architecture, security, privacy, legal, cost, quality, operations, or public claims.
   - type: textarea
+    id: charter
+    attributes:
+      label: Charter, ethics, and sustainability impact
+      description: Assess the people, agency, data, inclusion, AI and safety, sustainability, stakeholder incentives, evidence, ownership, and stop conditions required by docs/charter.md.
+    validations:
+      required: true
+  - type: textarea
     id: stop
     attributes:
       label: Reversibility, rollback, and stop criteria
