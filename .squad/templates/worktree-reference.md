@@ -53,9 +53,6 @@ When worktree mode is enabled, the coordinator creates dedicated worktrees for i
 - Explicit: `worktrees: true` in project config (squad.config.ts or package.json `squad` section)
 - Environment: `SQUAD_WORKTREES=1` set in environment variables
 - Default: `false` (backward compatibility — agents work in the main repo)
-- **Andreja project override:** enabled by default for issue work via
-  `.squad/directives.md`; use an isolated worktree unless the user explicitly
-  requests otherwise.
 
 **Creating worktrees:**
 - One worktree per issue number
@@ -63,9 +60,6 @@ When worktree mode is enabled, the coordinator creates dedicated worktrees for i
 - Path convention: `{repo-parent}/{repo-name}-{issue-number}`
   - Example: Working on issue #42 in `C:\src\squad` → worktree at `C:\src\squad-42`
 - Branch: `squad/{issue-number}-{kebab-case-slug}` (created from base branch, typically `main`)
-- Base: fetch/prune first, then use the verified live remote ref:
-  `origin/main` for independent work or the remote parent branch for a stacked
-  dependency.
 
 **Dependency management:**
 - After creating a worktree, link `node_modules` from the main repo to avoid reinstalling
@@ -104,19 +98,15 @@ b. **Check if worktree already exists:**
    - Run `git worktree list` to see all active worktrees
    - If the worktree path already exists → **reuse it**:
      - Verify the branch is correct (should be `squad/{issue-number}-*`)
-     - Require `git status --porcelain` to be empty
-     - Fetch/prune the remote and record the base ref/SHA
-     - Rebase the issue branch onto the verified base when safe
-     - Stop on conflict, changed remote tip, or lease failure
+     - `cd` to the worktree path
+     - `git pull` to sync latest changes
      - Skip to step (e)
 
 c. **Create the worktree:**
    - Determine branch name: `squad/{issue-number}-{kebab-case-slug}` (derive slug from issue title if available)
-   - Determine base branch: live `origin/main` for independent work, or the
-     verified remote parent branch for a stacked dependency
-   - Run: `git fetch --prune origin` followed by
-     `git worktree add {path} -b {branch} {verifiedRemoteBase}`
-   - Example: `git worktree add C:\src\squad-42 -b squad/42-fix-login origin/main`
+   - Determine base branch (typically `main`, check default branch if needed)
+   - Run: `git worktree add {path} -b {branch} {baseBranch}`
+   - Example: `git worktree add C:\src\squad-42 -b squad/42-fix-login main`
 
 d. **Set up dependencies:**
    - Link `node_modules` from main repo to avoid reinstalling:
@@ -128,7 +118,6 @@ d. **Set up dependencies:**
 e. **Include worktree context in spawn:**
    - Set `WORKTREE_PATH` to the resolved worktree path
    - Set `WORKTREE_MODE` to `true`
-   - Set `BASE_REF` and `BASE_SHA` to the verified remote base
    - Add worktree instructions to the spawn prompt (see template below)
 
 **3. If worktrees disabled:**
