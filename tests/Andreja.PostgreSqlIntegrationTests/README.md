@@ -16,5 +16,9 @@ The fixture refuses any other database name, drops it before and after the run,
 applies the real migrations from empty, and proves tenant-filtered enumeration,
 fail-closed writes, composite cross-tenant foreign keys, global issuer/subject
 uniqueness, durable Open Loops tasks, idempotent task receipts, and cross-tenant
-task denial. Missing configuration fails the run with a `BLOCKED` error; no test
-is silently skipped. Do not use a shared or production database.
+task denial. It also proves durable proposal/audit/receipt persistence, atomic task
+confirmation, process restart and simulated crash-before/crash-after-commit recovery,
+concurrent confirmation, conflicting idempotency reuse, exact tenant/user/purpose
+denial, and composite actor/active-resource references. Missing configuration fails
+the run with a `BLOCKED` error; no test is silently skipped. Do not use a shared or
+production database.

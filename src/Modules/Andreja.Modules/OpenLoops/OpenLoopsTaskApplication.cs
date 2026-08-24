@@ -41,6 +41,17 @@ public sealed record ProposalConfirmationResult(
     OpenLoopTask? Task,
     Proposal? Proposal);
 
+public interface IOpenLoopsProposalConfirmationStore
+{
+    Task<ProposalConfirmationResult> ConfirmAsync(
+        TenantPrincipalContext context,
+        Guid proposalId,
+        long expectedVersion,
+        string idempotencyKey,
+        DateTimeOffset occurredAt,
+        CancellationToken cancellationToken = default);
+}
+
 public sealed class OpenLoopsTaskApplication(
     IOpenLoopsTaskStore taskStore,
     IProposalStore proposalStore,
@@ -128,6 +139,18 @@ public sealed class OpenLoopsTaskApplication(
     {
         OpenLoopsPolicy.Require(context);
         ValidateIdempotencyKey(idempotencyKey);
+        var occurredAt = timeProvider.GetUtcNow();
+
+        if (proposalStore is IOpenLoopsProposalConfirmationStore atomicStore)
+        {
+            return await atomicStore.ConfirmAsync(
+                context,
+                proposalId,
+                expectedVersion,
+                idempotencyKey,
+                occurredAt,
+                cancellationToken);
+        }
 
         var transition = await proposalStore.TryTransitionAsync(
             new(
@@ -137,7 +160,7 @@ public sealed class OpenLoopsTaskApplication(
                 context.PrincipalId.Value,
                 ProposalAction.Confirm,
                 idempotencyKey,
-                timeProvider.GetUtcNow()),
+                occurredAt),
             cancellationToken);
 
         if (transition.Outcome is not (
@@ -148,30 +171,7 @@ public sealed class OpenLoopsTaskApplication(
             return new(transition.Outcome, null, transition.Proposal);
         }
 
-        ValidateConfirmedProposal(context, transition.Proposal);
-        ProposedTaskPayload payload;
-        try
-        {
-            payload = JsonSerializer.Deserialize<ProposedTaskPayload>(
-                    transition.Proposal.Operation.CanonicalPayload,
-                    CanonicalJson)
-                ?? throw new JsonException();
-        }
-        catch (JsonException)
-        {
-            throw new InvalidOperationException("The confirmed proposal payload is invalid.");
-        }
-
-        var task = new OpenLoopTask(
-            payload.Id,
-            context.TenantId,
-            context.PrincipalId,
-            payload.Title,
-            payload.Details,
-            payload.DueAt,
-            payload.SourceKind,
-            payload.SourceReference,
-            payload.CreatedAt);
+        var task = MaterializeTask(context, transition.Proposal);
         var mutation = await taskStore.CreateAsync(
             context,
             task,
@@ -255,10 +255,12 @@ public sealed class OpenLoopsTaskApplication(
             ]);
     }
 
-    private static void ValidateConfirmedProposal(
+    public static OpenLoopTask MaterializeTask(
         TenantPrincipalContext context,
         Proposal proposal)
     {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(proposal);
         if (proposal.TenantId != context.TenantId.Value
             || proposal.ActorId != context.PrincipalId.Value
             || proposal.Source.ActorId != context.PrincipalId.Value
@@ -283,6 +285,53 @@ public sealed class OpenLoopsTaskApplication(
         {
             throw new InvalidOperationException("The confirmed proposal digest is invalid.");
         }
+
+        ProposedTaskPayload payload;
+        try
+        {
+            payload = JsonSerializer.Deserialize<ProposedTaskPayload>(
+                    proposal.Operation.CanonicalPayload,
+                    CanonicalJson)
+                ?? throw new JsonException();
+        }
+        catch (JsonException)
+        {
+            throw new InvalidOperationException("The confirmed proposal payload is invalid.");
+        }
+
+        var reserialized = JsonSerializer.Serialize(payload, CanonicalJson);
+        if (!string.Equals(
+                reserialized,
+                proposal.Operation.CanonicalPayload,
+                StringComparison.Ordinal)
+            || !string.Equals(payload.SourceKind, proposal.Source.Kind, StringComparison.Ordinal)
+            || !string.Equals(
+                payload.SourceReference,
+                proposal.Source.Reference,
+                StringComparison.Ordinal)
+            || payload.CreatedAt != proposal.CreatedAt)
+        {
+            throw new InvalidOperationException("The confirmed proposal payload is not exact.");
+        }
+
+        if (!string.Equals(
+                proposal.Operation.ResourceReference,
+                $"tasks/{payload.Id:D}",
+                StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The confirmed proposal resource is invalid.");
+        }
+
+        return new OpenLoopTask(
+            payload.Id,
+            context.TenantId,
+            context.PrincipalId,
+            payload.Title,
+            payload.Details,
+            payload.DueAt,
+            payload.SourceKind,
+            payload.SourceReference,
+            payload.CreatedAt);
     }
 
     private static void ValidateIdempotencyKey(string key)

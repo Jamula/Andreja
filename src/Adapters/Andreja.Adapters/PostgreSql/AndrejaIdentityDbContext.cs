@@ -1,5 +1,6 @@
 using Andreja.Modules.Identity;
 using Andreja.Modules.OpenLoops;
+using Andreja.Platform.Contracts.Proposals;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -43,6 +44,12 @@ public sealed class AndrejaIdentityDbContext(
 
     internal DbSet<OpenLoopTaskReceipt> OpenLoopTaskReceipts => Set<OpenLoopTaskReceipt>();
 
+    internal DbSet<ProposalRecord> Proposals => Set<ProposalRecord>();
+
+    internal DbSet<ProposalAuditRecord> ProposalAudits => Set<ProposalAuditRecord>();
+
+    internal DbSet<ProposalReceiptRecord> ProposalReceipts => Set<ProposalReceiptRecord>();
+
     private TenantId CurrentTenantId =>
         contextAccessor.Current?.TenantId ?? new TenantId(Guid.Empty);
 
@@ -61,6 +68,7 @@ public sealed class AndrejaIdentityDbContext(
         ConfigureContacts(builder);
         ConfigureIdentitySecurity(builder);
         ConfigureOpenLoopTasks(builder);
+        ConfigureProposals(builder);
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
@@ -219,6 +227,12 @@ public sealed class AndrejaIdentityDbContext(
             entity.Property(membership => membership.PrincipalId)
                 .HasConversion(id => id.Value, value => new PrincipalId(value));
             entity.HasAlternateKey(membership => new { membership.TenantId, membership.Id });
+            entity.HasAlternateKey(membership => new
+            {
+                membership.TenantId,
+                membership.AppUserId,
+                membership.PrincipalId,
+            });
             entity.HasIndex(membership => new { membership.TenantId, membership.AppUserId }).IsUnique();
             entity.HasIndex(membership => new { membership.TenantId, membership.PrincipalId }).IsUnique();
             entity.HasOne<Tenant>()
@@ -359,6 +373,12 @@ public sealed class AndrejaIdentityDbContext(
             entity.Property(task => task.SourceReference).HasMaxLength(200);
             entity.Property(task => task.Version).IsConcurrencyToken();
             entity.HasAlternateKey(task => new { task.TenantId, task.Id });
+            entity.HasAlternateKey(task => new
+            {
+                task.TenantId,
+                task.Id,
+                task.OwnerPrincipalId,
+            });
             entity.HasIndex(task => new { task.TenantId, task.OwnerPrincipalId, task.Status });
             entity.HasOne<Principal>()
                 .WithMany()
@@ -403,6 +423,149 @@ public sealed class AndrejaIdentityDbContext(
         });
     }
 
+    private void ConfigureProposals(ModelBuilder builder)
+    {
+        builder.Entity<ProposalRecord>(entity =>
+        {
+            entity.ToTable("proposals", "open_loops");
+            entity.HasKey(proposal => proposal.Id);
+            entity.Property(proposal => proposal.TenantId)
+                .HasConversion(id => id.Value, value => new TenantId(value));
+            entity.Property(proposal => proposal.ActorId)
+                .HasConversion(id => id.Value, value => new PrincipalId(value));
+            entity.Property(proposal => proposal.ActorAppUserId)
+                .HasConversion(id => id.Value, value => new AppUserId(value));
+            entity.Property(proposal => proposal.SourceActorId)
+                .HasConversion(id => id.Value, value => new PrincipalId(value));
+            entity.Property(proposal => proposal.Purpose).HasMaxLength(64);
+            entity.Property(proposal => proposal.SourceKind).HasMaxLength(32);
+            entity.Property(proposal => proposal.SourceReference).HasMaxLength(200);
+            entity.Property(proposal => proposal.Operation).HasMaxLength(128);
+            entity.Property(proposal => proposal.ResourceReference).HasMaxLength(200);
+            entity.Property(proposal => proposal.CanonicalPayload).HasMaxLength(8192);
+            entity.Property(proposal => proposal.PayloadDigest).HasMaxLength(64);
+            entity.Property(proposal => proposal.BeforeCanonical).HasMaxLength(8192);
+            entity.Property(proposal => proposal.AfterCanonical).HasMaxLength(8192);
+            entity.Property(proposal => proposal.Version).IsConcurrencyToken();
+            entity.HasAlternateKey(proposal => new { proposal.TenantId, proposal.Id });
+            entity.HasIndex(proposal => new
+            {
+                proposal.TenantId,
+                proposal.ActorId,
+                proposal.State,
+                proposal.ExpiresAt,
+            });
+            entity.HasOne<Membership>()
+                .WithMany()
+                .HasForeignKey(proposal => new
+                {
+                    proposal.TenantId,
+                    proposal.ActorAppUserId,
+                    proposal.ActorId,
+                })
+                .HasPrincipalKey(membership => new
+                {
+                    membership.TenantId,
+                    membership.AppUserId,
+                    membership.PrincipalId,
+                })
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Principal>()
+                .WithMany()
+                .HasForeignKey(proposal => new { proposal.TenantId, proposal.SourceActorId })
+                .HasPrincipalKey(principal => new { principal.TenantId, principal.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<OpenLoopTask>()
+                .WithMany()
+                .HasForeignKey(proposal => new
+                {
+                    proposal.TenantId,
+                    proposal.ActiveTaskId,
+                    proposal.ActorId,
+                })
+                .HasPrincipalKey(task => new
+                {
+                    task.TenantId,
+                    task.Id,
+                    task.OwnerPrincipalId,
+                })
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(proposal => proposal.TenantId == CurrentTenantId);
+        });
+
+        builder.Entity<ProposalAuditRecord>(entity =>
+        {
+            entity.ToTable("proposal_audit", "open_loops");
+            entity.HasKey(audit => audit.Id);
+            entity.Property(audit => audit.TenantId)
+                .HasConversion(id => id.Value, value => new TenantId(value));
+            entity.Property(audit => audit.ActorId)
+                .HasConversion(id => id.Value, value => new PrincipalId(value));
+            entity.Property(audit => audit.SourceKind).HasMaxLength(32);
+            entity.Property(audit => audit.SourceReference).HasMaxLength(200);
+            entity.HasIndex(audit => new
+            {
+                audit.TenantId,
+                audit.ProposalId,
+                audit.OccurredAt,
+            });
+            entity.HasOne<Principal>()
+                .WithMany()
+                .HasForeignKey(audit => new { audit.TenantId, audit.ActorId })
+                .HasPrincipalKey(principal => new { principal.TenantId, principal.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<ProposalRecord>()
+                .WithMany()
+                .HasForeignKey(audit => new { audit.TenantId, audit.ProposalId })
+                .HasPrincipalKey(proposal => new { proposal.TenantId, proposal.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(audit => audit.TenantId == CurrentTenantId);
+        });
+
+        builder.Entity<ProposalReceiptRecord>(entity =>
+        {
+            entity.ToTable("proposal_receipts", "open_loops");
+            entity.HasKey(receipt => new
+            {
+                receipt.TenantId,
+                receipt.ActorId,
+                receipt.IdempotencyKey,
+            });
+            entity.Property(receipt => receipt.TenantId)
+                .HasConversion(id => id.Value, value => new TenantId(value));
+            entity.Property(receipt => receipt.ActorId)
+                .HasConversion(id => id.Value, value => new PrincipalId(value));
+            entity.Property(receipt => receipt.IdempotencyKey).HasMaxLength(128);
+            entity.Property(receipt => receipt.Intent).HasMaxLength(256);
+            entity.HasOne<Principal>()
+                .WithMany()
+                .HasForeignKey(receipt => new { receipt.TenantId, receipt.ActorId })
+                .HasPrincipalKey(principal => new { principal.TenantId, principal.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<ProposalRecord>()
+                .WithMany()
+                .HasForeignKey(receipt => new { receipt.TenantId, receipt.ProposalId })
+                .HasPrincipalKey(proposal => new { proposal.TenantId, proposal.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<OpenLoopTask>()
+                .WithMany()
+                .HasForeignKey(receipt => new
+                {
+                    receipt.TenantId,
+                    receipt.TaskId,
+                    receipt.ActorId,
+                })
+                .HasPrincipalKey(task => new
+                {
+                    task.TenantId,
+                    task.Id,
+                    task.OwnerPrincipalId,
+                })
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(receipt => receipt.TenantId == CurrentTenantId);
+        });
+    }
+
     private void ValidateTenantWrites()
     {
         var tenantWrites = ChangeTracker.Entries()
@@ -419,6 +582,9 @@ public sealed class AndrejaIdentityDbContext(
                 OpenLoopTask task => task.TenantId,
                 OpenLoopTaskAudit audit => audit.TenantId,
                 OpenLoopTaskReceipt receipt => receipt.TenantId,
+                ProposalRecord proposal => proposal.TenantId,
+                ProposalAuditRecord audit => audit.TenantId,
+                ProposalReceiptRecord receipt => receipt.TenantId,
                 _ => (TenantId?)null,
             })
             .Where(tenantId => tenantId.HasValue)

@@ -2,6 +2,7 @@ using Andreja.Adapters.PostgreSql;
 using Andreja.Adapters.Identity.AspNetCore;
 using Andreja.Modules.Identity;
 using Andreja.Modules.OpenLoops;
+using Andreja.Platform.Contracts.Proposals;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -65,7 +66,8 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
         collection.AddAndrejaIdentityPostgreSql(connectionString);
         collection.AddAndrejaLocalIdentity(
             configuration.GetRequiredSection(LocalIdentityOptions.SectionName));
-        collection.AddScoped<IOpenLoopsTaskStore, PostgreSqlOpenLoopsTaskStore>();
+        collection.AddAndrejaOpenLoopsPostgreSql();
+        collection.AddScoped<OpenLoopsTaskApplication>();
         services = collection.BuildServiceProvider();
 
         await using var scope = services.CreateAsyncScope();
@@ -199,6 +201,264 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             Assert.Equal(TaskMutationOutcome.Applied, completed.Outcome);
             Assert.Equal(TaskMutationOutcome.IdempotentReplay, replay.Outcome);
             Assert.Equal(OpenLoopTaskStatus.Completed, replay.Task?.Status);
+        }
+    }
+
+    [Fact]
+    public async Task ProposalConfirmationIsAtomicAndSurvivesProcessRestart()
+    {
+        var identity = await SeedTenantAsync("PROPOSAL-RESTART");
+        var context = identity.Context with { Purpose = OpenLoopsPolicy.Purpose };
+        Proposal proposal;
+        ProposalConfirmationResult applied;
+        await using (var scope = CreateScope(context))
+        {
+            var application = scope.ServiceProvider.GetRequiredService<OpenLoopsTaskApplication>();
+            proposal = await application.ProposeAsync(
+                context,
+                new("Durable confirmation", "Restart proof", null),
+                "assistant:restart-proof");
+            applied = await application.ConfirmAsync(
+                context,
+                proposal.ProposalId,
+                proposal.Version,
+                "restart-confirmation");
+        }
+
+        await using var restartedServices = CreateProposalServiceProvider();
+        await using var restartedScope = restartedServices.CreateAsyncScope();
+        restartedScope.ServiceProvider
+            .GetRequiredService<ScopedTenantPrincipalContext>()
+            .Set(context);
+        var restarted = restartedScope.ServiceProvider
+            .GetRequiredService<OpenLoopsTaskApplication>();
+        var replay = await restarted.ConfirmAsync(
+            context,
+            proposal.ProposalId,
+            proposal.Version,
+            "restart-confirmation");
+        var conflictingReuse = await restarted.ConfirmAsync(
+            context,
+            proposal.ProposalId,
+            proposal.Version + 1,
+            "restart-confirmation");
+        var database = restartedScope.ServiceProvider
+            .GetRequiredService<AndrejaIdentityDbContext>();
+
+        Assert.Equal(ProposalTransitionOutcome.Applied, applied.Outcome);
+        Assert.Equal(ProposalTransitionOutcome.IdempotentReplay, replay.Outcome);
+        Assert.Equal(applied.Task?.Id, replay.Task?.Id);
+        Assert.Equal(ProposalTransitionOutcome.Conflict, conflictingReuse.Outcome);
+        Assert.Equal(ProposalState.Confirmed, replay.Proposal?.State);
+        Assert.Single(await database.OpenLoopTasks.AsNoTracking().ToArrayAsync());
+        Assert.Single(await database.ProposalAudits.AsNoTracking().ToArrayAsync());
+        Assert.Single(await database.ProposalReceipts.AsNoTracking().ToArrayAsync());
+    }
+
+    [Fact]
+    public async Task ConcurrentProposalConfirmationsCommitExactlyOneEffect()
+    {
+        var identity = await SeedTenantAsync("PROPOSAL-CONCURRENCY");
+        var context = identity.Context with { Purpose = OpenLoopsPolicy.Purpose };
+        Proposal proposal;
+        await using (var scope = CreateScope(context))
+        {
+            proposal = await scope.ServiceProvider
+                .GetRequiredService<OpenLoopsTaskApplication>()
+                .ProposeAsync(
+                    context,
+                    new("Concurrent confirmation", null, null),
+                    "assistant:concurrency");
+        }
+
+        async Task<ProposalConfirmationResult> ConfirmAsync(string key)
+        {
+            await using var scope = CreateScope(context);
+            return await scope.ServiceProvider
+                .GetRequiredService<OpenLoopsTaskApplication>()
+                .ConfirmAsync(context, proposal.ProposalId, proposal.Version, key);
+        }
+
+        var results = await Task.WhenAll(
+            ConfirmAsync("concurrent-confirm-a"),
+            ConfirmAsync("concurrent-confirm-b"));
+
+        Assert.Single(
+            results,
+            result => result.Outcome == ProposalTransitionOutcome.Applied);
+        Assert.Single(
+            results,
+            result => result.Outcome == ProposalTransitionOutcome.Conflict);
+        await using var verification = CreateScope(context);
+        var database = verification.ServiceProvider
+            .GetRequiredService<AndrejaIdentityDbContext>();
+        Assert.Single(await database.OpenLoopTasks.AsNoTracking().ToArrayAsync());
+        Assert.Single(
+            await database.ProposalAudits
+                .AsNoTracking()
+                .Where(audit => audit.Outcome == ProposalTransitionOutcome.Applied)
+                .ToArrayAsync());
+    }
+
+    [Fact]
+    public async Task ConfirmationRecoversFromCrashBeforeAndAfterCommit()
+    {
+        var identity = await SeedTenantAsync("PROPOSAL-CRASH");
+        var context = identity.Context with { Purpose = OpenLoopsPolicy.Purpose };
+        Proposal beforeCommitProposal;
+        Proposal afterCommitProposal;
+        await using (var scope = CreateScope(context))
+        {
+            var application = scope.ServiceProvider.GetRequiredService<OpenLoopsTaskApplication>();
+            beforeCommitProposal = await application.ProposeAsync(
+                context,
+                new("Crash before commit", null, null),
+                "assistant:before-commit");
+            afterCommitProposal = await application.ProposeAsync(
+                context,
+                new("Crash after commit", null, null),
+                "assistant:after-commit");
+        }
+
+        await using (var crashingServices = CreateProposalServiceProvider(
+                         new ThrowAtCheckpoint(ProposalConfirmationCheckpoint.BeforeCommit)))
+        await using (var crashingScope = crashingServices.CreateAsyncScope())
+        {
+            crashingScope.ServiceProvider
+                .GetRequiredService<ScopedTenantPrincipalContext>()
+                .Set(context);
+            await Assert.ThrowsAsync<SimulatedProcessCrashException>(
+                () => crashingScope.ServiceProvider
+                    .GetRequiredService<OpenLoopsTaskApplication>()
+                    .ConfirmAsync(
+                        context,
+                        beforeCommitProposal.ProposalId,
+                        beforeCommitProposal.Version,
+                        "crash-before-commit"));
+        }
+
+        await using (var verification = CreateScope(context))
+        {
+            var application = verification.ServiceProvider
+                .GetRequiredService<OpenLoopsTaskApplication>();
+            var pending = await application.GetProposalAsync(
+                context,
+                beforeCommitProposal.ProposalId);
+            Assert.Equal(ProposalState.Pending, pending?.State);
+            Assert.Empty(await application.ListAsync(context));
+            var retry = await application.ConfirmAsync(
+                context,
+                beforeCommitProposal.ProposalId,
+                beforeCommitProposal.Version,
+                "crash-before-commit");
+            Assert.Equal(ProposalTransitionOutcome.Applied, retry.Outcome);
+        }
+
+        await using (var crashingServices = CreateProposalServiceProvider(
+                         new ThrowAtCheckpoint(ProposalConfirmationCheckpoint.AfterCommit)))
+        await using (var crashingScope = crashingServices.CreateAsyncScope())
+        {
+            crashingScope.ServiceProvider
+                .GetRequiredService<ScopedTenantPrincipalContext>()
+                .Set(context);
+            await Assert.ThrowsAsync<SimulatedProcessCrashException>(
+                () => crashingScope.ServiceProvider
+                    .GetRequiredService<OpenLoopsTaskApplication>()
+                    .ConfirmAsync(
+                        context,
+                        afterCommitProposal.ProposalId,
+                        afterCommitProposal.Version,
+                        "crash-after-commit"));
+        }
+
+        await using (var restarted = CreateScope(context))
+        {
+            var replay = await restarted.ServiceProvider
+                .GetRequiredService<OpenLoopsTaskApplication>()
+                .ConfirmAsync(
+                    context,
+                    afterCommitProposal.ProposalId,
+                    afterCommitProposal.Version,
+                    "crash-after-commit");
+            Assert.Equal(ProposalTransitionOutcome.IdempotentReplay, replay.Outcome);
+            Assert.Equal(2, (await restarted.ServiceProvider
+                .GetRequiredService<OpenLoopsTaskApplication>()
+                .ListAsync(context)).Count);
+        }
+    }
+
+    [Fact]
+    public async Task ProposalConfirmationFailsClosedForWrongIdentityPurposeAndOrphanReferences()
+    {
+        var owner = await SeedTenantAsync("PROPOSAL-OWNER");
+        var otherTenant = await SeedTenantAsync("PROPOSAL-OTHER");
+        var context = owner.Context with { Purpose = OpenLoopsPolicy.Purpose };
+        Proposal proposal;
+        await using (var scope = CreateScope(context))
+        {
+            proposal = await scope.ServiceProvider
+                .GetRequiredService<OpenLoopsTaskApplication>()
+                .ProposeAsync(
+                    context,
+                    new("Tenant constrained", null, null),
+                    "assistant:tenant-constraint");
+        }
+
+        var otherTenantContext = otherTenant.Context with { Purpose = OpenLoopsPolicy.Purpose };
+        await using (var scope = CreateScope(otherTenantContext))
+        {
+            var result = await scope.ServiceProvider
+                .GetRequiredService<OpenLoopsTaskApplication>()
+                .ConfirmAsync(
+                    otherTenantContext,
+                    proposal.ProposalId,
+                    proposal.Version,
+                    "wrong-tenant-confirm");
+            Assert.Equal(ProposalTransitionOutcome.NotFound, result.Outcome);
+        }
+
+        var wrongUser = context with { AppUserId = AppUserId.New() };
+        await using (var scope = CreateScope(wrongUser))
+        {
+            var result = await scope.ServiceProvider
+                .GetRequiredService<OpenLoopsTaskApplication>()
+                .ConfirmAsync(
+                    wrongUser,
+                    proposal.ProposalId,
+                    proposal.Version,
+                    "wrong-user-confirm");
+            Assert.Equal(ProposalTransitionOutcome.Denied, result.Outcome);
+        }
+
+        var wrongPurpose = context with { Purpose = "task.export" };
+        await using (var scope = CreateScope(wrongPurpose))
+        {
+            await Assert.ThrowsAsync<IdentityAccessDeniedException>(
+                () => scope.ServiceProvider
+                    .GetRequiredService<OpenLoopsTaskApplication>()
+                    .ConfirmAsync(
+                        wrongPurpose,
+                        proposal.ProposalId,
+                        proposal.Version,
+                        "wrong-purpose-confirm"));
+        }
+
+        await using (var scope = CreateScope(context))
+        {
+            var database = scope.ServiceProvider.GetRequiredService<AndrejaIdentityDbContext>();
+            var orphan = ProposalRecord.FromDomain(
+                proposal with
+                {
+                    ProposalId = Guid.CreateVersion7(),
+                    ActorId = otherTenant.Context.PrincipalId.Value,
+                    Source = proposal.Source with
+                    {
+                        ActorId = otherTenant.Context.PrincipalId.Value,
+                    },
+                },
+                context.AppUserId);
+            database.Proposals.Add(orphan);
+            await Assert.ThrowsAsync<DbUpdateException>(() => database.SaveChangesAsync());
         }
     }
 
@@ -670,7 +930,49 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
         return scope;
     }
 
+    private ServiceProvider CreateProposalServiceProvider(
+        IProposalConfirmationFaultInjector? faultInjector = null)
+    {
+        var collection = new ServiceCollection();
+        collection.AddLogging();
+        collection.AddOptions();
+        collection.AddSingleton(TimeProvider.System);
+        collection.AddAndrejaIdentityPostgreSql(connectionString);
+        collection.AddAndrejaOpenLoopsPostgreSql();
+        collection.AddScoped<OpenLoopsTaskApplication>();
+        if (faultInjector is not null)
+        {
+            collection.AddSingleton(faultInjector);
+        }
+
+        return collection.BuildServiceProvider(
+            new ServiceProviderOptions
+            {
+                ValidateOnBuild = true,
+                ValidateScopes = true,
+            });
+    }
+
     private sealed record SeededIdentity(TenantPrincipalContext Context);
+
+    private sealed class ThrowAtCheckpoint(ProposalConfirmationCheckpoint target)
+        : IProposalConfirmationFaultInjector
+    {
+        public ValueTask OnCheckpointAsync(
+            ProposalConfirmationCheckpoint checkpoint,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (checkpoint == target)
+            {
+                throw new SimulatedProcessCrashException();
+            }
+
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class SimulatedProcessCrashException : Exception;
 
     private static HttpRequest CreateSecureRequest()
     {

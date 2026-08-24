@@ -291,7 +291,7 @@ pwsh -NoProfile -File scripts\operations\migrate-database.ps1 `
   -BackupDumpPath backups\postgres\andreja-<timestamp>.dump `
   -ReviewedMigrationScriptPath .andreja\reviewed-migration.sql `
   -DatabaseName andreja `
-  -ApprovedMigrations 20260824031732_InitialIdentityTenancy,20260824043341_Phase1AOpenLoopsTasks,20260824075115_ProductionPasskeyIdentity,20260824102012_DurableRecentAuthenticationGrants `
+  -ApprovedMigrations 20260824031732_InitialIdentityTenancy,20260824043341_Phase1AOpenLoopsTasks,20260824075115_ProductionPasskeyIdentity,20260824102012_DurableRecentAuthenticationGrants,20260824153212_DurableProposalConfirmation `
   -ConfirmBackupRestoreAndMigrationReview
 ```
 

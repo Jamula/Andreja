@@ -199,6 +199,22 @@ public sealed class PostgreSqlOpenLoopsTaskStore(
             task.Version));
         if (delete)
         {
+            var proposals = await database.Proposals
+                .Where(proposal => proposal.ActiveTaskId == task.Id)
+                .ToArrayAsync(cancellationToken);
+            foreach (var proposal in proposals)
+            {
+                proposal.DetachTask();
+            }
+
+            var proposalReceipts = await database.ProposalReceipts
+                .Where(receipt => receipt.TaskId == task.Id)
+                .ToArrayAsync(cancellationToken);
+            foreach (var receipt in proposalReceipts)
+            {
+                receipt.DetachTask();
+            }
+
             database.OpenLoopTasks.Remove(task);
         }
 

@@ -204,6 +204,55 @@ public sealed class OpenLoopsVerticalSliceTests
     }
 
     [Fact]
+    public async Task ConfirmationUsesAtomicStoreWhenAvailable()
+    {
+        var context = NewContext();
+        var store = new AtomicProposalStore();
+        var application = new OpenLoopsTaskApplication(
+            new InMemoryOpenLoopsTaskStore(),
+            store,
+            new MutableTimeProvider(Now));
+
+        var result = await application.ConfirmAsync(
+            context,
+            Guid.CreateVersion7(),
+            1,
+            "atomic-confirmation");
+
+        Assert.Equal(ProposalTransitionOutcome.Conflict, result.Outcome);
+        Assert.Equal(1, store.ConfirmationCalls);
+        Assert.Equal(0, store.TransitionCalls);
+    }
+
+    [Fact]
+    public async Task ConfirmationRejectsPayloadThatIsValidJsonButNotExact()
+    {
+        var fixture = CreateFixture();
+        var proposal = await fixture.Application.ProposeAsync(
+            fixture.Context,
+            new("Exact payload", null, null),
+            "assistant:exact-payload");
+        var canonical = proposal.Operation.CanonicalPayload.Replace(
+            "}",
+            ""","unexpected":true}""",
+            StringComparison.Ordinal);
+        var tampered = proposal with
+        {
+            Operation = proposal.Operation with
+            {
+                CanonicalPayload = canonical,
+                PayloadDigest = Convert.ToHexString(
+                    System.Security.Cryptography.SHA256.HashData(
+                        System.Text.Encoding.UTF8.GetBytes(canonical))),
+            },
+            Diff = proposal.Diff with { AfterCanonical = canonical },
+        };
+
+        Assert.Throws<InvalidOperationException>(
+            () => OpenLoopsTaskApplication.MaterializeTask(fixture.Context, tampered));
+    }
+
+    [Fact]
     public void TaskDomainRejectsInvalidContentAndDuplicateCompletion()
     {
         var context = NewContext();
@@ -373,6 +422,50 @@ public sealed class OpenLoopsVerticalSliceTests
         public override DateTimeOffset GetUtcNow() => now;
 
         public void Advance(TimeSpan duration) => now += duration;
+    }
+
+    private sealed class AtomicProposalStore
+        : IProposalStore, IOpenLoopsProposalConfirmationStore
+    {
+        public int ConfirmationCalls { get; private set; }
+
+        public int TransitionCalls { get; private set; }
+
+        public ValueTask<bool> TryCreateAsync(
+            Proposal proposal,
+            CancellationToken cancellationToken) =>
+            ValueTask.FromResult(true);
+
+        public ValueTask<Proposal?> GetAsync(
+            Guid tenantId,
+            Guid proposalId,
+            CancellationToken cancellationToken) =>
+            ValueTask.FromResult<Proposal?>(null);
+
+        public ValueTask<ProposalTransitionResult> TryTransitionAsync(
+            ProposalTransitionRequest request,
+            CancellationToken cancellationToken)
+        {
+            TransitionCalls++;
+            return ValueTask.FromResult(
+                new ProposalTransitionResult(ProposalTransitionOutcome.Conflict, null));
+        }
+
+        public Task<ProposalConfirmationResult> ConfirmAsync(
+            TenantPrincipalContext context,
+            Guid proposalId,
+            long expectedVersion,
+            string idempotencyKey,
+            DateTimeOffset occurredAt,
+            CancellationToken cancellationToken = default)
+        {
+            ConfirmationCalls++;
+            return Task.FromResult(
+                new ProposalConfirmationResult(
+                    ProposalTransitionOutcome.Conflict,
+                    null,
+                    null));
+        }
     }
 
     private sealed class FixedAuthenticationStateProvider(ClaimsPrincipal principal)
