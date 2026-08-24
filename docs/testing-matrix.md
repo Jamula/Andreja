@@ -10,7 +10,7 @@ Never report unavailable live dependencies as passed.
 | API and authorization | Anonymous and fake-header rejection, real Development cookie sign-in, antiforgery rejection, authoritative validation, typed DTO lifecycle | `dotnet test Andreja.slnx --no-build` | Automated; no header authentication handler exists |
 | Local sign-in smoke | Anonymous UI redirects to an existing login route with local-only ReturnUrl; explicit Debug+Development cookie sign-in reaches UI/API; Production and Release builds cannot map the Development sign-in endpoint; API challenge is JSON 401/403 without redirects | `dotnet test Andreja.slnx --no-build`; Release build; follow-redirect live smoke | Development fallback automated; production passkey flow blocked separately |
 | Development origin | Committed HTTPS launch profile and `PublicOrigin` both use `https://localhost:5001`; documented command names the profile and development certificate | `dotnet test Andreja.slnx --no-build` | Automated |
-| Interactive circuit delegation | Real `OpenLoopsApiClient` and handler operate with null `HttpContext`; Data Protection token is audience-bound, short-lived, single-use, and claim-complete; wrong audience, expiry, replay, tampering, and conflicting/missing tenant/principal claims fail closed | `dotnet test Andreja.slnx --no-build` | Automated against the real TestServer API and antiforgery filter |
+| Interactive circuit delegation | Two actual DI scopes resolve the production `AddHttpClient` typed client with different circuit authentication providers and concurrently prove tenant/principal isolation while sharing one pooled stateless handler; Data Protection token is audience-bound, short-lived, single-use, and claim-complete; wrong audience, expiry, replay, tampering, and conflicting/missing claims fail closed | `dotnet test Andreja.slnx --no-build` | Automated against the real TestServer API and antiforgery filter with null `HttpContext` |
 | Tenant and principal isolation | Wrong-tenant/wrong-principal proposal, list, complete, and delete negatives | `dotnet test Andreja.slnx --no-build` | Automated in memory |
 | PostgreSQL | Empty migration, durable task lifecycle, idempotent receipts, and two-tenant filtering | `dotnet test tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj` | Required when a disposable `andreja_test_*` database is supplied; otherwise blocked |
 | Architecture | Blazor page injects the typed API client and cannot inject modules, adapters, or EF | `dotnet test Andreja.slnx --no-build` | Automated |
@@ -22,9 +22,12 @@ Never report unavailable live dependencies as passed.
 
 The API integration fixture uses the real cookie scheme through the explicit
 Development-only sign-in endpoint for external API evidence. Its circuit regression
-uses the real typed client, delegation handler, Data Protection token service,
-TestServer API authentication scheme, antiforgery endpoint, and task lifecycle with
-no `HttpContext`. It proves that common fake-auth headers remain unauthorized and
-that the Development endpoint is absent in Production. Architecture tests continue
-to reject fake/test authentication references, cookie-forwarding handlers, and
-`IHttpContextAccessor` dependencies in the interactive client.
+resolves the real typed client from the actual `AddHttpClient` registration in two
+concurrent simulated circuit scopes. The scopes use distinct principals while the
+factory reuses one stateless pooled handler; each sees only its own tasks. The test
+also exercises the Data Protection token service, TestServer API authentication
+scheme, antiforgery endpoint, and complete task lifecycle with no `HttpContext`.
+Common fake-auth headers remain unauthorized and the Development endpoint is absent
+in Production. Architecture tests reject fake/test authentication references,
+cookie-forwarding handlers, and any pooled delegating handler that depends on
+`AuthenticationStateProvider` or `IHttpContextAccessor`.

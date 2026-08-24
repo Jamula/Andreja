@@ -1,6 +1,5 @@
 using Andreja.AppHost.Identity;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
@@ -201,51 +200,5 @@ public sealed class CircuitDelegationAuthenticationHandler(
                     CircuitDelegation.AuthenticationScheme))
                 : AuthenticateResult.Fail(
                     validation.FailureCode ?? "delegation-token-invalid"));
-    }
-}
-
-public sealed class CircuitDelegationHandler(
-    AuthenticationStateProvider authenticationStateProvider,
-    ICircuitDelegationTokenService tokenService) : DelegatingHandler
-{
-    private string? antiforgeryCookie;
-
-    protected override async Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage request,
-        CancellationToken cancellationToken)
-    {
-        var authenticationState =
-            await authenticationStateProvider.GetAuthenticationStateAsync();
-        if (authenticationState.User.Identity?.IsAuthenticated != true)
-        {
-            throw new OpenLoopsApiException(
-                "authentication-required",
-                "Sign in again to continue.");
-        }
-
-        request.Headers.Authorization = new(
-            CircuitDelegation.AuthorizationScheme,
-            tokenService.Issue(
-                authenticationState.User,
-                CircuitDelegation.OpenLoopsAudience));
-        if (!string.IsNullOrWhiteSpace(antiforgeryCookie))
-        {
-            request.Headers.TryAddWithoutValidation("Cookie", antiforgeryCookie);
-        }
-
-        var response = await base.SendAsync(request, cancellationToken);
-        if (response.Headers.TryGetValues("Set-Cookie", out var values))
-        {
-            var cookie = values
-                .Select(value => value.Split(';', 2)[0])
-                .LastOrDefault(value =>
-                    value.StartsWith(".AspNetCore.Antiforgery.", StringComparison.Ordinal));
-            if (cookie is not null)
-            {
-                antiforgeryCookie = cookie;
-            }
-        }
-
-        return response;
     }
 }
