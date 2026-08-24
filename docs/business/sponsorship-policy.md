@@ -45,6 +45,10 @@ termination rules. It does **not**:
 - Sponsorship income is treated as separate from user subscription revenue and does
   not, by itself, prove a durable SaaS business model. Quark reports sponsor income
   separately in the cost model's actual-versus-budget reporting.
+- Accepting sponsorship records income in the company financial ledger but does not
+  authorize or increase the development AI-credit, professional-services, or
+  cloud-infrastructure envelope. Cyrus must approve any allocation separately, and a
+  sponsor cannot direct an allocation in exchange for product or roadmap influence.
 
 ## Eligibility and prohibited sponsors
 

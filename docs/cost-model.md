@@ -31,13 +31,14 @@ user/product telemetry never becomes company accounting input.
 
 | Ledger | What it records | Owner | Storage / access | Retention | Reconciliation |
 |---|---|---|---|---|---|
-| **Development AI/session usage** | Squad/agent session and fleet-research AI-credit consumption, per-run cost, success/failure outcome, orchestration efficiency | Quark (records), Coordinator/Squad (source events) | Session/orchestration logs and Quark's FinOps issues; no personal task/prompt content | Duration of Phase 0/1 development; aggregate summaries only in GitHub issues | Quark reconciles credit counts against the AI-credit provider's statement and the professional-services envelope; variance explained in the recurring FinOps report |
+| **Development AI/session usage** | Squad/agent session and fleet-research AI-credit consumption, per-run cost, success/failure outcome, orchestration efficiency | Quark (records), Coordinator/Squad (source events) | Session/orchestration logs and Quark's FinOps issues; no personal task/prompt content | Duration of Phase 0/1 development; aggregate summaries only in GitHub issues | Quark reconciles credit counts against the AI-credit provider's usage statement; the statement's monetary charge is reconciled only against the AI-credit envelope, with variance explained in the recurring FinOps report |
 | **Product tenant/provider metering** | Per-tenant and per-capability usage (compute, storage, model tokens, egress, queues/functions, notifications) once the product has tenants | Jett Reno (instrumentation), Quark (cost aggregation) | Product metering store, scoped to aggregate/tenant-billing fields only; excluded from company accounting systems | Per data-classification and billing-cycle retention set in `docs/privacy.md` once ratified | Quark reconciles metering aggregates against provider invoices to compute cost per active user/tenant/capability |
 | **Company financial burn/income** | Cash burn, income (including sponsorship), invoices, vendor commitments, payroll/contractor cost, tax/accounting entries | Quark | Company accounting system/spreadsheet, access limited to Quark and Cyrus | Statutory/tax retention once a legal entity and accounting system are chosen (Sarek review) | Quark reconciles ledger entries against actual vendor/payment-processor invoices monthly |
 
-Only aggregate, non-personal figures from the product and development ledgers ever
-flow into the company financial ledger (for example, "$X model spend this month"), and
-only Quark performs that roll-up.
+Only the corresponding invoiced monetary charges from the product and development
+ledgers flow into the company financial ledger (for example, "$X model spend this
+month"), as separately classified entries; raw usage, AI-credit counts, and personal
+data do not. Only Quark performs that roll-up.
 
 ## Phase 0: $0 and no-cloud-provisioning rule
 
@@ -95,7 +96,7 @@ thresholds once Phase 1 provisioning is approved:
 
 Every paid dependency in any category has a named owner, a renewal or usage trigger,
 a documented cancellation path, and a lower-cost alternative on file where one is
-credible (see [Vendor commitments](#vendor-commitments-and-renewal-cancel-paths)).
+credible (see [Vendor commitments](#vendor-commitments-and-renewalcancel-paths)).
 
 ## Actual-versus-budget, forecast, and runway
 
@@ -143,8 +144,15 @@ No vendor commitment is entered without all five fields populated.
   in `docs/plan.md`'s licensing/IP and legal sections. It requires its own explicit
   approval before purchase and is tracked independently of both the AI-credit
   envelope and the $0 cloud-infrastructure cap.
-- Quark reports both envelopes' actual-versus-budget alongside, but never merged
-  into, the cloud-infrastructure ledger.
+- The **cloud-infrastructure envelope** remains $0 in Phase 0. A separately approved
+  Phase 1B spike budget may replace that cap only for the bounded spike described
+  below; it never absorbs development AI or professional-services spend.
+- The **company financial ledger** records the resulting currency transactions as
+  separately classified entries. It does not replace or merge the development usage
+  ledger, product metering ledger, professional-services envelope, or
+  cloud-infrastructure envelope.
+- Quark reports the envelopes' actual-versus-budget figures alongside one another,
+  but never merges their budgets or reconciliation.
 
 ## Phase 1A: model-spend approval gate
 
