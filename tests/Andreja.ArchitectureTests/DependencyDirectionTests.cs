@@ -133,12 +133,13 @@ public sealed class DependencyDirectionTests
             typeof(ChannelInvocation),
         };
 
-        foreach (var boundary in boundaries)
-        {
-            var properties = boundary.GetProperties().ToDictionary(
+        var boundaryProperties = boundaries.Select(boundary =>
+            boundary.GetProperties().ToDictionary(
                 property => property.Name,
                 property => property.PropertyType,
-                StringComparer.Ordinal);
+                StringComparer.Ordinal));
+        foreach (var properties in boundaryProperties)
+        {
             Assert.Equal(typeof(Guid), properties["TenantId"]);
             Assert.Equal(typeof(Guid), properties["AppUserId"]);
             Assert.Equal(typeof(Guid), properties["PrincipalId"]);

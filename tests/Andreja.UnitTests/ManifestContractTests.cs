@@ -15,10 +15,10 @@ public sealed class ManifestContractTests
         var skill = ExecutionContractFixture.SkillManifest();
         var channel = ExecutionContractFixture.ChannelManifest();
 
-        var skillRoundTrip = JsonSerializer.Deserialize<SkillManifest>(
-            JsonSerializer.Serialize(skill));
-        var channelRoundTrip = JsonSerializer.Deserialize<ChannelManifest>(
-            JsonSerializer.Serialize(channel));
+        var skillRoundTrip = Assert.IsType<SkillManifest>(
+            JsonSerializer.Deserialize<SkillManifest>(JsonSerializer.Serialize(skill)));
+        var channelRoundTrip = Assert.IsType<ChannelManifest>(
+            JsonSerializer.Deserialize<ChannelManifest>(JsonSerializer.Serialize(channel)));
 
         Assert.Equal(
             JsonSerializer.Serialize(skill),
@@ -26,16 +26,16 @@ public sealed class ManifestContractTests
         Assert.Equal(
             JsonSerializer.Serialize(channel),
             JsonSerializer.Serialize(channelRoundTrip));
-        Assert.Equal("andreja.skill-manifest.v1", skillRoundTrip?.SchemaVersion);
-        Assert.Equal("andreja.channel-manifest.v1", channelRoundTrip?.SchemaVersion);
-        Assert.Equal("1.0.0", skillRoundTrip?.Version);
-        Assert.Equal("1.0.0", channelRoundTrip?.Version);
-        Assert.NotEmpty(skillRoundTrip!.Permissions.DeclaredCapabilities);
+        Assert.Equal("andreja.skill-manifest.v1", skillRoundTrip.SchemaVersion);
+        Assert.Equal("andreja.channel-manifest.v1", channelRoundTrip.SchemaVersion);
+        Assert.Equal("1.0.0", skillRoundTrip.Version);
+        Assert.Equal("1.0.0", channelRoundTrip.Version);
+        Assert.NotEmpty(skillRoundTrip.Permissions.DeclaredCapabilities);
         Assert.NotEmpty(skillRoundTrip.Permissions.AllowedPurposes);
         Assert.NotEmpty(skillRoundTrip.Permissions.DataClasses);
         Assert.NotEmpty(skillRoundTrip.HelpSupport.SupportRoute);
         Assert.NotEmpty(skillRoundTrip.Compatibility.SupportedPlatformVersions);
-        Assert.NotEmpty(channelRoundTrip!.Permissions.DeclaredCapabilities);
+        Assert.NotEmpty(channelRoundTrip.Permissions.DeclaredCapabilities);
         Assert.NotEmpty(channelRoundTrip.Provider.DeliveryTopology.Reason!);
         Assert.All(
             ExplicitNotApplicableFields(skillRoundTrip).Concat(
