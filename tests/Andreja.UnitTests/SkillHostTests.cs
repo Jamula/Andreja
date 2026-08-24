@@ -141,7 +141,7 @@ public sealed class SkillHostTests
             "grant-inactive",
             (await host.InvokeAsync(invocation, revokedGrant, CancellationToken.None)).Failure?.Code);
         Assert.Equal(
-            "grant-inactive",
+            "consent-inactive",
             (await host.InvokeAsync(invocation, revokedConsent, CancellationToken.None)).Failure?.Code);
     }
 

@@ -61,6 +61,28 @@ for the backup/review-gated migration command.
 The architecture test project enforces inward dependency direction. The unit test
 project verifies composition-root registration and startup-options validation.
 
+### Skill and channel contract fixtures
+
+`Andreja.Platform.Contracts` owns provider-neutral `ISkillHost` and `IChannelHost`
+boundaries. Their manifests carry schema and semantic versions, lifecycle,
+publisher, permission/purpose/data-class/disclosure, execution, retention,
+help/support, compatibility, and integrity metadata. Optional or future fields are
+never omitted ambiguously: they carry an explicit `NotApplicable` state and reason.
+
+Both in-memory hosts use the same `ExecutionAuthorizationEvaluator`. Every call keeps
+`TenantId`, authoritative `AppUserId`, and `PrincipalId` distinct and must intersect
+the user policy, active bilateral consent, active purpose-bound grant, declared
+capability, operation, data class, time/revocation state, and disclosure ceiling.
+Allow and deny audits contain identifiers and policy facts only, never invocation
+arguments or returned content.
+
+The channel implementation is a deterministic local conformance fixture. It has no
+provider SDK, OAuth account/scope, credential or token passthrough, network
+destination, query/sync/publish mode, webhook/change feed, external execution,
+marketplace path, live federation traffic, or persistence migration. Open Loops
+continues to return a proposal without writing and now propagates the authoritative
+app-user identifier rather than substituting the principal identifier.
+
 ### Local PostgreSQL identity evidence
 
 Identity database tests require a disposable local PostgreSQL database and are not

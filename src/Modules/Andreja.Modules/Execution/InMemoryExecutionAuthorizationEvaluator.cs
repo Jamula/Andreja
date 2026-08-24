@@ -62,6 +62,7 @@ public sealed class ExecutionAuthorizationEvaluator(IExecutionAuditSink auditSin
             denial = "wrong-principal";
         }
         else if (policy.IsRevoked
+            || policy.RevokedAt is not null
             || now < policy.ValidFrom
             || now >= policy.ExpiresAt)
         {
@@ -101,10 +102,9 @@ public sealed class ExecutionAuthorizationEvaluator(IExecutionAuditSink auditSin
         {
             denial = "grant-scope-mismatch";
         }
-        else if (consent.OfferingPrincipalId == consent.ReceivingPrincipalId
-            || consent.ReceivingPrincipalId != request.PrincipalId)
+        else if (!IsActiveBilateralConsent(request, now))
         {
-            denial = "consent-parties-mismatch";
+            denial = "consent-inactive";
         }
         else if (!IsActiveGrant(request, now))
         {
@@ -152,17 +152,42 @@ public sealed class ExecutionAuthorizationEvaluator(IExecutionAuditSink auditSin
         var consent = request.Authorization.Consent;
         return grant.ConsentId == consent.ConsentId
             && consent.GrantId == grant.GrantId
-            && consent.Timeline.Count > 0
-            && consent.Timeline[^1].State == ConsentState.Active
             && string.Equals(grant.Purpose, request.Purpose, StringComparison.Ordinal)
             && string.Equals(consent.Terms.Purpose, request.Purpose, StringComparison.Ordinal)
             && grant.AllowedOperations.Contains(request.Operation)
             && consent.Terms.AllowedOperations.Contains(request.Operation)
             && !grant.IsRevoked
+            && grant.RevokedAt is null
             && now >= grant.ValidFrom
             && now < grant.ExpiresAt
             && now >= consent.Terms.ValidFrom
             && now < consent.Terms.ExpiresAt;
+    }
+
+    private static bool IsActiveBilateralConsent(
+        ExecutionAuthorizationRequest request,
+        DateTimeOffset now)
+    {
+        var consent = request.Authorization.Consent;
+        if (consent.OfferingPrincipalId == consent.ReceivingPrincipalId
+            || consent.ReceivingPrincipalId != request.PrincipalId
+            || consent.Timeline.Count != 3)
+        {
+            return false;
+        }
+
+        var offered = consent.Timeline[0];
+        var accepted = consent.Timeline[1];
+        var active = consent.Timeline[2];
+        return offered.State == ConsentState.Offered
+            && offered.ActorId == consent.OfferingPrincipalId
+            && accepted.State == ConsentState.Accepted
+            && accepted.ActorId == consent.ReceivingPrincipalId
+            && active.State == ConsentState.Active
+            && active.ActorId == consent.OfferingPrincipalId
+            && offered.OccurredAt < accepted.OccurredAt
+            && accepted.OccurredAt < active.OccurredAt
+            && active.OccurredAt <= now;
     }
 
     private static bool IsKnownDisclosure(DisclosureLevel level) =>
