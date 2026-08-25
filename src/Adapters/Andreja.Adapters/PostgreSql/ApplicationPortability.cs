@@ -681,9 +681,8 @@ public static class PostgreSqlApplicationPortability
             {
                 throw new InvalidDataException("An artifact record count does not match.");
             }
-            foreach (var line in lines)
+            foreach (var bytes in lines.Select(Encoding.UTF8.GetBytes))
             {
-                var bytes = Encoding.UTF8.GetBytes(line);
                 RejectDuplicateJsonProperties(bytes);
                 if (!Canonicalize(bytes).AsSpan().SequenceEqual(bytes))
                 {
