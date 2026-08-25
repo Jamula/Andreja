@@ -462,18 +462,14 @@ public static class PostgreSqlApplicationPortability
 
     private static HashSet<string> EntriesExceedingCompressionRatio(byte[] zipBytes)
     {
-        var entries = new HashSet<string>(StringComparer.Ordinal);
         using var input = new MemoryStream(zipBytes, writable: false);
         using var zip = new ZipArchive(input, ZipArchiveMode.Read);
-        foreach (var entry in zip.Entries)
-        {
-            if (entry.CompressedLength > 0
+        return zip.Entries
+            .Where(entry =>
+                entry.CompressedLength > 0
                 && entry.Length > entry.CompressedLength * MaximumCompressionRatio)
-            {
-                entries.Add(entry.FullName);
-            }
-        }
-        return entries;
+            .Select(entry => entry.FullName)
+            .ToHashSet(StringComparer.Ordinal);
     }
 
     private static byte[] Encrypt(ReadOnlySpan<byte> plaintext, ReadOnlySpan<byte> key)
