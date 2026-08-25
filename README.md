@@ -10,21 +10,21 @@ remains pending explicit ratification.
 
 - Git.
 - .NET SDK 10.0.301, pinned by [`global.json`](global.json).
+- Python 3, available as `python`, for documentation consistency checks.
 - PowerShell 7 for repository validation scripts.
 - Docker with Buildx and Compose for live PostgreSQL, OCI, and self-host
   evidence.
-
-Confirm the pinned SDK is available:
-
-```powershell
-dotnet --version
-```
 
 ## Clone
 
 ```powershell
 git clone https://github.com/Jamula/Andreja.git
 Set-Location Andreja
+if ((dotnet --version) -ne "10.0.301") {
+  throw "Install the .NET SDK version pinned by global.json."
+}
+python --version
+pwsh --version
 ```
 
 The repository is private. Your GitHub account must have access before cloning.
@@ -109,6 +109,9 @@ try {
 
   dotnet test tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj `
     --configuration Debug
+  if ($LASTEXITCODE -ne 0) {
+    throw "The live PostgreSQL integration suite failed."
+  }
 }
 finally {
   Remove-Item Env:\ANDREJA_TEST_POSTGRES -ErrorAction SilentlyContinue
@@ -168,6 +171,72 @@ It contains the authoritative commands for:
 - passkey bootstrap, recovery, restart, offline, update, and rollback evidence;
 - PostgreSQL dump/restore and application
   [export/import](docs/operations/portability.md).
+
+After completing the runbook's one-time signing-key, TLS proxy, secret-file,
+backup, and reviewed-migration preparation, the minimum operator sequence is:
+
+```powershell
+Copy-Item .env.example .env
+
+# Produce and verify the signed local image bundle. The key paths are created
+# during the runbook's one-time signing-key setup.
+$env:COSIGN_PASSWORD = Read-Host "Cosign key password" -AsSecureString |
+  ConvertFrom-SecureString -AsPlainText
+pwsh -NoProfile -File scripts\supply-chain\New-OciEvidence.ps1 `
+  -OutputDirectory artifacts\supply-chain `
+  -SigningKeyPath $HOME\.andreja-signing\andreja.key `
+  -TrustedPublicKeyPath $HOME\.andreja-signing\andreja.pub
+Remove-Item Env:\COSIGN_PASSWORD
+
+pwsh -NoProfile -File scripts\supply-chain\Test-OciEvidence.ps1 `
+  -BundleDirectory artifacts\supply-chain `
+  -TrustedPublicKeyPath $HOME\.andreja-signing\andreja.pub
+$evidence = Get-Content artifacts\supply-chain\evidence.json -Raw |
+  ConvertFrom-Json
+$env:ANDREJA_IMAGE = $evidence.image.immutableReference
+
+pwsh -NoProfile -File scripts\operations\validate-contract.ps1
+docker compose up --detach postgres otel-collector
+
+# Create and restore-test the backup, review the generated migration SQL, and
+# set the approved migration names before running this command.
+pwsh -NoProfile -File scripts\operations\migrate-database.ps1 `
+  -BackupDumpPath .andreja\backup.dump `
+  -ReviewedMigrationScriptPath .andreja\reviewed-migration.sql `
+  -DatabaseName andreja `
+  -ApprovedMigrations @("REPLACE_WITH_REVIEWED_MIGRATION_NAMES") `
+  -ConfirmBackupRestoreAndMigrationReview
+
+docker compose up --detach
+docker compose ps
+```
+
+Use the configured public HTTPS origin, not the container's direct HTTP port:
+
+```powershell
+$publicOrigin = "https://$env:ANDREJA_HOSTNAME"
+Invoke-WebRequest "$publicOrigin/health/live"
+Invoke-WebRequest "$publicOrigin/health/ready"
+Start-Process "$publicOrigin/Account/Bootstrap"
+```
+
+On a fresh database, `/Account/Bootstrap` creates the owner passkey and shows
+single-use recovery codes. Save those codes offline before continuing. Later
+sessions use `/Account/Login`; authenticated users manage passkeys and sign out
+at `/Account/Passkeys`. After sign-in, exercise the same proposal, confirm,
+complete, export, and delete task flow described above.
+
+Verify persistent state survives a restart, then stop without deleting volumes:
+
+```powershell
+docker compose restart app
+Invoke-WebRequest "$publicOrigin/health/ready"
+docker compose down
+Remove-Item Env:\ANDREJA_IMAGE -ErrorAction SilentlyContinue
+```
+
+Use `docker compose down --volumes` only for an explicitly disposable evidence
+instance after its required backup/restore and cleanup evidence is complete.
 
 Do not commit `.env`, credentials, bootstrap or recovery material, provider
 tokens, Data Protection or signing keys, database dumps, application exports,
