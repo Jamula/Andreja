@@ -195,8 +195,10 @@ public sealed class OperationsContractTests
         string property,
         string value)
     {
+        var exportId = Guid.NewGuid();
+        var tenantReference = new string('a', 64);
         var manifest = $$"""
-            {"applicationVersion":"1","archiveVersion":"1","artifacts":[],"createdAtUtc":"2026-08-25T00:00:00+00:00","exclusions":[],"exportId":"11111111-1111-1111-1111-111111111111","reauthorization":[],"schemaVersion":"1.0.0","tenantReference":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+            {"applicationVersion":"1","archiveVersion":"1","artifacts":[],"createdAtUtc":"2026-08-25T00:00:00+00:00","exclusions":[],"exportId":"{{exportId:D}}","reauthorization":[],"schemaVersion":"1.0.0","tenantReference":"{{tenantReference}}"}
             """.Trim();
         manifest = manifest.Replace(
             $"\"{property}\":[]",
