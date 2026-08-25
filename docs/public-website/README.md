@@ -4,7 +4,7 @@
 - **Issue:** [#94](https://github.com/Jamula/Andreja/issues/94)
 - **Phase:** 0 (local and paper research only)
 - **Decision owner:** Cyrus
-- **Last reviewed:** 2026-08-24
+- **Last reviewed:** 2026-08-25
 
 This packet defines an information architecture and recommends a delivery
 boundary for a future Andreja public/help site. It does not authorize a domain,
@@ -61,6 +61,14 @@ approved private preview must enforce authorization and expiry. `noindex`,
 robots directives, and `X-Robots-Tag` are not authorization.
 
 As observed on 2026-08-25, the repository's GitHub Pages endpoint
-`https://jamula.github.io/Andreja/` is publicly built from `main:/docs`. That is
-a current nonconformance and blocker, not an approved deployment. This packet
-does not change repository settings or claim the exposure is fixed.
+`https://jamula.github.io/Andreja/` is publicly built from `main:/docs`.
+Unauthenticated requests returned `200` for `/public-website/prototype/`,
+`/phase-1a/evidence-44`, and `/legal/regulatory-applicability`. The whole
+`docs/` tree is in the Pages source and there is no `_config.yml` or `.nojekyll`
+exclusion. This is an uncontained nonconformance and blocker, not an approved
+deployment.
+
+PR [#113](https://github.com/Jamula/Andreja/pull/113) must remain draft and
+must not merge until Pages is disabled/restricted or Cyrus explicitly accepts
+publication of this amendment. This packet does not change repository settings,
+claim containment, or claim the exposure is fixed.

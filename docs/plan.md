@@ -19,6 +19,12 @@ implementation and investigation evidence with the plan; it does not accept a
 Proposed ADR, waive an exit gate, authorize spend or publication, or redesign an
 architecture or trust boundary.
 
+Issue [#74](https://github.com/Jamula/Andreja/issues/74) remains the open
+provider-scope decision of record. This amendment's Phase 1A fake/BYOK and Phase
+1B Copilot mapping is the conservative, implementation-aligned **provisional**
+scope pending Cyrus's explicit #74 decision; it is not acceptance of that
+decision and may be amended by it.
+
 #### Current artifact and implementation status
 
 | Area | Current evidence | Decision or remaining boundary |
@@ -26,15 +32,17 @@ architecture or trust boundary.
 | Modular boundaries, PostgreSQL, and passkeys | The Phase 1A modular slices, PostgreSQL reference persistence/migrations, production passkey bootstrap/recovery, and their architecture/integration/browser tests are implemented on `main`. Evidence run [#44](phase-1a/evidence-44.md) records the exact tested boundary. | ADRs 0001–0005 remain **Proposed and unaccepted** pending [#66](https://github.com/Jamula/Andreja/issues/66). Merge and passing tests are implementation evidence, not Cyrus's acceptance or Phase 1A exit. |
 | Skill, channel, and semantic contracts | Application-owned skill/channel manifests and hosts, grants/audit/peer envelopes, and minimal semantic-profile/provenance/export contracts are implemented. | This is contract-seam evidence only: no third-party execution, production connector, federation transport, graph database, universal ontology, or inactive persistence is approved. ADR 0004 and the other Phase 1A ADRs remain Proposed. |
 | Portability and recovery | The application export/import clean-instance round trip passed as supplemental evidence in [evidence run #44](phase-1a/evidence-44.md#supplemental-application-portability-evidence-87). PostgreSQL logical dump/restore was only partial exit evidence. | Portable application data does not substitute for an encrypted database-plus-Data-Protection-key recovery set and restored sign-in. Managed-provider PITR and managed-cloud portability remain deferred. |
-| Architecture diagram and operator README | PR [#107](https://github.com/Jamula/Andreja/pull/107) merged the reviewed Excalidraw/SVG/PNG architecture diagram, its PNG hash, and generation/consistency tests. The root README records current local build, test, self-host, and evidence commands. | These are current documentation and reproducibility evidence, not acceptance of the Proposed ADR packet, release authorization, or completion of the still-required canonical threat/privacy artifacts. |
+| Architecture diagram and operator README | PR [#100](https://github.com/Jamula/Andreja/pull/100) originated the Excalidraw/SVG/PNG architecture diagram and PR [#107](https://github.com/Jamula/Andreja/pull/107) merged its reviewed correction, PNG hash, and generation/consistency tests. The root README records current local build, test, self-host, and evidence commands. | These are current documentation and reproducibility evidence, not acceptance of the Proposed ADR packet, release authorization, or completion of the still-required canonical threat/privacy artifacts. |
 | Website matrix and prototype | PRs [#105](https://github.com/Jamula/Andreja/pull/105) and [#111](https://github.com/Jamula/Andreja/pull/111) merged the Phase 0 matrix, claims inventory, local prototype, validator, and hardened boundary wording. PR #105 initially used ADR number 0006; the current canonical, hardened file is **Proposed ADR 0008**. | The packet remains a recommendation for human decision. It authorizes no deployment, preview, hosting vendor, domain, CDN, DNS, public claim, or public launch. Issue [#93](https://github.com/Jamula/Andreja/issues/93) remains the separately gated Phase 1B public-site proposal. |
 | Test framework | PR [#103](https://github.com/Jamula/Andreja/pull/103) merged a measured xUnit/MSTest investigation. Cyrus later selected MSTest as the long-term direction. | ADR 0007 remains Proposed, and its earlier xUnit-retention recommendation is superseded by its 2026-08-25 amendment. Migration is deliberately deferred to [#112](https://github.com/Jamula/Andreja/issues/112); no test migration occurs in this amendment. |
 
 #### Phase 0 policy and governance artifact classification
 
-These hashes classify the files in this amendment's source tree. A closed issue,
-merged PR, title containing “ratify,” or downstream description of an artifact
-as authoritative is not an explicit Cyrus decision.
+These hashes classify the files in this amendment's source tree and are enforced
+by `.github/scripts/check_docs_consistency.py`; missing, added, malformed, or
+stale rows fail documentation CI. A closed issue, merged PR, title containing
+“ratify,” or downstream description of an artifact as authoritative is not an
+explicit Cyrus decision.
 
 | Artifact | Source and current SHA-256 | Current authority |
 |---|---|---|
@@ -56,10 +64,17 @@ preview is later explicitly approved, it must enforce authorization and expiry.
 never authorization.
 
 As observed on 2026-08-25, GitHub Pages is publicly serving
-`https://jamula.github.io/Andreja/` from `main:/docs`. That is a current
-**nonconformance and blocker**, not an approved Phase 0 artifact and not fixed by
-this documentation change. Contain it before continuing public-site execution;
-do not interpret this record as permission to change repository settings.
+`https://jamula.github.io/Andreja/` from `main:/docs`. Unauthenticated requests
+returned `200` for `/public-website/prototype/`,
+`/phase-1a/evidence-44`, and `/legal/regulatory-applicability`. The whole
+`docs/` tree is in the Pages source and there is no `_config.yml` or `.nojekyll`
+exclusion. This is a current **uncontained nonconformance and blocker**, not an
+approved Phase 0 artifact and not fixed by this documentation change.
+
+PR [#113](https://github.com/Jamula/Andreja/pull/113) must remain draft and
+must not merge until Pages is disabled/restricted or Cyrus explicitly accepts
+publication of this amendment. This record does not claim containment and is
+not permission to change repository settings.
 
 #### Current Phase 1A evidence status
 
@@ -194,9 +209,10 @@ Platform capabilities are privileged product functions governed by architecture/
 ### Initial channel connectors
 
 1. Local/linked identity: passkeys, Microsoft, Google, GitHub; later Apple, LinkedIn, Facebook, and enterprise OIDC.
-2. Assistant providers: deterministic fake and OpenAI-compatible BYOK in Phase
-   1A; real GitHub Copilot OAuth begins in Phase 1B only after #74; later Azure
-   AI and local providers.
+2. Assistant providers: under the conservative provisional scope pending #74,
+   deterministic fake and OpenAI-compatible BYOK are Phase 1A; real GitHub
+   Copilot OAuth begins in Phase 1B only after an explicit #74 decision; later
+   Azure AI and local providers.
 3. **Email first:** Gmail, Outlook.com/Hotmail, and Microsoft 365 mail; then their calendar surfaces.
 4. In-app messaging: user-to-Andreja, support/status, and later consented peer-assistant messaging.
 5. Discord: official bot/app installation only, with explicit server/channel scope and no self-bot/user-token automation.
@@ -515,7 +531,7 @@ First-party skills follow the same platform contract and quality gates expected 
 ## Assistant and AI architecture
 
 - Define application-owned `IAssistantProvider` and `IAssistantSession`; no provider SDK types cross into domain or UI contracts.
-- Phase 1A ships only the deterministic fake and Andreja-native OpenAI-compatible BYOK provider. A real `GitHub.Copilot.SDK` 1.0.x provider begins in Phase 1B and remains gated by [#74](https://github.com/Jamula/Andreja/issues/74), entitlement/isolation/cost evidence, and counsel/vendor review of commercial terms, acceptable use, and redistribution.
+- Pending Cyrus's explicit decision on open issue [#74](https://github.com/Jamula/Andreja/issues/74), the conservative provisional scope has Phase 1A ship only the deterministic fake and Andreja-native OpenAI-compatible BYOK provider. A real `GitHub.Copilot.SDK` 1.0.x provider is provisionally Phase 1B and remains gated by #74, entitlement/isolation/cost evidence, and counsel/vendor review of commercial terms, acceptable use, and redistribution.
 - Keep GitHub OAuth account linking separate from primary app identity.
 - Treat GitHub assistant authentication, the GitHub content connector, and GitHub feedback publishing as three independent grants with distinct tokens, scopes, consent, storage, and revocation. Never reuse one token across roles.
 - Ship an OpenAI-compatible BYOK adapter alongside the deterministic fake in the walking skeleton so fully independent self-hosting has a working assistant and the provider-neutral seam has deterministic conformance evidence.
@@ -770,7 +786,7 @@ Connector identity, assistant, content, feedback, and publishing grants remain s
 |---|---|---|---|---|
 | Local identity | Passkeys/local recovery | Independent self-host sign-in and recovery | MVP | 1A |
 | Linked identity | Microsoft account, Google, GitHub; later Apple, LinkedIn, Facebook and enterprise OIDC | Verified account linking and primary-identity flexibility; no email-only linking | MVP/research | 1A-2 |
-| Assistant providers | Deterministic fake and OpenAI-compatible BYOK; real GitHub Copilot OAuth after #74; later Azure AI/local providers | User-selected assistant runtime with isolated credentials, retention and usage policy | MVP | BYOK/fake in 1A; Copilot in gated 1B |
+| Assistant providers | Deterministic fake and OpenAI-compatible BYOK; real GitHub Copilot OAuth only after explicit #74 decision; later Azure AI/local providers | User-selected assistant runtime with isolated credentials, retention and usage policy | MVP | Provisional pending #74: BYOK/fake in 1A; Copilot in gated 1B |
 | Email intake/send | Gmail, Outlook.com/Hotmail, Microsoft 365 | MVP autonomous triage/task/calendar/control-plane story, with per-account policy; broader email workflows later | MVP | 1B core; 3A expansion |
 | In-app messaging | User-to-Andreja, feedback/support status and scoped trip collaboration; later general peer assistants | Private product messaging and proposal/status delivery; no ambient cross-tenant chat | MVP/early | 1B trip/support; general peer in 6 |
 | Discord | Official Discord bot/application | Explicit installation and server/channel scope; never self-bot or user-token automation | Early pilot | 3A |
@@ -1270,7 +1286,7 @@ Before installation, review source/publisher provenance, immutable digest/versio
 - Agent Finder searches completed for architecture, ASP.NET, security, privacy, FinOps, testing, Legal, and Marketing candidates.
 - Five rubber-duck passes, including federation/skills, open-thread ratifiability, catalog/framework/feedback review and final post-closure ratification review, completed; latest verdict is RATIFIABLE after the applied Phase 0 envelope wording fix.
 - Two uncapped `fleet-research` reviews completed with primary-source-backed architecture, identity, assistant, connector, security/privacy, testing/observability, FinOps, licensing, website/mobile and expanded regulated-skill findings; confirmed corrections are incorporated in this revision.
-- Current implementation direction reconciled: built-in passkey/local self-host identity, PostgreSQL reference persistence without permanent managed-database lock-in, artifact-based gates, and Phase 1A deterministic fake plus OpenAI-compatible BYOK are implemented or represented in the current plan. A real Copilot provider is Phase 1B work gated by #74. Implementation does not accept the Proposed ADR packet.
+- Current implementation direction reconciled: built-in passkey/local self-host identity, PostgreSQL reference persistence without permanent managed-database lock-in, artifact-based gates, and Phase 1A deterministic fake plus OpenAI-compatible BYOK are implemented or represented in the current plan. Pending the explicit open #74 decision, real Copilot as Phase 1B work is a conservative provisional mapping, not an accepted decision. Implementation does not accept the Proposed ADR packet.
 - Initial first-party skill and connector catalogs, Personal Brand Studio guardrails, portfolio lanes, and launch-stage framework are explicitly documented.
 
 ### Partial or provisional

@@ -4,7 +4,7 @@
 - **Date:** 2026-08-23
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
-- **Plan SHA-256:** `ba3e687d16a275db466b09e05eedd9070e4de23c46da105cc811ddb4131163e7`
+- **Plan SHA-256:** `e0804457b57398e987625aade34206cc432ebbeef6dcc4540f5e5c17cc73878a`
 
 ## Decision
 
@@ -69,13 +69,14 @@ not match the merged `docs/plan.md`.
 
 - **Tracking issue:** [#73](https://github.com/Jamula/Andreja/issues/73)
 - **Pull request:** [#113](https://github.com/Jamula/Andreja/pull/113)
-- **Plan SHA-256:** `ba3e687d16a275db466b09e05eedd9070e4de23c46da105cc811ddb4131163e7`
+- **Plan SHA-256:** `e0804457b57398e987625aade34206cc432ebbeef6dcc4540f5e5c17cc73878a`
 - **Approver:** Cyrus Jamula
 - **Approver status:** Explicit Cyrus direction recorded for this amendment on
   2026-08-25; merge is execution evidence and does not substitute for approval.
 - **Classification:** Logged execution/status amendment; no re-ratification.
-- **Scope:** Reconcile implemented evidence with still-Proposed ADRs; clarify
-  Phase 1A BYOK/fake versus Phase 1B Copilot timing; record Phase 1A evidence
+- **Scope:** Reconcile implemented evidence with still-Proposed ADRs; record the
+  conservative provisional Phase 1A BYOK/fake versus Phase 1B Copilot mapping
+  pending open decision #74; record Phase 1A evidence
   gaps, MSTest direction/deferred migration, required privacy/threat artifacts,
   website containment/nonconformance, deferred work, and safe execution order.
 - **Authority unchanged:** No Proposed ADR is accepted, no Phase 1A exit is

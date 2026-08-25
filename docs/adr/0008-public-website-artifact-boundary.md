@@ -2,6 +2,7 @@
 
 - **Status:** Proposed
 - **Date:** 2026-08-24
+- **Amended:** 2026-08-25
 - **Issue:** [#94](https://github.com/Jamula/Andreja/issues/94)
 - **Governing:** [Platform plan](../plan.md#public-website-help-and-support),
   [company charter](../charter.md#commitments), and
@@ -30,9 +31,17 @@ and DNS publication must remain disabled. Only a separately approved private
 preview may use authorization and expiry; `noindex` is never authorization.
 
 As observed on 2026-08-25, GitHub Pages publicly serves
-`https://jamula.github.io/Andreja/` from `main:/docs`. This is a blocker and
-nonconformance, not an approved deployment or evidence that this Proposed ADR
-was accepted. This ADR records but does not remediate the repository setting.
+`https://jamula.github.io/Andreja/` from `main:/docs`. Unauthenticated requests
+returned `200` for `/public-website/prototype/`,
+`/phase-1a/evidence-44`, and `/legal/regulatory-applicability`. The whole
+`docs/` tree is in the Pages source and there is no `_config.yml` or `.nojekyll`
+exclusion. This is an uncontained blocker and nonconformance, not an approved
+deployment or evidence that this Proposed ADR was accepted.
+
+PR [#113](https://github.com/Jamula/Andreja/pull/113) must remain draft and
+must not merge until Pages is disabled/restricted or Cyrus explicitly accepts
+publication of this amendment. This ADR records but does not remediate the
+repository setting and does not claim containment.
 
 ## Decision
 
