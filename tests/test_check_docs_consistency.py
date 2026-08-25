@@ -45,6 +45,17 @@ class CharterHashTests(unittest.TestCase):
                     f"- **Status:** Accepted\n- **Charter SHA-256:** `{'0' * 64}`\n",
                 )
 
+    def test_duplicate_adr_status_lines_are_rejected(self) -> None:
+        charter = "candidate charter\n"
+        with redirect_stdout(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                CHECKS.check_charter_hash_content(
+                    charter,
+                    "- **Status:** Proposed\n"
+                    "- **Status:** Accepted\n"
+                    f"- **Charter SHA-256:** `{'0' * 64}`\n",
+                )
+
 
 class CharterAtomicityTests(unittest.TestCase):
     PROPOSED_ADR = "- **Status:** Proposed\n"
@@ -132,6 +143,22 @@ This section is optional while ADR 0006 is Proposed and required after it is Acc
             self.PROPOSED_ADR,
             "body: []\n",
             self.REQUIRED_PR_TEMPLATE,
+        )
+
+    def test_proposed_state_rejects_required_charter_field(self) -> None:
+        self.assert_fails(
+            self.PROPOSED_CHARTER,
+            self.PROPOSED_ADR,
+            self.REQUIRED_CHARTER_FIELD,
+            self.PROPOSED_PR_TEMPLATE,
+        )
+
+    def test_proposed_state_rejects_duplicate_adr_status_lines(self) -> None:
+        self.assert_fails(
+            self.PROPOSED_CHARTER,
+            self.PROPOSED_ADR + self.ACCEPTED_ADR,
+            "body: []\n",
+            self.PROPOSED_PR_TEMPLATE,
         )
 
     def test_accepted_state_accepts_all_atomic_requirements(self) -> None:

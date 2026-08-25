@@ -71,16 +71,15 @@ def check_plan_hash() -> None:
 
 
 def charter_adr_status(adr_text: str) -> str:
-    status_match = re.search(
+    matches = re.findall(
         r"^- \*\*Status:\*\*\s*(Proposed|Accepted)\s*$", adr_text, re.MULTILINE
     )
-    if not status_match:
+    if len(matches) != 1:
         fail(
-            "Could not find a '- **Status:** Proposed' or "
-            "'- **Status:** Accepted' line in "
-            f"{CHARTER_ADR_PATH.relative_to(REPO_ROOT)}."
+            f"{CHARTER_ADR_PATH.relative_to(REPO_ROOT)} must contain exactly one "
+            "'- **Status:** Proposed' or '- **Status:** Accepted' metadata line."
         )
-    return status_match.group(1)
+    return matches[0]
 
 
 def charter_status(charter_text: str) -> str:
@@ -254,10 +253,17 @@ def check_charter_atomicity_content(
                 "While ADR 0006 is Proposed, docs/charter.md must remain "
                 "explicitly Proposed and not authoritative."
             )
+        if issue_form_field_is_required(decision_form_text, "charter"):
+            fail(
+                "While ADR 0006 is Proposed, the 'charter' field in "
+                ".github/ISSUE_TEMPLATE/decision.yml must not be required; "
+                "that change belongs to the atomic acceptance pull request."
+            )
         check_pr_template_state(pr_template_text, adr_status)
         print(
-            "OK: Proposed ADR 0006 keeps the charter non-authoritative and the "
-            "PR template in its pre-ratification state."
+            "OK: Proposed ADR 0006 keeps the charter non-authoritative, the "
+            "decision form optional, and the PR template in its "
+            "pre-ratification state."
         )
         return
 
