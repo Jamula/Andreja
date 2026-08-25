@@ -24,13 +24,27 @@ public sealed record ApplicationImportReport(
     IReadOnlyList<ExportExclusion> Exclusions,
     IReadOnlyList<ReauthorizationRequirement> Reauthorization);
 
+internal enum ApplicationImportCheckpoint
+{
+    SessionLockAcquiredBeforeTransaction,
+}
+
+internal interface IApplicationImportFaultInjector
+{
+    ValueTask OnCheckpointAsync(
+        ApplicationImportCheckpoint checkpoint,
+        CancellationToken cancellationToken);
+}
+
 public static class PostgreSqlApplicationPortability
 {
     public const long MaximumEncryptedArchiveBytes = 64L * 1024 * 1024;
     public const long MaximumExpandedArchiveBytes = 128L * 1024 * 1024;
     public const long MaximumArtifactBytes = 32L * 1024 * 1024;
     public const long MaximumRecords = 100_000;
+    internal static readonly TimeSpan DefaultImportLockTimeout = TimeSpan.FromSeconds(30);
     private const int MaximumCompressionRatio = 100;
+    internal const long ImportAdvisoryLock = 1465007187;
     private const string SchemaVersion = "1.0.0";
     private static readonly byte[] EnvelopeMagic = "ANDREJA1"u8.ToArray();
     private static readonly DateTimeOffset StableZipTimestamp =
@@ -224,9 +238,34 @@ public static class PostgreSqlApplicationPortability
         ReadOnlyMemory<byte> encryptionKey,
         bool commit,
         Guid? approvedExportId,
+        CancellationToken cancellationToken = default) =>
+        await ImportAsync(
+            connectionString,
+            archivePath,
+            encryptionKey,
+            commit,
+            approvedExportId,
+            DefaultImportLockTimeout,
+            faultInjector: null,
+            cancellationToken);
+
+    internal static async Task<ApplicationImportReport> ImportAsync(
+        string connectionString,
+        string archivePath,
+        ReadOnlyMemory<byte> encryptionKey,
+        bool commit,
+        Guid? approvedExportId,
+        TimeSpan lockTimeout,
+        IApplicationImportFaultInjector? faultInjector,
         CancellationToken cancellationToken = default)
     {
         ValidateArchiveInput(connectionString, archivePath, encryptionKey);
+        if (lockTimeout <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(lockTimeout),
+                "The import lock timeout must be positive.");
+        }
         var encrypted = await ReadBoundedFileAsync(
             archivePath,
             MaximumEncryptedArchiveBytes + 64,
@@ -263,47 +302,76 @@ public static class PostgreSqlApplicationPortability
         ValidateLineage(records, manifest);
         var manifestDigest = Sha256(archive.Manifest);
 
-        await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync(cancellationToken);
-        await using var transaction = await connection.BeginTransactionAsync(
-            IsolationLevel.Serializable,
-            cancellationToken);
-        await AcquireImportLockAsync(connection, transaction, cancellationToken);
-        await EnsureImportMigrationAsync(connection, transaction, cancellationToken);
-        var replay = await ReadImportStateAsync(
-            connection,
-            transaction,
-            manifest,
-            manifestDigest,
-            cancellationToken);
-        if (replay)
+        await using var lockConnection = CreateImportLockConnection(connectionString);
+        await lockConnection.OpenAsync(cancellationToken);
+        var lockAcquired = false;
+        Exception? operationException = null;
+        try
         {
-            await EnsureReplayMatchesAsync(
+            await AcquireImportLockAsync(lockConnection, lockTimeout, cancellationToken);
+            lockAcquired = true;
+            if (faultInjector is not null)
+            {
+                await faultInjector.OnCheckpointAsync(
+                    ApplicationImportCheckpoint.SessionLockAcquiredBeforeTransaction,
+                    cancellationToken);
+            }
+
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var transaction = await connection.BeginTransactionAsync(
+                IsolationLevel.Serializable,
+                cancellationToken);
+            await EnsureImportMigrationAsync(connection, transaction, cancellationToken);
+            var replay = await ReadImportStateAsync(
                 connection,
                 transaction,
                 manifest,
-                records,
+                manifestDigest,
                 cancellationToken);
-            await transaction.RollbackAsync(cancellationToken);
-            return CreateReport(manifest, dryRun: !commit, idempotent: true);
-        }
+            if (replay)
+            {
+                await EnsureReplayMatchesAsync(
+                    connection,
+                    transaction,
+                    manifest,
+                    records,
+                    cancellationToken);
+                await transaction.RollbackAsync(cancellationToken);
+                return CreateReport(manifest, dryRun: !commit, idempotent: true);
+            }
 
-        await EnsureCleanAsync(connection, transaction, cancellationToken);
-        if (!commit)
+            await EnsureCleanAsync(connection, transaction, cancellationToken);
+            if (!commit)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return CreateReport(manifest, dryRun: true, idempotent: false);
+            }
+
+            await InsertAllAsync(connection, transaction, records, cancellationToken);
+            await InsertImportRecordAsync(
+                connection,
+                transaction,
+                manifest,
+                manifestDigest,
+                cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return CreateReport(manifest, dryRun: false, idempotent: false);
+        }
+        catch (Exception exception)
         {
-            await transaction.RollbackAsync(cancellationToken);
-            return CreateReport(manifest, dryRun: true, idempotent: false);
+            operationException = exception;
+            throw;
         }
-
-        await InsertAllAsync(connection, transaction, records, cancellationToken);
-        await InsertImportRecordAsync(
-            connection,
-            transaction,
-            manifest,
-            manifestDigest,
-            cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        return CreateReport(manifest, dryRun: false, idempotent: false);
+        finally
+        {
+            if (lockAcquired)
+            {
+                await ReleaseImportLockAsync(
+                    lockConnection,
+                    throwOnFailure: operationException is null);
+            }
+        }
     }
 
     private static async Task<(byte[] Bytes, long Count)> ExportArtifactAsync(
@@ -918,16 +986,90 @@ public static class PostgreSqlApplicationPortability
         }
     }
 
+    private static NpgsqlConnection CreateImportLockConnection(string connectionString)
+    {
+        var builder = new NpgsqlConnectionStringBuilder(connectionString)
+        {
+            Pooling = false,
+            Multiplexing = false,
+            Enlist = false,
+            ApplicationName = "Andreja application import lock",
+        };
+        return new NpgsqlConnection(builder.ConnectionString);
+    }
+
     private static async Task AcquireImportLockAsync(
         NpgsqlConnection connection,
-        NpgsqlTransaction transaction,
+        TimeSpan lockTimeout,
         CancellationToken cancellationToken)
     {
+        using var timeoutCancellation =
+            CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCancellation.CancelAfter(lockTimeout);
         await using var command = new NpgsqlCommand(
-            "SELECT pg_advisory_xact_lock(1465007187)",
-            connection,
-            transaction);
-        await command.ExecuteNonQueryAsync(cancellationToken);
+            "SELECT pg_advisory_lock(@lockKey)",
+            connection)
+        {
+            CommandTimeout = 0,
+        };
+        command.Parameters.AddWithValue("lockKey", ImportAdvisoryLock);
+        try
+        {
+            await command.ExecuteNonQueryAsync(timeoutCancellation.Token);
+        }
+        catch (OperationCanceledException exception)
+            when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException(
+                $"Application import lock acquisition exceeded {lockTimeout}.",
+                exception);
+        }
+        catch (NpgsqlException exception)
+            when (timeoutCancellation.IsCancellationRequested
+                  && !cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException(
+                $"Application import lock acquisition exceeded {lockTimeout}.",
+                exception);
+        }
+    }
+
+    private static async Task ReleaseImportLockAsync(
+        NpgsqlConnection connection,
+        bool throwOnFailure)
+    {
+        Exception? failure = null;
+        try
+        {
+            await using var command = new NpgsqlCommand(
+                "SELECT pg_advisory_unlock(@lockKey)",
+                connection)
+            {
+                CommandTimeout = 5,
+            };
+            command.Parameters.AddWithValue("lockKey", ImportAdvisoryLock);
+            if (await command.ExecuteScalarAsync(CancellationToken.None) is not true)
+            {
+                failure = new InvalidOperationException(
+                    "The application import session lock was not held at release.");
+            }
+        }
+        catch (Exception exception) when (
+            exception is NpgsqlException or InvalidOperationException)
+        {
+            failure = exception;
+        }
+        finally
+        {
+            await connection.CloseAsync();
+        }
+
+        if (failure is not null && throwOnFailure)
+        {
+            throw new InvalidOperationException(
+                "The application import session lock could not be explicitly released.",
+                failure);
+        }
     }
 
     private static async Task<bool> TenantExistsAsync(

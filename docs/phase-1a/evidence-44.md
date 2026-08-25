@@ -226,6 +226,12 @@ locally in Docker; two explicitly migrated disposable databases were used.
 - unit/WAF operations contract: duplicate-area and no-web-mutation negatives;
 - live integration:
   `ApplicationPortabilityTests.ExportDryRunAndAtomicImportRoundTripPortableDataOnly`;
+- concurrency regression: four fresh-database races between distinct export IDs
+  each produced exactly one commit; the waiting importer began a fresh serializable
+  transaction and rejected the committed ledger/dirty state. Exact replay remained
+  idempotent. Cancellation, bounded lock timeout, injected pre-transaction failure,
+  and invalid archive validation all released or avoided the dedicated non-pooled
+  session lock and a following import succeeded;
 - operator rehearsal: dry-run, approved atomic commit, source/target count and
   visible-task comparison, excluded-table zero check, and idempotent retry;
 - authenticated-envelope tamper was rejected before any mutation;

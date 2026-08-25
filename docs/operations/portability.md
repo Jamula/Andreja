@@ -92,19 +92,32 @@ Import is deny-by-default:
    bombs, checksum/length/count mismatch, cross-tenant rows, and foreign lineage.
 4. Produce a dry-run report with tenant/identity mapping, conflicts, exclusions,
    counts, inactive grants, and reauthorization actions. Perform no writes.
-5. Apply the `ApplicationPortability` migration explicitly. Import acquires a
-   database advisory lock, proves every application/identity/security table empty,
-   and requires `--approve-export` with the dry-run export ID. It commits all rows
+5. Apply the `ApplicationPortability` migration explicitly. Import first acquires
+   one database-scoped, session-level PostgreSQL advisory lock on a dedicated
+   non-pooled connection. Only after the lock is held does it open the serializable
+   transaction and obtain a fresh snapshot, re-read the import ledger, and prove
+   every application/identity/security table empty. This prevents two waiting
+   importers from retaining pre-lock snapshots. The single lock key serializes all
+   imports for that database, is acquired before any transaction or other lock, and
+   therefore has no lock-order cycle.
+6. Lock acquisition honors caller cancellation and has a 30-second default timeout.
+   Success, validation/transaction failure, injected process-failure checkpoints,
+   and cancellation all attempt `pg_advisory_unlock` without the cancelled token.
+   The dedicated connection has pooling and multiplexing disabled and is always
+   closed/disposed, so a broken explicit unlock cannot leak a session lock into the
+   pool; PostgreSQL releases it when the session closes.
+7. Commit requires `--approve-export` with the dry-run export ID. It commits all rows
    plus its digest ledger in one serializable transaction. A byte-identical retry is
-   idempotent; a different or conflicting import is rejected.
-6. Restore identity and host keys only through their separate recovery procedure.
+   idempotent; a different or conflicting import is rejected after acquiring the
+   same lock and starting a fresh transaction.
+8. Restore identity and host keys only through their separate recovery procedure.
    Reauthorize every provider/channel; never recreate a credential from the
    archive.
-7. No credential user, passkey, recovery code, recent-auth grant, provider token,
+9. No credential user, passkey, recovery code, recent-auth grant, provider token,
    Data Protection/TLS/signing/bootstrap key, cache, telemetry, or runtime secret is
    imported. AppUser and Principal IDs remain stable, but operators create new local
    credential mappings and complete every reported provider reauthorization.
-8. Compare counts, attachments, audit continuity, provenance, settings, exclusions,
+10. Compare counts, attachments, audit continuity, provenance, settings, exclusions,
    user-visible records, and delete behavior on the clean instance.
 
 A valid archive never authorizes overwrite. A target containing any application or

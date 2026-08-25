@@ -241,6 +241,218 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
         }
     }
 
+    [Fact]
+    public async Task ConcurrentDistinctImportsSerializeBeforeTransactionSnapshot()
+    {
+        var first = await SeedPortableTenantAsync("RACE-A", "Race winner A");
+        var second = await SeedPortableTenantAsync("RACE-B", "Race loser B");
+        var key = RandomNumberGenerator.GetBytes(32);
+        var firstArchive = ArchivePath();
+        var secondArchive = ArchivePath();
+        try
+        {
+            var firstExport = await PostgreSqlApplicationPortability.ExportAsync(
+                sourceConnectionString,
+                first,
+                firstArchive,
+                key,
+                "concurrency");
+            var secondExport = await PostgreSqlApplicationPortability.ExportAsync(
+                sourceConnectionString,
+                second,
+                secondArchive,
+                key,
+                "concurrency");
+
+            for (var attempt = 0; attempt < 4; attempt++)
+            {
+                var target = await CreateMigratedTargetAsync($"race_{attempt}");
+                try
+                {
+                    var blocker = new BlockingImportFaultInjector();
+                    var winner = PostgreSqlApplicationPortability.ImportAsync(
+                        target,
+                        firstArchive,
+                        key,
+                        commit: true,
+                        firstExport.ExportId,
+                        TimeSpan.FromSeconds(10),
+                        blocker);
+                    await blocker.Acquired.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                    var loser = PostgreSqlApplicationPortability.ImportAsync(
+                        target,
+                        secondArchive,
+                        key,
+                        commit: true,
+                        secondExport.ExportId,
+                        TimeSpan.FromSeconds(10),
+                        faultInjector: null);
+                    await Task.Delay(100);
+                    Assert.False(loser.IsCompleted);
+
+                    blocker.Release.TrySetResult();
+                    var committed = await winner;
+                    Assert.False(committed.IdempotentReplay);
+                    var conflict = await Assert.ThrowsAsync<InvalidOperationException>(
+                        async () => await loser);
+                    Assert.Contains(
+                        "conflicting application import",
+                        conflict.Message,
+                        StringComparison.Ordinal);
+                    Assert.Equal(1, await CountAsync(target, "portability.application_imports"));
+                    Assert.Equal("Race winner A", await ScalarAsync<string>(
+                        target,
+                        """SELECT "Title" FROM open_loops.tasks"""));
+
+                    var replay = await PostgreSqlApplicationPortability.ImportAsync(
+                        target,
+                        firstArchive,
+                        key,
+                        commit: true,
+                        firstExport.ExportId);
+                    Assert.True(replay.IdempotentReplay);
+                    await AssertImportLockAvailableAsync(target);
+                }
+                finally
+                {
+                    await DropAdditionalDatabaseAsync(target);
+                }
+            }
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+            DeleteFile(firstArchive);
+            DeleteFile(secondArchive);
+        }
+    }
+
+    [Fact]
+    public async Task CancellationTimeoutAndInjectedFailureReleaseDedicatedSessionLock()
+    {
+        var tenant = await SeedPortableTenantAsync("LOCK-RELEASE", "Lock release");
+        var key = RandomNumberGenerator.GetBytes(32);
+        var archive = ArchivePath();
+        var tampered = ArchivePath();
+        try
+        {
+            var exported = await PostgreSqlApplicationPortability.ExportAsync(
+                sourceConnectionString,
+                tenant,
+                archive,
+                key,
+                "lock-release");
+
+            var cancellationTarget = await CreateMigratedTargetAsync("cancel");
+            try
+            {
+                var blocker = new BlockingImportFaultInjector();
+                using var cancellation = new CancellationTokenSource();
+                var cancelled = PostgreSqlApplicationPortability.ImportAsync(
+                    cancellationTarget,
+                    archive,
+                    key,
+                    commit: true,
+                    exported.ExportId,
+                    TimeSpan.FromSeconds(10),
+                    blocker,
+                    cancellation.Token);
+                await blocker.Acquired.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                cancellation.Cancel();
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                    async () => await cancelled);
+                await AssertImportLockAvailableAsync(cancellationTarget);
+
+                var imported = await PostgreSqlApplicationPortability.ImportAsync(
+                    cancellationTarget,
+                    archive,
+                    key,
+                    commit: true,
+                    exported.ExportId);
+                Assert.False(imported.IdempotentReplay);
+            }
+            finally
+            {
+                await DropAdditionalDatabaseAsync(cancellationTarget);
+            }
+
+            var failureTarget = await CreateMigratedTargetAsync("fault");
+            try
+            {
+                await Assert.ThrowsAsync<InjectedImportFailureException>(() =>
+                    PostgreSqlApplicationPortability.ImportAsync(
+                        failureTarget,
+                        archive,
+                        key,
+                        commit: true,
+                        exported.ExportId,
+                        TimeSpan.FromSeconds(10),
+                        new ThrowingImportFaultInjector()));
+                await AssertImportLockAvailableAsync(failureTarget);
+                _ = await PostgreSqlApplicationPortability.ImportAsync(
+                    failureTarget,
+                    archive,
+                    key,
+                    commit: true,
+                    exported.ExportId);
+            }
+            finally
+            {
+                await DropAdditionalDatabaseAsync(failureTarget);
+            }
+
+            var timeoutTarget = await CreateMigratedTargetAsync("timeout");
+            try
+            {
+                await using var holder = new NpgsqlConnection(
+                    NonPooledConnectionString(timeoutTarget));
+                await holder.OpenAsync();
+                await ExecuteLockAsync(holder, "pg_advisory_lock");
+                await Assert.ThrowsAsync<TimeoutException>(() =>
+                    PostgreSqlApplicationPortability.ImportAsync(
+                        timeoutTarget,
+                        archive,
+                        key,
+                        commit: true,
+                        exported.ExportId,
+                        TimeSpan.FromMilliseconds(150),
+                        faultInjector: null));
+                await ExecuteLockAsync(holder, "pg_advisory_unlock");
+                await holder.CloseAsync();
+                await AssertImportLockAvailableAsync(timeoutTarget);
+
+                var bytes = await File.ReadAllBytesAsync(archive);
+                bytes[^1] ^= 0xff;
+                await File.WriteAllBytesAsync(tampered, bytes);
+                await Assert.ThrowsAsync<InvalidDataException>(() =>
+                    PostgreSqlApplicationPortability.ImportAsync(
+                        timeoutTarget,
+                        tampered,
+                        key,
+                        commit: false,
+                        approvedExportId: null));
+                var imported = await PostgreSqlApplicationPortability.ImportAsync(
+                    timeoutTarget,
+                    archive,
+                    key,
+                    commit: true,
+                    exported.ExportId);
+                Assert.False(imported.IdempotentReplay);
+                await AssertImportLockAvailableAsync(timeoutTarget);
+            }
+            finally
+            {
+                await DropAdditionalDatabaseAsync(timeoutTarget);
+            }
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+            DeleteFile(archive);
+            DeleteFile(tampered);
+        }
+    }
+
     private static AndrejaIdentityDbContext CreateContext(
         string connectionString,
         ITenantPrincipalContextAccessor accessor)
@@ -318,4 +530,146 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
 
     private static string Quote(string identifier) =>
         '"' + identifier.Replace("\"", "\"\"", StringComparison.Ordinal) + '"';
+
+    private async Task<Guid> SeedPortableTenantAsync(string normalizedName, string taskTitle)
+    {
+        var tenantId = TenantId.New();
+        var appUserId = AppUserId.New();
+        var principalId = PrincipalId.New();
+        var context = new ScopedTenantPrincipalContext();
+        context.Set(new(tenantId, appUserId, principalId, "open-loops"));
+        await using (var database = CreateContext(sourceConnectionString, context))
+        {
+            database.Tenants.Add(new(tenantId, normalizedName, normalizedName, "local"));
+            database.AppUsers.Add(new(appUserId, $"{normalizedName} user"));
+            database.Principals.Add(new(
+                principalId,
+                tenantId,
+                appUserId,
+                $"{normalizedName} principal"));
+            database.Memberships.Add(new(
+                MembershipId.New(),
+                tenantId,
+                appUserId,
+                principalId,
+                MembershipRole.Owner));
+            await database.SaveChangesAsync();
+        }
+
+        await using var source = new NpgsqlConnection(sourceConnectionString);
+        await source.OpenAsync();
+        await using var command = new NpgsqlCommand(
+            """
+            INSERT INTO open_loops.tasks
+            ("Id","Version","TenantId","OwnerPrincipalId","Title","Details","DueAt",
+             "Status","SourceKind","SourceReference","CreatedAt","CompletedAt")
+            VALUES (@id,1,@tenant,@principal,@title,NULL,NULL,1,'user','concurrency',@at,NULL)
+            """,
+            source);
+        command.Parameters.AddWithValue("id", Guid.CreateVersion7());
+        command.Parameters.AddWithValue("tenant", tenantId.Value);
+        command.Parameters.AddWithValue("principal", principalId.Value);
+        command.Parameters.AddWithValue("title", taskTitle);
+        command.Parameters.AddWithValue("at", DateTimeOffset.UtcNow);
+        await command.ExecuteNonQueryAsync();
+        return tenantId.Value;
+    }
+
+    private async Task<string> CreateMigratedTargetAsync(string purpose)
+    {
+        var database = $"andreja_test_port_{purpose}_{Guid.NewGuid():N}"[..52];
+        await CreateDatabaseAsync(database);
+        var builder = new NpgsqlConnectionStringBuilder(adminConnectionString)
+        {
+            Database = database,
+        };
+        await MigrateAsync(builder.ConnectionString);
+        return builder.ConnectionString;
+    }
+
+    private async Task DropAdditionalDatabaseAsync(string connectionString)
+    {
+        NpgsqlConnection.ClearPool(new NpgsqlConnection(connectionString));
+        var database = new NpgsqlConnectionStringBuilder(connectionString).Database;
+        await DropDatabaseAsync(database!);
+    }
+
+    private static async Task AssertImportLockAvailableAsync(string connectionString)
+    {
+        await using var connection = new NpgsqlConnection(
+            NonPooledConnectionString(connectionString));
+        await connection.OpenAsync();
+        await using var acquire = new NpgsqlCommand(
+            "SELECT pg_try_advisory_lock(@lockKey)",
+            connection);
+        acquire.Parameters.AddWithValue(
+            "lockKey",
+            PostgreSqlApplicationPortability.ImportAdvisoryLock);
+        Assert.True(await acquire.ExecuteScalarAsync() is true);
+        await ExecuteLockAsync(connection, "pg_advisory_unlock");
+    }
+
+    private static async Task ExecuteLockAsync(NpgsqlConnection connection, string function)
+    {
+        await using var command = new NpgsqlCommand(
+            $"SELECT {function}(@lockKey)",
+            connection);
+        command.Parameters.AddWithValue(
+            "lockKey",
+            PostgreSqlApplicationPortability.ImportAdvisoryLock);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static string NonPooledConnectionString(string connectionString)
+    {
+        var builder = new NpgsqlConnectionStringBuilder(connectionString)
+        {
+            Pooling = false,
+            Multiplexing = false,
+        };
+        return builder.ConnectionString;
+    }
+
+    private static string ArchivePath() =>
+        Path.Combine(
+            AppContext.BaseDirectory,
+            $"portability-{Guid.NewGuid():N}.andreja");
+
+    private static void DeleteFile(string path)
+    {
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+        }
+    }
+
+    private sealed class BlockingImportFaultInjector : IApplicationImportFaultInjector
+    {
+        public TaskCompletionSource Acquired { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Release { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async ValueTask OnCheckpointAsync(
+            ApplicationImportCheckpoint checkpoint,
+            CancellationToken cancellationToken)
+        {
+            Assert.Equal(
+                ApplicationImportCheckpoint.SessionLockAcquiredBeforeTransaction,
+                checkpoint);
+            Acquired.TrySetResult();
+            await Release.Task.WaitAsync(cancellationToken);
+        }
+    }
+
+    private sealed class ThrowingImportFaultInjector : IApplicationImportFaultInjector
+    {
+        public ValueTask OnCheckpointAsync(
+            ApplicationImportCheckpoint checkpoint,
+            CancellationToken cancellationToken) =>
+            throw new InjectedImportFailureException();
+    }
+
+    private sealed class InjectedImportFailureException : Exception;
 }
