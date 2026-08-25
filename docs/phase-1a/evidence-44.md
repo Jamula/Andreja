@@ -4,7 +4,7 @@
 - **Issues:** [#44](https://github.com/Jamula/Andreja/issues/44),
   [#62](https://github.com/Jamula/Andreja/issues/62), and blocking defect
   [#87](https://github.com/Jamula/Andreja/issues/87)
-- **Execution window:** 2026-08-24 15:41–16:34 PDT
+- **Execution window:** 2026-08-24 15:41–17:14 PDT
 - **Evidence coordinator:** Data
 - **Operations owner:** Jett Reno
 - **Security/privacy challenge:** Tuvok and Deanna Troi
@@ -21,14 +21,14 @@ the bounded results below.
 | Item | Recorded value |
 | --- | --- |
 | Live `main` and branch base | `4cf532ef763a1709589ac8d0cf004b7404b8b5b4` |
-| Audited implementation commit | `41864c81f695e16c0148a2c63b6ef4b1cbf33588` |
-| Audited source tree | `0b7fc0c01d95694db7180239f9d99b4f0bb86986` |
+| Audited implementation commit | `6bfddbc1556e7dc587e44a77a10278382a1e45b0` |
+| Audited source tree | `65f3a0e468b0de593f4c62e939583715b21914f4` |
 | OCI platform | `linux/arm64` |
-| OCI manifest | `sha256:d14d78500501b80cd2fcdd5863a1d94b39bd343438fcc5ea7c9cbaad3a121044` |
-| OCI config | `sha256:b5ca35fb6e0b9fb7473c0102bdce9cbe5b7921c63c8698dc82e80df242ce3ad9` |
+| OCI manifest | `sha256:c222231aee9ba30208be27c024f8f534ae998066392f129dc9676302cdfac079` |
+| OCI config | `sha256:ca311e7267f5e3a767769d8b665836c7971adb85d0f465e191ec30818fcb2360` |
 | Reproducibility | two no-cache builds produced the same manifest digest |
-| SPDX 2.3 | `sha256:8c95e11714e8cdb325fa334e374ba23bfdeac25b9f47eb2c9d90a881afa1c9be` |
-| CycloneDX 1.6 | `sha256:976bce722b3c575f6b26878d2a6908fdd5413c0799e0b33057683e861eeeb5bb` |
+| SPDX 2.3 | `sha256:4e7bf1bb5ad2f44ea54cfa2b375f2845c691ffad2ffa1ff2d55a828ce060c515` |
+| CycloneDX 1.6 | `sha256:dcf259b0177c84e38ee7eed1cc10c8df0582dee4037b97f72045881f8ad8cc04` |
 | Dependency/final-image/IaC scans | Grype/Grype/Trivy: zero forbidden High/Critical findings |
 | SDK/runtime | .NET SDK `10.0.301`; Docker `29.7.2`; Buildx `0.36.1`; Compose `5.4.0` |
 | Scanners | Syft `1.28.0`; Grype `0.100.0`; Trivy `0.67.2`; Cosign `2.6.1` |
@@ -47,7 +47,7 @@ The executed configuration hashes were:
 
 | Configuration | SHA-256 |
 | --- | --- |
-| `compose.yaml` | `4ae0dccf3deeca55a7a6d5848fb835c9e769ce2c83406b9ba52ad87c1f3578f7` |
+| `compose.yaml` | `1d798c23f121b399e344bc1c3e832020042f2b907d0b9502d1083e75006fa023` |
 | `deploy/compose.evidence.yaml` | `f06b21d940f54d04f531e96a3b40737ebb0e3ddcea127cb94db431ed9ed3e25e` |
 | `deploy/compose.offline-evidence.yaml` | `58120166a3ce19ebb57421717300589cfa1e98764e7fe0cb7b682ea7d147f1f6` |
 | `deploy/Caddyfile.evidence` | `de8eff3c1e1f574a6b950e2b3afd003af346483f00f7fff32b6f49586e259f6d` |
@@ -109,7 +109,7 @@ curl.exe --fail --cacert .andreja\localhost.pem `
   https://localhost:8443/health/ready
 $env:ANDREJA_BOOTSTRAP_TOKEN_FILE =
   (Resolve-Path .andreja\bootstrap_token_source).Path
-node scripts\evidence\browser-e2e.mjs
+pwsh -NoProfile -File scripts\evidence\Test-TelemetryEvidence.ps1
 ```
 
 The migration command applied exactly five approved migrations. It emitted a
@@ -121,13 +121,55 @@ The audited OCI command was:
 
 ```powershell
 pwsh -NoProfile -File scripts\supply-chain\New-OciEvidence.ps1 `
-  -OutputDirectory artifacts\supply-chain-e44 `
+  -OutputDirectory artifacts\supply-chain-e44-r3 `
   -Platform linux/arm64 -HostedUnsigned
 ```
 
 The resulting ignored bundle and reports are not distributable evidence. A
 separately trusted operator must rerun without `-HostedUnsigned` and supply the
 approved external signing key and trust anchor.
+
+### Exact offline reproduction
+
+Acquire and verify every signed artifact first. The local run used the audited
+but unsigned bundle only as non-release evidence; that does not authorize
+startup. Preload the exact archive and all four pinned support images while
+networking is available, then set `.env` to the audited immutable reference:
+
+```powershell
+docker load --input artifacts\supply-chain-e44-r3\image.oci.tar
+$env:ANDREJA_IMAGE =
+  'andreja-local@sha256:c222231aee9ba30208be27c024f8f534ae998066392f129dc9676302cdfac079'
+# Persist the same value in the ignored .env used by Compose.
+
+$files = @(
+  'compose.yaml'
+  'deploy\compose.evidence.yaml'
+  'deploy\compose.offline-evidence.yaml'
+)
+docker compose --profile evidence $(
+  $files | ForEach-Object { '--file'; $_ }
+) config --images | ForEach-Object { docker image inspect $_ *> $null }
+
+pwsh -NoProfile -File scripts\evidence\Test-OfflineEvidence.ps1 `
+  -AuditedAppImage $env:ANDREJA_IMAGE `
+  -DestroySyntheticVolumes
+```
+
+The script uses those three Compose files, `up --detach --pull never`, and no
+pull or registry fallback. It requires both `${COMPOSE_PROJECT_NAME:-andreja}_edge`
+and `${COMPOSE_PROJECT_NAME:-andreja}_backend` to report `Internal=true`,
+requires live/ready before and after `docker compose restart app`, and runs a
+preloaded pinned Caddy helper in the app network namespace. The helper must
+reach both loopback health endpoints and must fail to connect to reserved
+TEST-NET address `192.0.2.1`. It always stops the stack; the switch above also
+removes the synthetic volumes.
+
+Expected single-line result after cleanup:
+
+```json
+{"status":"passed","imagesPreloaded":5,"auditedAppImage":"andreja-local@sha256:c222231aee9ba30208be27c024f8f534ae998066392f129dc9676302cdfac079","pullPolicy":"never","edgeInternal":true,"backendInternal":true,"startupHealthy":true,"restartHealthy":true,"testNetEgressBlocked":true}
+```
 
 ## Pass/fail matrix
 
@@ -147,8 +189,8 @@ approved external signing key and trust anchor.
 | PostgreSQL dump/restore | **PARTIAL / BLOCKED for exit** | Pinned `pg_dump`/`pg_restore` clean-instance rehearsal restored 5 migrations, 1 synthetic identity, 1 passkey, 4 security-audit rows, and 0 deleted tasks. The plaintext synthetic dump was checksum-verified and destroyed, but encrypted recovery-set custody plus restored app sign-in with restored keys was not run. |
 | Data Protection persistence/at-rest | **PARTIAL / BLOCKED for exit** | One mode-`0600` key file persisted; browser sign-in survived app restart. Host-volume encryption and an encrypted, separately held recovery copy were not independently demonstrated. |
 | Application export/import | **BLOCKED** | Open Loops JSON export passed, but clean-instance application import mutation is not implemented. Contract verification is not a substitute; see #87. |
-| Offline startup/no egress | **PASS for local evidence** | After acquisition, `--pull never` started all cached images with both app networks `internal=true`; audited image live/ready passed and a TEST-NET `192.0.2.1` connection from the app network namespace failed while local readiness succeeded. |
-| OTel metrics/traces/logs | **PASS** | Collector accepted 22 metric points, 1 span, and 1 fixed-content log record. Prometheus reported policy checks `1`, suppressed attributes `1`, and `sum(violations) or vector(0) = 0`. Task/prompt/response/token/recovery/raw-ID canaries remain unit-tested and were not emitted as runtime content. |
+| Offline startup/no egress | **PASS for local evidence** | `Test-OfflineEvidence.ps1` verified all 5 immutable images were preloaded, used `--pull never`, required both networks internal, passed audited-image live/ready before and after restart, and rejected a TEST-NET `192.0.2.1` connection from the app network namespace. |
+| OTel metrics/traces/logs | **PASS** | Counters were sampled before and strictly after the complete browser flow plus app restart. Accepted spans increased `1 -> 188` (delta `187`, versus the required non-health threshold `10`), metric points `0 -> 119`, and fixed-content logs `1 -> 2`. Prometheus reported policy checks `55`, suppressed attributes `181`, and `sum(violations) or vector(0) = 0`. Unit canaries prove task/prompt/response/token/recovery/raw-ID attributes are removed. |
 | Update/rollback | **BLOCKED** | The audited digest started against preserved state, but no second separately approved and signed revision existed. Restart or replacing an unaudited test image is not represented as an update/rollback rehearsal. |
 | SLO/RPO/RTO and cost approval | **BLOCKED** | Nonzero telemetry baselines exist, but numeric SLO/RPO/RTO, retention, and external model-spend envelopes still require Cyrus approval. |
 
@@ -161,6 +203,8 @@ approved external signing key and trust anchor.
 - all 20 fail-closed supply-chain negative cases
 - evidence Compose interpolation
 - `node --check scripts\evidence\browser-e2e.mjs`
+- strict post-browser `Test-TelemetryEvidence.ps1`
+- exact preloaded-image `Test-OfflineEvidence.ps1`
 
 ## Decision
 
