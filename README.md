@@ -223,7 +223,7 @@ if ($LASTEXITCODE -ne 0) {
   throw "The Compose and operations contract is invalid."
 }
 
-docker compose up --detach postgres otel-collector
+docker compose up --detach --wait postgres otel-collector
 if ($LASTEXITCODE -ne 0) {
   throw "PostgreSQL or OpenTelemetry failed to start."
 }
@@ -240,7 +240,7 @@ if ($LASTEXITCODE -ne 0) {
   throw "The explicit database migration failed."
 }
 
-docker compose up --detach
+docker compose up --detach --wait
 if ($LASTEXITCODE -ne 0) {
   throw "The self-hosted stack failed to start."
 }
