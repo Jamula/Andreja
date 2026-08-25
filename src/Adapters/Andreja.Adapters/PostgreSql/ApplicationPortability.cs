@@ -754,12 +754,10 @@ public static class PostgreSqlApplicationPortability
                 throw new InvalidDataException("A task receipt has foreign lineage.");
             }
         }
-        foreach (var audit in records["taskAudit"])
+        if (records["taskAudit"].Any(
+                audit => !principals.Contains(audit.GetProperty("ActorId").GetGuid())))
         {
-            if (!principals.Contains(audit.GetProperty("ActorId").GetGuid()))
-            {
-                throw new InvalidDataException("A task audit has foreign principal lineage.");
-            }
+            throw new InvalidDataException("A task audit has foreign principal lineage.");
         }
         foreach (var proposal in records["proposal"])
         {
