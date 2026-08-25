@@ -95,12 +95,30 @@ The worker contract requires durable mappings for:
 - an immutable canonical policy-event ledger; and
 - canonical event ID to current App-comment projection ID and body digest.
 
+Every PR mapping has a positive monotonic version. The store exposes only
+versioned `compareAndSwapPullMapping` writes: creation expects version `0`, an
+update supplies the exact version it read, and a successful write returns
+exactly the next version. There is no unconditional upsert or close operation.
+A conflict publishes/finalizes a fail-closed generation on the newest durable
+head and waits for a later live reconciliation.
+
 For every event that can invalidate a success, the worker identifies targets
 from durable state and publishes a new `in_progress` check on **all** affected
 heads before reading mutable GitHub policy metadata. A terminal writer may
 update only while both the durable generation and exact-App check-run are still
 newest. API failures, 403/429 responses, mapping disagreement, stale writers,
 or a changed second snapshot fail closed with sanitized reasons.
+
+Webhook PR snapshots are wake-up hints, not durable authority. PR, review,
+review-comment, review-thread, issue-comment, close, and reopen handling first
+publishes pending on every valid event head and current durable head. It then
+fetches the PR through the live GitHub API. If any exact head/base/ref/diff
+field differs, it publishes pending on that live head before attempting the
+mapping CAS or evaluation. Only that live identity and open/closed state may be
+persisted. A delayed close cannot close a reopened PR, and a delayed H1 event
+cannot replace an H2 mapping. A review ID from a webhook is resolved through
+the live review API; its event-time exact PR identity must still equal the live
+identity before the worker may append an attestation.
 
 The durable canonical policy-event ledger is the only policy authority. App
 comments are presentation projections. Every event evaluation and every
@@ -114,8 +132,11 @@ The worker store must implement immutable/idempotent
 `appendPolicyLedgerEvent`, complete `listPolicyLedgerEvents`,
 `upsertPolicyProjection`, and complete `listPolicyProjections` operations in
 the same independently protected durability boundary as generations and PR
-mappings. A conflicting event ID, duplicate projection/comment identity,
-partial page, or store failure is terminal and fail closed.
+mappings. It must also implement atomic `compareAndSwapPullMapping` with the
+version contract above; `getPullMapping` and every mapping query return that
+version. A conflicting event ID, duplicate projection/comment identity,
+mapping CAS conflict, partial page, or store failure is terminal and fail
+closed.
 
 The durable store claims each authenticated delivery ID before dispatch.
 Redelivery returns the existing claim and cannot start a second writer. A
@@ -131,11 +152,11 @@ and dropped-delivery behavior cannot expose an older success.
 
 | Event path | Required behavior |
 | --- | --- |
-| `pull_request` | Update durable PR/base/head mapping, publish pending, observe policy, and evaluate every open PR sharing the head |
-| `pull_request_review` | Publish pending, authenticate current Copilot/native review, append exact-diff attestation, and reevaluate |
-| `pull_request_review_comment` | Publish pending and reevaluate current conversation/review state |
-| `pull_request_review_thread` | External App webhook only; publish pending and reevaluate, with native thread resolution still required |
-| `issue_comment` | Publish pending before restoring any deleted exact-App policy record and reevaluating |
+| `pull_request` | Treat payload as a hint; publish event/durable heads pending, fetch the live PR, publish a changed live head pending, CAS the live identity/state, observe policy, and evaluate every open PR sharing the head |
+| `pull_request_review` | Treat payload as a hint; pending-first fetch/CAS the live PR, accept a Copilot attestation only when the review commit matches that live identity, and reevaluate |
+| `pull_request_review_comment` | Pending-first fetch/CAS the live PR and reevaluate current conversation/review state |
+| `pull_request_review_thread` | External App webhook only; pending-first fetch/CAS the live PR and reevaluate, with native thread resolution still required |
+| `issue_comment` | Resolve the durable PR, pending-first fetch/CAS its live identity, restore any deleted exact-App projection, and reevaluate |
 | `issues` | Resolve affected PRs only from durable issue mappings, publish every head pending, then reevaluate |
 | `push` | Reject tags, deletions, and non-allowlisted refs; for an allowlisted protected base, resolve every affected open PR, publish each head pending, verify the supplied `after` is the live protected tip before any success, then reevaluate |
 | `member`, `membership`, `organization` | Resolve dependent reviewer mappings (or conservatively all open PRs), publish pending, and recheck live permission |
@@ -195,7 +216,8 @@ without deleting history. An independently authorized reduction must contain:
 - current exact PR/head/base identity;
 - the historical policy digest immediately before reduction;
 - exact current observation event ID and epoch ID pairs;
-- current maintain/admin human authorization;
+- current maintain/admin human authorization from someone other than the PR
+  author;
 - a bounded reason; and
 - a durable repository-local audit URL.
 
@@ -203,6 +225,14 @@ The fold validates the historical digest and epoch before applying the
 reduction. A push, retarget, base advance, or later authenticated observation
 creates a new epoch that no earlier reduction can suppress. Removing a label or
 closing reference alone has no effect.
+
+The folded snapshot's canonical `latestSources` contains the newest
+authenticated observation for every source, including reduced sources.
+`currentEpochComplete` covers that complete set rather than only active
+requirements. If any exact head repository/ref/SHA, base repository/ref/SHA, or
+diff identity changes, the worker re-observes **every** latest source against
+the new identity before evaluation. Old reductions remain bound only to their
+old event and epoch IDs.
 
 ## Review evidence
 
@@ -258,15 +288,17 @@ A future activation proposal must provide all of the following:
 5. proof that every invalidation publishes the newest pending generation on
    every affected head before mutable reads;
 6. startup, missing credential, queue failure, worker restart, stale writer,
-   wrong-App, 403/429, rate-limit, dropped/redelivered webhook, and durable-store
-   failure canaries;
+   wrong-App, 403/429, rate-limit, dropped/redelivered webhook, live-PR API
+   failure, mapping-CAS conflict, delayed H1-after-H2, delayed close-after-reopen,
+   and durable-store failure canaries;
 7. policy-comment edit/delete/marker-removal/digest-mismatch canaries proving
    canonical restoration without policy reduction;
 8. reviewer permission-revocation and periodic full-reconciliation canaries,
    including dropped synchronize/retarget identity drift, reused successful
    commits, full pagination, and page/API failure;
 9. tag/feature/deletion/stale-tip push rejection plus valid-base advance,
-   retarget, issue-policy increase/reduction/re-observation,
+   retarget, issue-policy increase/reduction and automatic all-source
+   re-observation after head/retarget/base identity changes,
    Copilot delay, newest rejection, thread reopening/resolution, and
    break-glass transitions with no merge-ready interval;
 10. distinct provenance for PR and default/base push paths; and

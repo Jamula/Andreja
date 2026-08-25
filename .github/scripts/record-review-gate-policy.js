@@ -240,13 +240,18 @@ async function recordDecision({
   }
   const identity = inputIdentity(command);
   const actor = await requireAdminActor({ client, envelope });
-  const { ledger } = await currentState({
+  const { pullRequest, ledger } = await currentState({
     client,
     store,
     envelope,
     publisherAppId,
     identity,
   });
+  if (operation === 'reduce-policy' &&
+      String(pullRequest.user?.login || '').toLowerCase() ===
+        actor.toLowerCase()) {
+    throw new Error('The PR author cannot reduce their own review policy.');
+  }
   if (command.expected_policy_digest !== ledger.snapshot.digest) {
     throw new Error(
       'The authenticated historical policy digest changed; inspect and retry.');

@@ -371,12 +371,17 @@ function policySnapshot(
       kind: event.kind,
       issueNumber: Number(event.issueNumber || 0),
       domain: event.domain || null,
+      sourceKind: event.sourceKind || null,
+      sourceNumber: Number(event.sourceNumber || 0),
+      identity: event.identity || null,
+      reason: event.reason || null,
+      auditUrl: event.auditUrl || null,
       observationEpoch: event.observationEpoch,
       reduced: reduced.has(event.eventId),
     },
   ]));
   const normalizedIdentity = identity ? validatePullIdentity(identity) : null;
-  const currentEpochComplete = !normalizedIdentity || active.every((event) =>
+  const currentEpochComplete = !normalizedIdentity || latest.every((event) =>
     samePullIdentity(event.observationEpoch?.identity, normalizedIdentity));
   const snapshot = {
     initialized: associations.length > 0,

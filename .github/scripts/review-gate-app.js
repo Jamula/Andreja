@@ -72,6 +72,19 @@ function sanitizedApiFailure(error) {
   return 'GitHub metadata evaluation failed; the App check failed closed.';
 }
 
+function sanitizedWorkerFailure(error) {
+  if (error?.code === 'MAPPING_CAS_CONFLICT') {
+    return 'Durable PR mapping changed concurrently; the App check failed closed.';
+  }
+  return sanitizedApiFailure(error);
+}
+
+function mappingCasConflict() {
+  return Object.assign(
+    new Error('The durable PR mapping compare-and-swap conflicted.'),
+    { code: 'MAPPING_CAS_CONFLICT' });
+}
+
 function requireStoreMethod(store, name) {
   if (typeof store?.[name] !== 'function') {
     throw new Error(`The external worker requires durable store method ${name}.`);
@@ -450,19 +463,41 @@ async function recordCopilotAttestationFromEvent({
   store,
   envelope,
   publisherAppId,
+  pullRequest,
 }) {
   if (envelope.delivery.eventPath !== 'pull_request_review' ||
       envelope.payload?.action !== 'submitted') {
     return null;
   }
-  const review = envelope.payload.review;
-  const pullRequest = envelope.payload.pull_request;
-  if (Number(review?.user?.id) !== COPILOT_REVIEWER.id ||
-      review?.user?.login !== COPILOT_REVIEWER.login ||
-      review?.user?.type !== COPILOT_REVIEWER.type) {
+  const reviewHint = envelope.payload.review;
+  if (Number(envelope.payload?.pull_request?.number) !==
+      Number(pullRequest?.number)) {
+    throw new Error('The review wake-up hint targets a different live PR.');
+  }
+  if (Number(reviewHint?.user?.id) !== COPILOT_REVIEWER.id ||
+      reviewHint?.user?.login !== COPILOT_REVIEWER.login ||
+      reviewHint?.user?.type !== COPILOT_REVIEWER.type) {
     return null;
   }
   const identity = pullIdentity(pullRequest);
+  if (!samePullIdentity(
+    pullIdentity(envelope.payload.pull_request),
+    identity)) {
+    throw new Error(
+      'The review wake-up hint is bound to a stale exact PR identity.');
+  }
+  const reviewResponse = await client.rest.pulls.getReview({
+    ...repoParameters(envelope),
+    pull_number: identity.pullNumber,
+    review_id: Number(reviewHint.id),
+  });
+  const review = reviewResponse.data;
+  if (Number(review?.id) !== Number(reviewHint.id) ||
+      Number(review?.user?.id) !== COPILOT_REVIEWER.id ||
+      review?.user?.login !== COPILOT_REVIEWER.login ||
+      review?.user?.type !== COPILOT_REVIEWER.type) {
+    throw new Error('The live review API did not confirm the Copilot review.');
+  }
   if (review.commit_id !== identity.headSha) {
     throw new Error('The Copilot review event is not attached to the current head.');
   }
@@ -556,13 +591,16 @@ async function observeCurrentRequirements({
   }
   const identity = pullIdentity(pullRequest);
   const desired = new Map();
-  for (const [sourceKey, eventId] of Object.entries(
-    ledger.snapshot.activeSources)) {
-    const event = ledger.events.find((candidate) => candidate.eventId === eventId);
+  const latestSources = Object.entries(ledger.snapshot.latestSources);
+  for (const [sourceKey, latest] of latestSources) {
+    const event = ledger.events.find((candidate) =>
+      candidate.eventId === latest.eventId);
     if (event) {
       desired.set(sourceKey, sourceDefinition(event));
     }
   }
+  const identityChanged = latestSources.some(([, latest]) =>
+    !samePullIdentity(latest.observationEpoch?.identity, identity));
 
   const pullLabels = await labelsForIssue({
     client,
@@ -579,7 +617,15 @@ async function observeCurrentRequirements({
       sourceNumber: pullRequest.number,
     });
   }
-  for (const issueNumber of ledger.snapshot.associations) {
+  const associatedIssues = new Set(ledger.snapshot.associations);
+  if (identityChanged) {
+    for (const source of desired.values()) {
+      if (source.kind === 'bind-issue') {
+        associatedIssues.add(source.issueNumber);
+      }
+    }
+  }
+  for (const issueNumber of associatedIssues) {
     const labels = await labelsForIssue({ client, envelope, issueNumber });
     for (const domain of requiredDomains([labels])) {
       const sourceKey = `issue:${issueNumber}:domain:${domain}`;
@@ -597,7 +643,7 @@ async function observeCurrentRequirements({
   for (const source of desired.values()) {
     const latest = ledger.snapshot.latestSources[source.sourceKey];
     if (latest &&
-        !latest.reduced &&
+        !identityChanged &&
         samePullIdentity(latest.observationEpoch?.identity, identity)) {
       continue;
     }
@@ -1008,6 +1054,25 @@ function sameMappingIdentity(left, right) {
   }
 }
 
+function durableMappingVersion(mapping) {
+  const version = mapping?.version;
+  if (!Number.isInteger(version) || version <= 0) {
+    throw new Error('The durable PR mapping lacks a positive monotonic version.');
+  }
+  return version;
+}
+
+function sameMappingState(left, right) {
+  return sameMappingIdentity(left, right) &&
+    Boolean(left?.open) === Boolean(right?.open) &&
+    JSON.stringify([...new Set(left?.issueNumbers || [])].map(Number).sort(
+      (first, second) => first - second)) ===
+      JSON.stringify([...new Set(right?.issueNumbers || [])].map(Number).sort(
+        (first, second) => first - second)) &&
+    JSON.stringify([...new Set(left?.reviewerLogins || [])].map(String).sort()) ===
+      JSON.stringify([...new Set(right?.reviewerLogins || [])].map(String).sort());
+}
+
 function currentMapping(envelope, pullRequest, previous = null) {
   const mapping = basicPullMapping(envelope, pullRequest);
   return {
@@ -1018,9 +1083,173 @@ function currentMapping(envelope, pullRequest, previous = null) {
   };
 }
 
-async function persistPullMapping(store, mapping) {
+async function persistPullMapping(store, mapping, { expectedVersion = 0 } = {}) {
   exactMappingIdentity(mapping);
-  return requireStoreMethod(store, 'upsertPullMapping')(mapping);
+  const normalizedExpectedVersion = expectedVersion;
+  if (!Number.isInteger(normalizedExpectedVersion) ||
+      normalizedExpectedVersion < 0) {
+    throw new Error('A mapping compare-and-swap requires a nonnegative version.');
+  }
+  const candidate = {
+    ...mapping,
+    version: normalizedExpectedVersion + 1,
+  };
+  const response = await requireStoreMethod(
+    store,
+    'compareAndSwapPullMapping')({
+    repositoryId: Number(candidate.repositoryId),
+    repository: candidate.repository,
+    pullNumber: Number(candidate.pullNumber),
+    expectedVersion: normalizedExpectedVersion,
+    mapping: candidate,
+  });
+  if (response?.applied !== true) {
+    return {
+      applied: false,
+      current: response?.current || null,
+    };
+  }
+  const persisted = response.mapping;
+  if (!persisted ||
+      durableMappingVersion(persisted) !== candidate.version ||
+      typeof persisted.open !== 'boolean' ||
+      !Array.isArray(persisted.issueNumbers) ||
+      persisted.issueNumbers.some((number) =>
+        !Number.isInteger(number) || number <= 0) ||
+      !Array.isArray(persisted.reviewerLogins) ||
+      persisted.reviewerLogins.some((login) =>
+        typeof login !== 'string' || !login.trim()) ||
+      !sameMappingState(persisted, candidate) ||
+      Number(persisted.repositoryId) !== Number(candidate.repositoryId) ||
+      String(persisted.repository).toLowerCase() !==
+        String(candidate.repository).toLowerCase()) {
+    throw new Error('The durable mapping CAS returned malformed state.');
+  }
+  return { applied: true, mapping: persisted };
+}
+
+async function invalidateLiveIdentityDrift({
+  client,
+  store,
+  envelope,
+  publisherAppId,
+  pullRequest,
+  previousMapping,
+  expectedVersion,
+  reason,
+}) {
+  const liveMapping = currentMapping(envelope, pullRequest, previousMapping);
+  const pending = await startPendingBatch({
+    client,
+    store,
+    envelope,
+    publisherAppId,
+    mappings: [liveMapping],
+    associationKind: 'live-identity-drift',
+  });
+  const persisted = await persistPullMapping(store, liveMapping, {
+    expectedVersion,
+  });
+  const allPending = [...pending];
+  if (!persisted.applied) {
+    if (persisted.current) {
+      allPending.push(...await startPendingBatch({
+        client,
+        store,
+        envelope,
+        publisherAppId,
+        mappings: [persisted.current],
+        associationKind: 'live-identity-drift-cas-conflict',
+      }));
+    }
+  }
+  await completePendingBatch({
+    client,
+    store,
+    envelope,
+    publisherAppId,
+    generations: newestPendingByHead(allPending),
+    result: {
+      state: 'rejected',
+      reasons: [persisted.applied
+        ? reason
+        : sanitizedWorkerFailure(mappingCasConflict())],
+    },
+  });
+  if (!persisted.applied) {
+    throw mappingCasConflict();
+  }
+}
+
+async function invalidateMappingCasConflict({
+  client,
+  store,
+  envelope,
+  publisherAppId,
+  pullNumber,
+  current,
+}) {
+  const candidates = [];
+  if (current) {
+    candidates.push(current);
+  }
+  try {
+    const durable = await requireStoreMethod(
+      store,
+      'getPullMapping')(pullNumber);
+    if (durable) {
+      candidates.push(durable);
+    }
+  } catch {
+    // The CAS response still identifies the newest known durable head.
+  }
+  const pending = [];
+  const covered = new Set();
+  const publish = async (mapping) => {
+    const key = mappingHintKey(mapping);
+    if (covered.has(key)) {
+      return;
+    }
+    covered.add(key);
+    pending.push(...await startPendingBatch({
+      client,
+      store,
+      envelope,
+      publisherAppId,
+      mappings: [mapping],
+      associationKind: 'mapping-cas-conflict',
+    }));
+  };
+  for (const mapping of candidates) {
+    await publish(mapping);
+  }
+  try {
+    const response = await client.rest.pulls.get({
+      ...repoParameters(envelope),
+      pull_number: pullNumber,
+    });
+    if (Number(response.data?.number) === Number(pullNumber)) {
+      await publish(currentMapping(
+        envelope,
+        response.data,
+        candidates[0] || null));
+    }
+  } catch {
+    // Durable-current pending is sufficient when the live API is unavailable.
+  }
+  if (pending.length > 0) {
+    await completePendingBatch({
+      client,
+      store,
+      envelope,
+      publisherAppId,
+      generations: newestPendingByHead(pending),
+      result: {
+        state: 'rejected',
+        reasons: [sanitizedWorkerFailure(mappingCasConflict())],
+      },
+    });
+  }
 }
 
 async function evaluatePullSnapshot({
@@ -1029,22 +1258,43 @@ async function evaluatePullSnapshot({
   envelope,
   pullNumber,
   expectedHeadSha,
+  expectedIdentity = null,
   publisherAppId,
   requiredBase = null,
 }) {
+  const previousMapping = await requireStoreMethod(
+    store,
+    'getPullMapping')(pullNumber);
+  const expectedVersion = previousMapping
+    ? durableMappingVersion(previousMapping)
+    : 0;
   const pullResponse = await client.rest.pulls.get({
     ...repoParameters(envelope),
     pull_number: pullNumber,
   });
   const pullRequest = pullResponse.data;
   const identity = pullIdentity(pullRequest);
-  if (identity.headSha !== expectedHeadSha) {
+  if ((expectedIdentity &&
+       !samePullIdentity(identity, expectedIdentity)) ||
+      identity.headSha !== expectedHeadSha) {
+    await invalidateLiveIdentityDrift({
+      client,
+      store,
+      envelope,
+      publisherAppId,
+      pullRequest,
+      previousMapping,
+      expectedVersion,
+      reason: 'The exact PR head/base/diff identity changed during this App generation.',
+    });
     return {
       stale: true,
       pullNumber,
       result: {
         state: 'rejected',
-        reasons: ['The PR head changed during this App generation.'],
+        reasons: [
+          'The exact PR head/base/diff identity changed during this App generation.',
+        ],
       },
       fingerprint: null,
     };
@@ -1055,6 +1305,16 @@ async function evaluatePullSnapshot({
          String(requiredBase.repository).toLowerCase() ||
        identity.baseRef !== requiredBase.ref ||
        identity.baseSha !== requiredBase.sha)) {
+    await invalidateLiveIdentityDrift({
+      client,
+      store,
+      envelope,
+      publisherAppId,
+      pullRequest,
+      previousMapping,
+      expectedVersion,
+      reason: 'The PR base changed during this App generation.',
+    });
     return {
       stale: true,
       pullNumber,
@@ -1124,14 +1384,25 @@ async function evaluatePullSnapshot({
     domainEvidence,
     result,
   };
-  await persistPullMapping(store, {
+  const persisted = await persistPullMapping(store, {
     ...basicPullMapping(envelope, pullRequest),
     issueNumbers: ledger.snapshot.associations,
     reviewerLogins: [...new Set(reviews
       .filter((review) => review.user?.type === 'User')
       .map((review) => review.user.login)
       .filter(Boolean))].sort(),
-  });
+  }, { expectedVersion });
+  if (!persisted.applied) {
+    await invalidateMappingCasConflict({
+      client,
+      store,
+      envelope,
+      publisherAppId,
+      pullNumber,
+      current: persisted.current,
+    });
+    throw mappingCasConflict();
+  }
   return {
     stale: false,
     pullNumber,
@@ -1238,8 +1509,13 @@ async function evaluateHeadSnapshot({
   headSha,
   publisherAppId,
   requiredBase = null,
+  expectedMappings = [],
 }) {
   const pulls = await openPullsSharingHead({ client, envelope, headSha });
+  const expectedByNumber = new Map(expectedMappings.map((mapping) => [
+    Number(mapping.pullNumber),
+    mappingIdentity(mapping),
+  ]));
   const snapshots = [];
   for (const pullRequest of pulls) {
     snapshots.push(await evaluatePullSnapshot({
@@ -1248,6 +1524,8 @@ async function evaluateHeadSnapshot({
       envelope,
       pullNumber: pullRequest.number,
       expectedHeadSha: headSha,
+      expectedIdentity: expectedByNumber.get(Number(pullRequest.number)) ||
+        pullIdentity(pullRequest),
       publisherAppId,
       requiredBase,
     }));
@@ -1266,6 +1544,7 @@ async function evaluateHeadUntilStable({
   headSha,
   publisherAppId,
   requiredBase = null,
+  expectedMappings = [],
   poll = true,
   pollSeconds = DEFAULT_POLL_SECONDS,
   maxWaitSeconds = DEFAULT_MAX_WAIT_SECONDS,
@@ -1283,6 +1562,7 @@ async function evaluateHeadUntilStable({
       headSha,
       publisherAppId,
       requiredBase,
+      expectedMappings,
     });
     if (snapshot.result.state === 'rejected') {
       return snapshot;
@@ -1296,6 +1576,7 @@ async function evaluateHeadUntilStable({
         headSha,
         publisherAppId,
         requiredBase,
+        expectedMappings,
       });
       if (confirmation.result.state === 'rejected') {
         return confirmation;
@@ -1595,21 +1876,23 @@ async function startPendingBatch({
 }) {
   const generations = [];
   for (const group of groupMappingsByHead(mappings)) {
+    const generation = await createGeneration({
+      client,
+      store,
+      envelope,
+      headSha: group.headSha,
+      publisherAppId,
+      mappings: group.mappings,
+      association: {
+        kind: associationKind,
+        pullNumbers: group.mappings.map((mapping) => mapping.pullNumber),
+      },
+      baseOverride,
+    });
     generations.push({
       ...group,
-      generation: await createGeneration({
-        client,
-        store,
-        envelope,
-        headSha: group.headSha,
-        publisherAppId,
-        mappings: group.mappings,
-        association: {
-          kind: associationKind,
-          pullNumbers: group.mappings.map((mapping) => mapping.pullNumber),
-        },
-        baseOverride,
-      }),
+      expectedMappings: generation.provenance.targets,
+      generation,
     });
   }
   return generations;
@@ -1670,15 +1953,16 @@ async function evaluateGenerationBatch({
         envelope,
         headSha: item.headSha,
         publisherAppId,
-        requiredBase,
         ...evaluatorOptions,
+        requiredBase,
+        expectedMappings: item.expectedMappings || item.mappings,
       });
     } catch (error) {
       aggregate = {
         evaluationFailed: true,
         result: {
           state: 'rejected',
-          reasons: [sanitizedApiFailure(error)],
+          reasons: [sanitizedWorkerFailure(error)],
         },
       };
     }
@@ -1714,6 +1998,34 @@ async function completePendingBatch({
   return completed;
 }
 
+function mappingHintKey(mapping) {
+  const identity = exactMappingIdentity(mapping);
+  return `${identity.pullNumber}:${identity.diffIdentity}`;
+}
+
+function uniqueMappingHints(mappings) {
+  const unique = new Map();
+  for (const mapping of mappings) {
+    unique.set(mappingHintKey(mapping), mapping);
+  }
+  return [...unique.values()].sort((left, right) =>
+    Number(left.pullNumber) - Number(right.pullNumber) ||
+    mappingHintKey(left).localeCompare(mappingHintKey(right)));
+}
+
+function newestPendingByHead(generations) {
+  const newest = new Map();
+  for (const item of generations) {
+    const current = newest.get(item.headSha);
+    if (!current ||
+        Number(item.generation.sequence) > Number(current.generation.sequence)) {
+      newest.set(item.headSha, item);
+    }
+  }
+  return [...newest.values()].sort((left, right) =>
+    left.headSha.localeCompare(right.headSha));
+}
+
 async function publishAndEvaluateMappings({
   client,
   store,
@@ -1726,32 +2038,150 @@ async function publishAndEvaluateMappings({
   baseOverride = null,
   requiredBase = null,
 }) {
-  const generations = await startPendingBatch({
-    client,
-    store,
-    envelope,
-    publisherAppId,
-    mappings,
-    associationKind,
-    baseOverride,
-  });
-  if (beforeEvaluate) {
-    try {
-      await beforeEvaluate();
-    } catch (error) {
-      return completePendingBatch({
-        client,
+  const suppliedMappings = uniqueMappingHints(mappings);
+  if (suppliedMappings.length === 0) {
+    throw new Error('A live-authority evaluation requires at least one PR hint.');
+  }
+  const allGenerations = [];
+  const coveredMappings = new Set();
+  const addPendingCoverage = async (candidates, kind) => {
+    const uncovered = uniqueMappingHints(candidates).filter((mapping) =>
+      !coveredMappings.has(mappingHintKey(mapping)));
+    if (uncovered.length === 0) {
+      return;
+    }
+    const added = await startPendingBatch({
+      client,
+      store,
+      envelope,
+      publisherAppId,
+      mappings: uncovered,
+      associationKind: kind,
+      baseOverride,
+    });
+    allGenerations.push(...added);
+    for (const mapping of uncovered) {
+      coveredMappings.add(mappingHintKey(mapping));
+    }
+  };
+
+  await addPendingCoverage(suppliedMappings, `${associationKind}-event-hint`);
+  const pullNumbers = [...new Set(suppliedMappings.map((mapping) =>
+    Number(mapping.pullNumber)))].sort((left, right) => left - right);
+  const storedAtStart = new Map();
+  const livePullRequests = new Map();
+  const liveMappings = [];
+
+  try {
+    for (const pullNumber of pullNumbers) {
+      const stored = await requireStoreMethod(
         store,
+        'getPullMapping')(pullNumber);
+      if (stored) {
+        durableMappingVersion(stored);
+        storedAtStart.set(pullNumber, stored);
+        await addPendingCoverage(
+          [stored],
+          `${associationKind}-durable-hint`);
+      }
+    }
+
+    for (const pullNumber of pullNumbers) {
+      const response = await client.rest.pulls.get({
+        ...repoParameters(envelope),
+        pull_number: pullNumber,
+      });
+      const pullRequest = response.data;
+      if (Number(pullRequest?.number) !== pullNumber) {
+        throw new Error('The live PR API returned a different pull request.');
+      }
+      const previous = storedAtStart.get(pullNumber) || null;
+      const fallback = suppliedMappings.find((mapping) =>
+        Number(mapping.pullNumber) === pullNumber);
+      const liveMapping = currentMapping(
         envelope,
-        publisherAppId,
-        generations,
-        result: {
-          state: 'rejected',
-          reasons: [sanitizedApiFailure(error)],
-        },
+        pullRequest,
+        previous || fallback);
+      await addPendingCoverage(
+        [liveMapping],
+        `${associationKind}-live-authority`);
+      const persisted = await persistPullMapping(
+        store,
+        liveMapping,
+        {
+          expectedVersion: previous
+            ? durableMappingVersion(previous)
+            : 0,
+        });
+      if (!persisted.applied) {
+        if (persisted.current) {
+          await addPendingCoverage(
+            [persisted.current],
+            `${associationKind}-cas-conflict`);
+        }
+        throw mappingCasConflict();
+      }
+      livePullRequests.set(pullNumber, pullRequest);
+      liveMappings.push(persisted.mapping);
+    }
+
+    if (beforeEvaluate) {
+      await beforeEvaluate({
+        pullRequests: livePullRequests,
+        mappings: liveMappings,
       });
     }
+  } catch (error) {
+    for (const pullNumber of pullNumbers) {
+      try {
+        const current = await requireStoreMethod(
+          store,
+          'getPullMapping')(pullNumber);
+        if (current) {
+          await addPendingCoverage(
+            [current],
+            `${associationKind}-failure-current`);
+        }
+      } catch {
+        // The already-published event/durable hints remain fail closed.
+      }
+    }
+    return completePendingBatch({
+      client,
+      store,
+      envelope,
+      publisherAppId,
+      generations: newestPendingByHead(allGenerations),
+      result: {
+        state: 'rejected',
+        reasons: [sanitizedWorkerFailure(error)],
+      },
+    });
   }
+
+  const liveHeads = new Set(liveMappings.map((mapping) => mapping.headSha));
+  const newest = newestPendingByHead(allGenerations);
+  const stale = newest.filter((item) => !liveHeads.has(item.headSha));
+  if (stale.length > 0) {
+    await completePendingBatch({
+      client,
+      store,
+      envelope,
+      publisherAppId,
+      generations: stale,
+      result: {
+        state: 'rejected',
+        reasons: [
+          'The webhook head was superseded by the exact live PR identity.',
+        ],
+      },
+    });
+  }
+  const generations = newest.filter((item) => liveHeads.has(item.headSha));
+  if (generations.length === 0) {
+    throw new Error('No pending generation covers the exact live PR head.');
+  }
+
   return evaluatePendingBatch({
     client,
     store,
@@ -1769,24 +2199,19 @@ async function mappingsForPull(store, pullNumber) {
 }
 
 async function handlePullRequestEvent(options) {
-  const { envelope, store } = options;
+  const { envelope } = options;
   assertExternalEnvelope(envelope);
   const pullRequest = envelope.payload?.pull_request;
   const mapping = basicPullMapping(envelope, pullRequest);
-  const result = await publishAndEvaluateMappings({
+  return publishAndEvaluateMappings({
     ...options,
     mappings: [mapping],
     associationKind: 'pull_request',
-    beforeEvaluate: () => persistPullMapping(store, mapping),
   });
-  if (pullRequest.state !== 'open' || envelope.payload.action === 'closed') {
-    await requireStoreMethod(store, 'closePullMapping')(pullRequest.number);
-  }
-  return result;
 }
 
 async function handleReviewEvent(options) {
-  const { envelope, store, client, publisherAppId } = options;
+  const { envelope, client, publisherAppId } = options;
   assertExternalEnvelope(envelope);
   const pullRequest = envelope.payload?.pull_request;
   const mapping = basicPullMapping(envelope, pullRequest);
@@ -1794,13 +2219,13 @@ async function handleReviewEvent(options) {
     ...options,
     mappings: [mapping],
     associationKind: 'pull_request_review',
-    beforeEvaluate: async () => {
-      await persistPullMapping(store, mapping);
+    beforeEvaluate: async ({ pullRequests }) => {
       await recordCopilotAttestationFromEvent({
         client,
-        store,
+        store: options.store,
         envelope,
         publisherAppId,
+        pullRequest: pullRequests.get(Number(pullRequest.number)),
       });
     },
   });
@@ -2158,6 +2583,7 @@ async function evaluateMergeGroupSnapshot({
       envelope,
       pullNumber: mapping.pullNumber,
       expectedHeadSha: mapping.headSha,
+      expectedIdentity: mappingIdentity(mapping),
       publisherAppId,
       requiredBase: group.base,
     }));
@@ -2272,6 +2698,9 @@ async function handleReconciliation(options) {
   const { client, store, envelope, publisherAppId } = options;
   assertExternalEnvelope(envelope);
   const known = await requireStoreMethod(store, 'listOpenPullMappings')();
+  for (const mapping of known) {
+    durableMappingVersion(mapping);
+  }
   const knownPending = await startPendingBatch({
     client,
     store,
@@ -2282,6 +2711,7 @@ async function handleReconciliation(options) {
   });
 
   let livePulls;
+  const allPending = [...knownPending];
   try {
     livePulls = await listAllOpenPulls({ client, envelope });
   } catch (error) {
@@ -2293,7 +2723,7 @@ async function handleReconciliation(options) {
       generations: knownPending,
       result: {
         state: 'rejected',
-        reasons: [sanitizedApiFailure(error)],
+        reasons: [sanitizedWorkerFailure(error)],
       },
     });
     if (knownPending.length === 0) {
@@ -2304,13 +2734,47 @@ async function handleReconciliation(options) {
 
   const knownByNumber = new Map(known.map((mapping) =>
     [Number(mapping.pullNumber), mapping]));
-  const current = livePulls.map((pullRequest) => currentMapping(
+  const liveByNumber = new Map(livePulls.map((pullRequest) =>
+    [Number(pullRequest.number), pullRequest]));
+  try {
+    for (const mapping of known) {
+      if (liveByNumber.has(Number(mapping.pullNumber))) {
+        continue;
+      }
+      const response = await client.rest.pulls.get({
+        ...repoParameters(envelope),
+        pull_number: Number(mapping.pullNumber),
+      });
+      const pullRequest = response.data;
+      if (Number(pullRequest?.number) !== Number(mapping.pullNumber)) {
+        throw new Error(
+          'The closure confirmation API returned a different pull request.');
+      }
+      liveByNumber.set(Number(mapping.pullNumber), pullRequest);
+    }
+  } catch (error) {
+    return completePendingBatch({
+      client,
+      store,
+      envelope,
+      publisherAppId,
+      generations: newestPendingByHead(allPending),
+      result: {
+        state: 'rejected',
+        reasons: [sanitizedWorkerFailure(error)],
+      },
+    });
+  }
+
+  const current = [...liveByNumber.values()].map((pullRequest) => currentMapping(
     envelope,
     pullRequest,
     knownByNumber.get(Number(pullRequest.number))));
   const drifted = current.filter((mapping) => {
     const previous = knownByNumber.get(mapping.pullNumber);
-    return !previous || !sameMappingIdentity(previous, mapping);
+    return !previous ||
+      !sameMappingIdentity(previous, mapping) ||
+      Boolean(previous.open) !== Boolean(mapping.open);
   });
 
   const currentPending = await startPendingBatch({
@@ -2323,15 +2787,42 @@ async function handleReconciliation(options) {
       ? 'reconciliation-identity-refresh'
       : 'reconciliation-current',
   });
+  allPending.push(...currentPending);
 
-  for (const mapping of current) {
-    await persistPullMapping(store, mapping);
-  }
-  const liveNumbers = new Set(current.map((mapping) => mapping.pullNumber));
-  for (const mapping of known) {
-    if (!liveNumbers.has(Number(mapping.pullNumber))) {
-      await requireStoreMethod(store, 'closePullMapping')(mapping.pullNumber);
+  try {
+    for (const mapping of current) {
+      const previous = knownByNumber.get(Number(mapping.pullNumber));
+      const persisted = await persistPullMapping(store, mapping, {
+        expectedVersion: previous
+          ? durableMappingVersion(previous)
+          : 0,
+      });
+      if (!persisted.applied) {
+        if (persisted.current) {
+          allPending.push(...await startPendingBatch({
+            client,
+            store,
+            envelope,
+            publisherAppId,
+            mappings: [persisted.current],
+            associationKind: 'reconciliation-cas-conflict',
+          }));
+        }
+        throw mappingCasConflict();
+      }
     }
+  } catch (error) {
+    return completePendingBatch({
+      client,
+      store,
+      envelope,
+      publisherAppId,
+      generations: newestPendingByHead(allPending),
+      result: {
+        state: 'rejected',
+        reasons: [sanitizedWorkerFailure(error)],
+      },
+    });
   }
 
   await completePendingBatch({
@@ -2347,9 +2838,31 @@ async function handleReconciliation(options) {
       ],
     },
   });
+  const openHeads = new Set(current
+    .filter((mapping) => mapping.open)
+    .map((mapping) => mapping.headSha));
+  const newestCurrent = newestPendingByHead(currentPending);
+  const closedOnly = newestCurrent.filter((item) => !openHeads.has(item.headSha));
+  if (closedOnly.length > 0) {
+    await completePendingBatch({
+      client,
+      store,
+      envelope,
+      publisherAppId,
+      generations: closedOnly,
+      result: {
+        state: 'rejected',
+        reasons: ['The live API confirmed that the pull request is closed.'],
+      },
+    });
+  }
+  const openPending = newestCurrent.filter((item) => openHeads.has(item.headSha));
+  if (openPending.length === 0) {
+    return [];
+  }
   return evaluatePendingBatch({
     ...options,
-    generations: currentPending,
+    generations: openPending,
   });
 }
 

@@ -47,6 +47,7 @@ const {
 } = require('./review-gate-ruleset');
 const {
   inputIdentity,
+  recordDecision,
   reductionTargets,
 } = require('./record-review-gate-policy');
 
@@ -309,6 +310,7 @@ function mapping(pullRequest, {
     issueNumbers: issues,
     reviewerLogins: reviewers,
     open: true,
+    version: 1,
   };
   value.diffIdentity = securityDigest({
     pullNumber: value.pullNumber,
@@ -381,7 +383,10 @@ class FakeStore {
     projections = [],
   } = {}) {
     this.mappings = new Map(mappings.map((item) =>
-      [item.pullNumber, structuredClone(item)]));
+      [item.pullNumber, structuredClone({
+        ...item,
+        version: Number(item.version || 1),
+      })]));
     this.mergeGroups = structuredClone(mergeGroups);
     this.generations = [];
     this.sequences = new Map();
@@ -396,15 +401,27 @@ class FakeStore {
       [projection.eventId, structuredClone(projection)]));
   }
 
-  async upsertPullMapping(value) {
-    this.mappings.set(value.pullNumber, structuredClone(value));
-  }
-
-  async closePullMapping(pullNumber) {
-    const current = this.mappings.get(pullNumber);
-    if (current) {
-      current.open = false;
+  async compareAndSwapPullMapping({
+    pullNumber,
+    expectedVersion,
+    mapping: value,
+  }) {
+    const current = this.mappings.get(Number(pullNumber));
+    const currentVersion = Number(current?.version || 0);
+    if (currentVersion !== Number(expectedVersion)) {
+      return {
+        applied: false,
+        current: current ? structuredClone(current) : null,
+      };
     }
+    if (Number(value.version) !== Number(expectedVersion) + 1) {
+      throw new Error('Fake CAS received a non-monotonic mapping version.');
+    }
+    this.mappings.set(Number(pullNumber), structuredClone(value));
+    return {
+      applied: true,
+      mapping: structuredClone(value),
+    };
   }
 
   async getPullMapping(pullNumber) {
@@ -644,6 +661,14 @@ class FakeClient {
               candidate.number === pull_number)),
           };
         },
+        getReview: async ({ pull_number, review_id }) => {
+          this.#maybeFail('pulls.getReview');
+          this.callLog.push(`pulls.getReview:${pull_number}:${review_id}`);
+          return {
+            data: structuredClone((this.state.reviews[pull_number] || [])
+              .find((candidate) => Number(candidate.id) === Number(review_id))),
+          };
+        },
         list: endpoint('pulls', async (parameters) => {
           this.#maybeFail('pulls.list');
           const page = Number(parameters.page || 1);
@@ -794,6 +819,45 @@ function seededState({
   return { client, store, policy, events, reviews };
 }
 
+function reducedState(domain = 'security') {
+  const current = pull();
+  const bind = bindEvent(current);
+  const requirement = requirementEvent(current, domain);
+  const before = snapshotForEvents([bind, requirement], current);
+  const reduction = policyEvent(current, 'reduce-policy', {
+    identity: pullIdentity(current),
+    expectedPolicyDigest: before.digest,
+    targets: [{
+      eventId: requirement.eventId,
+      epochId: requirement.observationEpoch.id,
+    }],
+    reason: `Authorized ${domain} reduction for this exact diff identity only.`,
+    auditUrl: 'https://github.com/Jamula/Andreja/issues/104',
+  });
+  const review = copilotReview(current.head.sha);
+  const events = [
+    bind,
+    requirement,
+    reduction,
+    copilotAttestationEvent(current, review),
+  ];
+  const comments = {
+    [current.number]: events.map((event, index) =>
+      trustedComment(event, APP_ID, index + 1)),
+  };
+  const client = new FakeClient({
+    pulls: [current],
+    comments,
+    labels: { 104: [], 115: [] },
+    reviews: { [current.number]: [review] },
+  });
+  const store = new FakeStore({
+    mappings: [mapping(current)],
+    ...canonicalPolicyState(events, comments),
+  });
+  return { client, store, events, requirement, reduction };
+}
+
 async function runPullEvent(state, pullRequest = state.client.state.pulls[0]) {
   return handleEvent({
     client: state.client,
@@ -937,6 +1001,13 @@ test('a policy reduction never carries across push and re-observation', () => {
   const next = pull(115, {
     head: { ...current.head, sha: NEXT_HEAD },
   });
+  const stale = foldPolicyEvents(
+    [bind, requirement, reduction],
+    [],
+    { identity: pullIdentity(next) });
+  assert.equal(stale.currentEpochComplete, false);
+  assert.equal(stale.latestSources[
+    'issue:104:domain:security'].reduced, true);
   const carriedBind = bindEvent(next, 104, 'carry');
   const nextRequirement = requirementEvent(next, 'security', 104, 'next-head');
   const snapshot = foldPolicyEvents(
@@ -945,6 +1016,77 @@ test('a policy reduction never carries across push and re-observation', () => {
     { identity: pullIdentity(next) });
   assert.deepEqual(snapshot.domains, ['security']);
   assert.equal(snapshot.currentEpochComplete, true);
+});
+
+test('handler re-observes every reduced source after a PR head push', async () => {
+  const state = reducedState('security');
+  await runPullEvent(state);
+  assert.equal(latestCheck(state.client).conclusion, 'success');
+
+  state.client.state.pulls[0].head.sha = NEXT_HEAD;
+  await runPullEvent(state);
+
+  const events = state.store.policyEvents.get(115);
+  const latestRequirement = events.filter((event) =>
+    event.kind === 'require-domain' &&
+    event.sourceKey === 'issue:104:domain:security').at(-1);
+  assert.equal(latestRequirement.observationEpoch.identity.headSha, NEXT_HEAD);
+  assert.notEqual(latestRequirement.eventId, state.requirement.eventId);
+  assert.equal(latestCheck(state.client, NEXT_HEAD).conclusion, 'failure');
+  assert.match(latestCheck(state.client, NEXT_HEAD).output.summary, /security/);
+});
+
+test('handler re-observes every reduced source after live retarget', async () => {
+  const state = reducedState('privacy');
+  await runPullEvent(state);
+  const stalePayload = structuredClone(state.client.state.pulls[0]);
+  state.client.state.pulls[0].base = {
+    sha: NEXT_BASE,
+    ref: 'release',
+    repo: {
+      id: REPOSITORY_ID,
+      full_name: 'Jamula/Andreja',
+    },
+  };
+  await runPullEvent(state, stalePayload);
+
+  const latestRequirement = state.store.policyEvents.get(115)
+    .filter((event) => event.kind === 'require-domain' &&
+      event.sourceKey === 'issue:104:domain:privacy')
+    .at(-1);
+  assert.equal(latestRequirement.observationEpoch.identity.baseRef, 'release');
+  assert.equal(latestRequirement.observationEpoch.identity.baseSha, NEXT_BASE);
+  assert.equal((await state.store.getPullMapping(115)).baseRef, 'release');
+  assert.equal(latestCheck(state.client).conclusion, 'failure');
+  assert.match(latestCheck(state.client).output.summary, /privacy/);
+});
+
+test('base-push handler re-observes every reduced source after base advance', async () => {
+  const state = reducedState('architecture');
+  await runPullEvent(state);
+  state.client.state.pulls[0].base.sha = NEXT_BASE;
+  state.client.state.branches.main = NEXT_BASE;
+
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('push', {
+      ref: 'refs/heads/main',
+      before: BASE,
+      after: NEXT_BASE,
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+
+  const latestRequirement = state.store.policyEvents.get(115)
+    .filter((event) => event.kind === 'require-domain' &&
+      event.sourceKey === 'issue:104:domain:architecture')
+    .at(-1);
+  assert.equal(latestRequirement.observationEpoch.identity.baseSha, NEXT_BASE);
+  assert.notEqual(latestRequirement.eventId, state.requirement.eventId);
+  assert.equal(latestCheck(state.client, HEAD).conclusion, 'failure');
+  assert.match(latestCheck(state.client, HEAD).output.summary, /architecture/);
 });
 
 test('reduction tooling emits exact event and epoch targets only', () => {
@@ -964,6 +1106,46 @@ test('reduction tooling emits exact event and epoch targets only', () => {
     JSON.stringify(['f'.repeat(64)]),
     { snapshot },
     pullIdentity(current)), /stale|epoch/);
+});
+
+test('the PR author cannot reduce their own review policy', async () => {
+  const current = pull(115, {
+    user: { login: 'maintainer', id: 115, type: 'User' },
+  });
+  const state = seededState({
+    pullRequest: current,
+    domains: ['security'],
+  });
+  const identity = pullIdentity(current);
+  const requirement = state.events.find((event) =>
+    event.kind === 'require-domain' && event.domain === 'security');
+  await assert.rejects(() => recordDecision({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('trusted_dispatch', {}),
+    publisherAppId: APP_ID,
+    command: {
+      operation: 'reduce-policy',
+      pull_number: identity.pullNumber,
+      head_repository_id: identity.headRepositoryId,
+      head_repository: identity.headRepository,
+      head_ref: identity.headRef,
+      head_sha: identity.headSha,
+      base_repository_id: identity.baseRepositoryId,
+      base_repository: identity.baseRepository,
+      base_ref: identity.baseRef,
+      base_sha: identity.baseSha,
+      diff_identity: identity.diffIdentity,
+      expected_policy_digest: state.policy.digest,
+      target_event_ids: JSON.stringify([requirement.eventId]),
+      reason: 'The PR author must not reduce their own required review.',
+      audit_url: 'https://github.com/Jamula/Andreja/issues/104',
+    },
+  }), /author cannot reduce/);
+  assert.equal(
+    state.store.policyEvents.get(115).some((event) =>
+      event.kind === 'reduce-policy'),
+    false);
 });
 
 test('trusted policy commands require the full exact diff identity', () => {
@@ -1033,6 +1215,235 @@ test('authenticated webhook redelivery cannot create a second writer', async () 
   const duplicate = await handleEvent(options);
   assert.equal(duplicate.duplicate, true);
   assert.equal(state.client.state.checkRuns.length, count);
+});
+
+test('delayed H1 webhook leaves the live H2 mapping authoritative', async () => {
+  const state = seededState();
+  const staleH1 = structuredClone(state.client.state.pulls[0]);
+  await runPullEvent(state, staleH1);
+  state.client.state.pulls[0].head.sha = NEXT_HEAD;
+  await runPullEvent(state);
+  const beforeDelayed = await state.store.getPullMapping(115);
+  const start = state.client.callLog.length;
+
+  await runPullEvent(state, staleH1);
+
+  const afterDelayed = await state.store.getPullMapping(115);
+  assert.equal(afterDelayed.headSha, NEXT_HEAD);
+  assert.ok(afterDelayed.version > beforeDelayed.version);
+  const log = state.client.callLog.slice(start);
+  assert.equal(log[0], 'checks.create');
+  assert.ok(log.indexOf('pulls.get:115') > 1);
+  const delayedRuns = state.client.state.checkRuns.slice(-2);
+  assert.deepEqual(
+    delayedRuns.map((run) => run.head_sha),
+    [HEAD, NEXT_HEAD]);
+  assert.equal(latestCheck(state.client, HEAD).conclusion, 'failure');
+  assert.equal(latestCheck(state.client, NEXT_HEAD).conclusion, 'failure');
+});
+
+test('delayed review and comment hints cannot regress live H2', async () => {
+  const currentH2 = pull(115, {
+    head: {
+      ...pull().head,
+      sha: NEXT_HEAD,
+    },
+  });
+  const state = seededState({ pullRequest: currentH2 });
+  await runPullEvent(state);
+  const staleH1 = pull();
+  const staleReview = copilotReview(HEAD);
+
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('pull_request_review', {
+      action: 'submitted',
+      pull_request: staleH1,
+      review: staleReview,
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+  assert.equal((await state.store.getPullMapping(115)).headSha, NEXT_HEAD);
+  assert.equal(latestCheck(state.client, NEXT_HEAD).conclusion, 'failure');
+  assert.equal(
+    state.store.policyEvents.get(115).some((event) =>
+      Number(event.reviewId) === Number(staleReview.id)),
+    false);
+
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('pull_request_review_comment', {
+      action: 'edited',
+      pull_request: staleH1,
+      comment: { id: 9001 },
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+  assert.equal((await state.store.getPullMapping(115)).headSha, NEXT_HEAD);
+  assert.equal(latestCheck(state.client, HEAD).conclusion, 'failure');
+});
+
+test('delayed pre-retarget Copilot review cannot attest the new base', async () => {
+  const state = seededState();
+  const stalePull = structuredClone(state.client.state.pulls[0]);
+  const staleReview = state.client.state.reviews[115][0];
+  state.client.state.pulls[0].base = {
+    sha: NEXT_BASE,
+    ref: 'release',
+    repo: {
+      id: REPOSITORY_ID,
+      full_name: 'Jamula/Andreja',
+    },
+  };
+
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('pull_request_review', {
+      action: 'submitted',
+      pull_request: stalePull,
+      review: staleReview,
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+
+  const current = await state.store.getPullMapping(115);
+  assert.equal(current.baseRef, 'release');
+  assert.equal(current.baseSha, NEXT_BASE);
+  assert.equal(
+    state.store.policyEvents.get(115).filter((event) =>
+      event.kind === 'copilot-attestation').length,
+    1);
+  assert.equal(latestCheck(state.client, HEAD).conclusion, 'failure');
+});
+
+test('delayed close after reopen cannot close a live-open mapping', async () => {
+  const state = seededState();
+  state.client.state.pulls[0].state = 'closed';
+  const closedPayload = structuredClone(state.client.state.pulls[0]);
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('pull_request', {
+      action: 'closed',
+      pull_request: closedPayload,
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+  assert.equal((await state.store.getPullMapping(115)).open, false);
+
+  state.client.state.pulls[0].state = 'open';
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('pull_request', {
+      action: 'reopened',
+      pull_request: structuredClone(state.client.state.pulls[0]),
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+  const reopened = await state.store.getPullMapping(115);
+  assert.equal(reopened.open, true);
+
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('pull_request', {
+      action: 'closed',
+      pull_request: closedPayload,
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+  const afterDelayedClose = await state.store.getPullMapping(115);
+  assert.equal(afterDelayedClose.open, true);
+  assert.ok(afterDelayedClose.version > reopened.version);
+});
+
+test('live PR API failure invalidates durable H2 before failing closed', async () => {
+  const currentH2 = pull(115, {
+    head: {
+      ...pull().head,
+      sha: NEXT_HEAD,
+    },
+  });
+  const state = seededState({ pullRequest: currentH2 });
+  await runPullEvent(state);
+  assert.equal(latestCheck(state.client, NEXT_HEAD).conclusion, 'success');
+  const staleH1 = pull();
+  state.client.failNext(
+    'pulls.get',
+    Object.assign(new Error('private live API detail'), { status: 429 }));
+
+  await runPullEvent(state, staleH1);
+
+  assert.equal((await state.store.getPullMapping(115)).headSha, NEXT_HEAD);
+  assert.equal(latestCheck(state.client, NEXT_HEAD).conclusion, 'failure');
+  assert.match(
+    latestCheck(state.client, NEXT_HEAD).output.summary,
+    /rate-limited|failed closed/);
+  assert.doesNotMatch(
+    latestCheck(state.client, NEXT_HEAD).output.summary,
+    /private live API detail/);
+});
+
+test('head drift during evaluation publishes H2 before mapping mutation', async () => {
+  const state = seededState();
+  const originalGet = state.client.rest.pulls.get;
+  let liveReads = 0;
+  state.client.rest.pulls.get = async (parameters) => {
+    liveReads += 1;
+    if (liveReads === 2) {
+      state.client.state.pulls[0].head.sha = NEXT_HEAD;
+    }
+    return originalGet(parameters);
+  };
+
+  await runPullEvent(state);
+
+  assert.equal(liveReads, 2);
+  assert.equal((await state.store.getPullMapping(115)).headSha, NEXT_HEAD);
+  assert.equal(latestCheck(state.client, NEXT_HEAD).conclusion, 'failure');
+  assert.match(
+    latestCheck(state.client, NEXT_HEAD).output.summary,
+    /head\/base\/diff identity changed/);
+});
+
+test('base retarget during evaluation supersedes same-head success', async () => {
+  const state = seededState();
+  const originalGet = state.client.rest.pulls.get;
+  let liveReads = 0;
+  state.client.rest.pulls.get = async (parameters) => {
+    liveReads += 1;
+    if (liveReads === 2) {
+      state.client.state.pulls[0].base = {
+        sha: NEXT_BASE,
+        ref: 'release',
+        repo: {
+          id: REPOSITORY_ID,
+          full_name: 'Jamula/Andreja',
+        },
+      };
+    }
+    return originalGet(parameters);
+  };
+
+  await runPullEvent(state);
+
+  const current = await state.store.getPullMapping(115);
+  assert.equal(current.baseRef, 'release');
+  assert.equal(current.baseSha, NEXT_BASE);
+  assert.equal(latestCheck(state.client, HEAD).conclusion, 'failure');
+  assert.match(
+    latestCheck(state.client, HEAD).output.summary,
+    /head\/base\/diff identity changed/);
 });
 
 test('Copilot webhook attestation binds exact PR, head, and base', async () => {
@@ -1495,6 +1906,50 @@ test('reviewer authorization revocation supersedes a successful head', async () 
   assert.match(latestCheck(state.client).output.summary, /not authorized/);
 });
 
+test('issue and reviewer invalidations target current H2 after delayed H1', async () => {
+  const state = seededState({ domains: ['quality'] });
+  const staleH1 = structuredClone(state.client.state.pulls[0]);
+  await runPullEvent(state, staleH1);
+  state.client.state.pulls[0].head.sha = NEXT_HEAD;
+  await runPullEvent(state, staleH1);
+  const current = await state.store.getPullMapping(115);
+  assert.equal(current.headSha, NEXT_HEAD);
+  assert.deepEqual(current.issueNumbers, [104]);
+  assert.deepEqual(current.reviewerLogins, ['reviewer']);
+  const h1Count = state.client.state.checkRuns.filter((run) =>
+    run.head_sha === HEAD).length;
+
+  state.client.state.labels[104] = ['area:architecture'];
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('issues', {
+      action: 'labeled',
+      issue: { number: 104 },
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+  assert.equal(latestCheck(state.client).head_sha, NEXT_HEAD);
+
+  state.client.state.permissions.reviewer = 'read';
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('membership', {
+      action: 'removed',
+      membership: { user: { login: 'reviewer' } },
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+  assert.equal(latestCheck(state.client).head_sha, NEXT_HEAD);
+  assert.equal(
+    state.client.state.checkRuns.filter((run) => run.head_sha === HEAD).length,
+    h1Count);
+  assert.equal((await state.store.getPullMapping(115)).headSha, NEXT_HEAD);
+});
+
 test('periodic reconciliation catches dropped thread and revocation deliveries', async () => {
   const state = seededState({ domains: ['architecture'] });
   await runPullEvent(state);
@@ -1526,12 +1981,13 @@ test('reconciliation detects a dropped synchronize on the current head', async (
   await runPullEvent(state);
   assert.equal(latestCheck(state.client).conclusion, 'success');
   state.client.state.pulls[0].head.sha = NEXT_HEAD;
-  const originalUpsert = state.store.upsertPullMapping.bind(state.store);
-  state.store.upsertPullMapping = async (value) => {
-    if (value.headSha === NEXT_HEAD) {
+  const originalCas =
+    state.store.compareAndSwapPullMapping.bind(state.store);
+  state.store.compareAndSwapPullMapping = async (request) => {
+    if (request.mapping.headSha === NEXT_HEAD) {
       assert.equal(latestCheck(state.client, NEXT_HEAD)?.status, 'in_progress');
     }
-    return originalUpsert(value);
+    return originalCas(request);
   };
   const before = state.client.callLog.length;
   await runReconciliation(state);
@@ -1609,6 +2065,95 @@ test('reconciliation detects dropped retarget and base identity drift', async ()
     event.kind === 'bind-issue' &&
     event.observationEpoch.identity.baseRef === 'release' &&
     event.observationEpoch.identity.baseSha === NEXT_BASE));
+});
+
+test('concurrent webhook wins a reconciliation mapping CAS conflict', async () => {
+  const state = seededState();
+  await runPullEvent(state);
+  state.client.state.pulls[0].head.sha = NEXT_HEAD;
+  const originalCas =
+    state.store.compareAndSwapPullMapping.bind(state.store);
+  let webhookInterleaved = false;
+  state.store.compareAndSwapPullMapping = async (request) => {
+    if (!webhookInterleaved &&
+        request.mapping.headSha === NEXT_HEAD) {
+      webhookInterleaved = true;
+      await runPullEvent(state);
+    }
+    return originalCas(request);
+  };
+
+  const result = await runReconciliation(state);
+
+  assert.equal(webhookInterleaved, true);
+  assert.equal((await state.store.getPullMapping(115)).headSha, NEXT_HEAD);
+  assert.equal(latestCheck(state.client, NEXT_HEAD).conclusion, 'failure');
+  assert.match(
+    latestCheck(state.client, NEXT_HEAD).output.summary,
+    /mapping changed concurrently|failed closed/);
+  assert.ok(result.some((item) => item.result.state === 'rejected'));
+});
+
+test('evaluation CAS conflict invalidates a newer live-head success', async () => {
+  const state = seededState();
+  const originalCas =
+    state.store.compareAndSwapPullMapping.bind(state.store);
+  let interleaved = false;
+  state.store.compareAndSwapPullMapping = async (request) => {
+    if (!interleaved &&
+        request.mapping.headSha === HEAD &&
+        request.expectedVersion === 2) {
+      interleaved = true;
+      state.client.state.pulls[0].head.sha = NEXT_HEAD;
+      const next = mapping(state.client.state.pulls[0], {
+        issues: request.mapping.issueNumbers,
+        reviewers: request.mapping.reviewerLogins,
+      });
+      next.version = request.expectedVersion + 1;
+      const write = await originalCas({
+        ...request,
+        mapping: next,
+      });
+      assert.equal(write.applied, true);
+      const event = envelope('reconciliation', {});
+      const generation = await createGeneration({
+        client: state.client,
+        store: state.store,
+        envelope: event,
+        headSha: NEXT_HEAD,
+        publisherAppId: APP_ID,
+        mappings: [next],
+        association: {
+          kind: 'concurrent-live-writer',
+          pullNumbers: [115],
+        },
+      });
+      await completeGeneration({
+        client: state.client,
+        store: state.store,
+        envelope: event,
+        checkRun: generation,
+        publisherAppId: APP_ID,
+        result: {
+          state: 'approved',
+          reasons: ['Concurrent writer briefly completed live H2.'],
+        },
+      });
+    }
+    return originalCas(request);
+  };
+
+  await runPullEvent(state);
+
+  assert.equal(interleaved, true);
+  assert.equal((await state.store.getPullMapping(115)).headSha, NEXT_HEAD);
+  const h2Runs = state.client.state.checkRuns.filter((run) =>
+    run.head_sha === NEXT_HEAD);
+  assert.equal(h2Runs.at(-2).conclusion, 'success');
+  assert.equal(h2Runs.at(-1).conclusion, 'failure');
+  assert.match(
+    h2Runs.at(-1).output.summary,
+    /mapping changed concurrently/);
 });
 
 test('open PR reconciliation discovery uses complete REST pagination', async () => {
