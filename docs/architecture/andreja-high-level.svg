@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1460" viewBox="0 0 1920 1460"
-     role="img" aria-labelledby="title desc" data-source-sha256="ccfb667e7b2ad4954e384906f9597476bf3af6b4a8f3778b7bee66bc7df4ecad">
+     role="img" aria-labelledby="title desc" data-source-sha256="6299e710533fa161a66c619b368bb4323b7924c9d354c903a7b282ad4f4a0f42">
   <title id="title">Andreja high-level architecture and data flows</title>
   <desc id="desc">Current Phase 1A components, current local conformance contracts, future gated components,
   six labelled trust boundaries, ten numbered data flows, local data custody, and extension seams.</desc>
@@ -13,11 +13,11 @@
   <text x="35" y="89" text-anchor="start" font-size="19" font-weight="normal" fill="#000000"><tspan x="35" dy="0">Phase 1A evidence view • one modular-monolith deployable • future capability is explicitly gated</tspan></text>
   <rect x="1320" y="15" width="565" height="80" rx="12" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2"/>
   <text x="1602.5" y="41" text-anchor="middle" font-size="14" font-weight="normal" fill="#000000"><tspan x="1602.5" dy="0">CONTENT RULE</tspan><tspan x="1602.5" dy="17">User content follows policy-labelled flows only.</tspan><tspan x="1602.5" dy="17">Never telemetry, public/help, or secret files.</tspan></text>
-  <rect x="35" y="110" width="245" height="58" rx="12" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+  <rect x="35" y="110" width="245" height="58" rx="12" fill="#f1f3f5" stroke="#495057" stroke-width="2"/>
   <text x="157.5" y="134" text-anchor="middle" font-size="14" font-weight="normal" fill="#000000"><tspan x="157.5" dy="0">CURRENT PHASE 1A</tspan><tspan x="157.5" dy="17">solid border / flow</tspan></text>
-  <rect x="300" y="110" width="285" height="58" rx="12" fill="#fff3bf" stroke="#e67700" stroke-width="2" stroke-dasharray="12 8"/>
+  <rect x="300" y="110" width="285" height="58" rx="12" fill="#f1f3f5" stroke="#495057" stroke-width="2" stroke-dasharray="12 8"/>
   <text x="442.5" y="134" text-anchor="middle" font-size="14" font-weight="normal" fill="#000000"><tspan x="442.5" dy="0">CURRENT CONTRACT-ONLY</tspan><tspan x="442.5" dy="17">local conformance; dashed</tspan></text>
-  <rect x="605" y="110" width="245" height="58" rx="12" fill="#f3d9fa" stroke="#862e9c" stroke-width="2" stroke-dasharray="3 8"/>
+  <rect x="605" y="110" width="245" height="58" rx="12" fill="#f1f3f5" stroke="#495057" stroke-width="2" stroke-dasharray="3 8"/>
   <text x="727.5" y="134" text-anchor="middle" font-size="14" font-weight="normal" fill="#000000"><tspan x="727.5" dy="0">FUTURE / GATED</tspan><tspan x="727.5" dy="17">not deployed; dotted</tspan></text>
   <rect x="870" y="110" width="1015" height="58" rx="12" fill="#f1f3f5" stroke="#495057" stroke-width="2"/>
   <text x="1377.5" y="143" text-anchor="middle" font-size="15" font-weight="normal" fill="#000000"><tspan x="1377.5" dy="0">Trust boundaries are labelled TB1–TB6. Flow numbers F1–F10 map to the companion document.</tspan></text>
@@ -50,35 +50,33 @@
   <rect x="655" y="475" width="240" height="100" rx="12" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
   <text x="775" y="519" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="775" dy="0">Assistant Runtime</tspan><tspan x="775" dy="20">Provider-neutral sessions</tspan></text>
   <rect x="920" y="475" width="280" height="100" rx="12" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
-  <text x="1060" y="519" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1060" dy="0">Open Loops / Tasks</tspan><tspan x="1060" dy="20">Access-scoped use cases</tspan></text>
+  <text x="1060" y="519" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1060" dy="0">Skills</tspan><tspan x="1060" dy="20">ISkillHost + manifests</tspan></text>
   <rect x="390" y="605" width="240" height="105" rx="12" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
-  <text x="510" y="651" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="510" dy="0">Proposal / Control Plane</tspan><tspan x="510" dy="20">Confirm before write</tspan></text>
+  <text x="510" y="651" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="510" dy="0">Policy evaluator</tspan><tspan x="510" dy="20">Tenant • principal • purpose</tspan></text>
   <rect x="655" y="605" width="240" height="105" rx="12" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
-  <text x="775" y="651" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="775" dy="0">Skills</tspan><tspan x="775" dy="20">ISkillHost + manifests</tspan></text>
-  <rect x="920" y="605" width="280" height="105" rx="12" fill="#fff3bf" stroke="#e67700" stroke-width="2" stroke-dasharray="12 8"/>
-  <text x="1060" y="651" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1060" dy="0">Channels</tspan><tspan x="1060" dy="20">IChannelHost + manifests</tspan></text>
+  <text x="775" y="643" text-anchor="middle" font-size="14" font-weight="normal" fill="#000000"><tspan x="775" dy="0">Proposal / Control Plane</tspan><tspan x="775" dy="17">Durable proposal state</tspan><tspan x="775" dy="17">Confirm before task write</tspan></text>
+  <rect x="920" y="605" width="280" height="105" rx="12" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+  <text x="1060" y="651" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1060" dy="0">Open Loops / Tasks</tspan><tspan x="1060" dy="20">Access-scoped domain write</tspan></text>
   <rect x="390" y="740" width="240" height="110" rx="12" fill="#fff3bf" stroke="#e67700" stroke-width="2" stroke-dasharray="12 8"/>
   <text x="510" y="789" text-anchor="middle" font-size="15" font-weight="normal" fill="#000000"><tspan x="510" dy="0">Sharing / Federation</tspan><tspan x="510" dy="18">Grant • consent • IPeerChannel</tspan></text>
   <rect x="655" y="740" width="240" height="110" rx="12" fill="#fff3bf" stroke="#e67700" stroke-width="2" stroke-dasharray="12 8"/>
   <text x="775" y="789" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="775" dy="0">Semantic Profile</tspan><tspan x="775" dy="20">Provenance contracts</tspan></text>
   <rect x="920" y="740" width="280" height="110" rx="12" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
-  <text x="1060" y="789" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1060" dy="0">Portability</tspan><tspan x="1060" dy="20">Versioned export / import</tspan></text>
+  <text x="1060" y="789" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1060" dy="0">Audit + idempotency</tspan><tspan x="1060" dy="20">Transactional evidence</tspan></text>
   <rect x="390" y="880" width="240" height="100" rx="12" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
-  <text x="510" y="924" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="510" dy="0">Policy evaluator</tspan><tspan x="510" dy="20">Tenant • principal • purpose</tspan></text>
+  <text x="510" y="924" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="510" dy="0">Portability</tspan><tspan x="510" dy="20">Versioned export / import</tspan></text>
   <rect x="655" y="880" width="240" height="100" rx="12" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
-  <text x="775" y="924" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="775" dy="0">Audit + idempotency</tspan><tspan x="775" dy="20">Content-minimized evidence</tspan></text>
-  <rect x="920" y="880" width="280" height="100" rx="12" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
-  <text x="1060" y="924" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1060" dy="0">Observability</tspan><tspan x="1060" dy="20">OTel allowlist / suppression</tspan></text>
-  <rect x="1305" y="310" width="250" height="130" rx="12" fill="#f3d9fa" stroke="#862e9c" stroke-width="2"/>
+  <text x="775" y="924" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="775" dy="0">Observability</tspan><tspan x="775" dy="20">OTel allowlist / suppression</tspan></text>
+  <rect x="920" y="880" width="280" height="100" rx="12" fill="#fff3bf" stroke="#e67700" stroke-width="2" stroke-dasharray="12 8"/>
+  <text x="1060" y="924" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1060" dy="0">Channels</tspan><tspan x="1060" dy="20">IChannelHost + manifests</tspan></text>
+  <rect x="1305" y="310" width="250" height="130" rx="12" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
   <text x="1430" y="359" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1430" dy="0">Assistant provider</tspan><tspan x="1430" dy="20">User-configured BYOK endpoint</tspan><tspan x="1430" dy="20">(or deterministic local fake)</tspan></text>
-  <rect x="1305" y="520" width="250" height="130" rx="12" fill="#f3d9fa" stroke="#862e9c" stroke-width="2" stroke-dasharray="3 8"/>
-  <text x="1430" y="579" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1430" dy="0">Channel / connector adapter</tspan><tspan x="1430" dy="20">No live connector in Phase 1A</tspan></text>
   <rect x="1305" y="725" width="250" height="120" rx="12" fill="#f3d9fa" stroke="#862e9c" stroke-width="2" stroke-dasharray="3 8"/>
-  <text x="1430" y="770" text-anchor="middle" font-size="15" font-weight="normal" fill="#000000"><tspan x="1430" dy="0">Identity / OIDC adapter</tspan><tspan x="1430" dy="18">Built-in passkey now;</tspan><tspan x="1430" dy="18">optional OIDC gated</tspan></text>
+  <text x="1430" y="770" text-anchor="middle" font-size="15" font-weight="normal" fill="#000000"><tspan x="1430" dy="0">Optional OIDC adapter</tspan><tspan x="1430" dy="18">Future / gated</tspan><tspan x="1430" dy="18">No provider selected</tspan></text>
   <rect x="1305" y="900" width="250" height="110" rx="12" fill="#c5f6fa" stroke="#0c8599" stroke-width="2"/>
   <text x="1430" y="949" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1430" dy="0">OTel exporter</tspan><tspan x="1430" dy="20">Operational fields only</tspan></text>
   <rect x="365" y="1140" width="220" height="115" rx="12" fill="#c5f6fa" stroke="#0c8599" stroke-width="2"/>
-  <text x="475" y="1182" text-anchor="middle" font-size="15" font-weight="normal" fill="#000000"><tspan x="475" dy="0">Tenant-scoped PostgreSQL</tspan><tspan x="475" dy="18">Tasks • identity • audit</tspan><tspan x="475" dy="18">idempotency / provenance refs</tspan></text>
+  <text x="475" y="1183" text-anchor="middle" font-size="14" font-weight="normal" fill="#000000"><tspan x="475" dy="0">Tenant-scoped PostgreSQL</tspan><tspan x="475" dy="17">Tasks • proposals • identity</tspan><tspan x="475" dy="17">Audit • idempotency • refs</tspan></text>
   <rect x="610" y="1140" width="205" height="115" rx="12" fill="#f3d9fa" stroke="#862e9c" stroke-width="2" stroke-dasharray="3 8"/>
   <text x="712.5" y="1191" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="712.5" dy="0">Attachments</tspan><tspan x="712.5" dy="20">Outside DB when added</tspan></text>
   <rect x="840" y="1140" width="210" height="115" rx="12" fill="#c5f6fa" stroke="#0c8599" stroke-width="2"/>
@@ -89,8 +87,8 @@
   <text x="1430" y="1191" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1430" dy="0">Local OTel Collector</tspan><tspan x="1430" dy="20">Optional local evidence backend</tspan></text>
   <rect x="365" y="1290" width="330" height="95" rx="12" fill="#c5f6fa" stroke="#0c8599" stroke-width="2"/>
   <text x="530" y="1332" text-anchor="middle" font-size="15" font-weight="normal" fill="#000000"><tspan x="530" dy="0">Application export/import archive</tspan><tspan x="530" dy="18">Checksums; no credentials or key material</tspan></text>
-  <rect x="730" y="1290" width="330" height="95" rx="12" fill="#c5f6fa" stroke="#0c8599" stroke-width="2"/>
-  <text x="895" y="1332" text-anchor="middle" font-size="15" font-weight="normal" fill="#000000"><tspan x="895" dy="0">Encrypted recovery set</tspan><tspan x="895" dy="18">DB backup + separate key/config inventory</tspan></text>
+  <rect x="730" y="1290" width="330" height="95" rx="12" fill="#f3d9fa" stroke="#862e9c" stroke-width="2" stroke-dasharray="3 8"/>
+  <text x="895" y="1323" text-anchor="middle" font-size="14" font-weight="normal" fill="#000000"><tspan x="895" dy="0">UNPROVEN encrypted recovery set</tspan><tspan x="895" dy="17">DB + key/config inventory</tspan><tspan x="895" dy="17">Restored sign-in proof BLOCKED</tspan></text>
   <rect x="1095" y="1290" width="455" height="95" rx="12" fill="#f1f3f5" stroke="#495057" stroke-width="2"/>
   <text x="1322.5" y="1323" text-anchor="middle" font-size="14" font-weight="normal" fill="#000000"><tspan x="1322.5" dy="0">EXTENSION SEAMS</tspan><tspan x="1322.5" dy="17">IAssistantProvider • ISkillHost • IChannelHost • identity/OIDC</tspan><tspan x="1322.5" dy="17">Typed clients • persistence/portability • OTel • IPeerChannel</tspan></text>
   <rect x="1625" y="310" width="245" height="135" rx="12" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2" stroke-dasharray="3 8"/>
@@ -99,39 +97,60 @@
   <text x="1747.5" y="586" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1747.5" dy="0">Future external</tspan><tspan x="1747.5" dy="20">channel / connector systems</tspan><tspan x="1747.5" dy="20">Untrusted inbound content</tspan></text>
   <rect x="1625" y="820" width="245" height="145" rx="12" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2" stroke-dasharray="3 8"/>
   <text x="1747.5" y="876" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1747.5" dy="0">Future tenant-less</tspan><tspan x="1747.5" dy="20">feedback / support intake</tspan><tspan x="1747.5" dy="20">Separate governance</tspan></text>
-  <rect x="1625" y="1135" width="245" height="135" rx="12" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2"/>
-  <text x="1747.5" y="1186" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1747.5" dy="0">Operator-controlled</tspan><tspan x="1747.5" dy="20">backup destination</tspan><tspan x="1747.5" dy="20">No universal cloud choice</tspan></text>
-  <line x1="290" y1="320" x2="365" y2="320" stroke="#1864ab" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <rect x="1625" y="1135" width="245" height="135" rx="12" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2" stroke-dasharray="3 8"/>
+  <text x="1747.5" y="1186" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1747.5" dy="0">GATED operator-controlled</tspan><tspan x="1747.5" dy="20">backup destination</tspan><tspan x="1747.5" dy="20">No destination approved</tspan></text>
+  <polyline points="290,320 365,320" fill="none" stroke="#1864ab" stroke-width="3" marker-end="url(#arrow-blue)"/>
   <rect x="301" y="280" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
   <text x="327" y="297" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="327" dy="0">F1</tspan></text>
-  <line x1="290" y1="355" x2="655" y2="505" stroke="#1864ab" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <polyline points="290,355 655,505" fill="none" stroke="#1864ab" stroke-width="3" marker-end="url(#arrow-blue)"/>
   <rect x="436" y="384" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
   <text x="462" y="401" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="462" dy="0">F2</tspan></text>
-  <line x1="895" y1="525" x2="1305" y2="375" stroke="#862e9c" stroke-width="3" marker-end="url(#arrow-purple)"/>
+  <polyline points="895,525 1305,375" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
   <rect x="1089" y="424" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
   <text x="1115" y="441" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="1115" dy="0">F2</tspan></text>
-  <line x1="775" y1="575" x2="510" y2="605" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
-  <rect x="616" y="554" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
-  <text x="642" y="571" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="642" dy="0">F3</tspan></text>
-  <line x1="290" y1="350" x2="510" y2="605" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
-  <rect x="369" y="456" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
-  <text x="395" y="473" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="395" dy="0">F4</tspan></text>
-  <line x1="510" y1="710" x2="475" y2="1140" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
-  <rect x="451" y="909" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
-  <text x="477" y="926" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="477" dy="0">F5</tspan></text>
-  <line x1="1625" y1="600" x2="1200" y2="655" stroke="#862e9c" stroke-width="3" stroke-dasharray="3 8" marker-end="url(#arrow-purple)"/>
-  <rect x="1386" y="593" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
-  <text x="1412" y="610" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="1412" dy="0">F6</tspan></text>
-  <line x1="1060" y1="850" x2="530" y2="1290" stroke="#0c8599" stroke-width="3" marker-end="url(#arrow-teal)"/>
-  <rect x="774" y="1044" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
-  <text x="800" y="1061" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="800" dy="0">F7</tspan></text>
-  <line x1="475" y1="1255" x2="895" y2="1290" stroke="#0c8599" stroke-width="3" marker-end="url(#arrow-teal)"/>
-  <rect x="659" y="1246" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
-  <text x="685" y="1263" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="685" dy="0">F8</tspan></text>
-  <line x1="1180" y1="930" x2="1310" y2="1180" stroke="#0c8599" stroke-width="3" marker-end="url(#arrow-teal)"/>
-  <rect x="1234" y="1039" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
-  <text x="1260" y="1056" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="1260" dy="0">F9</tspan></text>
-  <line x1="1625" y1="375" x2="630" y2="790" stroke="#c92a2a" stroke-width="3" stroke-dasharray="3 8" marker-end="url(#arrow-red)"/>
+  <polyline points="895,525 920,525" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="881" y="489" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="907" y="506" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="907" dy="0">F3a</tspan></text>
+  <polyline points="1060,575 1060,590 775,590 775,605" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="891" y="556" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="917" y="573" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="917" dy="0">F3b</tspan></text>
+  <polyline points="775,710 640,720 640,1050 475,1050 475,1140" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="614" y="885" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="640" y="902" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="640" dy="0">F3c</tspan></text>
+  <polyline points="700,375 642,390 642,657 655,657" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="639" y="394" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="665" y="411" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="665" dy="0">F4</tspan></text>
+  <polyline points="895,657 920,657" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="881" y="621" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="907" y="638" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="907" dy="0">F5a</tspan></text>
+  <polyline points="1060,710 1060,740" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="999" y="709" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="1025" y="726" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="1025" dy="0">F5b</tspan></text>
+  <polyline points="1200,795 1245,795 1245,1030 475,1030 475,1140" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="1201" y="971" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="1227" y="988" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="1227" dy="0">F5c</tspan></text>
+  <polyline points="1625,600 1590,600 1590,1020 350,1020 350,657 390,657" fill="none" stroke="#862e9c" stroke-width="3" stroke-dasharray="3 8" marker-end="url(#arrow-purple)"/>
+  <rect x="344" y="804" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="370" y="821" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="370" dy="0">F6</tspan></text>
+  <polyline points="510,980 600,1040 600,1290" fill="none" stroke="#0c8599" stroke-width="3" marker-end="url(#arrow-teal)"/>
+  <rect x="544" y="1084" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="570" y="1101" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="570" dy="0">F7</tspan></text>
+  <polyline points="475,1255 780,1290" fill="none" stroke="#862e9c" stroke-width="3" stroke-dasharray="3 8" marker-end="url(#arrow-purple)"/>
+  <rect x="601" y="1246" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="627" y="1263" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="627" dy="0">F8a</tspan></text>
+  <polyline points="945,1255 945,1290" fill="none" stroke="#862e9c" stroke-width="3" stroke-dasharray="3 8" marker-end="url(#arrow-purple)"/>
+  <rect x="884" y="1256" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="910" y="1273" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="910" dy="0">F8b</tspan></text>
+  <polyline points="1180,1255 1100,1275 1030,1290" fill="none" stroke="#862e9c" stroke-width="3" stroke-dasharray="3 8" marker-end="url(#arrow-purple)"/>
+  <rect x="1079" y="1246" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="1105" y="1263" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="1105" dy="0">F8c</tspan></text>
+  <polyline points="1060,1338 1080,1275 1585,1275 1625,1200" fill="none" stroke="#862e9c" stroke-width="3" stroke-dasharray="3 8" marker-end="url(#arrow-purple)"/>
+  <rect x="1556" y="1263" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="1582" y="1280" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="1582" dy="0">F8d</tspan></text>
+  <polyline points="775,980 775,1040 1430,1040 1430,1140" fill="none" stroke="#0c8599" stroke-width="3" marker-end="url(#arrow-teal)"/>
+  <rect x="1376" y="1044" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="1402" y="1061" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="1402" dy="0">F9</tspan></text>
+  <polyline points="1625,375 630,790" fill="none" stroke="#c92a2a" stroke-width="3" stroke-dasharray="3 8" marker-end="url(#arrow-red)"/>
   <rect x="1111" y="556" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
   <text x="1137" y="573" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="1137" dy="0">F10</tspan></text>
 </svg>

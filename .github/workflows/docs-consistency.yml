@@ -7,11 +7,13 @@ on:
       - 'docs/**'
       - '.github/scripts/check_docs_consistency.py'
       - '.github/workflows/docs-consistency.yml'
+      - 'scripts/docs/**'
   pull_request:
     paths:
       - 'docs/**'
       - '.github/scripts/check_docs_consistency.py'
       - '.github/workflows/docs-consistency.yml'
+      - 'scripts/docs/**'
 
 permissions:
   contents: read
@@ -28,3 +30,9 @@ jobs:
 
       - name: Check plan hash and catalog/seed-table consistency
         run: python3 .github/scripts/check_docs_consistency.py
+
+      - name: Check architecture source and deterministic renders
+        run: python3 scripts/docs/generate_architecture_diagram.py --check
+
+      - name: Test architecture PNG structural policy
+        run: python3 scripts/docs/test_architecture_diagram.py
