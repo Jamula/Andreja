@@ -24,7 +24,7 @@
     "tenantReference": { "type": "string", "minLength": 1 },
     "artifacts": {
       "type": "array",
-      "minItems": 12,
+      "minItems": 7,
       "items": { "$ref": "#/$defs/artifact" },
       "allOf": [
         { "contains": { "properties": { "dataArea": { "const": "Records" } } } },
@@ -38,7 +38,7 @@
     },
     "exclusions": {
       "type": "array",
-      "minItems": 7,
+      "minItems": 12,
       "items": { "$ref": "#/$defs/exclusion" },
       "allOf": [
         { "contains": { "properties": { "code": { "const": "credentials" } } } },

@@ -239,6 +239,18 @@ public sealed class OperationsContractTests
                 .GetProperty("archiveVersion")
                 .GetProperty("const")
                 .GetString());
+        Assert.Equal(
+            Enum.GetValues<PortableDataArea>().Length,
+            document.RootElement.GetProperty("properties")
+                .GetProperty("artifacts")
+                .GetProperty("minItems")
+                .GetInt32());
+        Assert.Equal(
+            ApplicationExportContract.RequiredExclusions.Count,
+            document.RootElement.GetProperty("properties")
+                .GetProperty("exclusions")
+                .GetProperty("minItems")
+                .GetInt32());
         foreach (var exclusion in ApplicationExportContract.RequiredExclusions)
         {
             Assert.Contains(exclusion, schema, StringComparison.Ordinal);
