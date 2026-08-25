@@ -122,11 +122,20 @@ RACI pattern for cross-workstream issues:
 | **Consulted (C)** | Specialist whose artifact gate applies (security, privacy, legal, cost, quality, RAI, fact-check) | Named per the "Artifact gates" table below, invoked only when their gate is due |
 | **Informed (I)** | Notified via issue comment/handoff note but not blocking | Coordinator, Guinan (user-facing changes), Quark (cost-bearing changes), affected downstream workstream leads |
 
+- Every issue has exactly one lifecycle label. `status:backlog`,
+  `status:branch-only`, `status:pr-draft`, `status:ready`, `status:merged`, and
+  `status:closed` describe only implementation/PR state. `status:ready` means
+  ready for review, not approved, checks-passing, or safe to merge.
 - Dependencies between issues are expressed with GitHub's "Depends on" /
-  "Blocked by" issue links and the `status:blocked` label, never a private
-  tracking sheet.
-- An issue with unresolved dependencies stays `status:blocked` until the
-  dependency merges; the Coordinator re-evaluates readiness at each triage pass.
+  "Blocked by" links, never a private tracking sheet. Unresolved links add
+  `blocked:dependency` without replacing lifecycle status. Classify the blocking
+  issue with `blocks:evidence` or `blocks:human` when it represents external/exit
+  evidence or an explicit human decision; dependents then expose
+  `blocked:evidence` or `blocked:human`.
+- A dependency closes only when its own outcome is complete. Code may therefore
+  be `status:ready` or `status:merged` while exit evidence remains
+  `blocked:evidence`; neither label implies that required checks, reviews,
+  approvals, or milestone gates passed.
 - Reassignment happens by removing one `squad:{member}` label and adding another;
   the issue history preserves the accountability trail.
 
@@ -150,10 +159,9 @@ due for that issue.
 
 Batch related artifacts into themed review packets with at most three
 evidence/revision cycles (per `.squad/directives.md`); unresolved items become
-explicit decision issues (tag `type:decision`; adopt the dedicated
-`status:needs-decision` label from "Recommended follow-up" below once it
-exists) instead of silently blocking unrelated packets. Silence is never
-approval.
+explicit decision issues (tag `type:decision`; use the
+`blocks:human` label when the decision blocks another issue) instead of
+silently blocking unrelated packets. Silence is never approval.
 
 ## Handoff format
 
@@ -173,7 +181,8 @@ creating a second backlog; Scribe logs automatically and never blocks.
 
 ## WIP limits
 
-- Each workstream lead limits concurrent `status:in-progress` issues to what one
+- Each workstream lead limits concurrent `status:branch-only`,
+  `status:pr-draft`, and `status:ready` issues to what one
   accountable owner can carry through review without queuing rejected work.
   Finish (merge or explicitly park with a recorded reason) before starting new
   work in the same file/module ownership area.
@@ -192,6 +201,14 @@ creating a second backlog; Scribe logs automatically and never blocks.
 - Every implementation issue gets a `squad/{issue-number}-{kebab-case-slug}`
   branch cut from the current integration branch, a sibling isolated worktree,
   one accountable owning agent, and an early draft PR.
+- `.github/workflows/issue-status.yml` derives lifecycle from issue, branch, and
+  trusted same-repository PR events. It reads automation only from the default
+  branch, makes idempotent label writes, posts no comments, and never executes
+  pull-request code with a write token. A workflow dispatch may reconcile all
+  issues or make a one-run manual override; the next lifecycle event derives
+  state again.
+- Operator-facing label meanings and repair steps live in
+  [`docs/help/issue-status.md`](help/issue-status.md).
 - Agents never switch another worktree's branch, edit another agent's files, or
   share mutable build/output directories.
 - **Independent issues:** run concurrently in separate worktrees, each with its
@@ -396,18 +413,16 @@ not introduce a parallel prioritization taxonomy — that belongs to issue #5.
 **Recommended follow-up (non-blocking):** several workstreams (Web/UX, Mobile,
 Ops/Hosting, Channels, Skills, Customer Success, Marketing) currently share a
 broader `area:*` label with another workstream because no dedicated label
-exists yet. Two ceremonies referenced above also need dedicated labels that do
-not exist today: `retro-action` (for Retrospective-with-Enforcement action
-items, `.squad/ceremonies.md`) and `status:needs-decision` (for artifact-gate
-items awaiting Cyrus's decision, "Artifact gates" above). Picard should open a
-small `type:governance` issue to add `area:web-ux`, `area:mobile`, `area:ops`,
+exists yet. One ceremony referenced above also needs a dedicated label that
+does not exist today: `retro-action` (for Retrospective-with-Enforcement action
+items, `.squad/ceremonies.md`). Human decisions are represented by a
+`blocks:human` dependency rather than a second lifecycle status. Picard should
+open a small `type:governance` issue to add `area:web-ux`, `area:mobile`, `area:ops`,
 `area:channels`, `area:skills`, `area:customer-success`, `area:marketing`,
-`retro-action`, and `status:needs-decision` labels via
+and `retro-action` labels via
 `.github/workflows/sync-squad-labels.yml` once ratified, rather than expanding
 this document's scope to create labels unilaterally. Until that issue lands,
-use the existing `type:decision` label plus a body reference for
-needs-decision items, and `type:chore` plus a link to the retrospective issue
-for retro-action items.
+use `type:chore` plus a link to the retrospective issue for retro-action items.
 
 ## Cross-references
 

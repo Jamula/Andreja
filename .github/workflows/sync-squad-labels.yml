@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Parse roster and sync labels
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
@@ -98,6 +100,23 @@ jobs:
               { name: 'priority:p2', color: 'FBCA04', description: 'Next sprint' }
             ];
 
+            const STATUS_LABELS = [
+              { name: 'status:backlog', color: 'D4E5F7', description: 'Open with no tracked implementation branch or pull request' },
+              { name: 'status:branch-only', color: '5319E7', description: 'Implementation branch exists without an open pull request' },
+              { name: 'status:pr-draft', color: 'BFD4F2', description: 'A linked pull request is still draft' },
+              { name: 'status:ready', color: '0E8A16', description: 'A linked pull request is ready for review' },
+              { name: 'status:merged', color: '6F42C1', description: 'A linked pull request merged to the default branch' },
+              { name: 'status:closed', color: '6A737D', description: 'Issue closed without a merge to the default branch' }
+            ];
+
+            const DEPENDENCY_LABELS = [
+              { name: 'blocked:dependency', color: 'B60205', description: 'Unresolved issue dependency; lifecycle status remains independent' },
+              { name: 'blocked:evidence', color: 'D93F0B', description: 'Unresolved dependency classified as external or exit evidence' },
+              { name: 'blocked:human', color: 'FBCA04', description: 'Unresolved dependency classified as a human decision or approval' },
+              { name: 'blocks:evidence', color: 'D93F0B', description: 'Classifies this issue as an evidence dependency for blocked issues' },
+              { name: 'blocks:human', color: 'FBCA04', description: 'Classifies this issue as a human decision dependency for blocked issues' }
+            ];
+
             function slugify(t) { return t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
 
             // Ensure the base "squad" triage label exists
@@ -122,11 +141,13 @@ jobs:
               });
             }
 
-            // Add go:, release:, type:, priority:, and high-signal labels
+            // Add managed namespace and high-signal labels
             labels.push(...GO_LABELS);
             labels.push(...RELEASE_LABELS);
             labels.push(...TYPE_LABELS);
             labels.push(...PRIORITY_LABELS);
+            labels.push(...STATUS_LABELS);
+            labels.push(...DEPENDENCY_LABELS);
             labels.push(...SIGNAL_LABELS);
 
             // Sync labels (create or update)

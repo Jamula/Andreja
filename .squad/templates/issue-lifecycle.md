@@ -33,8 +33,9 @@ Each platform tracks issue lifecycle differently. Squad normalizes these into a 
 |--------------|-------------------|-------------------|
 | Open, no assignee | `state: open`, `assignee: null` | `untriaged` |
 | Open, assigned, no branch | `state: open`, `assignee: @user`, no linked PR | `assigned` |
-| Open, branch exists | `state: open`, linked branch exists | `inProgress` |
-| Open, PR opened | `state: open`, PR exists, `reviewDecision: null` | `needsReview` |
+| Open, branch exists | `state: open`, linked branch exists | `branchOnly` |
+| Open, draft PR | `state: open`, PR `isDraft: true` | `draft` |
+| Open, ready PR | `state: open`, PR `isDraft: false` | `needsReview` |
 | Open, PR approved | `state: open`, PR `reviewDecision: APPROVED` | `readyToMerge` |
 | Open, changes requested | `state: open`, PR `reviewDecision: CHANGES_REQUESTED` | `changesRequested` |
 | Open, CI failure | `state: open`, PR `statusCheckRollup: FAILURE` | `ciFailure` |
@@ -47,6 +48,10 @@ Each platform tracks issue lifecycle differently. Squad normalizes these into a 
 - `go:needs-research` — Needs investigation before implementation
 - `priority:p{N}` — Priority level (0=critical, 1=high, 2=medium, 3=low)
 - `next-up` — Queued for next agent pickup
+- Exactly one lifecycle label: `status:backlog`, `status:branch-only`,
+  `status:pr-draft`, `status:ready`, `status:merged`, or `status:closed`
+- Independent dependency labels: `blocked:dependency`, `blocked:evidence`, and
+  `blocked:human`; classify blockers with `blocks:evidence` or `blocks:human`
 
 **Branch naming convention:**
 ```
@@ -401,6 +406,8 @@ All PRs reviewed → All PRs merged → Epic closed
 - ❌ Leaving feature branches undeleted after merge
 - ❌ Using `checkout -b` when parallel agents are active (causes working directory conflicts)
 - ❌ Manually transitioning issue states — let the platform and Squad automation handle it
+- ❌ Using `status:blocked` or `status:needs-decision` — blockers are independent
+  `blocked:*` labels and never replace lifecycle
 - ❌ Skipping the branch naming convention — breaks Ralph's tracking logic
 
 ## Migration Notes

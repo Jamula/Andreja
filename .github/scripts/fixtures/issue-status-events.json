@@ -1,0 +1,164 @@
+[
+  {
+    "name": "new issue starts in backlog",
+    "eventName": "issues",
+    "action": "opened",
+    "issueState": "open",
+    "currentLabels": [],
+    "expectedStatus": "status:backlog"
+  },
+  {
+    "name": "branch creation exposes branch-only",
+    "eventName": "create",
+    "action": null,
+    "issueState": "open",
+    "branchLinked": true,
+    "currentLabels": ["status:backlog"],
+    "expectedStatus": "status:branch-only"
+  },
+  {
+    "name": "draft pull request is explicit",
+    "eventName": "pull_request_target",
+    "action": "opened",
+    "issueState": "open",
+    "pullRequests": [{ "state": "open", "isDraft": true, "baseRef": "main" }],
+    "currentLabels": ["status:branch-only"],
+    "expectedStatus": "status:pr-draft"
+  },
+  {
+    "name": "ready pull request is explicit",
+    "eventName": "pull_request_target",
+    "action": "ready_for_review",
+    "issueState": "open",
+    "pullRequests": [{ "state": "open", "isDraft": false, "baseRef": "main" }],
+    "currentLabels": ["status:pr-draft"],
+    "expectedStatus": "status:ready"
+  },
+  {
+    "name": "converted draft returns to draft status",
+    "eventName": "pull_request_target",
+    "action": "converted_to_draft",
+    "issueState": "open",
+    "pullRequests": [{ "state": "open", "isDraft": true, "baseRef": "main" }],
+    "currentLabels": ["status:ready"],
+    "expectedStatus": "status:pr-draft"
+  },
+  {
+    "name": "merge to default branch is merged",
+    "eventName": "pull_request_target",
+    "action": "closed",
+    "issueState": "closed",
+    "defaultBranch": "main",
+    "pullRequests": [{ "state": "closed", "merged": true, "baseRef": "main" }],
+    "currentLabels": ["status:ready"],
+    "expectedStatus": "status:merged"
+  },
+  {
+    "name": "merge to stack branch is not merged to main",
+    "eventName": "pull_request_target",
+    "action": "closed",
+    "issueState": "open",
+    "defaultBranch": "main",
+    "pullRequests": [{ "state": "closed", "merged": true, "baseRef": "feature/base" }],
+    "currentLabels": ["status:ready"],
+    "expectedStatus": "status:branch-only"
+  },
+  {
+    "name": "closed without merge is closed",
+    "eventName": "issues",
+    "action": "closed",
+    "issueState": "closed",
+    "pullRequests": [{ "state": "closed", "merged": false, "baseRef": "main" }],
+    "currentLabels": ["status:ready"],
+    "expectedStatus": "status:closed"
+  },
+  {
+    "name": "reopened issue recomputes lifecycle",
+    "eventName": "issues",
+    "action": "reopened",
+    "issueState": "open",
+    "pullRequests": [{ "state": "open", "isDraft": false, "baseRef": "main" }],
+    "currentLabels": ["status:closed"],
+    "expectedStatus": "status:ready"
+  },
+  {
+    "name": "reopened issue does not remain merged from history",
+    "eventName": "issues",
+    "action": "reopened",
+    "issueState": "open",
+    "defaultBranch": "main",
+    "pullRequests": [{ "state": "closed", "merged": true, "baseRef": "main" }],
+    "currentLabels": ["status:merged"],
+    "expectedStatus": "status:backlog"
+  },
+  {
+    "name": "merge event wins before issue close is observed",
+    "eventName": "pull_request_target",
+    "action": "closed",
+    "issueState": "open",
+    "defaultBranch": "main",
+    "mergeEvent": true,
+    "pullRequests": [{ "state": "closed", "merged": true, "baseRef": "main" }],
+    "currentLabels": ["status:ready"],
+    "expectedStatus": "status:merged"
+  },
+  {
+    "name": "evidence and human dependencies do not replace lifecycle",
+    "eventName": "issues",
+    "action": "edited",
+    "issueState": "open",
+    "pullRequests": [{ "state": "open", "isDraft": false, "baseRef": "main" }],
+    "dependencies": [
+      { "state": "open", "labels": ["blocks:evidence"] },
+      { "state": "open", "labels": [{ "name": "blocks:human" }] },
+      { "state": "closed", "labels": ["blocks:evidence"] }
+    ],
+    "currentLabels": ["status:blocked"],
+    "expectedStatus": "status:ready",
+    "expectedBlockers": ["blocked:evidence", "blocked:human"]
+  },
+  {
+    "name": "unclassified dependency is visible",
+    "eventName": "issues",
+    "action": "edited",
+    "issueState": "open",
+    "dependencies": [{ "state": "open", "labels": [] }],
+    "currentLabels": ["status:backlog"],
+    "expectedStatus": "status:backlog",
+    "expectedBlockers": ["blocked:dependency"]
+  },
+  {
+    "name": "known manual label overrides derived status",
+    "eventName": "issues",
+    "action": "labeled",
+    "appliedLabel": "status:branch-only",
+    "issueState": "open",
+    "pullRequests": [{ "state": "open", "isDraft": false, "baseRef": "main" }],
+    "currentLabels": ["status:ready", "status:branch-only"],
+    "expectedStatus": "status:branch-only"
+  },
+  {
+    "name": "workflow dispatch overrides status and blockers",
+    "eventName": "workflow_dispatch",
+    "action": null,
+    "inputs": {
+      "lifecycle": "closed",
+      "blockers": "evidence-and-human"
+    },
+    "issueState": "open",
+    "currentLabels": ["status:backlog", "blocked:dependency"],
+    "expectedStatus": "status:closed",
+    "expectedBlockers": ["blocked:evidence", "blocked:human"]
+  },
+  {
+    "name": "unknown status label is removed and cannot override",
+    "eventName": "issues",
+    "action": "labeled",
+    "appliedLabel": "status:mystery",
+    "issueState": "open",
+    "currentLabels": ["status:mystery", "area:product"],
+    "expectedStatus": "status:backlog",
+    "expectedRemoved": ["status:mystery"],
+    "expectedPreserved": ["area:product"]
+  }
+]
