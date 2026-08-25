@@ -156,6 +156,10 @@ public sealed class OperationsContractTests
             Path.Combine(root, "docs", "operations", "application-export-v1.schema.json"));
 
         Assert.Contains("image: ${ANDREJA_IMAGE:?", compose, StringComparison.Ordinal);
+        Assert.Contains(
+            "${ANDREJA_PUBLIC_ORIGIN:-https://${ANDREJA_HOSTNAME:-localhost}}",
+            compose,
+            StringComparison.Ordinal);
         Assert.DoesNotContain("POSTGRES_PASSWORD:", compose, StringComparison.Ordinal);
         Assert.Contains("POSTGRES_PASSWORD_FILE:", compose, StringComparison.Ordinal);
         Assert.Contains("USER $APP_UID", dockerfile, StringComparison.Ordinal);

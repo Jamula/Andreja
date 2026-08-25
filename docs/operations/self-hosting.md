@@ -101,6 +101,31 @@ Use `$host` instead of `$http_host` only for the default HTTPS port. Set
 origin, TLS virtual host, and `AllowedHosts` aligned. Do not enable framework
 environment switches that trust all forwarded headers.
 
+By default Compose derives the allowed HTTPS origin from `ANDREJA_HOSTNAME`.
+Leave `ANDREJA_PUBLIC_ORIGIN` unset unless an explicit port is required. If it
+is set, its host must still equal the RP ID or be within that RP domain; startup
+validation fails closed on divergence.
+
+The repository evidence profile supplies a pinned Caddy reverse proxy, a fixed
+evidence-only network, loopback-only TLS port `8443`, and exact source address
+`172.30.44.10`:
+
+```powershell
+docker compose -f compose.yaml -f deploy\compose.evidence.yaml config --quiet
+docker compose --profile evidence -f compose.yaml `
+  -f deploy\compose.evidence.yaml up --detach
+curl.exe --fail --cacert .andreja\localhost.pem `
+  https://localhost:8443/health/ready
+```
+
+Generate the short-lived certificate and private key outside Git. The browser
+evidence script pins the exact public-key hash rather than disabling certificate
+validation. `deploy/compose.evidence.yaml` is a local evidence fixture, not a
+production certificate, hostname, address-pool, or trust-policy recommendation.
+On Docker Desktop, place the bootstrap value in an ignored source file, copy it
+into the `andreja_evidence-bootstrap` volume, and set owner/mode to
+`1654:1654/0400`; the application check is not relaxed for NTFS.
+
 Before bootstrap, send a request through the proxy and confirm the application
 accepts the configured HTTPS origin. A direct request to
 `http://127.0.0.1:8080`, an untrusted source with spoofed forwarding headers, or a
@@ -375,11 +400,18 @@ checked-in wrapper with the verified dump, reviewed SQL, database name, and exac
 pending migration IDs:
 
 ```powershell
-pwsh -NoProfile -File scripts\operations\migrate-database.ps1 `
+$approvedMigrations = @(
+  '20260824031732_InitialIdentityTenancy'
+  '20260824043341_Phase1AOpenLoopsTasks'
+  '20260824075115_ProductionPasskeyIdentity'
+  '20260824102012_DurableRecentAuthenticationGrants'
+  '20260824154149_DurableProposalConfirmation'
+)
+& scripts\operations\migrate-database.ps1 `
   -BackupDumpPath backups\postgres\andreja-<timestamp>.dump `
   -ReviewedMigrationScriptPath .andreja\reviewed-migration.sql `
   -DatabaseName andreja `
-  -ApprovedMigrations 20260824031732_InitialIdentityTenancy,20260824043341_Phase1AOpenLoopsTasks,20260824075115_ProductionPasskeyIdentity,20260824102012_DurableRecentAuthenticationGrants,20260824154149_DurableProposalConfirmation `
+  -ApprovedMigrations $approvedMigrations `
   -ConfirmBackupRestoreAndMigrationReview
 ```
 

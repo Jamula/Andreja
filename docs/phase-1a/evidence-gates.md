@@ -8,6 +8,10 @@ This is a phase-scoped acceptance index, not a replacement threat model, privacy
 inventory, testing matrix, or financial ledger. These are internal dogfood gates,
 not public SLAs or production claims.
 
+The current implementation run is recorded in
+[`evidence-44.md`](evidence-44.md). Its blocked rows remain blocking; the record
+does not approve launch or close this proposed packet.
+
 ## Canonical artifact links
 
 | Domain | Canonical source and ownership | Phase 1A use |

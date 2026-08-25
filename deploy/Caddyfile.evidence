@@ -1,0 +1,10 @@
+https://localhost:8443 {
+    tls /run/secrets/tls_certificate /run/secrets/tls_private_key
+
+    reverse_proxy app:8080 {
+        header_up Host {http.request.hostport}
+        header_up X-Forwarded-Host {http.request.hostport}
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-For {http.request.remote.host}
+    }
+}

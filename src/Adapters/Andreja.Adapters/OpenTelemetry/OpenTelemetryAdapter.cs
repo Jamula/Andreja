@@ -4,12 +4,15 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Andreja.Adapters.Assistant.OpenAiCompatible;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Andreja.Adapters.OpenTelemetry;
 
@@ -58,11 +61,32 @@ public static class OpenTelemetryServiceCollectionExtensions
 
         var endpoint = new Uri(options.OtlpEndpoint, UriKind.Absolute);
         services.AddSingleton<ContentSuppressingActivityProcessor>();
+        services.AddHostedService<TelemetryStartupCanaryService>();
+        services.AddLogging(logging => logging
+            .AddFilter<OpenTelemetryLoggerProvider>(
+                (category, level) =>
+                    category == TelemetryStartupCanaryService.Category &&
+                    level >= LogLevel.Information)
+            .AddOpenTelemetry(logging =>
+            {
+                logging.IncludeFormattedMessage = false;
+                logging.IncludeScopes = false;
+                logging.ParseStateValues = false;
+                logging.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(
+                    options.ServiceName,
+                    serviceInstanceId: instanceName));
+                logging.AddOtlpExporter(exporter =>
+                {
+                    exporter.Endpoint = endpoint;
+                    exporter.Protocol = OtlpExportProtocol.Grpc;
+                });
+            }));
         services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService(
                 options.ServiceName,
                 serviceInstanceId: instanceName))
             .WithTracing(tracing => tracing
+                .AddSource(AndrejaTelemetry.ActivitySourceName)
                 .AddAspNetCoreInstrumentation(instrumentation =>
                 {
                     instrumentation.Filter = context =>
@@ -91,8 +115,10 @@ public static class OpenTelemetryServiceCollectionExtensions
 public static class AndrejaTelemetry
 {
     public const string MeterName = "Andreja.Operations";
+    public const string ActivitySourceName = "Andreja.Operations";
 
     public static readonly System.Diagnostics.Metrics.Meter Meter = new(MeterName);
+    public static readonly ActivitySource ActivitySource = new(ActivitySourceName);
 
     public static readonly System.Diagnostics.Metrics.Counter<long> PolicyChecks =
         Meter.CreateCounter<long>("andreja_telemetry_policy_checks_total");
@@ -102,6 +128,30 @@ public static class AndrejaTelemetry
 
     public static readonly System.Diagnostics.Metrics.Counter<long> SuppressedAttributes =
         Meter.CreateCounter<long>("andreja_telemetry_suppressed_attributes_total");
+}
+
+internal sealed class TelemetryStartupCanaryService(
+    ILogger<TelemetryStartupCanaryService> logger) : IHostedService
+{
+    public const string Category =
+        "Andreja.Adapters.OpenTelemetry.TelemetryStartupCanaryService";
+    private static readonly Action<ILogger, Exception?> WriteStartupCanary =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(44001, "TelemetryStartupCanary"),
+            "Andreja telemetry startup canary");
+
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        using var activity = AndrejaTelemetry.ActivitySource.StartActivity(
+            "andreja.telemetry.startup-canary",
+            ActivityKind.Internal);
+        activity?.SetTag("andreja.evidence.canary", "synthetic");
+        WriteStartupCanary(logger, null);
+        return Task.CompletedTask;
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }
 
 public sealed class ContentSuppressingActivityProcessor : BaseProcessor<Activity>
