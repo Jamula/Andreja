@@ -4,7 +4,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Andreja.PostgreSqlIntegrationTests;
 
@@ -503,6 +507,203 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
         }
     }
 
+    [Fact]
+    public async Task ApplicationTableLocksPreventDirtyTargetAtImportCommit()
+    {
+        var tenant = await SeedPortableTenantAsync("QUIESCENCE", "Quiescence");
+        var key = RandomNumberGenerator.GetBytes(32);
+        var archive = ArchivePath();
+        var target = await CreateMigratedTargetAsync("quiescence");
+        try
+        {
+            var exported = await PostgreSqlApplicationPortability.ExportAsync(
+                sourceConnectionString,
+                tenant,
+                archive,
+                key,
+                "quiescence");
+            var blocker = new TableLockBlockingFaultInjector();
+            var importing = PostgreSqlApplicationPortability.ImportAsync(
+                target,
+                archive,
+                key,
+                commit: true,
+                exported.ExportId,
+                TimeSpan.FromSeconds(10),
+                blocker);
+            await blocker.TablesLocked.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+            var writer = ExecuteAsync(
+                target,
+                """
+                    INSERT INTO identity.tenants
+                    ("Id","NormalizedName","DisplayName","DataResidency","Plan","Status")
+                    VALUES ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+                            'CONCURRENT','Concurrent','local','SelfHosted',1)
+                    """);
+            await Task.Delay(100);
+            Assert.False(writer.IsCompleted);
+
+            blocker.Release.TrySetResult();
+            _ = await importing;
+            await writer;
+            Assert.Equal(1, await CountAsync(target, "portability.application_imports"));
+            Assert.Equal(2, await CountAsync(target, "identity.tenants"));
+            await AssertImportLockAvailableAsync(target);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+            DeleteFile(archive);
+            await DropAdditionalDatabaseAsync(target);
+        }
+    }
+
+    [Fact]
+    public async Task DryRunLocksEveryCheckedTableAgainstConcurrentApplicationWrites()
+    {
+        var tenant = await SeedPortableTenantAsync("TABLE-LOCK", "Table lock");
+        var key = RandomNumberGenerator.GetBytes(32);
+        var archive = ArchivePath();
+        try
+        {
+            _ = await PostgreSqlApplicationPortability.ExportAsync(
+                sourceConnectionString,
+                tenant,
+                archive,
+                key,
+                "table-lock");
+            var blocker = new TableLockBlockingFaultInjector();
+            var dryRunTask = PostgreSqlApplicationPortability.ImportAsync(
+                targetConnectionString,
+                archive,
+                key,
+                commit: false,
+                approvedExportId: null,
+                TimeSpan.FromSeconds(10),
+                blocker);
+            await blocker.TablesLocked.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+            Assert.Equal(
+                await CheckedTableCountAsync(targetConnectionString),
+                await CheckedTableShareLockCountAsync(targetConnectionString));
+            await using var writer = new NpgsqlConnection(targetConnectionString);
+            await writer.OpenAsync();
+            await using var command = new NpgsqlCommand(
+                """
+                    INSERT INTO identity.tenants
+                    ("Id","NormalizedName","DisplayName","DataResidency","Plan","Status")
+                    VALUES (@id,'CONCURRENT','Concurrent','local','SelfHosted',1)
+                    """,
+                writer);
+            command.Parameters.AddWithValue("id", Guid.CreateVersion7());
+            var writeTask = command.ExecuteNonQueryAsync();
+            await Task.Delay(100);
+            Assert.False(writeTask.IsCompleted);
+
+            blocker.Release.TrySetResult();
+            var report = await dryRunTask;
+            Assert.True(report.DryRun);
+            Assert.Equal(1, await writeTask);
+            Assert.Equal(1, await CountAsync(targetConnectionString, "identity.tenants"));
+            Assert.Equal(
+                0,
+                await CountAsync(targetConnectionString, "portability.application_imports"));
+            await AssertImportLockAvailableAsync(targetConnectionString);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+            DeleteFile(archive);
+            await ExecuteAsync(targetConnectionString, "DELETE FROM identity.tenants");
+        }
+    }
+
+    [Fact]
+    public async Task ImportRejectsSettingsMembershipAndReauthorizationDivergence()
+    {
+        var tenant = await SeedPortableTenantAsync("LINEAGE", "Lineage");
+        await AddSecondPortableUserAndExternalIdentityAsync(tenant);
+        var key = RandomNumberGenerator.GetBytes(32);
+        var archive = ArchivePath();
+        var settingsArchive = ArchivePath();
+        var membershipArchive = ArchivePath();
+        var reauthorizationArchive = ArchivePath();
+        try
+        {
+            _ = await PostgreSqlApplicationPortability.ExportAsync(
+                sourceConnectionString,
+                tenant,
+                archive,
+                key,
+                "lineage");
+
+            File.Copy(archive, settingsArchive);
+            await RewriteAuthenticatedArchiveAsync(settingsArchive, key, files =>
+                MutateRecord(
+                    files,
+                    "settings.ndjson",
+                    "tenantSettings",
+                    value => value["DataResidency"] = "different"));
+            var settingsFailure = await Assert.ThrowsAsync<InvalidDataException>(() =>
+                PostgreSqlApplicationPortability.ImportAsync(
+                    targetConnectionString,
+                    settingsArchive,
+                    key,
+                    commit: false,
+                    approvedExportId: null));
+            Assert.Contains("settings do not match", settingsFailure.Message, StringComparison.Ordinal);
+
+            File.Copy(archive, membershipArchive);
+            await RewriteAuthenticatedArchiveAsync(
+                membershipArchive,
+                key,
+                MutateMembershipAppUser);
+            var membershipFailure = await Assert.ThrowsAsync<InvalidDataException>(() =>
+                PostgreSqlApplicationPortability.ImportAsync(
+                    targetConnectionString,
+                    membershipArchive,
+                    key,
+                    commit: false,
+                    approvedExportId: null));
+            Assert.Contains(
+                "principal does not belong",
+                membershipFailure.Message,
+                StringComparison.Ordinal);
+
+            File.Copy(archive, reauthorizationArchive);
+            await RewriteAuthenticatedArchiveAsync(
+                reauthorizationArchive,
+                key,
+                files =>
+                {
+                    var manifest = ParseObject(files["manifest.json"]);
+                    manifest["reauthorization"]![0]!["providerReference"] =
+                        "https://different.example";
+                    files["manifest.json"] = SerializeNode(manifest);
+                });
+            var reauthorizationFailure = await Assert.ThrowsAsync<InvalidDataException>(() =>
+                PostgreSqlApplicationPortability.ImportAsync(
+                    targetConnectionString,
+                    reauthorizationArchive,
+                    key,
+                    commit: false,
+                    approvedExportId: null));
+            Assert.Contains(
+                "do not match imported external identities",
+                reauthorizationFailure.Message,
+                StringComparison.Ordinal);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+            DeleteFile(archive);
+            DeleteFile(settingsArchive);
+            DeleteFile(membershipArchive);
+            DeleteFile(reauthorizationArchive);
+        }
+    }
+
     private static AndrejaIdentityDbContext CreateContext(
         string connectionString,
         ITenantPrincipalContextAccessor accessor)
@@ -577,6 +778,200 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
         await using var command = new NpgsqlCommand(sql, connection);
         await command.ExecuteNonQueryAsync();
     }
+
+    private static async Task<long> CheckedTableCountAsync(string connectionString) =>
+        await ScalarAsync<long>(
+            connectionString,
+            """
+            SELECT count(*)
+            FROM information_schema.tables
+            WHERE table_type='BASE TABLE'
+              AND table_schema IN ('identity','open_loops','portability')
+              AND table_name <> '__migrations'
+              AND NOT (table_schema='portability' AND table_name='application_imports')
+            """);
+
+    private static async Task<long> CheckedTableShareLockCountAsync(string connectionString) =>
+        await ScalarAsync<long>(
+            connectionString,
+            """
+            SELECT count(DISTINCT (n.nspname,c.relname))
+            FROM pg_locks l
+            JOIN pg_class c ON c.oid=l.relation
+            JOIN pg_namespace n ON n.oid=c.relnamespace
+            WHERE l.granted
+              AND l.mode='ShareLock'
+              AND c.relkind='r'
+              AND n.nspname IN ('identity','open_loops','portability')
+              AND c.relname <> '__migrations'
+              AND NOT (n.nspname='portability' AND c.relname='application_imports')
+            """);
+
+    private async Task AddSecondPortableUserAndExternalIdentityAsync(Guid tenantId)
+    {
+        await using var source = new NpgsqlConnection(sourceConnectionString);
+        await source.OpenAsync();
+        await using var command = new NpgsqlCommand(
+            """
+            INSERT INTO identity.app_users ("Id","DisplayName","PrimaryExternalIdentityId")
+            VALUES (@user,'Second portable user',NULL);
+            INSERT INTO identity.principals ("Id","TenantId","AppUserId","DisplayName")
+            VALUES (@principal,@tenant,@user,'Second portable principal');
+            INSERT INTO identity.memberships
+                ("Id","TenantId","AppUserId","PrincipalId","Role","Status")
+            VALUES (@membership,@tenant,@user,@principal,1,1);
+            INSERT INTO identity.external_identities ("Id","AppUserId","Issuer","Subject")
+            SELECT @identity,"AppUserId",'https://issuer.example/lineage','lineage'
+            FROM identity.memberships
+            WHERE "TenantId"=@tenant
+            ORDER BY "Id"
+            LIMIT 1
+            """,
+            source);
+        command.Parameters.AddWithValue("tenant", tenantId);
+        command.Parameters.AddWithValue("user", Guid.CreateVersion7());
+        command.Parameters.AddWithValue("principal", Guid.CreateVersion7());
+        command.Parameters.AddWithValue("membership", Guid.CreateVersion7());
+        command.Parameters.AddWithValue("identity", Guid.CreateVersion7());
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task RewriteAuthenticatedArchiveAsync(
+        string path,
+        byte[] key,
+        Action<Dictionary<string, byte[]>> mutation)
+    {
+        var envelope = await File.ReadAllBytesAsync(path);
+        var magic = "ANDREJA1"u8.ToArray();
+        var plaintext = new byte[envelope.Length - magic.Length - 28];
+        byte[]? rewrittenZip = null;
+        byte[]? rewrittenEnvelope = null;
+        try
+        {
+            using (var aes = new AesGcm(key, 16))
+            {
+                aes.Decrypt(
+                    envelope.AsSpan(magic.Length, 12),
+                    envelope.AsSpan(magic.Length + 28),
+                    envelope.AsSpan(magic.Length + 12, 16),
+                    plaintext,
+                    magic);
+            }
+
+            var files = ReadZipFiles(plaintext);
+            mutation(files);
+            var manifest = ParseObject(files["manifest.json"]);
+            foreach (var descriptorNode in manifest["artifacts"]!.AsArray())
+            {
+                var descriptor = descriptorNode!.AsObject();
+                var artifactPath = descriptor["path"]!.GetValue<string>();
+                var content = files[artifactPath];
+                descriptor["sha256"] =
+                    Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant();
+                descriptor["byteLength"] = content.LongLength;
+                descriptor["recordCount"] = content.LongCount(value => value == (byte)'\n');
+            }
+            files["manifest.json"] = SerializeNode(manifest);
+
+            rewrittenZip = PostgreSqlApplicationPortability.CreateZip(files);
+            rewrittenEnvelope = new byte[magic.Length + 28 + rewrittenZip.Length];
+            magic.CopyTo(rewrittenEnvelope, 0);
+            var nonce = rewrittenEnvelope.AsSpan(magic.Length, 12);
+            RandomNumberGenerator.Fill(nonce);
+            using (var aes = new AesGcm(key, 16))
+            {
+                aes.Encrypt(
+                    nonce,
+                    rewrittenZip,
+                    rewrittenEnvelope.AsSpan(magic.Length + 28),
+                    rewrittenEnvelope.AsSpan(magic.Length + 12, 16),
+                    magic);
+            }
+            await File.WriteAllBytesAsync(path, rewrittenEnvelope);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(envelope);
+            CryptographicOperations.ZeroMemory(plaintext);
+            CryptographicOperations.ZeroMemory(magic);
+            if (rewrittenZip is not null)
+            {
+                CryptographicOperations.ZeroMemory(rewrittenZip);
+            }
+            if (rewrittenEnvelope is not null)
+            {
+                CryptographicOperations.ZeroMemory(rewrittenEnvelope);
+            }
+        }
+    }
+
+    private static Dictionary<string, byte[]> ReadZipFiles(byte[] content)
+    {
+        var files = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+        using var input = new MemoryStream(content, writable: false);
+        using var archive = new ZipArchive(input, ZipArchiveMode.Read);
+        foreach (var entry in archive.Entries)
+        {
+            using var output = new MemoryStream();
+            using (var stream = entry.Open())
+            {
+                stream.CopyTo(output);
+            }
+            files.Add(entry.FullName, output.ToArray());
+        }
+        return files;
+    }
+
+    private static void MutateRecord(
+        Dictionary<string, byte[]> files,
+        string path,
+        string type,
+        Action<JsonObject> mutation)
+    {
+        var records = ParseRecords(files[path]);
+        var record = records.Single(
+            candidate => candidate["type"]!.GetValue<string>() == type);
+        mutation(record["value"]!.AsObject());
+        files[path] = SerializeRecords(records);
+    }
+
+    private static void MutateMembershipAppUser(Dictionary<string, byte[]> files)
+    {
+        var records = ParseRecords(files["records.ndjson"]);
+        var appUsers = records
+            .Where(record => record["type"]!.GetValue<string>() == "appUser")
+            .Select(record => record["value"]!["Id"]!.GetValue<string>())
+            .ToArray();
+        var principalUsers = records
+            .Where(record => record["type"]!.GetValue<string>() == "principal")
+            .ToDictionary(
+                record => record["value"]!["Id"]!.GetValue<string>(),
+                record => record["value"]!["AppUserId"]!.GetValue<string>(),
+                StringComparer.Ordinal);
+        var membership = records.First(
+            record => record["type"]!.GetValue<string>() == "membership");
+        var value = membership["value"]!.AsObject();
+        var principalId = value["PrincipalId"]!.GetValue<string>();
+        value["AppUserId"] = appUsers.Single(
+            appUserId => appUserId != principalUsers[principalId]);
+        files["records.ndjson"] = SerializeRecords(records);
+    }
+
+    private static List<JsonObject> ParseRecords(byte[] content) =>
+        Encoding.UTF8.GetString(content)
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => JsonNode.Parse(line)!.AsObject())
+            .ToList();
+
+    private static JsonObject ParseObject(byte[] content) =>
+        JsonNode.Parse(content)!.AsObject();
+
+    private static byte[] SerializeRecords(IEnumerable<JsonObject> records) =>
+        Encoding.UTF8.GetBytes(
+            string.Join('\n', records.Select(record => record.ToJsonString())) + "\n");
+
+    private static byte[] SerializeNode(JsonNode node) =>
+        Encoding.UTF8.GetBytes(node.ToJsonString());
 
     private static string Quote(string identifier) =>
         '"' + identifier.Replace("\"", "\"\"", StringComparison.Ordinal) + '"';
@@ -763,11 +1158,35 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
             ApplicationImportCheckpoint checkpoint,
             CancellationToken cancellationToken)
         {
-            Assert.Equal(
-                ApplicationImportCheckpoint.SessionLockAcquiredBeforeTransaction,
-                checkpoint);
-            Acquired.TrySetResult();
-            await Release.Task.WaitAsync(cancellationToken);
+            if (checkpoint == ApplicationImportCheckpoint.SessionLockAcquiredBeforeTransaction)
+            {
+                Acquired.TrySetResult();
+                await Release.Task.WaitAsync(cancellationToken);
+            }
+            else
+            {
+                Assert.Equal(ApplicationImportCheckpoint.TargetTablesLocked, checkpoint);
+            }
+        }
+    }
+
+    private sealed class TableLockBlockingFaultInjector : IApplicationImportFaultInjector
+    {
+        public TaskCompletionSource TablesLocked { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Release { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async ValueTask OnCheckpointAsync(
+            ApplicationImportCheckpoint checkpoint,
+            CancellationToken cancellationToken)
+        {
+            if (checkpoint == ApplicationImportCheckpoint.TargetTablesLocked)
+            {
+                TablesLocked.TrySetResult();
+                await Release.Task.WaitAsync(cancellationToken);
+            }
         }
     }
 

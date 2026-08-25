@@ -22,6 +22,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Andreja.AppHost\Andreja.AppHost.csproj" />
     <ProjectReference Include="..\..\src\Andreja.Platform.Contracts\Andreja.Platform.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Andreja.Portability.Cli\Andreja.Portability.Cli.csproj"
+                      Aliases="PortabilityCli" />
     <ProjectReference Include="..\..\src\Modules\Andreja.Modules\Andreja.Modules.csproj" />
     <ProjectReference Include="..\..\src\Adapters\Andreja.Adapters\Andreja.Adapters.csproj" />
   </ItemGroup>

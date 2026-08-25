@@ -62,17 +62,9 @@ internal static class PortabilityCommand
             Console.Error.WriteLine("Portability operation cancelled; no partial commit was retained.");
             return 130;
         }
-        catch (Exception exception) when (
-            exception is ArgumentException
-                or InvalidOperationException
-                or InvalidDataException
-                or IOException
-                or Npgsql.NpgsqlException
-                or FormatException
-                or TimeoutException
-                or System.Text.Json.JsonException)
+        catch (Exception exception) when (IsExpectedFailure(exception))
         {
-            Console.Error.WriteLine($"Portability operation rejected: {exception.Message}");
+            Console.Error.WriteLine(GetFailureMessage(exception));
             return 1;
         }
         finally
@@ -179,6 +171,37 @@ internal static class PortabilityCommand
         options.TryGetValue(name, out var value) && !string.IsNullOrWhiteSpace(value)
             ? value
             : throw new ArgumentException($"Required option {name} is missing.");
+
+    internal static string GetFailureMessage(Exception exception) =>
+        exception switch
+        {
+            TimeoutException =>
+                "Portability operation failed: the import lock timed out.",
+            Npgsql.NpgsqlException =>
+                "Portability operation failed: database access failed.",
+            IOException or UnauthorizedAccessException =>
+                "Portability operation failed: file access failed.",
+            InvalidDataException or System.Text.Json.JsonException =>
+                "Portability operation rejected: archive validation failed.",
+            ArgumentException or FormatException =>
+                "Portability operation rejected: command arguments are invalid.",
+            InvalidOperationException =>
+                "Portability operation rejected: operation preconditions were not met.",
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(exception),
+                "The exception is not an expected portability failure."),
+        };
+
+    private static bool IsExpectedFailure(Exception exception) =>
+        exception is ArgumentException
+            or InvalidOperationException
+            or InvalidDataException
+            or IOException
+            or UnauthorizedAccessException
+            or Npgsql.NpgsqlException
+            or FormatException
+            or TimeoutException
+            or System.Text.Json.JsonException;
 
     private static void WriteUsage()
     {

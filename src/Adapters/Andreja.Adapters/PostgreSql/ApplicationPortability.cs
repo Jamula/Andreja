@@ -1,4 +1,5 @@
 using Andreja.Platform.Contracts.Portability;
+using Andreja.Modules.Identity;
 using Npgsql;
 using System.Data;
 using System.IO.Compression;
@@ -27,6 +28,7 @@ public sealed record ApplicationImportReport(
 internal enum ApplicationImportCheckpoint
 {
     SessionLockAcquiredBeforeTransaction,
+    TargetTablesLocked,
 }
 
 internal interface IApplicationImportFaultInjector
@@ -300,6 +302,7 @@ public static class PostgreSqlApplicationPortability
         ValidateArchiveAgainstManifest(archive, manifest);
         var records = ParseRecords(archive, manifest);
         ValidateLineage(records, manifest);
+        ValidateReauthorization(records, manifest);
         var manifestDigest = Sha256(archive.Manifest);
 
         await using var lockConnection = CreateImportLockConnection(connectionString);
@@ -316,12 +319,26 @@ public static class PostgreSqlApplicationPortability
                     ApplicationImportCheckpoint.SessionLockAcquiredBeforeTransaction,
                     cancellationToken);
             }
+            var checkedTables = await ReadCheckedTablesAsync(
+                lockConnection,
+                cancellationToken);
 
             await using var connection = new NpgsqlConnection(connectionString);
             await connection.OpenAsync(cancellationToken);
             await using var transaction = await connection.BeginTransactionAsync(
                 IsolationLevel.Serializable,
                 cancellationToken);
+            await LockCheckedTablesAsync(
+                connection,
+                transaction,
+                checkedTables,
+                cancellationToken);
+            if (faultInjector is not null)
+            {
+                await faultInjector.OnCheckpointAsync(
+                    ApplicationImportCheckpoint.TargetTablesLocked,
+                    cancellationToken);
+            }
             await EnsureImportMigrationAsync(connection, transaction, cancellationToken);
             var replay = await ReadImportStateAsync(
                 connection,
@@ -341,7 +358,11 @@ public static class PostgreSqlApplicationPortability
                 return CreateReport(manifest, dryRun: !commit, idempotent: true);
             }
 
-            await EnsureCleanAsync(connection, transaction, cancellationToken);
+            await EnsureCleanAsync(
+                connection,
+                transaction,
+                checkedTables,
+                cancellationToken);
             await InsertAllAsync(connection, transaction, records, cancellationToken);
             await InsertImportRecordAsync(
                 connection,
@@ -408,12 +429,7 @@ public static class PostgreSqlApplicationPortability
                 {
                     using var document = JsonDocument.Parse(canonical);
                     var issuer = document.RootElement.GetProperty("value").GetProperty("Issuer").GetString();
-                    if (Uri.TryCreate(issuer, UriKind.Absolute, out var uri))
-                    {
-                        providerReferences.Add(uri.GetComponents(
-                            UriComponents.SchemeAndServer | UriComponents.Path,
-                            UriFormat.UriEscaped).TrimEnd('/'));
-                    }
+                    providerReferences.Add(NormalizeProviderReference(issuer));
                 }
             }
         }
@@ -727,7 +743,6 @@ public static class PostgreSqlApplicationPortability
         var externalIdentities = records["externalIdentity"]
             .Select(item => item.GetProperty("Id").GetGuid())
             .ToHashSet();
-        var principals = records["principal"].Select(item => item.GetProperty("Id").GetGuid()).ToHashSet();
         var tasks = records["task"].Select(item => item.GetProperty("Id").GetGuid()).ToHashSet();
         var proposals = records["proposal"].Select(item => item.GetProperty("Id").GetGuid()).ToHashSet();
         RequireUnique(records["appUser"], "Id");
@@ -739,6 +754,10 @@ public static class PostgreSqlApplicationPortability
         RequireUnique(records["taskAudit"], "Id");
         RequireUnique(records["proposal"], "Id");
         RequireUnique(records["proposalAudit"], "Id");
+        var principalsByUser = records["principal"].ToDictionary(
+            item => item.GetProperty("Id").GetGuid(),
+            item => item.GetProperty("AppUserId").GetGuid());
+        var principals = principalsByUser.Keys.ToHashSet();
         foreach (var user in records["appUser"])
         {
             if (OptionalGuid(user, "PrimaryExternalIdentityId") is Guid identityId
@@ -763,10 +782,14 @@ public static class PostgreSqlApplicationPortability
         }
         foreach (var membership in records["membership"])
         {
-            if (!appUsers.Contains(membership.GetProperty("AppUserId").GetGuid())
-                || !principals.Contains(membership.GetProperty("PrincipalId").GetGuid()))
+            var appUserId = membership.GetProperty("AppUserId").GetGuid();
+            var principalId = membership.GetProperty("PrincipalId").GetGuid();
+            if (!appUsers.Contains(appUserId)
+                || !principalsByUser.TryGetValue(principalId, out var principalAppUserId)
+                || principalAppUserId != appUserId)
             {
-                throw new InvalidDataException("A membership has foreign lineage.");
+                throw new InvalidDataException(
+                    "A membership principal does not belong to its AppUser.");
             }
         }
         foreach (var contact in records["contact"])
@@ -828,10 +851,43 @@ public static class PostgreSqlApplicationPortability
                 throw new InvalidDataException("A proposal audit has foreign lineage.");
             }
         }
-        if (records["tenantSettings"].Count != 1
-            || records["tenantSettings"][0].GetProperty("TenantId").GetGuid() != tenantId)
+        var tenant = records["tenant"][0];
+        if (records["tenantSettings"].Count != 1)
         {
             throw new InvalidDataException("Tenant settings lineage is invalid.");
+        }
+        var settings = records["tenantSettings"][0];
+        if (settings.GetProperty("TenantId").GetGuid() != tenantId
+            || !JsonElement.DeepEquals(
+                settings.GetProperty("DataResidency"),
+                tenant.GetProperty("DataResidency"))
+            || !JsonElement.DeepEquals(
+                settings.GetProperty("Plan"),
+                tenant.GetProperty("Plan"))
+            || !JsonElement.DeepEquals(
+                settings.GetProperty("Status"),
+                tenant.GetProperty("Status")))
+        {
+            throw new InvalidDataException(
+                "Tenant settings do not match the authoritative tenant record.");
+        }
+    }
+
+    private static void ValidateReauthorization(
+        Dictionary<string, List<JsonElement>> records,
+        ApplicationExportManifest manifest)
+    {
+        var expected = records["externalIdentity"]
+            .Select(identity => NormalizeProviderReference(
+                identity.GetProperty("Issuer").GetString()))
+            .ToHashSet(StringComparer.Ordinal);
+        var actual = manifest.Reauthorization
+            .Select(requirement => requirement.ProviderReference)
+            .ToHashSet(StringComparer.Ordinal);
+        if (!actual.SetEquals(expected))
+        {
+            throw new InvalidDataException(
+                "Reauthorization requirements do not match imported external identities.");
         }
     }
 
@@ -924,12 +980,11 @@ public static class PostgreSqlApplicationPortability
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    private static async Task EnsureCleanAsync(
+    private static async Task<IReadOnlyList<DatabaseTable>> ReadCheckedTablesAsync(
         NpgsqlConnection connection,
-        NpgsqlTransaction transaction,
         CancellationToken cancellationToken)
     {
-        const string tablesSql =
+        const string sql =
             """
             SELECT table_schema, table_name
             FROM information_schema.tables
@@ -939,15 +994,43 @@ public static class PostgreSqlApplicationPortability
               AND NOT (table_schema='portability' AND table_name='application_imports')
             ORDER BY table_schema, table_name
             """;
-        var tables = new List<(string Schema, string Table)>();
-        await using (var command = new NpgsqlCommand(tablesSql, connection, transaction))
-        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        var tables = new List<DatabaseTable>();
+        await using var command = new NpgsqlCommand(sql, connection);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
         {
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                tables.Add((reader.GetString(0), reader.GetString(1)));
-            }
+            tables.Add(new(reader.GetString(0), reader.GetString(1)));
         }
+        return tables;
+    }
+
+    private static async Task LockCheckedTablesAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        IReadOnlyList<DatabaseTable> tables,
+        CancellationToken cancellationToken)
+    {
+        if (tables.Count == 0)
+        {
+            return;
+        }
+        var qualifiedTables = string.Join(
+            ",",
+            tables.Select(table =>
+                $"{QuoteIdentifier(table.Schema)}.{QuoteIdentifier(table.Table)}"));
+        await using var command = new NpgsqlCommand(
+            $"LOCK TABLE {qualifiedTables} IN SHARE MODE",
+            connection,
+            transaction);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task EnsureCleanAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        IReadOnlyList<DatabaseTable> tables,
+        CancellationToken cancellationToken)
+    {
         foreach (var table in tables)
         {
             var quoted = $"{QuoteIdentifier(table.Schema)}.{QuoteIdentifier(table.Table)}";
@@ -1243,6 +1326,20 @@ public static class PostgreSqlApplicationPortability
 
     private static ArtifactQuery Query(string type, string sql) => new(type, sql);
 
+    private static string NormalizeProviderReference(string? issuer)
+    {
+        try
+        {
+            return ExternalIdentity.NormalizeIssuer(issuer ?? string.Empty);
+        }
+        catch (ArgumentException exception)
+        {
+            throw new InvalidDataException(
+                "An external identity issuer is not a valid HTTPS provider reference.",
+                exception);
+        }
+    }
+
     private static string Sha256(ReadOnlySpan<byte> content) =>
         Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant();
 
@@ -1318,6 +1415,7 @@ public static class PostgreSqlApplicationPortability
         string Path,
         ArtifactQuery[] Queries);
     private sealed record ArtifactQuery(string Type, string Sql);
+    private sealed record DatabaseTable(string Schema, string Table);
     private sealed record ArchiveContent(
         byte[] Manifest,
         Dictionary<string, byte[]> Artifacts);
