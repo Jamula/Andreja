@@ -10,6 +10,7 @@ remains pending explicit ratification.
 
 - Git.
 - .NET SDK 10.0.301, pinned by [`global.json`](global.json).
+- `dotnet-ef` 10.0.9 for migration inspection and script generation.
 - Python 3, available as `python`, for documentation consistency checks.
 - PowerShell 7 for repository validation scripts.
 - Docker with Buildx and Compose for live PostgreSQL, OCI, and self-host
@@ -25,6 +26,16 @@ if ((dotnet --version) -ne "10.0.301") {
 }
 python --version
 pwsh --version
+
+$efVersion = dotnet ef --version 2>$null
+if ($LASTEXITCODE -ne 0) {
+  dotnet tool install --global dotnet-ef --version 10.0.9
+  $efVersion = dotnet ef --version
+}
+$efVersionText = $efVersion -join "`n"
+if ($LASTEXITCODE -ne 0 -or $efVersionText -notmatch "10\.0\.9") {
+  throw "Install or update the global dotnet-ef tool to version 10.0.9."
+}
 ```
 
 The repository is private. Your GitHub account must have access before cloning.
@@ -176,27 +187,46 @@ After completing the runbook's one-time signing-key, TLS proxy, secret-file,
 backup, and reviewed-migration preparation, the minimum operator sequence is:
 
 ```powershell
-Copy-Item .env.example .env
+# `.env`, secret files, the trusted proxy, the reviewed migration SQL, and the
+# restore-tested backup are already prepared according to the runbook.
 
 # Produce and verify the signed local image bundle. The key paths are created
 # during the runbook's one-time signing-key setup.
 $env:COSIGN_PASSWORD = Read-Host "Cosign key password" -AsSecureString |
   ConvertFrom-SecureString -AsPlainText
-pwsh -NoProfile -File scripts\supply-chain\New-OciEvidence.ps1 `
-  -OutputDirectory artifacts\supply-chain `
-  -SigningKeyPath $HOME\.andreja-signing\andreja.key `
-  -TrustedPublicKeyPath $HOME\.andreja-signing\andreja.pub
-Remove-Item Env:\COSIGN_PASSWORD
+try {
+  pwsh -NoProfile -File scripts\supply-chain\New-OciEvidence.ps1 `
+    -OutputDirectory artifacts\supply-chain `
+    -SigningKeyPath $HOME\.andreja-signing\andreja.key `
+    -TrustedPublicKeyPath $HOME\.andreja-signing\andreja.pub
+  if ($LASTEXITCODE -ne 0) {
+    throw "OCI evidence generation failed."
+  }
+}
+finally {
+  Remove-Item Env:\COSIGN_PASSWORD -ErrorAction SilentlyContinue
+}
 
 pwsh -NoProfile -File scripts\supply-chain\Test-OciEvidence.ps1 `
   -BundleDirectory artifacts\supply-chain `
   -TrustedPublicKeyPath $HOME\.andreja-signing\andreja.pub
+if ($LASTEXITCODE -ne 0) {
+  throw "OCI evidence verification failed."
+}
+
 $evidence = Get-Content artifacts\supply-chain\evidence.json -Raw |
   ConvertFrom-Json
 $env:ANDREJA_IMAGE = $evidence.image.immutableReference
 
 pwsh -NoProfile -File scripts\operations\validate-contract.ps1
+if ($LASTEXITCODE -ne 0) {
+  throw "The Compose and operations contract is invalid."
+}
+
 docker compose up --detach postgres otel-collector
+if ($LASTEXITCODE -ne 0) {
+  throw "PostgreSQL or OpenTelemetry failed to start."
+}
 
 # Create and restore-test the backup, review the generated migration SQL, and
 # set the approved migration names before running this command.
@@ -206,15 +236,30 @@ pwsh -NoProfile -File scripts\operations\migrate-database.ps1 `
   -DatabaseName andreja `
   -ApprovedMigrations @("REPLACE_WITH_REVIEWED_MIGRATION_NAMES") `
   -ConfirmBackupRestoreAndMigrationReview
+if ($LASTEXITCODE -ne 0) {
+  throw "The explicit database migration failed."
+}
 
 docker compose up --detach
+if ($LASTEXITCODE -ne 0) {
+  throw "The self-hosted stack failed to start."
+}
 docker compose ps
 ```
 
 Use the configured public HTTPS origin, not the container's direct HTTP port:
 
 ```powershell
-$publicOrigin = "https://$env:ANDREJA_HOSTNAME"
+$compose = docker compose config --format json | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0) {
+  throw "The rendered Compose configuration is invalid."
+}
+$publicOrigin =
+  $compose.services.app.environment.Andreja__Identity__AllowedOrigins__0
+if ($publicOrigin -notmatch "^https://") {
+  throw "The configured public origin must be HTTPS."
+}
+
 Invoke-WebRequest "$publicOrigin/health/live"
 Invoke-WebRequest "$publicOrigin/health/ready"
 Start-Process "$publicOrigin/Account/Bootstrap"
