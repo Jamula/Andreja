@@ -117,6 +117,45 @@ test('branch parser accepts the documented convention only', () => {
   assert.equal(issueNumberFromBranch('feature/v2-status'), null);
 });
 
+test('branch documentation requires issue-numbered Copilot branches', () => {
+  const documentedPaths = [
+    path.join(__dirname, '..', 'agents', 'squad.agent.md'),
+    path.join(__dirname, '..', '..', '.squad', 'templates', 'copilot-agent.md'),
+    path.join(__dirname, '..', '..', '.squad', 'templates', 'issue-lifecycle.md'),
+    path.join(
+      __dirname,
+      '..',
+      '..',
+      '.squad',
+      'templates',
+      'squad.agent.md.template'),
+    path.join(__dirname, '..', '..', 'docs', 'help', 'issue-status.md'),
+  ];
+
+  for (const documentedPath of documentedPaths) {
+    const content = fs.readFileSync(documentedPath, 'utf8');
+    assert.match(content, /copilot\/\{issue-number\}-\{slug\}/);
+    assert.doesNotMatch(content, /copilot\/(?:\*|\{slug\})/);
+  }
+
+  const workflowPaths = [
+    path.join(__dirname, '..', 'workflows', 'squad-issue-assign.yml'),
+    path.join(
+      __dirname,
+      '..',
+      '..',
+      '.squad',
+      'templates',
+      'workflows',
+      'squad-issue-assign.yml'),
+  ];
+  for (const workflowPath of workflowPaths) {
+    const content = fs.readFileSync(workflowPath, 'utf8');
+    assert.match(content, /copilot\/\$\{issue\.number\}-\{slug\}/);
+    assert.doesNotMatch(content, /copilot\/\*/);
+  }
+});
+
 test('closing keyword parser accepts local and rejects cross-repository references', () => {
   assert.deepEqual(
     [...issueNumbersFromBody(
@@ -194,6 +233,109 @@ test('sidebar-linked PR query rejects cross-repository number collisions', async
   assert.deepEqual(
     [...await linkedPullRequestNumbers({ github, context, issueNumber: 70 })],
     [11]);
+});
+
+test('sidebar-linked PR pagination reconciles the 101st PR', async () => {
+  let calls = 0;
+  const github = {
+    graphql: async (_query, variables) => {
+      calls += 1;
+      const firstPage = variables.cursor === null;
+      return {
+        repository: {
+          issue: {
+            closedByPullRequestsReferences: {
+              nodes: firstPage
+                ? Array.from({ length: 100 }, (_, index) => ({
+                  number: index + 1,
+                  repository: { nameWithOwner: 'Jamula/Andreja' },
+                }))
+                : [{
+                  number: 101,
+                  repository: { nameWithOwner: 'Jamula/Andreja' },
+                }],
+              pageInfo: firstPage
+                ? { hasNextPage: true, endCursor: 'page-100' }
+                : { hasNextPage: false, endCursor: 'page-101' },
+            },
+          },
+        },
+      };
+    },
+  };
+  const context = {
+    repo: { owner: 'Jamula', repo: 'Andreja' },
+    payload: { repository: { full_name: 'Jamula/Andreja' } },
+  };
+  const connectedNumbers = await linkedPullRequestNumbers({
+    github,
+    context,
+    issueNumber: 70,
+  });
+  const pullRequests = selectPullRequestsForIssue({
+    pullRequests: [{
+      number: 101,
+      state: 'open',
+      isDraft: true,
+      merged: false,
+      baseRef: 'main',
+      headRef: 'feature/page-101',
+      headRepository: 'Jamula/Andreja',
+      body: '',
+    }],
+    issueNumber: 70,
+    repository: context.repo,
+    repositoryFullName: 'Jamula/Andreja',
+    defaultBranch: 'main',
+    connectedNumbers,
+  });
+
+  assert.equal(calls, 2);
+  assert.ok(connectedNumbers.has(101));
+  assert.equal(deriveStatus({
+    issueState: 'open',
+    pullRequests,
+    defaultBranch: 'main',
+  }), STATUS.PR_DRAFT);
+});
+
+test('closing issue pagination includes the 101st issue', async () => {
+  let calls = 0;
+  const github = {
+    graphql: async (_query, variables) => {
+      calls += 1;
+      const firstPage = variables.cursor === null;
+      return {
+        repository: {
+          pullRequest: {
+            closingIssuesReferences: {
+              nodes: firstPage
+                ? Array.from({ length: 100 }, (_, index) => ({
+                  number: index + 1,
+                  repository: { nameWithOwner: 'Jamula/Andreja' },
+                }))
+                : [{
+                  number: 101,
+                  repository: { nameWithOwner: 'Jamula/Andreja' },
+                }],
+              pageInfo: firstPage
+                ? { hasNextPage: true, endCursor: 'page-100' }
+                : { hasNextPage: false, endCursor: 'page-101' },
+            },
+          },
+        },
+      };
+    },
+  };
+  const numbers = await closingIssueNumbers({
+    github,
+    context: { repo: { owner: 'Jamula', repo: 'Andreja' } },
+    pullRequest: { number: 10, body: '' },
+  });
+
+  assert.equal(calls, 2);
+  assert.equal(numbers.size, 101);
+  assert.ok(numbers.has(101));
 });
 
 test('timeline PR references ignore cross-repository number collisions', () => {
@@ -367,6 +509,31 @@ test('reopening after a stack promotion returns the issue to backlog', () => {
     'Jamula/Andreja',
     '2026-08-24T22:00:00Z');
 
+  assert.equal(deriveStatus({
+    issueState: 'open',
+    pullRequests: expanded,
+    defaultBranch: 'main',
+  }), STATUS.BACKLOG);
+});
+
+test('reopen at the exact merge second remains authoritative', () => {
+  const mergedPullRequest = {
+    number: 10,
+    state: 'closed',
+    merged: true,
+    mergedAt: '2026-08-24T21:00:00Z',
+    baseRef: 'main',
+    headRef: 'feature/merged',
+    headRepository: 'Jamula/Andreja',
+  };
+  const expanded = expandPullRequestPromotions(
+    [mergedPullRequest],
+    [mergedPullRequest],
+    'main',
+    'Jamula/Andreja',
+    '2026-08-24T21:00:00Z');
+
+  assert.equal(expanded[0].supersededByReopen, true);
   assert.equal(deriveStatus({
     issueState: 'open',
     pullRequests: expanded,

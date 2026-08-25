@@ -102,7 +102,7 @@ function expandPullRequestPromotions(
 ) {
   const isSuperseded = (pullRequest) =>
     Boolean(latestReopenedAt && pullRequest.mergedAt &&
-      Date.parse(pullRequest.mergedAt) < Date.parse(latestReopenedAt));
+      Date.parse(pullRequest.mergedAt) <= Date.parse(latestReopenedAt));
   const expanded = new Map(directPullRequests.map((pullRequest) => [
     pullRequest.number,
     {
@@ -169,6 +169,36 @@ function localGraphqlNumbers(nodes, repositoryFullName) {
     .filter((node) => node.repository?.nameWithOwner?.toLowerCase() ===
       repositoryFullName.toLowerCase())
     .map((node) => node.number));
+}
+
+async function paginateGraphqlNumbers(fetchPage, repositoryFullName) {
+  const numbers = new Set();
+  const seenCursors = new Set();
+  let cursor = null;
+
+  do {
+    const connection = await fetchPage(cursor);
+    for (const number of localGraphqlNumbers(
+      connection.nodes,
+      repositoryFullName)) {
+      numbers.add(number);
+    }
+
+    const pageInfo = connection.pageInfo || {
+      hasNextPage: false,
+      endCursor: null,
+    };
+    if (!pageInfo.hasNextPage) {
+      break;
+    }
+    if (!pageInfo.endCursor || seenCursors.has(pageInfo.endCursor)) {
+      throw new Error('GraphQL connection returned an invalid pagination cursor');
+    }
+    seenCursors.add(pageInfo.endCursor);
+    cursor = pageInfo.endCursor;
+  } while (true);
+
+  return numbers;
 }
 
 function latestIssueEventAt(events, eventName) {
@@ -326,28 +356,30 @@ function updateBranchEvidence(evidence, eventName, branchName) {
 }
 
 async function linkedPullRequestNumbers({ github, context, issueNumber }) {
-  const result = await github.graphql(
-    `query($owner: String!, $repo: String!, $number: Int!) {
-      repository(owner: $owner, name: $repo) {
-        issue(number: $number) {
-          closedByPullRequestsReferences(first: 100) {
-            nodes {
-              number
-              repository { nameWithOwner }
+  return paginateGraphqlNumbers(
+    async (cursor) => {
+      const result = await github.graphql(
+        `query($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
+          repository(owner: $owner, name: $repo) {
+            issue(number: $number) {
+              closedByPullRequestsReferences(first: 100, after: $cursor) {
+                nodes {
+                  number
+                  repository { nameWithOwner }
+                }
+                pageInfo { hasNextPage endCursor }
+              }
             }
           }
-        }
-      }
-    }`,
-    {
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      number: issueNumber,
-    });
-  const nodes =
-    result.repository.issue.closedByPullRequestsReferences.nodes;
-  return localGraphqlNumbers(
-    nodes,
+        }`,
+        {
+          owner: context.repo.owner,
+          repo: context.repo.repo,
+          number: issueNumber,
+          cursor,
+        });
+      return result.repository.issue.closedByPullRequestsReferences;
+    },
     context.payload.repository.full_name);
 }
 
@@ -376,26 +408,30 @@ async function linkedPullRequests({ github, context, issueNumber, evidence }) {
 
 async function closingIssueNumbers({ github, context, pullRequest }) {
   const numbers = issueNumbersFromBody(pullRequest.body, context.repo);
-  const result = await github.graphql(
-    `query($owner: String!, $repo: String!, $number: Int!) {
-      repository(owner: $owner, name: $repo) {
-        pullRequest(number: $number) {
-          closingIssuesReferences(first: 100) {
-            nodes {
-              number
-              repository { nameWithOwner }
+  const graphQlNumbers = await paginateGraphqlNumbers(
+    async (cursor) => {
+      const result = await github.graphql(
+        `query($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
+          repository(owner: $owner, name: $repo) {
+            pullRequest(number: $number) {
+              closingIssuesReferences(first: 100, after: $cursor) {
+                nodes {
+                  number
+                  repository { nameWithOwner }
+                }
+                pageInfo { hasNextPage endCursor }
+              }
             }
           }
-        }
-      }
-    }`,
-    {
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      number: pullRequest.number,
-    });
-  const graphQlNumbers = localGraphqlNumbers(
-    result.repository.pullRequest.closingIssuesReferences.nodes,
+        }`,
+        {
+          owner: context.repo.owner,
+          repo: context.repo.repo,
+          number: pullRequest.number,
+          cursor,
+        });
+      return result.repository.pullRequest.closingIssuesReferences;
+    },
     `${context.repo.owner}/${context.repo.repo}`);
   for (const issueNumber of graphQlNumbers) {
     numbers.add(issueNumber);
@@ -549,10 +585,6 @@ async function reconcileIssue({
     pullRequests,
     branchLinked: evidence.branchNamesByIssue.has(issueNumber),
     defaultBranch: context.payload.repository.default_branch,
-    mergeEvent:
-      context.eventName === 'pull_request_target' &&
-      context.payload.action === 'closed' &&
-      context.payload.pull_request.merged === true,
   });
   const blockerOverride = context.eventName === 'workflow_dispatch' && primaryIssue
     ? manualBlockers(context.payload.inputs?.blockers)
@@ -626,6 +658,7 @@ module.exports = {
   latestIssueEventAt,
   linkedPullRequestNumbers,
   normalizePullRequest,
+  paginateGraphqlNumbers,
   pullRequestIssueNumbers,
   pullRequestNumbersFromTimeline,
   run,

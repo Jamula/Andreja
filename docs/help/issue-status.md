@@ -32,8 +32,9 @@ These labels never replace `status:*`. An issue can correctly be both
 
 The Issue Status workflow reacts to issue lifecycle, configured branch names,
 and trusted same-repository pull requests that close an issue. Tracked branch
-forms are `squad/<issue>-<slug>`, `copilot/<issue>-<slug>`, and
-`u/<account>/<issue>-<slug>`; arbitrary number-leading names are ignored.
+forms are `squad/{issue-number}-{slug}`,
+`copilot/{issue-number}-{slug}`, and
+`u/{account}/{issue-number}-{slug}`; arbitrary number-leading names are ignored.
 Branch existence is queried from GitHub and never inferred from a lifecycle
 label. Pull requests connected through the issue's Development sidebar are
 queried from GitHub's `closedByPullRequestsReferences`, so they drive draft,

@@ -87,7 +87,12 @@
     "action": "reopened",
     "issueState": "open",
     "defaultBranch": "main",
-    "pullRequests": [{ "state": "closed", "merged": true, "baseRef": "main" }],
+    "pullRequests": [{
+      "state": "closed",
+      "merged": true,
+      "baseRef": "main",
+      "supersededByReopen": true
+    }],
     "currentLabels": ["status:merged"],
     "expectedStatus": "status:backlog"
   },

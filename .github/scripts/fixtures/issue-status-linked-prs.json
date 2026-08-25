@@ -40,7 +40,7 @@
   {
     "name": "sidebar-linked merged PR",
     "issueNumber": 72,
-    "issueState": "closed",
+    "issueState": "open",
     "connectedNumbers": [12],
     "pullRequests": [
       {

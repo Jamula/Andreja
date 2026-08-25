@@ -38,7 +38,6 @@ function deriveStatus({
   pullRequests = [],
   branchLinked = false,
   defaultBranch = 'main',
-  mergeEvent = false,
 } = {}) {
   const normalizedPullRequests = pullRequests.map((pullRequest) => ({
     state: String(pullRequest.state || '').toLowerCase(),
@@ -49,24 +48,14 @@ function deriveStatus({
     supersededByReopen: Boolean(pullRequest.supersededByReopen),
   }));
 
-  if (String(issueState).toLowerCase() === 'closed') {
-    return normalizedPullRequests.some((pullRequest) =>
-      !pullRequest.supersededByReopen && pullRequest.merged &&
-      pullRequest.baseRef === defaultBranch)
-      ? STATUS.MERGED
-      : STATUS.CLOSED;
-  }
-
   if (normalizedPullRequests.some((pullRequest) =>
-    !pullRequest.supersededByReopen && pullRequest.promotesIssue &&
-    pullRequest.merged &&
+    !pullRequest.supersededByReopen && pullRequest.merged &&
     pullRequest.baseRef === defaultBranch)) {
     return STATUS.MERGED;
   }
 
-  if (mergeEvent && normalizedPullRequests.some((pullRequest) =>
-    pullRequest.merged && pullRequest.baseRef === defaultBranch)) {
-    return STATUS.MERGED;
+  if (String(issueState).toLowerCase() === 'closed') {
+    return STATUS.CLOSED;
   }
 
   const openPullRequests = normalizedPullRequests.filter(
