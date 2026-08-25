@@ -589,7 +589,8 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
 
     private async Task DropAdditionalDatabaseAsync(string connectionString)
     {
-        NpgsqlConnection.ClearPool(new NpgsqlConnection(connectionString));
+        using var connection = new NpgsqlConnection(connectionString);
+        NpgsqlConnection.ClearPool(connection);
         var database = new NpgsqlConnectionStringBuilder(connectionString).Database;
         await DropDatabaseAsync(database!);
     }
