@@ -23,25 +23,33 @@ Phase 0 permits only local/paper research and has a $0 cloud-infrastructure cap.
 Brand/domain, source/content license, hosting vendor, public claims, feedback,
 analytics, sponsorship, and production support remain separately gated.
 
-### Current nonconformance
+### Historical nonconformance and current containment
 
 Phase 0 website artifacts are limited to loopback use or a private,
 access-controlled review boundary. GitHub Pages, public previews, CDN delivery,
 and DNS publication must remain disabled. Only a separately approved private
 preview may use authorization and expiry; `noindex` is never authorization.
 
-As observed on 2026-08-25, GitHub Pages publicly serves
+Earlier on 2026-08-25, GitHub Pages publicly served
 `https://jamula.github.io/Andreja/` from `main:/docs`. Unauthenticated requests
-returned `200` for `/public-website/prototype/`,
+returned `200` for `/plan`, `/public-website/prototype/`,
 `/phase-1a/evidence-44`, and `/legal/regulatory-applicability`. The whole
-`docs/` tree is in the Pages source and there is no `_config.yml` or `.nojekyll`
-exclusion. This is an uncontained blocker and nonconformance, not an approved
-deployment or evidence that this Proposed ADR was accepted.
+`docs/` tree was in the Pages source with no `_config.yml` or `.nojekyll`
+exclusion. That was an unapproved nonconformance, not evidence that this
+Proposed ADR was accepted.
 
-PR [#113](https://github.com/Jamula/Andreja/pull/113) must remain draft and
-must not merge until Pages is disabled/restricted or Cyrus explicitly accepts
-publication of this amendment. This ADR records but does not remediate the
-repository setting and does not claim containment.
+Closed issue [#114](https://github.com/Jamula/Andreja/issues/114) records
+containment. The Pages `DELETE` returned `204` at
+`2026-08-25T15:55:36Z`; the Pages API then returned `404`. The four routes
+reached stable `404` at `2026-08-25T16:06:55Z` after bounded CDN expiry and
+were independently reconfirmed `404`. Issue #114 required no repository
+change. The Pages-specific merge hold on PR
+[#113](https://github.com/Jamula/Andreja/pull/113) is lifted; normal draft,
+review, and merge gates still apply.
+
+Third-party/client caches, search-engine copies, previously downloaded bytes,
+and provider-retained request logs may persist outside repository control.
+Containment of the active Pages origin does not claim their deletion.
 
 ## Decision
 

@@ -60,15 +60,23 @@ public previews, CDN delivery, and DNS publication must be disabled; a future
 approved private preview must enforce authorization and expiry. `noindex`,
 robots directives, and `X-Robots-Tag` are not authorization.
 
-As observed on 2026-08-25, the repository's GitHub Pages endpoint
-`https://jamula.github.io/Andreja/` is publicly built from `main:/docs`.
-Unauthenticated requests returned `200` for `/public-website/prototype/`,
-`/phase-1a/evidence-44`, and `/legal/regulatory-applicability`. The whole
-`docs/` tree is in the Pages source and there is no `_config.yml` or `.nojekyll`
-exclusion. This is an uncontained nonconformance and blocker, not an approved
-deployment.
+Earlier on 2026-08-25, the repository's GitHub Pages endpoint
+`https://jamula.github.io/Andreja/` publicly built from `main:/docs`.
+Unauthenticated requests returned `200` for `/plan`,
+`/public-website/prototype/`, `/phase-1a/evidence-44`, and
+`/legal/regulatory-applicability`. The whole `docs/` tree was in the Pages
+source with no `_config.yml` or `.nojekyll` exclusion. That was an unapproved
+Phase 0 nonconformance.
 
-PR [#113](https://github.com/Jamula/Andreja/pull/113) must remain draft and
-must not merge until Pages is disabled/restricted or Cyrus explicitly accepts
-publication of this amendment. This packet does not change repository settings,
-claim containment, or claim the exposure is fixed.
+Closed issue [#114](https://github.com/Jamula/Andreja/issues/114) records
+containment. The Pages `DELETE` returned `204` at
+`2026-08-25T15:55:36Z`; the Pages API then returned `404`. All four routes
+reached stable `404` at `2026-08-25T16:06:55Z` after bounded CDN expiry and
+were independently reconfirmed `404`. Issue #114 closed with no repository
+changes. The Pages-specific merge hold on PR
+[#113](https://github.com/Jamula/Andreja/pull/113) is lifted; normal draft,
+review, and merge gates still apply.
+
+Third-party/client caches, search-engine copies, previously downloaded bytes,
+and provider-retained request logs may persist outside repository control.
+Containment of the active Pages origin does not claim their deletion.

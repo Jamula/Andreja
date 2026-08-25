@@ -63,18 +63,26 @@ preview is later explicitly approved, it must enforce authorization and expiry.
 `noindex`, robots directives, and `X-Robots-Tag` are defense in depth and are
 never authorization.
 
-As observed on 2026-08-25, GitHub Pages is publicly serving
+Earlier on 2026-08-25, GitHub Pages publicly served
 `https://jamula.github.io/Andreja/` from `main:/docs`. Unauthenticated requests
-returned `200` for `/public-website/prototype/`,
+returned `200` for `/plan`, `/public-website/prototype/`,
 `/phase-1a/evidence-44`, and `/legal/regulatory-applicability`. The whole
-`docs/` tree is in the Pages source and there is no `_config.yml` or `.nojekyll`
-exclusion. This is a current **uncontained nonconformance and blocker**, not an
-approved Phase 0 artifact and not fixed by this documentation change.
+`docs/` tree was in the Pages source with no `_config.yml` or `.nojekyll`
+exclusion. That was an unapproved Phase 0 nonconformance.
 
-PR [#113](https://github.com/Jamula/Andreja/pull/113) must remain draft and
-must not merge until Pages is disabled/restricted or Cyrus explicitly accepts
-publication of this amendment. This record does not claim containment and is
-not permission to change repository settings.
+Containment evidence is recorded in closed issue
+[#114](https://github.com/Jamula/Andreja/issues/114). The Pages `DELETE`
+returned `204` at `2026-08-25T15:55:36Z`; the Pages API then returned `404`.
+The four routes above reached stable `404` at `2026-08-25T16:06:55Z` after
+bounded CDN expiry and were independently reconfirmed `404`. Issue #114 closed
+with no repository changes. The Pages-specific merge hold on PR
+[#113](https://github.com/Jamula/Andreja/pull/113) is therefore lifted; normal
+draft, review, and merge gates still apply.
+
+This contained current state does not recall third-party/client caches, search
+engine copies, previously downloaded bytes, or provider-retained request logs.
+Those residual copies and logs are outside repository control and require their
+own authorized provider/privacy process if further action is required.
 
 #### Current Phase 1A evidence status
 
@@ -99,13 +107,14 @@ The canonical `docs/privacy.md` and `docs/threat-model.md` remain open required
 artifacts. The narrower files under `docs/phase-1a/` are evidence inputs and do
 not replace them.
 
-The next safe execution order is:
+Pages containment is the completed prerequisite under
+[#114](https://github.com/Jamula/Andreja/issues/114). The next safe execution
+order is:
 
-1. contain the current GitHub Pages nonconformance;
-2. update, review, and merge PR [#106](https://github.com/Jamula/Andreja/pull/106);
-3. implement the fail-closed asynchronous review-completion gate in
+1. refresh, review, and merge PR [#106](https://github.com/Jamula/Andreja/pull/106);
+2. implement the fail-closed asynchronous review-completion gate in
    [#104](https://github.com/Jamula/Andreja/issues/104); then
-4. implement fail-closed selective CI from
+3. implement fail-closed selective CI from
    [#102](https://github.com/Jamula/Andreja/issues/102).
 
 Public launch, a real Copilot provider, managed cloud, federation, and production
@@ -1316,7 +1325,7 @@ Before installation, review source/publisher provenance, immutable digest/versio
 - Skill/channel manifest, host, capability, grant, peer-envelope, and minimal semantic contracts are implemented; UI isolation, signing, third-party execution, and authoring compatibility remain open.
 - OneDrive, Google Drive, GitHub, and Box API scopes, terms, limits, delta/webhook behavior, and connector security/privacy.
 - Product packaging and economics for independent self-hosting versus managed freemium/paid data hosting.
-- The Phase 0 website matrix, claims inventory, local prototype, and Proposed ADR 0008 are complete as recommendation evidence; acceptance, GitHub Pages containment, hosting/CDN/DNS, evidence-based public claims, domain/trademark readiness, and publication remain open.
+- The Phase 0 website matrix, claims inventory, local prototype, and Proposed ADR 0008 are complete as recommendation evidence; unintended GitHub Pages publication was contained under #114. Acceptance, any future hosting/CDN/DNS, evidence-based public claims, domain/trademark readiness, and publication remain open.
 - Native mobile architecture proof-of-concept, offline synchronization, device security, push/background behavior, and app-store lifecycle cost.
 - Minimal semantic-profile/provenance/export contracts are implemented; Seven-led standards, ontology, privacy, representative-journey, storage, and ADR decisions remain open.
 - Phase 0 prioritization score weights and stage-specific Must/Should/Could/Won't scope.
@@ -1439,7 +1448,7 @@ Deliverables:
 - OpenTofu state/provider design and local-backend validation with pinned providers/lock files, remote-state encryption/locking/recovery design, CI workload-identity design, deployment TTLs/quotas and teardown. Provisioning remote state and CI identity moves to separately budgeted Phase 1B.
 - Copilot event-schema and billing-reconciliation spike covering usage events, AI credits, session content persistence, provider retention, credential/tool isolation, and invoice-grade limits.
 - Jadzia-led public website design/hosting matrix with Jett Reno, Spock, and Quark; cover static/SSR options, help/search tooling, CDN/hosting, portability, security separation, preview environments, and cost. Tracked by [#94](https://github.com/Jamula/Andreja/issues/94).
-- Keep all Phase 0 website review on loopback or behind private access control. GitHub Pages, public previews, CDN delivery, and DNS publication remain disabled. Only a separately approved private preview may use authorization and expiry; `noindex` never substitutes for authorization. The current public `main:/docs` GitHub Pages site is a nonconformance/blocker to contain, not evidence of an approved launch.
+- Keep all Phase 0 website review on loopback or behind private access control. GitHub Pages, public previews, CDN delivery, and DNS publication remain disabled. Only a separately approved private preview may use authorization and expiry; `noindex` never substitutes for authorization. The historical public `main:/docs` GitHub Pages nonconformance was contained under #114 and is not evidence of an approved launch.
 - Initial threat model, privacy classification, numeric spike/steady-state cost envelopes, numeric SLO definitions with owners/evidence queries, and test strategy.
 - Evaluate but do not automatically install the recommended external skills/tools.
 
