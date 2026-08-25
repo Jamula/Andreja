@@ -8,66 +8,46 @@
   <title>Andreja public-site planning prototype</title>
   <script>
   (() => {
-    const param = new URLSearchParams(window.location.search).get("scoutTheme");
+    const param = new URLSearchParams(window.location.search).get("theme");
     const theme =
-      param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      ["light", "dark"].includes(param)
+        ? param
+        : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     document.documentElement.setAttribute("data-theme", theme);
   })();
   </script>
   <style>
     :root {
       color-scheme: light;
-      --cp-bg: #f7f4ef;
-      --cp-bg-elevated: #fcfbf8;
-      --cp-surface: #ffffff;
-      --cp-surface-soft: #f5f5f5;
-      --cp-border: #dedede;
-      --cp-border-strong: #919191;
-      --cp-text: #242424;
-      --cp-text-muted: #5c5c5c;
-      --cp-text-soft: #6f6f6f;
-      --cp-accent: #b11f4b;
-      --cp-accent-hover: #9a1a41;
-      --cp-accent-soft: rgba(177, 31, 75, 0.08);
-      --cp-accent-fg: #ffffff;
-      --cp-success: #16a34a;
-      --cp-danger: #dc2626;
-      --cp-warning: #f59e0b;
-      --cp-link: #0078d4;
-      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
-      --cp-overlay: rgba(255, 255, 255, 0.8);
-      --cp-panel: rgba(255, 255, 255, 0.86);
-      --cp-panel-strong: rgba(255, 255, 255, 0.96);
-      --cp-sheen: rgba(255, 255, 255, 0.55);
-      --cp-highlight: rgba(177, 31, 75, 0.12);
-      --cp-card-shadow: 0 0 2px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.14);
+      --color-page: #f7f4ef;
+      --color-page-raised: #fcfbf8;
+      --color-surface: #ffffff;
+      --color-rule: #dedede;
+      --color-control: #767676;
+      --color-text: #242424;
+      --color-text-secondary: #6f6f6f;
+      --color-accent: #b11f4b;
+      --color-accent-hover: #9a1a41;
+      --color-accent-soft: rgba(177, 31, 75, 0.08);
+      --color-on-accent: #ffffff;
+      --color-link: #005ea8;
+      --shadow-card: 0 0 2px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.14);
     }
     html[data-theme="dark"] {
       color-scheme: dark;
-      --cp-bg: #3d3b3a;
-      --cp-bg-elevated: #343231;
-      --cp-surface: #292929;
-      --cp-surface-soft: #2e2e2e;
-      --cp-border: #474747;
-      --cp-border-strong: #5f5f5f;
-      --cp-text: #dedede;
-      --cp-text-muted: #919191;
-      --cp-text-soft: #b0b0b0;
-      --cp-accent: #fd8ea1;
-      --cp-accent-hover: #fb7b91;
-      --cp-accent-soft: rgba(253, 142, 161, 0.14);
-      --cp-accent-fg: #1a1a1a;
-      --cp-success: #4ade80;
-      --cp-danger: #f87171;
-      --cp-warning: #fbbf24;
-      --cp-link: #4da6ff;
-      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
-      --cp-overlay: rgba(41, 41, 41, 0.88);
-      --cp-panel: rgba(41, 41, 41, 0.72);
-      --cp-panel-strong: rgba(41, 41, 41, 0.96);
-      --cp-sheen: rgba(255, 255, 255, 0.04);
-      --cp-highlight: rgba(253, 142, 161, 0.12);
-      --cp-card-shadow: 0 0 2px rgba(0, 0, 0, 0.28), 0 1px 2px rgba(0, 0, 0, 0.34);
+      --color-page: #3d3b3a;
+      --color-page-raised: #343231;
+      --color-surface: #292929;
+      --color-rule: #5f5f5f;
+      --color-control: #8f8f8f;
+      --color-text: #dedede;
+      --color-text-secondary: #b0b0b0;
+      --color-accent: #fd8ea1;
+      --color-accent-hover: #ff9caf;
+      --color-accent-soft: rgba(253, 142, 161, 0.14);
+      --color-on-accent: #1a1a1a;
+      --color-link: #8bc4ff;
+      --shadow-card: 0 0 2px rgba(0, 0, 0, 0.28), 0 1px 2px rgba(0, 0, 0, 0.34);
     }
 
     * {
@@ -76,14 +56,16 @@
 
     html {
       scroll-behavior: smooth;
+      scroll-padding-top: 6rem;
     }
 
     body {
-      background: var(--cp-bg);
-      color: var(--cp-text);
+      background: var(--color-page);
+      color: var(--color-text);
       font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
       line-height: 1.6;
       margin: 0;
+      overflow-wrap: anywhere;
     }
 
     button,
@@ -92,7 +74,7 @@
     }
 
     a {
-      color: var(--cp-link);
+      color: var(--color-link);
       text-underline-offset: 0.2em;
     }
 
@@ -102,13 +84,14 @@
 
     :focus-visible {
       border-radius: 0.25rem;
-      box-shadow: 0 0 0 2px var(--cp-bg), 0 0 0 5px var(--cp-accent);
+      box-shadow: 0 0 0 2px var(--color-page), 0 0 0 5px var(--color-accent);
       outline: 0;
+      scroll-margin-block: 6rem 1rem;
     }
 
     .skip-link {
-      background: var(--cp-accent);
-      color: var(--cp-accent-fg);
+      background: var(--color-accent);
+      color: var(--color-on-accent);
       font-weight: 700;
       left: 1rem;
       padding: 0.75rem 1rem;
@@ -123,8 +106,8 @@
     }
 
     .prototype-banner {
-      background: var(--cp-accent);
-      color: var(--cp-accent-fg);
+      background: var(--color-accent);
+      color: var(--color-on-accent);
       font-size: 0.875rem;
       font-weight: 700;
       letter-spacing: 0.01em;
@@ -133,8 +116,8 @@
     }
 
     .site-header {
-      background: var(--cp-bg-elevated);
-      border-bottom: 1px solid var(--cp-border);
+      background: var(--color-page-raised);
+      border-bottom: 1px solid var(--color-rule);
       position: sticky;
       top: 0;
       z-index: 50;
@@ -143,7 +126,7 @@
     .header-inner {
       align-items: center;
       display: flex;
-      gap: 1.5rem;
+      gap: clamp(0.5rem, 2vw, 1.5rem);
       justify-content: space-between;
       margin: 0 auto;
       max-width: 76rem;
@@ -153,25 +136,26 @@
 
     .wordmark {
       align-items: center;
-      color: var(--cp-text);
+      color: var(--color-text);
       display: inline-flex;
       font-size: 1.25rem;
       font-weight: 800;
-      gap: 0.7rem;
+      gap: clamp(0.35rem, 1vw, 0.7rem);
       text-decoration: none;
     }
 
     .wordmark-mark {
       align-items: center;
-      background: var(--cp-accent);
+      background: var(--color-accent);
       border-radius: 0.625rem;
-      color: var(--cp-accent-fg);
+      color: var(--color-on-accent);
       display: inline-flex;
-      font-size: 0.82rem;
-      height: 2rem;
+      flex: 0 0 32px;
+      font-size: 13px;
+      height: 32px;
       justify-content: center;
       letter-spacing: -0.02em;
-      width: 2rem;
+      width: 32px;
     }
 
     .site-nav {
@@ -182,7 +166,7 @@
 
     .site-nav a {
       border-radius: 0.625rem;
-      color: var(--cp-text);
+      color: var(--color-text);
       font-size: 0.94rem;
       font-weight: 650;
       padding: 0.65rem 0.75rem;
@@ -190,21 +174,22 @@
     }
 
     .site-nav a:hover {
-      background: var(--cp-accent-soft);
-      color: var(--cp-accent);
+      background: var(--color-accent-soft);
+      color: var(--color-accent);
     }
 
     .menu-button {
       align-items: center;
-      background: var(--cp-surface);
-      border: 1px solid var(--cp-border-strong);
+      background: var(--color-surface);
+      border: 1px solid var(--color-control);
       border-radius: 0.625rem;
-      color: var(--cp-text);
+      color: var(--color-text);
       display: none;
-      height: 2.75rem;
+      flex: 0 0 44px;
+      height: 44px;
       justify-content: center;
       padding: 0;
-      width: 2.75rem;
+      width: 44px;
     }
 
     .menu-button svg {
@@ -227,14 +212,15 @@
 
     .opening {
       align-content: center;
-      border-right: 1px solid var(--cp-border-strong);
+      border-right: 1px solid var(--color-control);
       display: grid;
+      min-width: 0;
       padding: clamp(4rem, 9vw, 8rem) clamp(2rem, 7vw, 6rem) clamp(4rem, 8vw, 7rem) 0;
     }
 
     .status-line {
       align-items: center;
-      color: var(--cp-text-soft);
+      color: var(--color-text-secondary);
       display: flex;
       flex-wrap: wrap;
       font-size: 0.9rem;
@@ -244,10 +230,10 @@
     }
 
     .status-tag {
-      background: var(--cp-accent-soft);
-      border: 1px solid var(--cp-accent);
+      background: var(--color-accent-soft);
+      border: 1px solid var(--color-accent);
       border-radius: 999px;
-      color: var(--cp-accent);
+      color: var(--color-accent);
       padding: 0.2rem 0.7rem;
     }
 
@@ -259,15 +245,15 @@
     }
 
     h1 {
-      font-size: clamp(3rem, 8vw, 6rem);
+      font-size: clamp(3rem, calc(2rem + 4vw), 6rem);
       letter-spacing: -0.04em;
       margin: 0;
       max-width: 10ch;
     }
 
     .opening p {
-      color: var(--cp-text-soft);
-      font-size: clamp(1.05rem, 2vw, 1.3rem);
+      color: var(--color-text-secondary);
+      font-size: clamp(1.05rem, calc(0.95rem + 0.4vw), 1.3rem);
       margin: 2rem 0 0;
       max-width: 60ch;
     }
@@ -281,10 +267,10 @@
     }
 
     .primary-link {
-      background: var(--cp-accent);
-      border: 1px solid var(--cp-accent);
+      background: var(--color-accent);
+      border: 1px solid var(--color-accent);
       border-radius: 0.625rem;
-      color: var(--cp-accent-fg);
+      color: var(--color-on-accent);
       display: inline-flex;
       font-weight: 750;
       min-height: 2.75rem;
@@ -293,8 +279,8 @@
     }
 
     .primary-link:hover {
-      background: var(--cp-accent-hover);
-      color: var(--cp-accent-fg);
+      background: var(--color-accent-hover);
+      color: var(--color-on-accent);
     }
 
     .index-rail {
@@ -311,19 +297,19 @@
     }
 
     .index-list {
-      border-top: 1px solid var(--cp-border-strong);
+      border-top: 1px solid var(--color-control);
       list-style: none;
       margin: 0;
       padding: 0;
     }
 
     .index-list li {
-      border-bottom: 1px solid var(--cp-border);
+      border-bottom: 1px solid var(--color-rule);
     }
 
     .index-list a {
       align-items: baseline;
-      color: var(--cp-text);
+      color: var(--color-text);
       display: grid;
       font-weight: 700;
       gap: 1rem;
@@ -334,23 +320,24 @@
     }
 
     .index-list a:hover {
-      color: var(--cp-accent);
+      color: var(--color-accent);
     }
 
     .index-number {
-      color: var(--cp-text-soft);
+      color: var(--color-text-secondary);
       font-family: Consolas, "Courier New", Courier, monospace;
       font-size: 0.8rem;
       font-variant-numeric: tabular-nums;
     }
 
     .search-sheet {
-      background: var(--cp-surface);
-      border: 1px solid var(--cp-border-strong);
+      background: var(--color-surface);
+      border: 1px solid var(--color-control);
       border-radius: 1rem;
-      box-shadow: var(--cp-card-shadow);
+      box-shadow: var(--shadow-card);
       margin: 0 0 clamp(5rem, 10vw, 8rem);
       padding: clamp(1.25rem, 4vw, 2.5rem);
+      scroll-margin-top: 6rem;
     }
 
     .search-heading {
@@ -363,13 +350,13 @@
     }
 
     .search-heading h2 {
-      font-size: clamp(1.75rem, 4vw, 2.75rem);
+      font-size: clamp(1.75rem, calc(1.4rem + 1.5vw), 2.75rem);
       letter-spacing: -0.03em;
       margin: 0;
     }
 
     .search-heading p {
-      color: var(--cp-text-soft);
+      color: var(--color-text-secondary);
       margin: 0;
       max-width: 42ch;
     }
@@ -379,7 +366,7 @@
     }
 
     .search-control svg {
-      color: var(--cp-text-soft);
+      color: var(--color-text-secondary);
       height: 1.2rem;
       left: 1rem;
       pointer-events: none;
@@ -389,29 +376,29 @@
     }
 
     #site-search {
-      background: var(--cp-bg-elevated);
-      border: 2px solid var(--cp-border-strong);
+      background: var(--color-page-raised);
+      border: 2px solid var(--color-control);
       border-radius: 0.625rem;
-      color: var(--cp-text);
+      color: var(--color-text);
       min-height: 3.2rem;
       padding: 0.7rem 1rem 0.7rem 3rem;
       width: 100%;
     }
 
     #site-search::placeholder {
-      color: var(--cp-text-soft);
+      color: var(--color-text-secondary);
       opacity: 1;
     }
 
     .search-status {
-      color: var(--cp-text-soft);
+      color: var(--color-text-secondary);
       font-size: 0.9rem;
       min-height: 1.5rem;
       padding-top: 0.6rem;
     }
 
     .search-results {
-      border-top: 1px solid var(--cp-border);
+      border-top: 1px solid var(--color-rule);
       list-style: none;
       margin: 0.5rem 0 0;
       padding: 0;
@@ -422,24 +409,24 @@
     }
 
     .search-results li {
-      border-bottom: 1px solid var(--cp-border);
+      border-bottom: 1px solid var(--color-rule);
       padding: 0.9rem 0;
     }
 
     .search-results a {
-      color: var(--cp-text);
+      color: var(--color-link);
       font-weight: 750;
     }
 
     .result-meta {
-      color: var(--cp-text-soft);
+      color: var(--color-text-secondary);
       display: block;
       font-size: 0.85rem;
       margin-top: 0.15rem;
     }
 
     .chapter {
-      border-top: 1px solid var(--cp-border-strong);
+      border-top: 1px solid var(--color-control);
       display: grid;
       gap: clamp(1.5rem, 5vw, 5rem);
       grid-template-columns: minmax(12rem, 0.55fr) minmax(0, 1.45fr);
@@ -454,7 +441,7 @@
     }
 
     .chapter-code {
-      color: var(--cp-accent);
+      color: var(--color-accent);
       font-family: Consolas, "Courier New", Courier, monospace;
       font-size: 0.85rem;
       font-weight: 700;
@@ -462,7 +449,7 @@
     }
 
     .chapter h2 {
-      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-size: clamp(2rem, calc(1.5rem + 2vw), 3.5rem);
       letter-spacing: -0.035em;
       margin: 0;
     }
@@ -485,7 +472,7 @@
 
     .boundary-list li,
     .release-list li {
-      border-top: 1px solid var(--cp-border);
+      border-top: 1px solid var(--color-rule);
       display: grid;
       gap: 0.75rem;
       grid-template-columns: minmax(8rem, 0.45fr) minmax(0, 1fr);
@@ -494,12 +481,12 @@
 
     .boundary-list strong,
     .release-list strong {
-      color: var(--cp-accent);
+      color: var(--color-accent);
     }
 
     .planning-note {
-      background: var(--cp-accent-soft);
-      border: 1px solid var(--cp-accent);
+      background: var(--color-accent-soft);
+      border: 1px solid var(--color-accent);
       border-radius: 1rem;
       margin: 2rem 0;
       padding: 1.25rem;
@@ -514,12 +501,14 @@
       display: grid;
       gap: 1px;
       grid-template-columns: repeat(3, minmax(0, 1fr));
+      list-style: none;
       margin: 2rem 0;
+      padding: 0;
     }
 
-    .route-strip div {
-      background: var(--cp-surface);
-      border: 1px solid var(--cp-border);
+    .route-strip li {
+      background: var(--color-surface);
+      border: 1px solid var(--color-rule);
       margin: 0 -1px -1px 0;
       min-height: 7rem;
       padding: 1rem;
@@ -531,7 +520,7 @@
     }
 
     .route-strip span {
-      color: var(--cp-text-soft);
+      color: var(--color-text-secondary);
       font-size: 0.9rem;
     }
 
@@ -542,13 +531,13 @@
     }
 
     .checklist li {
-      border-bottom: 1px solid var(--cp-border);
+      border-bottom: 1px solid var(--color-rule);
       padding: 0.75rem 0 0.75rem 2rem;
       position: relative;
     }
 
     .checklist li::before {
-      border: 2px solid var(--cp-border-strong);
+      border: 2px solid var(--color-control);
       border-radius: 0.25rem;
       content: "";
       height: 0.9rem;
@@ -559,7 +548,7 @@
     }
 
     footer {
-      border-top: 1px solid var(--cp-border-strong);
+      border-top: 1px solid var(--color-control);
       margin: 0 auto;
       max-width: 76rem;
       padding: 2rem 1.5rem 4rem;
@@ -572,13 +561,13 @@
     }
 
     footer p {
-      color: var(--cp-text-soft);
+      color: var(--color-text-secondary);
       margin: 0;
       max-width: 60ch;
     }
 
     footer a {
-      color: var(--cp-text);
+      color: var(--color-link);
       font-weight: 700;
     }
 
@@ -588,8 +577,8 @@
       }
 
       .site-nav {
-        background: var(--cp-bg-elevated);
-        border-bottom: 1px solid var(--cp-border);
+        background: var(--color-page-raised);
+        border-bottom: 1px solid var(--color-rule);
         display: none;
         left: 0;
         padding: 0.75rem 1.5rem 1rem;
@@ -611,7 +600,7 @@
       }
 
       .opening {
-        border-bottom: 1px solid var(--cp-border-strong);
+        border-bottom: 1px solid var(--color-control);
         border-right: 0;
         min-height: 70vh;
         padding-right: 0;
@@ -631,7 +620,11 @@
     }
 
     @media (max-width: 42rem) {
-      .header-inner,
+      .header-inner {
+        padding-left: clamp(0.5rem, 3vw, 1rem);
+        padding-right: clamp(0.5rem, 3vw, 1rem);
+      }
+
       main,
       footer {
         padding-left: 1rem;
@@ -640,10 +633,6 @@
 
       .prototype-banner {
         text-align: left;
-      }
-
-      h1 {
-        font-size: clamp(2.75rem, 16vw, 4.5rem);
       }
 
       .route-strip,
@@ -674,6 +663,7 @@
     }
 
     @media (forced-colors: active) {
+      :focus,
       :focus-visible {
         box-shadow: none;
         outline: 3px solid CanvasText;
@@ -690,15 +680,9 @@
   </style>
 </head>
 <body>
-  <!--
-  THESIS: A public-site planning field guide makes boundaries inspectable and refuses the familiar promise-first product landing page.
-  OWN-WORLD: Warm evidence sheets, ruled specimen rows, rose status marks, and numbered route codes form one restrained field-guide system.
-  STORY: Visitors see the non-public status, understand what the future site may explain, search the proposed map locally, and reach governance sources.
-  FIRST VIEWPORT: A large boundary statement occupies the left sheet; a numbered contents rail on the right exposes every proposed destination and the planning status.
-  FORM: Fourth grounded direction, a standards field guide staged as measurable content sheets; direction seed ebbc9bee.
-  -->
+  <!-- Local Phase 0 prototype; not production content. -->
   <a class="skip-link" href="#main-content">Skip to main content</a>
-  <div class="prototype-banner" role="status">
+  <div class="prototype-banner">
     Private planning prototype · no product availability is represented · do not publish
   </div>
 
@@ -725,7 +709,7 @@
 
   <main id="main-content" aria-labelledby="page-title">
     <div class="first-view" id="top">
-      <section class="opening" aria-labelledby="page-title">
+      <div class="opening">
         <div>
           <p class="status-line">
             <span class="status-tag">Planning only</span>
@@ -742,7 +726,7 @@
             <a href="#trust">Review the proposed separation</a>
           </div>
         </div>
-      </section>
+      </div>
 
       <aside class="index-rail" aria-labelledby="guide-index">
         <h2 id="guide-index">Proposed guide</h2>
@@ -771,7 +755,7 @@
         </svg>
         <input id="site-search" type="search" autocomplete="off" spellcheck="false" placeholder="Try “privacy”, “versioned docs”, or “support”">
       </div>
-      <div class="search-status" id="search-status" role="status" aria-live="polite">Enter two or more characters.</div>
+      <div class="search-status" id="search-status" aria-live="polite" aria-atomic="true">Enter two or more characters.</div>
       <ul class="search-results" id="search-results"></ul>
     </section>
 
@@ -811,11 +795,11 @@
           and version. A path is published only after its prerequisites,
           recovery, update, and troubleshooting journey have been exercised.
         </p>
-        <div class="route-strip" aria-label="Proposed getting started paths">
-          <div><strong>Self-host operator</strong><span>Requirements, verified artifacts, setup, keys, backup, updates, recovery.</span></div>
-          <div><strong>Managed user</strong><span>Shown only after managed availability, terms, support, privacy, and recovery are approved.</span></div>
-          <div><strong>Developer</strong><span>Versioned contracts, examples, conformance, compatibility, and security boundaries.</span></div>
-        </div>
+        <ul class="route-strip" aria-label="Proposed getting started paths">
+          <li><strong>Self-host operator</strong><span>Requirements, verified artifacts, setup, keys, backup, updates, recovery.</span></li>
+          <li><strong>Managed user</strong><span>Shown only after managed availability, terms, support, privacy, and recovery are approved.</span></li>
+          <li><strong>Developer</strong><span>Versioned contracts, examples, conformance, compatibility, and security boundaries.</span></li>
+        </ul>
         <p>
           No sign-in or launch button belongs on the public/help site itself.
           Product entry points, if later approved, remain ordinary external links
@@ -987,6 +971,7 @@
       const input = document.querySelector("#site-search");
       const results = document.querySelector("#search-results");
       const status = document.querySelector("#search-status");
+      let renderTimer;
 
       const render = () => {
         const query = input.value.trim().toLocaleLowerCase();
@@ -1021,7 +1006,10 @@
           : `${matches.length} ${matches.length === 1 ? "result" : "results"}.`;
       };
 
-      input.addEventListener("input", render);
+      input.addEventListener("input", () => {
+        clearTimeout(renderTimer);
+        renderTimer = setTimeout(render, 250);
+      });
     })();
   </script>
 </body>

@@ -12,6 +12,22 @@ approval. Every published claim needs exact wording, scope, evidence, an
 accountable owner, required reviewers, approval date, and expiry. Missing or
 expired evidence blocks the build.
 
+## Coverage and status semantics
+
+This inventory covers the claim families identified for the Phase 0 information
+architecture; it is not permission to publish an unlisted statement. Before a
+public build, every factual or comparative product, trust, availability,
+commercial, legal, brand, support, or outcome statement must map to a claim ID
+or add a reviewed row. Navigation labels and plainly identified local-artifact
+instructions are not product claims.
+
+`Blocked`, `Hold`, and `Prohibited` all mean **not publishable**:
+
+- **Blocked** needs the listed product or operational evidence.
+- **Hold** has a plausible evidence path but still needs exact public wording,
+  scope, review, approval, and an expiry.
+- **Prohibited** cannot be used in the stated unqualified form.
+
 ## Allowed only inside the local prototype
 
 The prototype may state:
@@ -29,7 +45,7 @@ site.
 
 | ID | Candidate wording / topic | Claim class | Evidence candidate | Accountable owner | Required reviewers | Status | Expiry / revalidation trigger |
 |---|---|---|---|---|---|---|---|
-| CLM-001 | “Andreja is a user-owned personal assistant and skill platform.” | Purpose/positioning | Ratified `docs/plan.md`; implemented ownership/export evidence for any capability implication | Picard | Neelix, Fact Checker, Sarek | **Hold:** working description only; public brand and capability scope not cleared | Earlier of 90 days after approval, material plan change, or product-boundary change |
+| CLM-001 | “Andreja is a user-owned personal assistant and skill platform.” | Purpose/positioning | Ratified `docs/plan.md`; implemented ownership/export evidence for any capability implication | Picard | Neelix, Fact Checker, Sarek | **Hold — not publishable:** plan wording may appear only in clearly identified private planning context; exact public name, scope, capability implications, and wording remain unapproved | Earlier of 90 days after approval, material plan change, or product-boundary change |
 | CLM-002 | “You control your data.” | Product/privacy | Version-scoped export, delete, grants, audit, recovery, tenant isolation, and support evidence | Product owner | Deanna Troi, Tuvok, Data, Sarek, Fact Checker | **Blocked:** too broad without scoped proof and limitations | Every release or any data-flow/control change |
 | CLM-003 | “Self-hosted.” | Availability/deployment | Supported immutable artifact, operator guide, clean-instance start, backup/restore, update/rollback, offline evidence, support policy | Jett Reno | Data, Tuvok, Guinan, Fact Checker | **Blocked:** do not imply general availability from Phase 1A development evidence | Every release; immediately on critical known issue or support change |
 | CLM-004 | “Managed.” / managed availability | Availability/commercial | Approved Phase 1B deployment, isolation, identity/recovery, SLO/cost/support, privacy/legal terms | Managed-product owner | Data, Tuvok, Deanna Troi, Quark, Sarek, Guinan | **Blocked:** future gated work | Each deploy/incident and at least monthly |
