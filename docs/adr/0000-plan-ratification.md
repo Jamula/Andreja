@@ -4,7 +4,7 @@
 - **Date:** 2026-08-23
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
-- **Plan SHA-256:** `9dfe3e8f81d140082270de0517ecc3f15d2a2090c5b6c530f83fe461ff8798c0`
+- **Plan SHA-256:** `69133d886866d97474073814572a95c16031995c0eb3bf297b793591ae924a3b`
 
 ## Decision
 
@@ -52,3 +52,15 @@ not match the merged `docs/plan.md`.
 - **Decision:** Logged amendment; no architecture or ratification change.
 - **Scope:** Update the canonical repository and organization Project references
   after transfer to `Jamula/Andreja`.
+
+### 2026-08-24 — public website execution tracking
+
+- **Tracking issues:** [#94](https://github.com/Jamula/Andreja/issues/94) and
+  [#93](https://github.com/Jamula/Andreja/issues/93)
+- **Pull request:** [#95](https://github.com/Jamula/Andreja/pull/95)
+- **Plan SHA-256:** `69133d886866d97474073814572a95c16031995c0eb3bf297b793591ae924a3b`
+- **Approver:** Cyrus Jamula
+- **Decision:** Logged amendment; no architecture, phase, budget, publication, or
+  ratification change.
+- **Scope:** Add explicit issue tracking for the private Phase 0 website
+  design/hosting matrix and the separately gated Phase 1B public/help site.

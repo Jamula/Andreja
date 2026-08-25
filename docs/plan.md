@@ -931,6 +931,8 @@ Guinan is the User Feedback and Support Lead and owns acknowledgment, privacy sc
 
 ## Public website, help, and support
 
+- **Tracking:** Phase 0 design/hosting matrix [#94](https://github.com/Jamula/Andreja/issues/94);
+  gated Phase 1B public/help site [#93](https://github.com/Jamula/Andreja/issues/93).
 - Build a separate public-site project in this repository and .NET solution, deployed independently from the authenticated Andreja application and every user data plane.
 - Launch a minimal site with the walking skeleton covering the vision, capabilities, user data ownership, self-hosted and managed choices, privacy/security posture, roadmap boundaries, and honest availability status.
 - Expand the same site into the canonical help and support destination:
@@ -1333,7 +1335,7 @@ Deliverables:
 - Self-host identity qualification for HTTPS/WebAuthn RP configuration, first-admin bootstrap, recovery, external identity collision/linking, Data Protection key backup, and restoration.
 - OpenTofu state/provider design and local-backend validation with pinned providers/lock files, remote-state encryption/locking/recovery design, CI workload-identity design, deployment TTLs/quotas and teardown. Provisioning remote state and CI identity moves to separately budgeted Phase 1B.
 - Copilot event-schema and billing-reconciliation spike covering usage events, AI credits, session content persistence, provider retention, credential/tool isolation, and invoice-grade limits.
-- Jadzia-led public website design/hosting matrix with Jett Reno, Spock, and Quark; cover static/SSR options, help/search tooling, CDN/hosting, portability, security separation, preview environments, and cost.
+- Jadzia-led public website design/hosting matrix with Jett Reno, Spock, and Quark; cover static/SSR options, help/search tooling, CDN/hosting, portability, security separation, preview environments, and cost. Tracked by [#94](https://github.com/Jamula/Andreja/issues/94).
 - Initial threat model, privacy classification, numeric spike/steady-state cost envelopes, numeric SLO definitions with owners/evidence queries, and test strategy.
 - Evaluate but do not automatically install the recommended external skills/tools.
 
@@ -1373,7 +1375,7 @@ Deliverables:
 - After a separate budget approval, one capped Azure managed reference deployment using the Phase 0-selected relational provider—PostgreSQL is the provisional reference—through OpenTofu with pinned providers, locked/encrypted state, CI workload identity, quotas, TTL/teardown, secrets, backups, health, OTel export, and cost evidence.
 - Real limited Copilot 1.0.x provider. Use a shared runtime only after Phase 0/local and Phase 1B evidence proves filesystem/session/tool/credential/concurrency/cleanup/cost isolation; otherwise use per-user runtime isolation. Keep separate credentials/tools/session state, usage reconciliation and an optional external runtime image only if the measured topology requires it.
 - Invitees may link their own Copilot/BYOK provider or, only after Sarek's counsel/vendor-reviewed answer on Copilot entitlement, acceptable use and redistribution, opt into an Andreja-funded dogfood allowance. Funded usage has explicit consent, per-tenant quotas, model/tool limits, attribution, budget exhaustion behavior and no hidden transfer of one user's entitlement to another.
-- Independently deployed pre-generated public-site artifact, conditional on product-name/domain clearance, covering vision, data ownership, privacy posture, help/support and evidence-based availability.
+- Independently deployed pre-generated public-site artifact, conditional on product-name/domain clearance, covering vision, data ownership, privacy posture, help/support and evidence-based availability. Tracked by [#93](https://github.com/Jamula/Andreja/issues/93).
 - Tenant-less public feedback intake plus authenticated in-app feedback, Guinan triage/status workflow, and sanitized/consented GitHub issue publication.
 - Minimal transactional outbound email for Guinan acknowledgments/status, with sender identity, SPF/DKIM/DMARC, bounce/complaint handling, abuse controls and cost evidence. Phase 3A expands email intake, reminders and provider choice.
 - Invite-only adult onboarding for a small dogfood cohort, with each invitee in a separate tenant, repeatable recovery and explicit support/feedback consent. Cross-tenant access is limited to the Group Travel workspace contract below.
