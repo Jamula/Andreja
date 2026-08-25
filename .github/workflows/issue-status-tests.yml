@@ -8,10 +8,18 @@ on:
       - '.github/scripts/run-issue-status.js'
       - '.github/scripts/issue-status.test.js'
       - '.github/scripts/fixtures/issue-status-events.json'
+      - '.github/scripts/fixtures/issue-status-linked-prs.json'
       - '.github/workflows/issue-status.yml'
       - '.github/workflows/issue-status-tests.yml'
       - '.github/workflows/squad-label-enforce.yml'
       - '.github/workflows/sync-squad-labels.yml'
+      - '.github/agents/squad.agent.md'
+      - '.github/workflows/squad-issue-assign.yml'
+      - '.squad/templates/copilot-agent.md'
+      - '.squad/templates/issue-lifecycle.md'
+      - '.squad/templates/squad.agent.md.template'
+      - '.squad/templates/workflows/squad-issue-assign.yml'
+      - 'docs/help/issue-status.md'
   pull_request:
     branches: [main]
     paths:
@@ -19,10 +27,18 @@ on:
       - '.github/scripts/run-issue-status.js'
       - '.github/scripts/issue-status.test.js'
       - '.github/scripts/fixtures/issue-status-events.json'
+      - '.github/scripts/fixtures/issue-status-linked-prs.json'
       - '.github/workflows/issue-status.yml'
       - '.github/workflows/issue-status-tests.yml'
       - '.github/workflows/squad-label-enforce.yml'
       - '.github/workflows/sync-squad-labels.yml'
+      - '.github/agents/squad.agent.md'
+      - '.github/workflows/squad-issue-assign.yml'
+      - '.squad/templates/copilot-agent.md'
+      - '.squad/templates/issue-lifecycle.md'
+      - '.squad/templates/squad.agent.md.template'
+      - '.squad/templates/workflows/squad-issue-assign.yml'
+      - 'docs/help/issue-status.md'
 
 permissions:
   contents: read

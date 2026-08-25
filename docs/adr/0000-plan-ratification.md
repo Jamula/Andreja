@@ -4,7 +4,7 @@
 - **Date:** 2026-08-23
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
-- **Plan SHA-256:** `bfc0c26c1ecb34e00fb91971fe2b11fa0eb484268a9aff276657a41bcba34f83`
+- **Plan SHA-256:** `d0d2400b0f617b8a752bf155b7698cd645fc1263b99cce9813dc5d42977d5afc`
 
 ## Decision
 
@@ -84,3 +84,18 @@ not match the merged `docs/plan.md`.
 - **Authority unchanged:** No Proposed ADR is accepted, no Phase 1A exit is
   claimed, and no spend, publication, public launch, real Copilot, managed cloud,
   federation, or connector activation is authorized.
+
+### 2026-08-25 — issue lifecycle status-artifact hash refresh
+
+- **Tracking issue:** [#70](https://github.com/Jamula/Andreja/issues/70)
+- **Pull request:** [#106](https://github.com/Jamula/Andreja/pull/106)
+- **Plan SHA-256:** `d0d2400b0f617b8a752bf155b7698cd645fc1263b99cce9813dc5d42977d5afc`
+- **Approver:** Cyrus Jamula
+- **Approver status:** Cyrus directed this plan review/update on 2026-08-25 and
+  kept merge through the protected pull request as final acceptance. This entry
+  does not claim a separate decision before that merge.
+- **Classification:** Logged mechanical/editorial amendment; no
+  re-ratification.
+- **Scope:** Record the operating-model issue-lifecycle reconciliation wording
+  and its matching current status-artifact hash. No architecture, provider,
+  publication, or exit-gate change.

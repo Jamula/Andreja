@@ -30,9 +30,24 @@ These labels never replace `status:*`. An issue can correctly be both
 
 ## Automatic and manual repair
 
-The Issue Status workflow reacts to issue lifecycle, documented branch names
-(`squad/<issue>-<slug>`), and trusted same-repository pull requests that close an
-issue. It is idempotent and does not post comments.
+The Issue Status workflow reacts to issue lifecycle, configured branch names,
+and trusted same-repository pull requests that close an issue. Tracked branch
+forms are `squad/{issue-number}-{slug}`,
+`copilot/{issue-number}-{slug}`, and
+`u/{account}/{issue-number}-{slug}`; arbitrary number-leading names are ignored.
+Branch existence is queried from GitHub and never inferred from a lifecycle
+label. Pull requests connected through the issue's Development sidebar are
+queried from GitHub's `closedByPullRequestsReferences`, so they drive draft,
+ready, and merged state even without a closing keyword in the PR body. Open fork
+PRs remain excluded from the write-capable status path.
+
+GitHub Actions does not expose native issue-dependency changes as a workflow
+trigger. A trusted hourly full reconciliation repairs dependency labels, PR-body
+reference edits, deleted branches, and stack promotions. For a stacked change,
+the reconciler follows a merged layer's base branch into the PR whose head
+promotes that branch. Repeating the closing reference on the final PR remains
+recommended because it gives GitHub and reviewers an explicit closure record.
+The workflow is idempotent and does not post comments.
 
 From **Actions > Issue Status > Run workflow**, leave the issue number blank to
 reconcile all issues, or enter one issue number. `auto` derives lifecycle and
