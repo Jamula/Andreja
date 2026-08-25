@@ -406,6 +406,7 @@ $approvedMigrations = @(
   '20260824075115_ProductionPasskeyIdentity'
   '20260824102012_DurableRecentAuthenticationGrants'
   '20260824154149_DurableProposalConfirmation'
+  '20260825004005_ApplicationPortability'
 )
 & scripts\operations\migrate-database.ps1 `
   -BackupDumpPath backups\postgres\andreja-<timestamp>.dump `

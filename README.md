@@ -97,17 +97,19 @@ This Docker example is loopback-only and disposable:
 
 ```powershell
 $postgresImage = "postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3"
+$testPassword = [Convert]::ToBase64String(
+  [Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 $postgresContainer = docker run --rm --detach `
   --name andreja-tests-postgres `
   --publish 127.0.0.1:55432:5432 `
-  --env POSTGRES_PASSWORD=andreja-test-only `
+  --env "POSTGRES_PASSWORD=$testPassword" `
   --env POSTGRES_DB=andreja_test_local `
   $postgresImage
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($postgresContainer)) {
   throw "Unable to create the disposable PostgreSQL container."
 }
 
-$env:ANDREJA_TEST_POSTGRES = "Host=127.0.0.1;Port=55432;Database=andreja_test_local;Username=postgres;Password=andreja-test-only;SSL Mode=Disable"
+$env:ANDREJA_TEST_POSTGRES = "Host=127.0.0.1;Port=55432;Database=andreja_test_local;Username=postgres;Password=$testPassword;SSL Mode=Disable"
 
 try {
   $ready = $false
@@ -132,6 +134,7 @@ try {
 }
 finally {
   Remove-Item Env:\ANDREJA_TEST_POSTGRES -ErrorAction SilentlyContinue
+  $testPassword = $null
   if (-not [string]::IsNullOrWhiteSpace($postgresContainer)) {
     docker stop $postgresContainer
   }
@@ -281,12 +284,20 @@ $backupDumpPath = Read-Host `
 if (-not (Test-Path -LiteralPath $backupDumpPath -PathType Leaf)) {
   throw "The restore-tested backup dump was not found."
 }
+$approvedMigrations = @(
+  "20260824031732_InitialIdentityTenancy"
+  "20260824043341_Phase1AOpenLoopsTasks"
+  "20260824075115_ProductionPasskeyIdentity"
+  "20260824102012_DurableRecentAuthenticationGrants"
+  "20260824154149_DurableProposalConfirmation"
+  "20260825004005_ApplicationPortability"
+)
 
 pwsh -NoProfile -File scripts\operations\migrate-database.ps1 `
   -BackupDumpPath $backupDumpPath `
   -ReviewedMigrationScriptPath .andreja\reviewed-migration.sql `
   -DatabaseName andreja `
-  -ApprovedMigrations @("REPLACE_WITH_REVIEWED_MIGRATION_NAMES") `
+  -ApprovedMigrations $approvedMigrations `
   -ConfirmBackupRestoreAndMigrationReview
 if ($LASTEXITCODE -ne 0) {
   throw "The explicit database migration failed."
