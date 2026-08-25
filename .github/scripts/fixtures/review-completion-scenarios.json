@@ -1,16 +1,48 @@
 [
   {
-    "name": "all CI completes before Copilot without a merge-ready interval",
+    "name": "PR 100 required CI completed before Copilot",
+    "incident": "#100",
+    "mergedAtSeconds": 148,
     "events": [
       { "atSeconds": 0, "context": "Review completion gate", "state": "pending" },
-      { "atSeconds": 35, "context": "NuGet vulnerability audit", "state": "success" },
-      { "atSeconds": 42, "context": "C# SAST (DevSkim)", "state": "success" },
-      { "atSeconds": 80, "context": "Format verification", "state": "success" },
+      { "atSeconds": 20, "context": "C# SAST (DevSkim)", "state": "success" },
+      { "atSeconds": 38, "context": "NuGet vulnerability audit", "state": "success" },
+      { "atSeconds": 60, "context": "Format verification", "state": "success" },
+      { "atSeconds": 69, "context": "Build and test (Release)", "state": "success" },
+      { "atSeconds": 71, "context": "Build and test (Debug)", "state": "success" },
+      { "atSeconds": 237, "context": "Review completion gate", "state": "success" }
+    ],
+    "firstReadyAtSeconds": 237
+  },
+  {
+    "name": "PR 101 required CI completed before Copilot",
+    "incident": "#101",
+    "mergedAtSeconds": 174,
+    "events": [
+      { "atSeconds": 0, "context": "Review completion gate", "state": "pending" },
+      { "atSeconds": 43, "context": "C# SAST (DevSkim)", "state": "success" },
+      { "atSeconds": 53, "context": "NuGet vulnerability audit", "state": "success" },
+      { "atSeconds": 81, "context": "Format verification", "state": "success" },
       { "atSeconds": 86, "context": "Build and test (Release)", "state": "success" },
       { "atSeconds": 87, "context": "Build and test (Debug)", "state": "success" },
       { "atSeconds": 489, "context": "Review completion gate", "state": "success" }
     ],
     "firstReadyAtSeconds": 489
+  },
+  {
+    "name": "PR 105 required CI was already complete when review began",
+    "incident": "#105",
+    "mergedAtSeconds": 78,
+    "events": [
+      { "atSeconds": 0, "context": "Review completion gate", "state": "pending" },
+      { "atSeconds": 0, "context": "C# SAST (DevSkim)", "state": "success" },
+      { "atSeconds": 0, "context": "NuGet vulnerability audit", "state": "success" },
+      { "atSeconds": 0, "context": "Format verification", "state": "success" },
+      { "atSeconds": 0, "context": "Build and test (Release)", "state": "success" },
+      { "atSeconds": 0, "context": "Build and test (Debug)", "state": "success" },
+      { "atSeconds": 267, "context": "Review completion gate", "state": "success" }
+    ],
+    "firstReadyAtSeconds": 267
   },
   {
     "name": "new push invalidates prior review evidence",

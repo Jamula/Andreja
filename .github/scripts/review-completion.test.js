@@ -156,14 +156,21 @@ test('merge-group and default-branch paths report explicit not-applicable succes
   }
 });
 
-test('historical PR 100 and 101 timing window cannot become merge-ready early', () => {
-  const fixture = fixtures[0];
-  const timeline = replayTimingWindow(fixture.events);
-  const firstReady = timeline.find((event) => event.mergeReady);
-  assert.equal(firstReady.atSeconds, fixture.firstReadyAtSeconds);
-  assert.ok(timeline
-    .filter((event) => event.atSeconds < fixture.firstReadyAtSeconds)
-    .every((event) => !event.mergeReady));
+test('historical PR 100, 101, and 105 windows cannot become merge-ready early', () => {
+  for (const fixture of fixtures.filter((candidate) => candidate.incident)) {
+    const timeline = replayTimingWindow(fixture.events);
+    const firstReady = timeline.find((event) => event.mergeReady);
+    assert.equal(
+      firstReady.atSeconds,
+      fixture.firstReadyAtSeconds,
+      fixture.incident);
+    assert.ok(timeline
+      .filter((event) => event.atSeconds < fixture.firstReadyAtSeconds)
+      .every((event) => !event.mergeReady), fixture.incident);
+    assert.ok(
+      fixture.mergedAtSeconds < fixture.firstReadyAtSeconds,
+      fixture.incident);
+  }
   assert.equal(mergeReady({
     'Build and test': 'success',
     'Review completion gate': 'pending',
@@ -171,7 +178,9 @@ test('historical PR 100 and 101 timing window cannot become merge-ready early', 
 });
 
 test('new push immediately closes the prior merge-ready window', () => {
-  const timeline = replayTimingWindow(fixtures[1].events);
+  const fixture = fixtures.find((candidate) =>
+    candidate.name === 'new push invalidates prior review evidence');
+  const timeline = replayTimingWindow(fixture.events);
   const atPush = timeline.find((event) => event.atSeconds === 300);
   assert.equal(atPush.mergeReady, false);
   assert.equal(timeline.at(-1).mergeReady, true);
