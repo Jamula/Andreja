@@ -23,7 +23,7 @@ function Get-CollectorCounter {
     foreach ($line in $metrics -split "`n") {
         if ($line -match "^$([Regex]::Escape($Name))(\{[^}]*\})?\s+([0-9.eE+-]+)\s*$") {
             $total += [double]::Parse(
-                $Matches[3],
+                $Matches[2],
                 [Globalization.CultureInfo]::InvariantCulture)
         }
     }

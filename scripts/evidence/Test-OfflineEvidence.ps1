@@ -1,5 +1,9 @@
 [CmdletBinding()]
 param(
+    [Parameter(Mandatory)]
+    [ValidatePattern("^.+@sha256:[0-9a-f]{64}$")]
+    [string] $AuditedAppImage,
+
     [string] $ProjectName = "andreja",
 
     [switch] $DestroySyntheticVolumes
@@ -25,17 +29,12 @@ function Invoke-Docker {
         [switch] $Capture
     )
 
-    if ($Capture) {
-        $output = & docker @Arguments
-        if ($LASTEXITCODE -ne 0) {
-            throw "$FailureMessage (exit $LASTEXITCODE)."
-        }
-        return @($output)
-    }
-
-    & docker @Arguments
+    $output = & docker @Arguments 2>&1
     if ($LASTEXITCODE -ne 0) {
-        throw "$FailureMessage (exit $LASTEXITCODE)."
+        throw "$FailureMessage (exit $LASTEXITCODE): $($output -join "`n")"
+    }
+    if ($Capture) {
+        return @($output)
     }
 }
 
@@ -55,6 +54,7 @@ function Wait-AppHealthy {
     throw "Application did not become healthy within two minutes."
 }
 
+$result = $null
 Push-Location $root
 try {
     $images = Invoke-Docker -Arguments ($compose + @("config", "--images")) `
@@ -65,6 +65,9 @@ try {
         }
         Invoke-Docker -Arguments @("image", "inspect", $image) `
             -FailureMessage "Required preloaded image is unavailable: $image"
+    }
+    if ($AuditedAppImage -notin $images) {
+        throw "Compose does not resolve to the expected audited application image."
     }
 
     Invoke-Docker -Arguments ($compose + @("down", "--remove-orphans")) `
@@ -89,20 +92,24 @@ try {
         throw "Offline evidence requires exactly one pinned Caddy helper image."
     }
     $caddyImage = $caddyImages[0]
+    $probeCommand =
+        "wget -qO- http://127.0.0.1:8080/health/live >/dev/null && " +
+        "wget -qO- http://127.0.0.1:8080/health/ready >/dev/null && " +
+        "if wget -T 3 -qO- https://192.0.2.1 >/dev/null 2>&1; " +
+        "then exit 41; fi"
     Invoke-Docker -Arguments @(
         "run", "--rm", "--pull", "never",
         "--network", "container:$appContainer",
         "--entrypoint", "/bin/sh",
         $caddyImage,
         "-c",
-        "wget -qO- http://127.0.0.1:8080/health/live >/dev/null && " +
-        "wget -qO- http://127.0.0.1:8080/health/ready >/dev/null && " +
-        "if wget -T 3 -qO- https://192.0.2.1 >/dev/null 2>&1; then exit 41; fi"
+        $probeCommand
     ) -FailureMessage "Local readiness or TEST-NET egress negative failed"
 
-    [ordered]@{
+    $result = [ordered]@{
         status = "passed"
         imagesPreloaded = @($images).Count
+        auditedAppImage = $AuditedAppImage
         pullPolicy = "never"
         edgeInternal = $true
         backendInternal = $true
@@ -117,9 +124,11 @@ finally {
         if ($DestroySyntheticVolumes) {
             $cleanup += "--volumes"
         }
-        & docker @cleanup
+        & docker @cleanup *> $null
     }
     finally {
         Pop-Location
     }
 }
+
+Write-Output $result
