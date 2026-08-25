@@ -164,6 +164,13 @@ function pullRequestIssueNumbers(payload, repository) {
   return numbers;
 }
 
+function localGraphqlNumbers(nodes, repositoryFullName) {
+  return new Set(nodes
+    .filter((node) => node.repository?.nameWithOwner?.toLowerCase() ===
+      repositoryFullName.toLowerCase())
+    .map((node) => node.number));
+}
+
 function latestIssueEventAt(events, eventName) {
   let latest = null;
   for (const event of events) {
@@ -175,6 +182,37 @@ function latestIssueEventAt(events, eventName) {
     }
   }
   return latest;
+}
+
+function selectPullRequestsForIssue({
+  pullRequests,
+  issueNumber,
+  repository,
+  repositoryFullName,
+  defaultBranch,
+  connectedNumbers = new Set(),
+  timelineNumbers = new Set(),
+  latestReopenedAt = null,
+}) {
+  const trustedReferenceNumbers = new Set([
+    ...connectedNumbers,
+    ...timelineNumbers,
+  ]);
+  const directPullRequests = pullRequests.filter((pullRequest) =>
+    (connectedNumbers.has(pullRequest.number) ||
+      pullRequestReferencesIssue(pullRequest, issueNumber, repository)) &&
+    isTrustedPullRequestReference(
+      pullRequest,
+      trustedReferenceNumbers,
+      repositoryFullName));
+
+  return expandPullRequestPromotions(
+    directPullRequests,
+    pullRequests,
+    defaultBranch,
+    repositoryFullName,
+    latestReopenedAt,
+  );
 }
 
 async function ensureLabel({ github, context, name }) {
@@ -287,28 +325,53 @@ function updateBranchEvidence(evidence, eventName, branchName) {
   return issueNumber;
 }
 
+async function linkedPullRequestNumbers({ github, context, issueNumber }) {
+  const result = await github.graphql(
+    `query($owner: String!, $repo: String!, $number: Int!) {
+      repository(owner: $owner, name: $repo) {
+        issue(number: $number) {
+          closedByPullRequestsReferences(first: 100) {
+            nodes {
+              number
+              repository { nameWithOwner }
+            }
+          }
+        }
+      }
+    }`,
+    {
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      number: issueNumber,
+    });
+  const nodes =
+    result.repository.issue.closedByPullRequestsReferences.nodes;
+  return localGraphqlNumbers(
+    nodes,
+    context.payload.repository.full_name);
+}
+
 async function linkedPullRequests({ github, context, issueNumber, evidence }) {
-  const events = await github.paginate(github.rest.issues.listEventsForTimeline, {
-    ...context.repo,
-    issue_number: issueNumber,
-    per_page: 100,
-  });
+  const [events, connectedNumbers] = await Promise.all([
+    github.paginate(github.rest.issues.listEventsForTimeline, {
+      ...context.repo,
+      issue_number: issueNumber,
+      per_page: 100,
+    }),
+    linkedPullRequestNumbers({ github, context, issueNumber }),
+  ]);
   const repositoryUrl = context.payload.repository.url;
   const timelineNumbers = pullRequestNumbersFromTimeline(events, repositoryUrl);
-  const directPullRequests = evidence.pullRequests.filter((pullRequest) =>
-    pullRequestReferencesIssue(pullRequest, issueNumber, context.repo) &&
-    isTrustedPullRequestReference(
-      pullRequest,
-      timelineNumbers,
-      context.payload.repository.full_name));
-
-  return expandPullRequestPromotions(
-    directPullRequests,
-    evidence.pullRequests,
-    context.payload.repository.default_branch,
-    context.payload.repository.full_name,
-    latestIssueEventAt(events, 'reopened'),
-  );
+  return selectPullRequestsForIssue({
+    pullRequests: evidence.pullRequests,
+    issueNumber,
+    repository: context.repo,
+    repositoryFullName: context.payload.repository.full_name,
+    defaultBranch: context.payload.repository.default_branch,
+    connectedNumbers,
+    timelineNumbers,
+    latestReopenedAt: latestIssueEventAt(events, 'reopened'),
+  });
 }
 
 async function closingIssueNumbers({ github, context, pullRequest }) {
@@ -331,11 +394,11 @@ async function closingIssueNumbers({ github, context, pullRequest }) {
       repo: context.repo.repo,
       number: pullRequest.number,
     });
-  for (const issue of result.repository.pullRequest.closingIssuesReferences.nodes) {
-    if (issue.repository.nameWithOwner.toLowerCase() ===
-        `${context.repo.owner}/${context.repo.repo}`.toLowerCase()) {
-      numbers.add(issue.number);
-    }
+  const graphQlNumbers = localGraphqlNumbers(
+    result.repository.pullRequest.closingIssuesReferences.nodes,
+    `${context.repo.owner}/${context.repo.repo}`);
+  for (const issueNumber of graphQlNumbers) {
+    numbers.add(issueNumber);
   }
   return numbers;
 }
@@ -559,11 +622,14 @@ module.exports = {
   issueNumberFromBranch,
   issueNumbersFromBody,
   localIssueNumbers,
+  localGraphqlNumbers,
   latestIssueEventAt,
+  linkedPullRequestNumbers,
   normalizePullRequest,
   pullRequestIssueNumbers,
   pullRequestNumbersFromTimeline,
   run,
+  selectPullRequestsForIssue,
   targetIssueNumbers,
   updateBranchEvidence,
 };

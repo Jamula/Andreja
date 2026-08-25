@@ -22,12 +22,17 @@ const {
   localIssueNumbers,
   pullRequestIssueNumbers,
   pullRequestNumbersFromTimeline,
+  linkedPullRequestNumbers,
+  selectPullRequestsForIssue,
   targetIssueNumbers,
   updateBranchEvidence,
 } = require('./run-issue-status');
 
 const fixtures = JSON.parse(fs.readFileSync(
   path.join(__dirname, 'fixtures', 'issue-status-events.json'),
+  'utf8'));
+const linkedPullRequestFixtures = JSON.parse(fs.readFileSync(
+  path.join(__dirname, 'fixtures', 'issue-status-linked-prs.json'),
   'utf8'));
 
 for (const fixture of fixtures) {
@@ -48,11 +53,51 @@ for (const fixture of fixtures) {
     for (const label of fixture.expectedRemoved || []) {
       assert.ok(result.plan.remove.includes(label));
     }
+
     for (const label of fixture.expectedPreserved || []) {
       assert.ok(!result.plan.remove.includes(label));
     }
   });
 }
+
+for (const fixture of linkedPullRequestFixtures) {
+  test(fixture.name, () => {
+    const pullRequests = selectPullRequestsForIssue({
+      pullRequests: fixture.pullRequests,
+      issueNumber: fixture.issueNumber,
+      repository: { owner: 'Jamula', repo: 'Andreja' },
+      repositoryFullName: 'Jamula/Andreja',
+      defaultBranch: 'main',
+      connectedNumbers: new Set(fixture.connectedNumbers),
+    });
+    assert.equal(deriveStatus({
+      issueState: fixture.issueState,
+      pullRequests,
+      defaultBranch: 'main',
+    }), fixture.expectedStatus);
+  });
+}
+
+test('sidebar linkage does not let an open fork PR write issue status', () => {
+  const pullRequests = selectPullRequestsForIssue({
+    pullRequests: [{
+      number: 10,
+      state: 'open',
+      isDraft: false,
+      merged: false,
+      baseRef: 'main',
+      headRef: 'feature/ready',
+      headRepository: 'Contributor/Fork',
+      body: '',
+    }],
+    issueNumber: 70,
+    repository: { owner: 'Jamula', repo: 'Andreja' },
+    repositoryFullName: 'Jamula/Andreja',
+    defaultBranch: 'main',
+    connectedNumbers: new Set([10]),
+  });
+  assert.deepEqual(pullRequests, []);
+});
 
 test('all known statuses normalize and unknown statuses fail closed', () => {
   for (const status of KNOWN_STATUSES) {
@@ -118,6 +163,37 @@ test('GraphQL closing references reject cross-repository number collisions', asy
   });
 
   assert.deepEqual([...numbers], [72, 71]);
+});
+
+test('sidebar-linked PR query rejects cross-repository number collisions', async () => {
+  const github = {
+    graphql: async () => ({
+      repository: {
+        issue: {
+          closedByPullRequestsReferences: {
+            nodes: [
+              {
+                number: 10,
+                repository: { nameWithOwner: 'Other/Elsewhere' },
+              },
+              {
+                number: 11,
+                repository: { nameWithOwner: 'Jamula/Andreja' },
+              },
+            ],
+          },
+        },
+      },
+    }),
+  };
+  const context = {
+    repo: { owner: 'Jamula', repo: 'Andreja' },
+    payload: { repository: { full_name: 'Jamula/Andreja' } },
+  };
+
+  assert.deepEqual(
+    [...await linkedPullRequestNumbers({ github, context, issueNumber: 70 })],
+    [11]);
 });
 
 test('timeline PR references ignore cross-repository number collisions', () => {

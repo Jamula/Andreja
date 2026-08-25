@@ -35,7 +35,10 @@ and trusted same-repository pull requests that close an issue. Tracked branch
 forms are `squad/<issue>-<slug>`, `copilot/<issue>-<slug>`, and
 `u/<account>/<issue>-<slug>`; arbitrary number-leading names are ignored.
 Branch existence is queried from GitHub and never inferred from a lifecycle
-label.
+label. Pull requests connected through the issue's Development sidebar are
+queried from GitHub's `closedByPullRequestsReferences`, so they drive draft,
+ready, and merged state even without a closing keyword in the PR body. Open fork
+PRs remain excluded from the write-capable status path.
 
 GitHub Actions does not expose native issue-dependency changes as a workflow
 trigger. A trusted hourly full reconciliation repairs dependency labels, PR-body
