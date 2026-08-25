@@ -81,6 +81,7 @@ dotnet format Andreja.slnx --verify-no-changes --no-restore
 dotnet format tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj `
   --verify-no-changes --no-restore
 python .github\scripts\check_docs_consistency.py
+node --test .github\scripts\issue-status.test.js
 pwsh -NoProfile -File .github\scripts\invoke-nuget-vulnerability-scan.ps1
 pwsh -NoProfile -File scripts\operations\validate-contract.ps1
 pwsh -NoProfile -File scripts\supply-chain\Test-SupplyChainPolicy.ps1

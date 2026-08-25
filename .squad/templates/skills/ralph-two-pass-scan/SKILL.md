@@ -28,8 +28,8 @@ gh issue list --state open --json number,title,labels,assignees --limit 100
 | Condition | Skip reason |
 |-----------|-------------|
 | `assignees` non-empty AND no `status:needs-review` | Already owned |
-| Labels contain `status:blocked` or `status:waiting-external` | Externally gated |
-| Labels contain `status:done` or `status:postponed` | Closed loop |
+| Labels contain any `blocked:*` label | Dependency gated; lifecycle remains visible |
+| Labels contain `status:merged` or `status:closed` | Closed loop |
 | Title matches stale/noisy pattern (`[chore]`, `[auto]`) | Low-signal |
 
 ### Pass 2 — Selective Hydration
