@@ -162,9 +162,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
         }
 
         var key = RandomNumberGenerator.GetBytes(32);
-        var archive = Path.Combine(
-            AppContext.BaseDirectory,
-            $"portability-{Guid.NewGuid():N}.andreja");
+        var archive = ArchivePath();
         try
         {
             var exported = await PostgreSqlApplicationPortability.ExportAsync(
@@ -1134,7 +1132,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
     }
 
     private static string ArchivePath() =>
-        Path.Combine(
+        Path.Join(
             AppContext.BaseDirectory,
             $"portability-{Guid.NewGuid():N}.andreja");
 
