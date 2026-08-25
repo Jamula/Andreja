@@ -45,13 +45,23 @@ function deriveStatus({
     isDraft: Boolean(pullRequest.isDraft ?? pullRequest.draft),
     merged: Boolean(pullRequest.merged || pullRequest.merged_at),
     baseRef: pullRequest.baseRef || pullRequest.base?.ref,
+    promotesIssue: Boolean(pullRequest.promotesIssue),
+    supersededByReopen: Boolean(pullRequest.supersededByReopen),
   }));
 
   if (String(issueState).toLowerCase() === 'closed') {
     return normalizedPullRequests.some((pullRequest) =>
-      pullRequest.merged && pullRequest.baseRef === defaultBranch)
+      !pullRequest.supersededByReopen && pullRequest.merged &&
+      pullRequest.baseRef === defaultBranch)
       ? STATUS.MERGED
       : STATUS.CLOSED;
+  }
+
+  if (normalizedPullRequests.some((pullRequest) =>
+    !pullRequest.supersededByReopen && pullRequest.promotesIssue &&
+    pullRequest.merged &&
+    pullRequest.baseRef === defaultBranch)) {
+    return STATUS.MERGED;
   }
 
   if (mergeEvent && normalizedPullRequests.some((pullRequest) =>
@@ -70,7 +80,8 @@ function deriveStatus({
   }
 
   if (branchLinked || normalizedPullRequests.some((pullRequest) =>
-    !pullRequest.merged || pullRequest.baseRef !== defaultBranch)) {
+    !pullRequest.supersededByReopen &&
+    (!pullRequest.merged || pullRequest.baseRef !== defaultBranch))) {
     return STATUS.BRANCH_ONLY;
   }
 

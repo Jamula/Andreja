@@ -23,18 +23,158 @@ const LABELS = Object.freeze({
   'blocks:human': ['FBCA04', 'Classifies this issue as a human decision dependency for blocked issues'],
 });
 
-function issueNumberFromBranch(branch) {
-  const match = String(branch || '').match(/^(?:squad\/)?(\d+)(?:-|$)/);
-  return match ? Number(match[1]) : null;
+const BRANCH_PATTERNS = Object.freeze([
+  /^squad\/(?<issue>\d+)-[a-z0-9][a-z0-9-]*$/,
+  /^copilot\/(?<issue>\d+)-[a-z0-9][a-z0-9-]*$/,
+  /^u\/[a-z0-9_.-]+\/(?<issue>\d+)-[a-z0-9][a-z0-9-]*$/,
+]);
+
+function issueNumberFromBranch(branch, patterns = BRANCH_PATTERNS) {
+  for (const pattern of patterns) {
+    const match = String(branch || '').match(pattern);
+    if (match) {
+      return Number(match.groups.issue);
+    }
+  }
+  return null;
 }
 
-function issueNumbersFromBody(body) {
+function issueNumbersFromBody(body, repository = {}) {
   const numbers = new Set();
-  const pattern = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)\b/gi;
+  const pattern = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+(?:([a-z0-9_.-]+)\/([a-z0-9_.-]+))?#(\d+)\b/gi;
   for (const match of String(body || '').matchAll(pattern)) {
-    numbers.add(Number(match[1]));
+    const [, owner, repo, number] = match;
+    if ((!owner && !repo) ||
+        (owner.toLowerCase() === String(repository.owner).toLowerCase() &&
+          repo.toLowerCase() === String(repository.repo).toLowerCase())) {
+      numbers.add(Number(number));
+    }
   }
   return numbers;
+}
+
+function normalizeRepositoryUrl(url) {
+  return String(url || '').replace(/\/+$/, '').toLowerCase();
+}
+
+function isCurrentRepositoryIssue(issue, repositoryUrl) {
+  return normalizeRepositoryUrl(issue?.repository_url) ===
+    normalizeRepositoryUrl(repositoryUrl);
+}
+
+function pullRequestNumbersFromTimeline(events, repositoryUrl) {
+  const numbers = new Set();
+  for (const event of events) {
+    const sourceIssue = event.source?.issue;
+    if (event.event === 'cross-referenced' && sourceIssue?.pull_request &&
+        isCurrentRepositoryIssue(sourceIssue, repositoryUrl)) {
+      numbers.add(sourceIssue.number);
+    }
+  }
+  return numbers;
+}
+
+function localIssueNumbers(issues, repositoryUrl) {
+  return issues
+    .filter((issue) => isCurrentRepositoryIssue(issue, repositoryUrl))
+    .map((issue) => issue.number);
+}
+
+function pullRequestReferencesIssue(pullRequest, issueNumber, repository) {
+  return issueNumbersFromBody(pullRequest.body, repository).has(issueNumber);
+}
+
+function isTrustedPullRequestReference(
+  pullRequest,
+  timelineNumbers,
+  repositoryFullName,
+) {
+  return pullRequest.headRepository === repositoryFullName ||
+    (pullRequest.merged && timelineNumbers.has(pullRequest.number));
+}
+
+function expandPullRequestPromotions(
+  directPullRequests,
+  allPullRequests,
+  defaultBranch,
+  repositoryFullName,
+  latestReopenedAt = null,
+) {
+  const isSuperseded = (pullRequest) =>
+    Boolean(latestReopenedAt && pullRequest.mergedAt &&
+      Date.parse(pullRequest.mergedAt) < Date.parse(latestReopenedAt));
+  const expanded = new Map(directPullRequests.map((pullRequest) => [
+    pullRequest.number,
+    {
+      ...pullRequest,
+      supersededByReopen: isSuperseded(pullRequest),
+    },
+  ]));
+  const branches = [];
+
+  for (const pullRequest of directPullRequests) {
+    if (pullRequest.merged && pullRequest.baseRef !== defaultBranch &&
+        !isSuperseded(pullRequest)) {
+      branches.push({
+        name: pullRequest.baseRef,
+        after: pullRequest.mergedAt,
+      });
+    }
+  }
+
+  while (branches.length > 0) {
+    const promotedBranch = branches.shift();
+    for (const candidate of allPullRequests) {
+      if (candidate.headRepository !== repositoryFullName ||
+          candidate.headRef !== promotedBranch.name ||
+          expanded.has(candidate.number)) {
+        continue;
+      }
+      if (candidate.merged &&
+          (!promotedBranch.after || !candidate.mergedAt ||
+            Date.parse(candidate.mergedAt) < Date.parse(promotedBranch.after))) {
+        continue;
+      }
+
+      expanded.set(candidate.number, {
+        ...candidate,
+        promotesIssue: true,
+        supersededByReopen: isSuperseded(candidate),
+      });
+      if (candidate.merged && candidate.baseRef !== defaultBranch) {
+        branches.push({
+          name: candidate.baseRef,
+          after: candidate.mergedAt,
+        });
+      }
+    }
+  }
+
+  return [...expanded.values()];
+}
+
+function pullRequestIssueNumbers(payload, repository) {
+  const numbers = issueNumbersFromBody(payload.pull_request?.body, repository);
+  const previousBody = payload.action === 'edited'
+    ? payload.changes?.body?.from
+    : null;
+  for (const number of issueNumbersFromBody(previousBody, repository)) {
+    numbers.add(number);
+  }
+  return numbers;
+}
+
+function latestIssueEventAt(events, eventName) {
+  let latest = null;
+  for (const event of events) {
+    if (event.event !== eventName || !event.created_at) {
+      continue;
+    }
+    if (!latest || Date.parse(event.created_at) > Date.parse(latest)) {
+      latest = event.created_at;
+    }
+  }
+  return latest;
 }
 
 async function ensureLabel({ github, context, name }) {
@@ -77,48 +217,111 @@ async function listDependencies({ github, context, issueNumber, direction }) {
     });
 }
 
-async function linkedPullRequests({ github, context, issueNumber }) {
+function normalizePullRequest(pullRequest) {
+  return {
+    number: pullRequest.number,
+    state: pullRequest.state,
+    isDraft: pullRequest.draft,
+    merged: Boolean(pullRequest.merged ?? pullRequest.merged_at),
+    mergedAt: pullRequest.merged_at,
+    baseRef: pullRequest.base?.ref,
+    headRef: pullRequest.head?.ref,
+    headRepository: pullRequest.head?.repo?.full_name,
+    body: pullRequest.body,
+  };
+}
+
+async function loadRepositoryEvidence({ github, context }) {
+  const [branches, pullRequests] = await Promise.all([
+    github.paginate(github.rest.repos.listBranches, {
+      ...context.repo,
+      per_page: 100,
+    }),
+    github.paginate(github.rest.pulls.list, {
+      ...context.repo,
+      state: 'all',
+      sort: 'updated',
+      direction: 'desc',
+      per_page: 100,
+    }),
+  ]);
+
+  return {
+    branchNamesByIssue: branchNamesByIssue(branches.map((branch) => branch.name)),
+    pullRequests: pullRequests.map(normalizePullRequest),
+  };
+}
+
+function branchNamesByIssue(branchNames) {
+  const branches = new Map();
+  for (const branchName of branchNames) {
+    const issueNumber = issueNumberFromBranch(branchName);
+    if (issueNumber === null) {
+      continue;
+    }
+    const names = branches.get(issueNumber) || new Set();
+    names.add(branchName);
+    branches.set(issueNumber, names);
+  }
+  return branches;
+}
+
+function updateBranchEvidence(evidence, eventName, branchName) {
+  const issueNumber = issueNumberFromBranch(branchName);
+  if (issueNumber === null) {
+    return null;
+  }
+
+  const names = evidence.branchNamesByIssue.get(issueNumber) || new Set();
+  if (eventName === 'create') {
+    names.add(branchName);
+  } else if (eventName === 'delete') {
+    names.delete(branchName);
+  }
+
+  if (names.size > 0) {
+    evidence.branchNamesByIssue.set(issueNumber, names);
+  } else {
+    evidence.branchNamesByIssue.delete(issueNumber);
+  }
+  return issueNumber;
+}
+
+async function linkedPullRequests({ github, context, issueNumber, evidence }) {
   const events = await github.paginate(github.rest.issues.listEventsForTimeline, {
     ...context.repo,
     issue_number: issueNumber,
     per_page: 100,
   });
-  const pullRequestNumbers = new Set();
+  const repositoryUrl = context.payload.repository.url;
+  const timelineNumbers = pullRequestNumbersFromTimeline(events, repositoryUrl);
+  const directPullRequests = evidence.pullRequests.filter((pullRequest) =>
+    pullRequestReferencesIssue(pullRequest, issueNumber, context.repo) &&
+    isTrustedPullRequestReference(
+      pullRequest,
+      timelineNumbers,
+      context.payload.repository.full_name));
 
-  for (const event of events) {
-    const sourceIssue = event.source?.issue;
-    if (event.event === 'cross-referenced' && sourceIssue?.pull_request) {
-      pullRequestNumbers.add(sourceIssue.number);
-    }
-  }
-
-  const pullRequests = [];
-  for (const pullNumber of [...pullRequestNumbers].slice(0, 100)) {
-    const { data } = await github.rest.pulls.get({
-      ...context.repo,
-      pull_number: pullNumber,
-    });
-    if (!issueNumbersFromBody(data.body).has(issueNumber)) {
-      continue;
-    }
-    pullRequests.push({
-      state: data.state,
-      isDraft: data.draft,
-      merged: data.merged,
-      baseRef: data.base.ref,
-    });
-  }
-  return pullRequests;
+  return expandPullRequestPromotions(
+    directPullRequests,
+    evidence.pullRequests,
+    context.payload.repository.default_branch,
+    context.payload.repository.full_name,
+    latestIssueEventAt(events, 'reopened'),
+  );
 }
 
 async function closingIssueNumbers({ github, context, pullRequest }) {
-  const numbers = issueNumbersFromBody(pullRequest.body);
+  const numbers = issueNumbersFromBody(pullRequest.body, context.repo);
   const result = await github.graphql(
     `query($owner: String!, $repo: String!, $number: Int!) {
       repository(owner: $owner, name: $repo) {
         pullRequest(number: $number) {
           closingIssuesReferences(first: 100) {
-            nodes { number }
+            nodes {
+              number
+              repository { nameWithOwner }
+            }
           }
         }
       }
@@ -129,13 +332,17 @@ async function closingIssueNumbers({ github, context, pullRequest }) {
       number: pullRequest.number,
     });
   for (const issue of result.repository.pullRequest.closingIssuesReferences.nodes) {
-    numbers.add(issue.number);
+    if (issue.repository.nameWithOwner.toLowerCase() ===
+        `${context.repo.owner}/${context.repo.repo}`.toLowerCase()) {
+      numbers.add(issue.number);
+    }
   }
   return numbers;
 }
 
 async function expandBlockingIssues({ github, context, issueNumbers }) {
   const expanded = new Set(issueNumbers);
+  const repositoryUrl = context.payload.repository.url;
   for (const issueNumber of issueNumbers) {
     const blockedIssues = await listDependencies({
       github,
@@ -143,8 +350,8 @@ async function expandBlockingIssues({ github, context, issueNumbers }) {
       issueNumber,
       direction: 'blocking',
     });
-    for (const issue of blockedIssues) {
-      expanded.add(issue.number);
+    for (const number of localIssueNumbers(blockedIssues, repositoryUrl)) {
+      expanded.add(number);
     }
   }
   return expanded;
@@ -167,14 +374,26 @@ async function targetIssueNumbers({ github, context }) {
       issueNumbers = new Set(
         issues.filter((issue) => !issue.pull_request).map((issue) => issue.number));
     }
+  } else if (context.eventName === 'schedule') {
+    const issues = await github.paginate(github.rest.issues.listForRepo, {
+      ...context.repo,
+      state: 'all',
+      per_page: 100,
+    });
+    issueNumbers = new Set(
+      issues.filter((issue) => !issue.pull_request).map((issue) => issue.number));
   } else if (context.eventName === 'issues') {
     issueNumbers.add(payload.issue.number);
   } else if (context.eventName === 'pull_request_target') {
-    issueNumbers = await closingIssueNumbers({
+    const currentNumbers = await closingIssueNumbers({
       github,
       context,
       pullRequest: payload.pull_request,
     });
+    issueNumbers = pullRequestIssueNumbers(payload, context.repo);
+    for (const number of currentNumbers) {
+      issueNumbers.add(number);
+    }
   } else if (context.eventName === 'create' || context.eventName === 'delete') {
     const issueNumber = issueNumberFromBranch(payload.ref);
     if (payload.ref_type === 'branch' && issueNumber) {
@@ -182,7 +401,12 @@ async function targetIssueNumbers({ github, context }) {
     }
   }
 
-  return expandBlockingIssues({ github, context, issueNumbers });
+  const isFullReconciliation = context.eventName === 'schedule' ||
+    (context.eventName === 'workflow_dispatch' &&
+      !String(payload.inputs?.issue_number || '').trim());
+  return isFullReconciliation
+    ? issueNumbers
+    : expandBlockingIssues({ github, context, issueNumbers });
 }
 
 async function applyPlan({ github, context, core, issueNumber, plan }) {
@@ -220,7 +444,14 @@ async function applyPlan({ github, context, core, issueNumber, plan }) {
   }
 }
 
-async function reconcileIssue({ github, context, core, issueNumber, primaryIssue }) {
+async function reconcileIssue({
+  github,
+  context,
+  core,
+  issueNumber,
+  primaryIssue,
+  evidence,
+}) {
   const { data: issue } = await github.rest.issues.get({
     ...context.repo,
     issue_number: issueNumber,
@@ -233,6 +464,7 @@ async function reconcileIssue({ github, context, core, issueNumber, primaryIssue
     github,
     context,
     issueNumber,
+    evidence,
   });
   const dependencies = await listDependencies({
     github,
@@ -252,10 +484,7 @@ async function reconcileIssue({ github, context, core, issueNumber, primaryIssue
   const desiredStatus = eventOverride || deriveStatus({
     issueState: issue.state,
     pullRequests,
-    branchLinked:
-      (context.eventName === 'create' && primaryIssue) ||
-      (context.eventName !== 'delete' &&
-        issue.labels.some((label) => label.name === STATUS.BRANCH_ONLY)),
+    branchLinked: evidence.branchNamesByIssue.has(issueNumber),
     defaultBranch: context.payload.repository.default_branch,
     mergeEvent:
       context.eventName === 'pull_request_target' &&
@@ -277,7 +506,7 @@ async function reconcileIssue({ github, context, core, issueNumber, primaryIssue
 
 async function run({ github, context, core }) {
   if (context.eventName === 'pull_request_target' &&
-      context.payload.pull_request.head.repo.full_name !==
+      context.payload.pull_request.head.repo?.full_name !==
       context.payload.repository.full_name) {
     core.info('Ignoring fork pull request: write-capable status tracking only trusts repository branches');
     return;
@@ -291,6 +520,11 @@ async function run({ github, context, core }) {
 
   for (const name of Object.keys(LABELS)) {
     await ensureLabel({ github, context, name });
+  }
+
+  const evidence = await loadRepositoryEvidence({ github, context });
+  if (context.eventName === 'create' || context.eventName === 'delete') {
+    updateBranchEvidence(evidence, context.eventName, context.payload.ref);
   }
 
   const primaryIssueNumber = context.eventName === 'issues'
@@ -309,14 +543,27 @@ async function run({ github, context, core }) {
       core,
       issueNumber,
       primaryIssue: issueNumber === primaryIssueNumber,
+      evidence,
     });
   }
 }
 
 module.exports = {
+  BRANCH_PATTERNS,
   LABELS,
+  branchNamesByIssue,
   closingIssueNumbers,
+  expandPullRequestPromotions,
+  isCurrentRepositoryIssue,
+  isTrustedPullRequestReference,
   issueNumberFromBranch,
   issueNumbersFromBody,
+  localIssueNumbers,
+  latestIssueEventAt,
+  normalizePullRequest,
+  pullRequestIssueNumbers,
+  pullRequestNumbersFromTimeline,
   run,
+  targetIssueNumbers,
+  updateBranchEvidence,
 };

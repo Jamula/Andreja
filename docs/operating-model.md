@@ -207,7 +207,9 @@ creating a second backlog; Scribe logs automatically and never blocks.
   branch, makes idempotent label writes, posts no comments, and never executes
   pull-request code with a write token. A workflow dispatch may reconcile all
   issues or make a one-run manual override; the next lifecycle event derives
-  state again.
+  state again. Because Actions has no native issue-dependency trigger, an hourly
+  trusted full reconciliation converges dependency changes, edited closing
+  references, branch evidence, and stack promotion to the default branch.
 - Operator-facing label meanings and repair steps live in
   [`docs/help/issue-status.md`](help/issue-status.md).
 - Agents never switch another worktree's branch, edit another agent's files, or

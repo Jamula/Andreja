@@ -59,6 +59,11 @@ squad/{issue-number}-{kebab-case-slug}
 ```
 Example: `squad/42-fix-login-validation`
 
+App-created alternatives recognized by status automation are
+`copilot/{issue-number}-{slug}` and
+`u/{account}/{issue-number}-{slug}`. A bare number-leading branch is not issue
+evidence.
+
 ### Azure DevOps
 
 | ADO State | Squad Board State |

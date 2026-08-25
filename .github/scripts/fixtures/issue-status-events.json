@@ -160,5 +160,35 @@
     "expectedStatus": "status:backlog",
     "expectedRemoved": ["status:mystery"],
     "expectedPreserved": ["area:product"]
+  },
+  {
+    "name": "queried branch evidence restores branch-only after override",
+    "eventName": "issues",
+    "action": "edited",
+    "issueState": "open",
+    "branchLinked": true,
+    "currentLabels": ["status:closed"],
+    "expectedStatus": "status:branch-only",
+    "expectedRemoved": ["status:closed"]
+  },
+  {
+    "name": "scheduled reconciliation repairs stale labels",
+    "eventName": "schedule",
+    "action": null,
+    "issueState": "open",
+    "dependencies": [],
+    "currentLabels": [
+      "status:ready",
+      "status:mystery",
+      "blocked:evidence",
+      "area:product"
+    ],
+    "expectedStatus": "status:backlog",
+    "expectedRemoved": [
+      "status:ready",
+      "status:mystery",
+      "blocked:evidence"
+    ],
+    "expectedPreserved": ["area:product"]
   }
 ]
