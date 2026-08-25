@@ -861,9 +861,9 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
             var files = ReadZipFiles(plaintext);
             mutation(files);
             var manifest = ParseObject(files["manifest.json"]);
-            foreach (var descriptorNode in manifest["artifacts"]!.AsArray())
+            foreach (var descriptor in manifest["artifacts"]!.AsArray()
+                         .Select(node => node!.AsObject()))
             {
-                var descriptor = descriptorNode!.AsObject();
                 var artifactPath = descriptor["path"]!.GetValue<string>();
                 var content = files[artifactPath];
                 descriptor["sha256"] =
