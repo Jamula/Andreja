@@ -16,11 +16,15 @@ snapshot; it is not a production-readiness or availability claim.
 
 | Notation | Meaning |
 |---|---|
-| **CURRENT PHASE 1A** — green, solid | Implemented walking-skeleton component or exercised local operational path. |
-| **CURRENT CONTRACT-ONLY** — amber, dashed | Application-owned contract and deterministic local conformance proof; no live external service, listener, connector, or durable future-state schema is implied. |
-| **FUTURE / GATED** — purple/red, dotted | Phase 1B+ or separately approved work. Technology, topology, and provider choices remain undecided unless an ADR says otherwise. |
+| **CURRENT PHASE 1A** — solid | Implemented walking-skeleton component or exercised local operational path. |
+| **CURRENT CONTRACT-ONLY** — dashed | Application-owned contract and deterministic local conformance proof; no live external service, listener, connector, or durable future-state schema is implied. |
+| **FUTURE / GATED** — dotted | Phase 1B+ or separately approved work. Technology, topology, and provider choices remain undecided unless an ADR says otherwise. |
 | **TB1–TB6** | Named trust boundary. Color supplements the boundary label; it is never the only indicator. |
 | **F1–F10** | Numbered flow described below. **Solid** = current, **dashed** = contract/local conformance, and **dotted** = future/gated. |
+
+Status is encoded only by the explicit status words and border/flow style. Colors
+group architectural areas (clients, app/core, contracts, custody, and external
+boundaries); color never changes or substitutes for lifecycle status.
 
 The diagram deliberately omits detailed classes, infrastructure SKUs, cloud
 topology, endpoints, tenant/user examples, credentials, recovery material, and
@@ -46,7 +50,7 @@ provider endorsements.
 | **F3a–F3c — typed tool and durable proposal** | Assistant runtime -> allowlisted typed tool -> `ISkillHost` schema and grant/capability/purpose validation -> exact proposal with provenance and expiry. The path cannot bypass the skill host. Skill execution does not mutate the task domain; Proposal/Control Plane persists proposal lifecycle state to PostgreSQL via F3c before confirmation. That durable proposal record is not task creation. |
 | **F4 — human confirmation** | Browser/typed API -> Proposal/Control Plane. Confirmation binds proposal version, actor, tenant, and idempotency key. Rejection or expiry produces no domain write. |
 | **F5a/F5b/F5c — proposal-driven task creation and audit** | Confirmed Proposal/Control Plane -> Open Loops application use case and policy re-evaluation -> transactional audit/idempotency evidence -> tenant-scoped PostgreSQL. The split visual path makes each required stage explicit: assistant/proposal-driven task creation cannot bypass confirmation, the Open Loops use case, or transactional audit/idempotency. Direct user actions such as complete or delete remain separately server-authorized and audited; they do not require a proposal. |
-| **F6 — channel intake** | Future external input -> channel adapter/`IChannelHost` -> shared policy evaluator. Capability, purpose, operation, data class, grant, consent, and disclosure ceilings intersect fail-closed. No live connector is present in Phase 1A. |
+| **F6 — future external intake policy** | Future external input must cross a future adapter/`IChannelHost` seam and terminate at the shared Policy evaluator. Capability, purpose, operation, data class, grant, consent, and disclosure ceilings intersect fail-closed. The dotted route does not enter the contract-only Channels component and does not imply a live connector or provider selection. |
 | **F7 — application portability** | Versioned export/import archive with checksums and a write-free dry run. Supported user data and minimized provenance may move; credentials, passkeys, provider handles, Data Protection keys, caches, and external authority do not. |
 | **F8a–F8d — gated recovery proof** | PostgreSQL logical backup/restore tooling exists; the runbook separately requires operator-managed Data Protection key and configuration inventories, but no dedicated inventory tool or combined proof is claimed. Dotted F8a–F8c inputs show the required database, key-history, and file-backed-configuration parts of an unproven recovery set; F8d leads to an unapproved operator destination. The database-only clean-instance rehearsal passed, but encrypted DB-plus-key recovery-set custody and restored app sign-in with restored keys remain **PARTIAL / BLOCKED**. This is distinct from application portability. |
 | **F9 — telemetry suppression** | The app exports allowlisted, low-cardinality operational fields to the local OpenTelemetry Collector. Task text, prompts, responses, tokens, identifiers, credentials, and connector content are prohibited. |
@@ -114,8 +118,9 @@ author must complete this checklist:
 The generator derives the editable source and SVG from one model, embeds the
 source SHA-256 in the SVG, and writes source, SVG, raster, and combined binding
 SHA-256 values into validated PNG chunks. `--check` validates PNG structure and
-CRC values, recomputes the raster hash, verifies the cryptographic binding to
-the current source and SVG, and compares it with a fresh deterministic Edge
-render of that SVG. A manual Microsoft-internal Excalidraw review remains
-required because byte-level checks cannot detect visual clipping or misleading
-layout.
+CRC values, verifies the cryptographic binding, embeds identical provenance in
+a fresh deterministic Edge render, and compares the complete PNG bytes and
+SHA-256. Extra metadata, EXIF, animation, or other chunks therefore fail. The
+hosted Docs Consistency workflow enforces this check on Windows with Edge. A
+manual Microsoft-internal Excalidraw review remains required because byte-level
+checks cannot detect visual clipping or misleading layout.

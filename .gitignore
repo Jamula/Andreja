@@ -88,3 +88,7 @@ nunit-*.xml
 # Python (docs/CI helper scripts, e.g. .github/scripts/*.py)
 __pycache__/
 *.py[cod]
+
+# Deterministic architecture render scratch
+docs/architecture/.andreja-high-level.check.png
+docs/architecture/.andreja-high-level.rendering.png

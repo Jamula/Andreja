@@ -20,6 +20,7 @@ EXCALIDRAW_PATH = OUT_DIR / "andreja-high-level.excalidraw"
 SVG_PATH = OUT_DIR / "andreja-high-level.svg"
 PNG_PATH = OUT_DIR / "andreja-high-level.png"
 CHECK_PNG_PATH = OUT_DIR / ".andreja-high-level.check.png"
+STAGING_PNG_PATH = OUT_DIR / ".andreja-high-level.rendering.png"
 WIDTH = 1920
 HEIGHT = 1460
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -190,6 +191,7 @@ class Diagram:
         label_dx: int = 0,
         label_dy: int = -24,
         via: list[tuple[int, int]] | None = None,
+        label_at: tuple[int, int] | None = None,
     ) -> None:
         stroke, _ = COLORS[color]
         style = {"current": "solid", "contract": "dashed", "future": "dotted"}[status]
@@ -230,8 +232,8 @@ class Diagram:
             f'<polyline points="{points}" fill="none" stroke="{stroke}" '
             f'stroke-width="3"{dash} marker-end="url(#arrow-{color})"/>'
         )
-        label_x = int((x1 + x2) / 2) + label_dx
-        label_y = int((y1 + y2) / 2) + label_dy
+        label_x = label_at[0] if label_at else int((x1 + x2) / 2) + label_dx
+        label_y = label_at[1] if label_at else int((y1 + y2) / 2) + label_dy
         self.svg.append(
             f'<rect x="{label_x - 26}" y="{label_y - 16}" width="52" height="25" '
             'rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>'
@@ -260,9 +262,9 @@ def build_diagram() -> Diagram:
         font_size=14,
     )
 
-    d.rectangle(35, 110, 245, 58, "CURRENT PHASE 1A\nsolid border / flow", color="green", status="current", font_size=14)
-    d.rectangle(300, 110, 285, 58, "CURRENT CONTRACT-ONLY\nlocal conformance; dashed", color="orange", status="contract", font_size=14)
-    d.rectangle(605, 110, 245, 58, "FUTURE / GATED\nnot deployed; dotted", color="purple", status="future", font_size=14)
+    d.rectangle(35, 110, 245, 58, "CURRENT PHASE 1A\nsolid border / flow", color="gray", status="current", font_size=14)
+    d.rectangle(300, 110, 285, 58, "CURRENT CONTRACT-ONLY\nlocal conformance; dashed", color="gray", status="contract", font_size=14)
+    d.rectangle(605, 110, 245, 58, "FUTURE / GATED\nnot deployed; dotted", color="gray", status="future", font_size=14)
     d.rectangle(870, 110, 1015, 58, "Trust boundaries are labelled TB1–TB6. Flow numbers F1–F10 map to the companion document.", color="gray", font_size=15)
 
     # Trust boundary containers. They are intentionally transparent.
@@ -309,9 +311,8 @@ def build_diagram() -> Diagram:
     d.rectangle(920, 880, 280, 100, "Channels\nIChannelHost + manifests", color="orange", status="contract", font_size=16)
 
     # Provider and adapter targets.
-    d.rectangle(1305, 310, 250, 130, "Assistant provider\nUser-configured BYOK endpoint\n(or deterministic local fake)", color="purple", font_size=16)
-    d.rectangle(1305, 520, 250, 130, "Channel / connector adapter\nNo live connector in Phase 1A", color="purple", status="future", font_size=16)
-    d.rectangle(1305, 725, 250, 120, "Identity / OIDC adapter\nBuilt-in passkey now;\noptional OIDC gated", color="purple", status="future", font_size=15)
+    d.rectangle(1305, 310, 250, 130, "Assistant provider\nUser-configured BYOK endpoint\n(or deterministic local fake)", color="green", font_size=16)
+    d.rectangle(1305, 725, 250, 120, "Optional OIDC adapter\nFuture / gated\nNo provider selected", color="purple", status="future", font_size=15)
     d.rectangle(1305, 900, 250, 110, "OTel exporter\nOperational fields only", color="teal", font_size=16)
 
     # Local stores and custody.
@@ -359,7 +360,7 @@ def build_diagram() -> Diagram:
     # Primary data flows.
     d.arrow(290, 320, 365, 320, "F1", color="blue")
     d.arrow(290, 355, 655, 505, "F2", color="blue", label_dx=-10, label_dy=-30)
-    d.arrow(895, 525, 1305, 375, "F2", color="purple", label_dx=15, label_dy=-10)
+    d.arrow(895, 525, 1305, 375, "F2", color="green", label_dx=15, label_dy=-10)
     d.arrow(895, 525, 920, 525, "F3a", color="green", label_dy=-20)
     d.arrow(
         1060,
@@ -382,15 +383,14 @@ def build_diagram() -> Diagram:
         via=[(640, 720), (640, 1050), (475, 1050)],
     )
     d.arrow(
-        290,
-        350,
-        655,
+        772,
+        375,
+        895,
         657,
         "F4",
         color="green",
-        label_dx=-150,
-        label_dy=45,
-        via=[(340, 350), (340, 657)],
+        via=[(910, 390), (910, 657)],
+        label_at=(875, 410),
     )
     d.arrow(895, 657, 920, 657, "F5a", color="green", label_dy=-20)
     d.arrow(1060, 710, 1060, 740, "F5b", color="green", label_dx=-35, label_dy=0)
@@ -408,25 +408,23 @@ def build_diagram() -> Diagram:
     d.arrow(
         1625,
         600,
-        1200,
-        930,
+        390,
+        657,
         "F6",
         color="purple",
         status="future",
-        label_dx=-150,
-        label_dy=140,
-        via=[(1270, 600), (1270, 930)],
+        via=[(1590, 600), (1590, 1020), (350, 1020), (350, 657)],
+        label_at=(370, 820),
     )
     d.arrow(
         510,
         980,
-        695,
-        1338,
+        600,
+        1290,
         "F7",
         color="teal",
-        label_dx=80,
-        label_dy=-100,
-        via=[(700, 1030), (700, 1338)],
+        via=[(600, 1040)],
+        label_at=(570, 1060),
     )
     d.arrow(475, 1255, 780, 1290, "F8a", color="purple", status="future", label_dy=-10)
     d.arrow(945, 1255, 945, 1290, "F8b", color="purple", status="future", label_dx=-35, label_dy=0)
@@ -622,8 +620,8 @@ def verify_png(path: Path, source_hash: str, svg_hash: str) -> str:
 
 
 def render_svg_png(output_path: Path) -> None:
+    STAGING_PNG_PATH.unlink(missing_ok=True)
     edge = find_edge()
-    output_path.unlink(missing_ok=True)
     command = [
         str(edge),
         "--headless=new",
@@ -631,17 +629,28 @@ def render_svg_png(output_path: Path) -> None:
         "--hide-scrollbars",
         "--force-device-scale-factor=1",
         f"--window-size={WIDTH},{HEIGHT}",
-        f"--screenshot={output_path}",
+        f"--screenshot={STAGING_PNG_PATH}",
         SVG_PATH.resolve().as_uri(),
     ]
-    result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=60)
-    if result.returncode != 0 or not output_path.exists():
+    try:
+        result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=60)
+    except subprocess.TimeoutExpired:
+        STAGING_PNG_PATH.unlink(missing_ok=True)
+        raise RuntimeError("Edge PNG render timed out after 60 seconds.") from None
+    if result.returncode != 0 or not STAGING_PNG_PATH.exists():
+        STAGING_PNG_PATH.unlink(missing_ok=True)
         raise RuntimeError(f"Edge PNG render failed: {result.stderr.strip()}")
+    STAGING_PNG_PATH.replace(output_path)
 
 
 def render_png(source_hash: str, svg_hash: str) -> None:
-    render_svg_png(PNG_PATH)
-    embed_png_provenance(PNG_PATH, source_hash, svg_hash)
+    try:
+        render_svg_png(CHECK_PNG_PATH)
+        embed_png_provenance(CHECK_PNG_PATH, source_hash, svg_hash)
+        CHECK_PNG_PATH.replace(PNG_PATH)
+    finally:
+        CHECK_PNG_PATH.unlink(missing_ok=True)
+        STAGING_PNG_PATH.unlink(missing_ok=True)
 
 
 def main() -> int:
@@ -665,15 +674,22 @@ def main() -> int:
             failures.append(str(PNG_PATH.relative_to(ROOT)))
         else:
             try:
-                committed_raster_hash = verify_png(PNG_PATH, source_hash, svg_hash)
+                verify_png(PNG_PATH, source_hash, svg_hash)
                 render_svg_png(CHECK_PNG_PATH)
-                fresh_raster_hash = png_raster_hash(png_chunks(CHECK_PNG_PATH.read_bytes()))
-                if committed_raster_hash != fresh_raster_hash:
-                    raise ValueError("raster does not match a fresh render of the current SVG")
-            except (RuntimeError, ValueError) as error:
+                embed_png_provenance(CHECK_PNG_PATH, source_hash, svg_hash)
+                committed_png = PNG_PATH.read_bytes()
+                fresh_png = CHECK_PNG_PATH.read_bytes()
+                if committed_png != fresh_png:
+                    raise ValueError(
+                        "full PNG differs from fresh render "
+                        f"(committed SHA-256 {hashlib.sha256(committed_png).hexdigest()}, "
+                        f"fresh SHA-256 {hashlib.sha256(fresh_png).hexdigest()})"
+                    )
+            except (FileNotFoundError, RuntimeError, ValueError) as error:
                 failures.append(f"{PNG_PATH.relative_to(ROOT)} ({error})")
             finally:
                 CHECK_PNG_PATH.unlink(missing_ok=True)
+                STAGING_PNG_PATH.unlink(missing_ok=True)
         if failures:
             print("Architecture artifacts are stale: " + ", ".join(failures), file=sys.stderr)
             return 1
@@ -684,7 +700,11 @@ def main() -> int:
     EXCALIDRAW_PATH.write_bytes(source)
     SVG_PATH.write_bytes(svg)
     if args.render_png:
-        render_png(source_hash, svg_hash)
+        try:
+            render_png(source_hash, svg_hash)
+        except (FileNotFoundError, RuntimeError, ValueError) as error:
+            print(f"Unable to render {PNG_PATH.relative_to(ROOT)}: {error}", file=sys.stderr)
+            return 1
     print(f"Wrote {EXCALIDRAW_PATH.relative_to(ROOT)} and {SVG_PATH.relative_to(ROOT)}.")
     if args.render_png:
         print(f"Wrote {PNG_PATH.relative_to(ROOT)} ({WIDTH}x{HEIGHT}).")

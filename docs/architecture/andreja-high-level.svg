@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1460" viewBox="0 0 1920 1460"
-     role="img" aria-labelledby="title desc" data-source-sha256="91d9ab8add6a41f6a2741d70212d9e0df069425d95c6eef2ed3471248b8b631c">
+     role="img" aria-labelledby="title desc" data-source-sha256="446f85c8ef38a6cd5bb7bdb2aa9be8c1f6ccb38972bb429ca68a66bf256336fb">
   <title id="title">Andreja high-level architecture and data flows</title>
   <desc id="desc">Current Phase 1A components, current local conformance contracts, future gated components,
   six labelled trust boundaries, ten numbered data flows, local data custody, and extension seams.</desc>
@@ -13,11 +13,11 @@
   <text x="35" y="89" text-anchor="start" font-size="19" font-weight="normal" fill="#000000"><tspan x="35" dy="0">Phase 1A evidence view • one modular-monolith deployable • future capability is explicitly gated</tspan></text>
   <rect x="1320" y="15" width="565" height="80" rx="12" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2"/>
   <text x="1602.5" y="41" text-anchor="middle" font-size="14" font-weight="normal" fill="#000000"><tspan x="1602.5" dy="0">CONTENT RULE</tspan><tspan x="1602.5" dy="17">User content follows policy-labelled flows only.</tspan><tspan x="1602.5" dy="17">Never telemetry, public/help, or secret files.</tspan></text>
-  <rect x="35" y="110" width="245" height="58" rx="12" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+  <rect x="35" y="110" width="245" height="58" rx="12" fill="#f1f3f5" stroke="#495057" stroke-width="2"/>
   <text x="157.5" y="134" text-anchor="middle" font-size="14" font-weight="normal" fill="#000000"><tspan x="157.5" dy="0">CURRENT PHASE 1A</tspan><tspan x="157.5" dy="17">solid border / flow</tspan></text>
-  <rect x="300" y="110" width="285" height="58" rx="12" fill="#fff3bf" stroke="#e67700" stroke-width="2" stroke-dasharray="12 8"/>
+  <rect x="300" y="110" width="285" height="58" rx="12" fill="#f1f3f5" stroke="#495057" stroke-width="2" stroke-dasharray="12 8"/>
   <text x="442.5" y="134" text-anchor="middle" font-size="14" font-weight="normal" fill="#000000"><tspan x="442.5" dy="0">CURRENT CONTRACT-ONLY</tspan><tspan x="442.5" dy="17">local conformance; dashed</tspan></text>
-  <rect x="605" y="110" width="245" height="58" rx="12" fill="#f3d9fa" stroke="#862e9c" stroke-width="2" stroke-dasharray="3 8"/>
+  <rect x="605" y="110" width="245" height="58" rx="12" fill="#f1f3f5" stroke="#495057" stroke-width="2" stroke-dasharray="3 8"/>
   <text x="727.5" y="134" text-anchor="middle" font-size="14" font-weight="normal" fill="#000000"><tspan x="727.5" dy="0">FUTURE / GATED</tspan><tspan x="727.5" dy="17">not deployed; dotted</tspan></text>
   <rect x="870" y="110" width="1015" height="58" rx="12" fill="#f1f3f5" stroke="#495057" stroke-width="2"/>
   <text x="1377.5" y="143" text-anchor="middle" font-size="15" font-weight="normal" fill="#000000"><tspan x="1377.5" dy="0">Trust boundaries are labelled TB1–TB6. Flow numbers F1–F10 map to the companion document.</tspan></text>
@@ -69,12 +69,10 @@
   <text x="775" y="924" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="775" dy="0">Observability</tspan><tspan x="775" dy="20">OTel allowlist / suppression</tspan></text>
   <rect x="920" y="880" width="280" height="100" rx="12" fill="#fff3bf" stroke="#e67700" stroke-width="2" stroke-dasharray="12 8"/>
   <text x="1060" y="924" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1060" dy="0">Channels</tspan><tspan x="1060" dy="20">IChannelHost + manifests</tspan></text>
-  <rect x="1305" y="310" width="250" height="130" rx="12" fill="#f3d9fa" stroke="#862e9c" stroke-width="2"/>
+  <rect x="1305" y="310" width="250" height="130" rx="12" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
   <text x="1430" y="359" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1430" dy="0">Assistant provider</tspan><tspan x="1430" dy="20">User-configured BYOK endpoint</tspan><tspan x="1430" dy="20">(or deterministic local fake)</tspan></text>
-  <rect x="1305" y="520" width="250" height="130" rx="12" fill="#f3d9fa" stroke="#862e9c" stroke-width="2" stroke-dasharray="3 8"/>
-  <text x="1430" y="579" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1430" dy="0">Channel / connector adapter</tspan><tspan x="1430" dy="20">No live connector in Phase 1A</tspan></text>
   <rect x="1305" y="725" width="250" height="120" rx="12" fill="#f3d9fa" stroke="#862e9c" stroke-width="2" stroke-dasharray="3 8"/>
-  <text x="1430" y="770" text-anchor="middle" font-size="15" font-weight="normal" fill="#000000"><tspan x="1430" dy="0">Identity / OIDC adapter</tspan><tspan x="1430" dy="18">Built-in passkey now;</tspan><tspan x="1430" dy="18">optional OIDC gated</tspan></text>
+  <text x="1430" y="770" text-anchor="middle" font-size="15" font-weight="normal" fill="#000000"><tspan x="1430" dy="0">Optional OIDC adapter</tspan><tspan x="1430" dy="18">Future / gated</tspan><tspan x="1430" dy="18">No provider selected</tspan></text>
   <rect x="1305" y="900" width="250" height="110" rx="12" fill="#c5f6fa" stroke="#0c8599" stroke-width="2"/>
   <text x="1430" y="949" text-anchor="middle" font-size="16" font-weight="normal" fill="#000000"><tspan x="1430" dy="0">OTel exporter</tspan><tspan x="1430" dy="20">Operational fields only</tspan></text>
   <rect x="365" y="1140" width="220" height="115" rx="12" fill="#c5f6fa" stroke="#0c8599" stroke-width="2"/>
@@ -107,7 +105,7 @@
   <polyline points="290,355 655,505" fill="none" stroke="#1864ab" stroke-width="3" marker-end="url(#arrow-blue)"/>
   <rect x="436" y="384" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
   <text x="462" y="401" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="462" dy="0">F2</tspan></text>
-  <polyline points="895,525 1305,375" fill="none" stroke="#862e9c" stroke-width="3" marker-end="url(#arrow-purple)"/>
+  <polyline points="895,525 1305,375" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
   <rect x="1089" y="424" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
   <text x="1115" y="441" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="1115" dy="0">F2</tspan></text>
   <polyline points="895,525 920,525" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
@@ -119,9 +117,9 @@
   <polyline points="775,710 640,720 640,1050 475,1050 475,1140" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
   <rect x="614" y="885" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
   <text x="640" y="902" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="640" dy="0">F3c</tspan></text>
-  <polyline points="290,350 340,350 340,657 655,657" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
-  <rect x="296" y="532" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
-  <text x="322" y="549" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="322" dy="0">F4</tspan></text>
+  <polyline points="772,375 910,390 910,657 895,657" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="849" y="394" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="875" y="411" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="875" dy="0">F4</tspan></text>
   <polyline points="895,657 920,657" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
   <rect x="881" y="621" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
   <text x="907" y="638" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="907" dy="0">F5a</tspan></text>
@@ -131,12 +129,12 @@
   <polyline points="1200,795 1245,795 1245,1030 475,1030 475,1140" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
   <rect x="1201" y="971" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
   <text x="1227" y="988" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="1227" dy="0">F5c</tspan></text>
-  <polyline points="1625,600 1270,600 1270,930 1200,930" fill="none" stroke="#862e9c" stroke-width="3" stroke-dasharray="3 8" marker-end="url(#arrow-purple)"/>
-  <rect x="1236" y="889" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
-  <text x="1262" y="906" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="1262" dy="0">F6</tspan></text>
-  <polyline points="510,980 700,1030 700,1338 695,1338" fill="none" stroke="#0c8599" stroke-width="3" marker-end="url(#arrow-teal)"/>
-  <rect x="656" y="1043" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
-  <text x="682" y="1060" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="682" dy="0">F7</tspan></text>
+  <polyline points="1625,600 1590,600 1590,1020 350,1020 350,657 390,657" fill="none" stroke="#862e9c" stroke-width="3" stroke-dasharray="3 8" marker-end="url(#arrow-purple)"/>
+  <rect x="344" y="804" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="370" y="821" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="370" dy="0">F6</tspan></text>
+  <polyline points="510,980 600,1040 600,1290" fill="none" stroke="#0c8599" stroke-width="3" marker-end="url(#arrow-teal)"/>
+  <rect x="544" y="1044" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="570" y="1061" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="570" dy="0">F7</tspan></text>
   <polyline points="475,1255 780,1290" fill="none" stroke="#862e9c" stroke-width="3" stroke-dasharray="3 8" marker-end="url(#arrow-purple)"/>
   <rect x="601" y="1246" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
   <text x="627" y="1263" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="627" dy="0">F8a</tspan></text>
