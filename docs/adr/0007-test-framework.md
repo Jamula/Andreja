@@ -334,10 +334,10 @@ checkpoint before removing any xUnit package or source.
    Jamula, tracks the bounded xUnit v3-native-MTP versus MSTest/MTP decision due
    by 2026-10-31 or the earlier holding-state trigger. It also owns the
    conditional class-scoped PostgreSQL fixture and IDE evidence.
-2. [Issue #109](https://github.com/Jamula/Andreja/issues/109), owned by Cyrus
+2. [Issue #110](https://github.com/Jamula/Andreja/issues/110), owned by Cyrus
    Jamula with Data quality ownership, tracks the per-assembly/configuration
    discovered, executed, passed, failed, and skipped inventory gate.
-3. [Issue #110](https://github.com/Jamula/Andreja/issues/110), owned by Cyrus
+3. [Issue #109](https://github.com/Jamula/Andreja/issues/109), owned by Cyrus
    Jamula with Jett Reno named for CI/operations review, separately tracks
    compatible `xunit.runner.visualstudio` and `Microsoft.NET.Test.Sdk` updates.
 
