@@ -10,6 +10,7 @@ import json
 import struct
 import subprocess
 import sys
+import zlib
 from pathlib import Path
 
 
@@ -18,8 +19,16 @@ OUT_DIR = ROOT / "docs" / "architecture"
 EXCALIDRAW_PATH = OUT_DIR / "andreja-high-level.excalidraw"
 SVG_PATH = OUT_DIR / "andreja-high-level.svg"
 PNG_PATH = OUT_DIR / "andreja-high-level.png"
+CHECK_PNG_PATH = OUT_DIR / ".andreja-high-level.check.png"
 WIDTH = 1920
 HEIGHT = 1460
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+PNG_METADATA_KEYS = {
+    "source": "Andreja-Source-SHA256",
+    "svg": "Andreja-SVG-SHA256",
+    "raster": "Andreja-Raster-SHA256",
+    "binding": "Andreja-Binding-SHA256",
+}
 
 COLORS = {
     "blue": ("#1864ab", "#d0ebff"),
@@ -180,11 +189,23 @@ class Diagram:
         status: str = "current",
         label_dx: int = 0,
         label_dy: int = -24,
+        via: list[tuple[int, int]] | None = None,
     ) -> None:
         stroke, _ = COLORS[color]
         style = {"current": "solid", "contract": "dashed", "future": "dotted"}[status]
+        absolute_points = [(x1, y1), *(via or []), (x2, y2)]
+        local_points = [[x - x1, y - y1] for x, y in absolute_points]
+        point_x = [point[0] for point in local_points]
+        point_y = [point[1] for point in local_points]
         element_id = self._id("arrow")
-        item = self._base("arrow", element_id, x1, y1, x2 - x1, y2 - y1)
+        item = self._base(
+            "arrow",
+            element_id,
+            x1,
+            y1,
+            max(point_x) - min(point_x),
+            max(point_y) - min(point_y),
+        )
         item.update(
             {
                 "strokeColor": stroke,
@@ -192,7 +213,7 @@ class Diagram:
                 "fillStyle": "solid",
                 "strokeStyle": style,
                 "roundness": {"type": 2},
-                "points": [[0, 0], [x2 - x1, y2 - y1]],
+                "points": local_points,
                 "lastCommittedPoint": None,
                 "startBinding": None,
                 "endBinding": None,
@@ -204,8 +225,9 @@ class Diagram:
         self.elements.append(item)
 
         dash = {"solid": "", "dashed": ' stroke-dasharray="12 8"', "dotted": ' stroke-dasharray="3 8"'}[style]
+        points = " ".join(f"{x},{y}" for x, y in absolute_points)
         self.svg.append(
-            f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{stroke}" '
+            f'<polyline points="{points}" fill="none" stroke="{stroke}" '
             f'stroke-width="3"{dash} marker-end="url(#arrow-{color})"/>'
         )
         label_x = int((x1 + x2) / 2) + label_dx
@@ -264,19 +286,27 @@ def build_diagram() -> Diagram:
     # Capability modules: current implementation or explicit local contracts.
     d.rectangle(390, 475, 240, 100, "Identity + Tenancy\nPasskeys / scoped context", color="green", font_size=16)
     d.rectangle(655, 475, 240, 100, "Assistant Runtime\nProvider-neutral sessions", color="green", font_size=16)
-    d.rectangle(920, 475, 280, 100, "Open Loops / Tasks\nAccess-scoped use cases", color="green", font_size=16)
+    d.rectangle(920, 475, 280, 100, "Skills\nISkillHost + manifests", color="green", font_size=16)
 
-    d.rectangle(390, 605, 240, 105, "Proposal / Control Plane\nConfirm before write", color="green", font_size=16)
-    d.rectangle(655, 605, 240, 105, "Skills\nISkillHost + manifests", color="green", font_size=16)
-    d.rectangle(920, 605, 280, 105, "Channels\nIChannelHost + manifests", color="orange", status="contract", font_size=16)
+    d.rectangle(390, 605, 240, 105, "Policy evaluator\nTenant • principal • purpose", color="green", font_size=16)
+    d.rectangle(
+        655,
+        605,
+        240,
+        105,
+        "Proposal / Control Plane\nDurable proposal state\nConfirm before task write",
+        color="green",
+        font_size=14,
+    )
+    d.rectangle(920, 605, 280, 105, "Open Loops / Tasks\nAccess-scoped domain write", color="green", font_size=16)
 
     d.rectangle(390, 740, 240, 110, "Sharing / Federation\nGrant • consent • IPeerChannel", color="orange", status="contract", font_size=15)
     d.rectangle(655, 740, 240, 110, "Semantic Profile\nProvenance contracts", color="orange", status="contract", font_size=16)
-    d.rectangle(920, 740, 280, 110, "Portability\nVersioned export / import", color="green", font_size=16)
+    d.rectangle(920, 740, 280, 110, "Audit + idempotency\nTransactional evidence", color="green", font_size=16)
 
-    d.rectangle(390, 880, 240, 100, "Policy evaluator\nTenant • principal • purpose", color="green", font_size=16)
-    d.rectangle(655, 880, 240, 100, "Audit + idempotency\nContent-minimized evidence", color="green", font_size=16)
-    d.rectangle(920, 880, 280, 100, "Observability\nOTel allowlist / suppression", color="green", font_size=16)
+    d.rectangle(390, 880, 240, 100, "Portability\nVersioned export / import", color="green", font_size=16)
+    d.rectangle(655, 880, 240, 100, "Observability\nOTel allowlist / suppression", color="green", font_size=16)
+    d.rectangle(920, 880, 280, 100, "Channels\nIChannelHost + manifests", color="orange", status="contract", font_size=16)
 
     # Provider and adapter targets.
     d.rectangle(1305, 310, 250, 130, "Assistant provider\nUser-configured BYOK endpoint\n(or deterministic local fake)", color="purple", font_size=16)
@@ -285,32 +315,155 @@ def build_diagram() -> Diagram:
     d.rectangle(1305, 900, 250, 110, "OTel exporter\nOperational fields only", color="teal", font_size=16)
 
     # Local stores and custody.
-    d.rectangle(365, 1140, 220, 115, "Tenant-scoped PostgreSQL\nTasks • identity • audit\nidempotency / provenance refs", color="teal", font_size=15)
+    d.rectangle(
+        365,
+        1140,
+        220,
+        115,
+        "Tenant-scoped PostgreSQL\nTasks • proposals • identity\nAudit • idempotency • refs",
+        color="teal",
+        font_size=14,
+    )
     d.rectangle(610, 1140, 205, 115, "Attachments\nOutside DB when added", color="purple", status="future", font_size=16)
     d.rectangle(840, 1140, 210, 115, "Data Protection +\nencryption key history", color="teal", font_size=16)
     d.rectangle(1075, 1140, 210, 115, "File-backed operator\nsecrets / configuration", color="teal", font_size=16)
     d.rectangle(1310, 1140, 240, 115, "Local OTel Collector\nOptional local evidence backend", color="teal", font_size=16)
     d.rectangle(365, 1290, 330, 95, "Application export/import archive\nChecksums; no credentials or key material", color="teal", font_size=15)
-    d.rectangle(730, 1290, 330, 95, "Encrypted recovery set\nDB backup + separate key/config inventory", color="teal", font_size=15)
+    d.rectangle(
+        730,
+        1290,
+        330,
+        95,
+        "UNPROVEN encrypted recovery set\nDB + key/config inventory\nRestored sign-in proof BLOCKED",
+        color="purple",
+        status="future",
+        font_size=14,
+    )
     d.rectangle(1095, 1290, 455, 95, "EXTENSION SEAMS\nIAssistantProvider • ISkillHost • IChannelHost • identity/OIDC\nTyped clients • persistence/portability • OTel • IPeerChannel", color="gray", font_size=14)
 
     # External/gated systems.
     d.rectangle(1625, 310, 245, 135, "Independently hosted\npeer Andreja instance\nPurpose-scoped proposals only", color="red", status="future", font_size=16)
     d.rectangle(1625, 535, 245, 135, "Future external\nchannel / connector systems\nUntrusted inbound content", color="red", status="future", font_size=16)
     d.rectangle(1625, 820, 245, 145, "Future tenant-less\nfeedback / support intake\nSeparate governance", color="red", status="future", font_size=16)
-    d.rectangle(1625, 1135, 245, 135, "Operator-controlled\nbackup destination\nNo universal cloud choice", color="red", font_size=16)
+    d.rectangle(
+        1625,
+        1135,
+        245,
+        135,
+        "GATED operator-controlled\nbackup destination\nNo destination approved",
+        color="red",
+        status="future",
+        font_size=16,
+    )
 
     # Primary data flows.
     d.arrow(290, 320, 365, 320, "F1", color="blue")
     d.arrow(290, 355, 655, 505, "F2", color="blue", label_dx=-10, label_dy=-30)
     d.arrow(895, 525, 1305, 375, "F2", color="purple", label_dx=15, label_dy=-10)
-    d.arrow(775, 575, 510, 605, "F3", color="green", label_dy=-20)
-    d.arrow(290, 350, 510, 605, "F4", color="green", label_dx=-5, label_dy=-5)
-    d.arrow(510, 710, 475, 1140, "F5", color="green", label_dx=-15, label_dy=0)
-    d.arrow(1625, 600, 1200, 655, "F6", color="purple", status="future", label_dy=-18)
-    d.arrow(1060, 850, 530, 1290, "F7", color="teal", label_dx=5, label_dy=-10)
-    d.arrow(475, 1255, 895, 1290, "F8", color="teal", label_dy=-10)
-    d.arrow(1180, 930, 1310, 1180, "F9", color="teal", label_dx=15, label_dy=0)
+    d.arrow(895, 525, 920, 525, "F3a", color="green", label_dy=-20)
+    d.arrow(
+        1060,
+        575,
+        775,
+        605,
+        "F3b",
+        color="green",
+        label_dy=-18,
+        via=[(1060, 590), (775, 590)],
+    )
+    d.arrow(
+        775,
+        710,
+        475,
+        1140,
+        "F3c",
+        color="green",
+        label_dx=15,
+        via=[(640, 720), (640, 1050), (475, 1050)],
+    )
+    d.arrow(
+        290,
+        350,
+        655,
+        657,
+        "F4",
+        color="green",
+        label_dx=-150,
+        label_dy=45,
+        via=[(340, 350), (340, 657)],
+    )
+    d.arrow(895, 657, 920, 657, "F5a", color="green", label_dy=-20)
+    d.arrow(1060, 710, 1060, 740, "F5b", color="green", label_dx=-35, label_dy=0)
+    d.arrow(
+        1200,
+        795,
+        475,
+        1140,
+        "F5c",
+        color="green",
+        label_dx=390,
+        label_dy=20,
+        via=[(1245, 795), (1245, 1030), (475, 1030)],
+    )
+    d.arrow(
+        1625,
+        600,
+        1200,
+        930,
+        "F6",
+        color="purple",
+        status="future",
+        label_dx=-150,
+        label_dy=140,
+        via=[(1270, 600), (1270, 930)],
+    )
+    d.arrow(
+        510,
+        980,
+        695,
+        1338,
+        "F7",
+        color="teal",
+        label_dx=80,
+        label_dy=-100,
+        via=[(700, 1030), (700, 1338)],
+    )
+    d.arrow(475, 1255, 780, 1290, "F8a", color="purple", status="future", label_dy=-10)
+    d.arrow(945, 1255, 945, 1290, "F8b", color="purple", status="future", label_dx=-35, label_dy=0)
+    d.arrow(
+        1180,
+        1255,
+        1030,
+        1290,
+        "F8c",
+        color="purple",
+        status="future",
+        label_dy=-10,
+        via=[(1100, 1275)],
+    )
+    d.arrow(
+        1060,
+        1338,
+        1625,
+        1200,
+        "F8d",
+        color="purple",
+        status="future",
+        label_dx=240,
+        label_dy=10,
+        via=[(1080, 1275), (1585, 1275)],
+    )
+    d.arrow(
+        775,
+        980,
+        1430,
+        1140,
+        "F9",
+        color="teal",
+        label_dx=300,
+        label_dy=0,
+        via=[(775, 1040), (1430, 1040)],
+    )
     d.arrow(1625, 375, 630, 790, "F10", color="red", status="future", label_dx=10, label_dy=-10)
 
     return d
@@ -371,8 +524,106 @@ def find_edge() -> Path:
     raise FileNotFoundError("Microsoft Edge was not found; cannot render PNG.")
 
 
-def render_png() -> None:
+def png_chunks(data: bytes) -> list[tuple[bytes, bytes]]:
+    if not data.startswith(PNG_SIGNATURE):
+        raise ValueError("Invalid PNG signature.")
+    chunks = []
+    offset = len(PNG_SIGNATURE)
+    while offset < len(data):
+        if offset + 12 > len(data):
+            raise ValueError("Truncated PNG chunk.")
+        length = struct.unpack(">I", data[offset : offset + 4])[0]
+        chunk_type = data[offset + 4 : offset + 8]
+        chunk_end = offset + 12 + length
+        if chunk_end > len(data):
+            raise ValueError("Truncated PNG chunk data.")
+        chunk_data = data[offset + 8 : offset + 8 + length]
+        recorded_crc = struct.unpack(">I", data[offset + 8 + length : chunk_end])[0]
+        actual_crc = zlib.crc32(chunk_type + chunk_data) & 0xFFFFFFFF
+        if recorded_crc != actual_crc:
+            raise ValueError(f"Invalid PNG CRC for {chunk_type.decode('ascii', errors='replace')}.")
+        chunks.append((chunk_type, chunk_data))
+        offset = chunk_end
+        if chunk_type == b"IEND":
+            if offset != len(data):
+                raise ValueError("Unexpected data after PNG IEND.")
+            break
+    if not chunks or chunks[-1][0] != b"IEND":
+        raise ValueError("PNG is missing IEND.")
+    return chunks
+
+
+def png_chunk(chunk_type: bytes, data: bytes) -> bytes:
+    crc = zlib.crc32(chunk_type + data) & 0xFFFFFFFF
+    return struct.pack(">I", len(data)) + chunk_type + data + struct.pack(">I", crc)
+
+
+def png_raster_hash(chunks: list[tuple[bytes, bytes]]) -> str:
+    raster_chunks = {b"IHDR", b"PLTE", b"tRNS", b"IDAT"}
+    material = b"".join(chunk_type + data for chunk_type, data in chunks if chunk_type in raster_chunks)
+    if not material:
+        raise ValueError("PNG contains no raster data.")
+    return hashlib.sha256(material).hexdigest()
+
+
+def png_binding_hash(source_hash: str, svg_hash: str, raster_hash: str) -> str:
+    material = bytes.fromhex(source_hash) + bytes.fromhex(svg_hash) + bytes.fromhex(raster_hash)
+    return hashlib.sha256(material).hexdigest()
+
+
+def embed_png_provenance(path: Path, source_hash: str, svg_hash: str) -> None:
+    chunks = png_chunks(path.read_bytes())
+    raster_hash = png_raster_hash(chunks)
+    values = {
+        PNG_METADATA_KEYS["source"]: source_hash,
+        PNG_METADATA_KEYS["svg"]: svg_hash,
+        PNG_METADATA_KEYS["raster"]: raster_hash,
+        PNG_METADATA_KEYS["binding"]: png_binding_hash(source_hash, svg_hash, raster_hash),
+    }
+    output = bytearray(PNG_SIGNATURE)
+    for chunk_type, data in chunks:
+        if chunk_type == b"tEXt":
+            keyword = data.split(b"\0", 1)[0].decode("latin-1", errors="replace")
+            if keyword in PNG_METADATA_KEYS.values():
+                continue
+        if chunk_type == b"IEND":
+            for keyword, value in values.items():
+                output.extend(png_chunk(b"tEXt", keyword.encode("latin-1") + b"\0" + value.encode("ascii")))
+        output.extend(png_chunk(chunk_type, data))
+    path.write_bytes(output)
+
+
+def verify_png(path: Path, source_hash: str, svg_hash: str) -> str:
+    chunks = png_chunks(path.read_bytes())
+    ihdr = next((data for chunk_type, data in chunks if chunk_type == b"IHDR"), None)
+    if ihdr is None or len(ihdr) < 8:
+        raise ValueError("PNG is missing a valid IHDR.")
+    if struct.unpack(">II", ihdr[:8]) != (WIDTH, HEIGHT):
+        raise ValueError(f"PNG dimensions are not {WIDTH}x{HEIGHT}.")
+
+    metadata = {}
+    for chunk_type, data in chunks:
+        if chunk_type != b"tEXt" or b"\0" not in data:
+            continue
+        keyword, value = data.split(b"\0", 1)
+        metadata[keyword.decode("latin-1")] = value.decode("latin-1")
+
+    raster_hash = png_raster_hash(chunks)
+    expected = {
+        PNG_METADATA_KEYS["source"]: source_hash,
+        PNG_METADATA_KEYS["svg"]: svg_hash,
+        PNG_METADATA_KEYS["raster"]: raster_hash,
+        PNG_METADATA_KEYS["binding"]: png_binding_hash(source_hash, svg_hash, raster_hash),
+    }
+    mismatches = [keyword for keyword, value in expected.items() if metadata.get(keyword) != value]
+    if mismatches:
+        raise ValueError("PNG provenance mismatch: " + ", ".join(mismatches))
+    return raster_hash
+
+
+def render_svg_png(output_path: Path) -> None:
     edge = find_edge()
+    output_path.unlink(missing_ok=True)
     command = [
         str(edge),
         "--headless=new",
@@ -380,19 +631,17 @@ def render_png() -> None:
         "--hide-scrollbars",
         "--force-device-scale-factor=1",
         f"--window-size={WIDTH},{HEIGHT}",
-        f"--screenshot={PNG_PATH}",
+        f"--screenshot={output_path}",
         SVG_PATH.resolve().as_uri(),
     ]
     result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=60)
-    if result.returncode != 0 or not PNG_PATH.exists():
+    if result.returncode != 0 or not output_path.exists():
         raise RuntimeError(f"Edge PNG render failed: {result.stderr.strip()}")
 
 
-def png_dimensions(path: Path) -> tuple[int, int]:
-    data = path.read_bytes()
-    if len(data) < 24 or data[:8] != b"\x89PNG\r\n\x1a\n":
-        raise ValueError(f"{path.relative_to(ROOT)} is not a PNG.")
-    return struct.unpack(">II", data[16:24])
+def render_png(source_hash: str, svg_hash: str) -> None:
+    render_svg_png(PNG_PATH)
+    embed_png_provenance(PNG_PATH, source_hash, svg_hash)
 
 
 def main() -> int:
@@ -405,6 +654,7 @@ def main() -> int:
     source = excalidraw_bytes(diagram)
     source_hash = hashlib.sha256(source).hexdigest()
     svg = svg_bytes(diagram, source_hash)
+    svg_hash = hashlib.sha256(svg).hexdigest()
 
     if args.check:
         failures = []
@@ -413,8 +663,17 @@ def main() -> int:
                 failures.append(str(path.relative_to(ROOT)))
         if not PNG_PATH.exists():
             failures.append(str(PNG_PATH.relative_to(ROOT)))
-        elif png_dimensions(PNG_PATH) != (WIDTH, HEIGHT):
-            failures.append(f"{PNG_PATH.relative_to(ROOT)} (wrong dimensions)")
+        else:
+            try:
+                committed_raster_hash = verify_png(PNG_PATH, source_hash, svg_hash)
+                render_svg_png(CHECK_PNG_PATH)
+                fresh_raster_hash = png_raster_hash(png_chunks(CHECK_PNG_PATH.read_bytes()))
+                if committed_raster_hash != fresh_raster_hash:
+                    raise ValueError("raster does not match a fresh render of the current SVG")
+            except (RuntimeError, ValueError) as error:
+                failures.append(f"{PNG_PATH.relative_to(ROOT)} ({error})")
+            finally:
+                CHECK_PNG_PATH.unlink(missing_ok=True)
         if failures:
             print("Architecture artifacts are stale: " + ", ".join(failures), file=sys.stderr)
             return 1
@@ -425,7 +684,7 @@ def main() -> int:
     EXCALIDRAW_PATH.write_bytes(source)
     SVG_PATH.write_bytes(svg)
     if args.render_png:
-        render_png()
+        render_png(source_hash, svg_hash)
     print(f"Wrote {EXCALIDRAW_PATH.relative_to(ROOT)} and {SVG_PATH.relative_to(ROOT)}.")
     if args.render_png:
         print(f"Wrote {PNG_PATH.relative_to(ROOT)} ({WIDTH}x{HEIGHT}).")
