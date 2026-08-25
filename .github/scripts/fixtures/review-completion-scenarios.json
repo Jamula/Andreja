@@ -1,0 +1,31 @@
+[
+  {
+    "name": "all CI completes before Copilot without a merge-ready interval",
+    "events": [
+      { "atSeconds": 0, "context": "Review completion gate", "state": "pending" },
+      { "atSeconds": 35, "context": "NuGet vulnerability audit", "state": "success" },
+      { "atSeconds": 42, "context": "C# SAST (DevSkim)", "state": "success" },
+      { "atSeconds": 80, "context": "Format verification", "state": "success" },
+      { "atSeconds": 86, "context": "Build and test (Release)", "state": "success" },
+      { "atSeconds": 87, "context": "Build and test (Debug)", "state": "success" },
+      { "atSeconds": 489, "context": "Review completion gate", "state": "success" }
+    ],
+    "firstReadyAtSeconds": 489
+  },
+  {
+    "name": "new push invalidates prior review evidence",
+    "events": [
+      { "atSeconds": 0, "context": "Review completion gate", "state": "pending" },
+      { "atSeconds": 90, "context": "CI", "state": "success" },
+      { "atSeconds": 240, "context": "Review completion gate", "state": "success" },
+      { "atSeconds": 300, "context": "Review completion gate", "state": "pending" },
+      { "atSeconds": 305, "context": "CI", "state": "pending" },
+      { "atSeconds": 390, "context": "CI", "state": "success" },
+      { "atSeconds": 560, "context": "Review completion gate", "state": "success" }
+    ],
+    "readyWindows": [
+      [240, 300],
+      [560, null]
+    ]
+  }
+]
