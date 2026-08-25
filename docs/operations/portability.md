@@ -33,55 +33,93 @@ and caches. Provider runtime handles, hidden metadata, leases, subscriptions,
 transient streams, unsupported derived data, and already-deleted/non-retained
 content are also excluded when applicable. Exclusion is not silent data loss.
 
+## Operator CLI
+
+Application portability is available only as the local
+`src/Andreja.Portability.Cli` operator command. It is deliberately not an HTTP
+endpoint. The PostgreSQL connection string and a base64-encoded random 32-byte
+archive key are read from environment variables, never command-line arguments:
+
+```powershell
+$env:ANDREJA_PORTABILITY_POSTGRES = Get-Content .andreja\portability-postgres.txt
+$env:ANDREJA_PORTABILITY_KEY = Get-Content .andreja\portability-key.txt
+dotnet run --project src\Andreja.Portability.Cli -- export `
+  --tenant 00000000-0000-0000-0000-000000000000 `
+  --output D:\protected\tenant.andreja
+dotnet run --project src\Andreja.Portability.Cli -- import `
+  --archive D:\protected\tenant.andreja --dry-run
+dotnet run --project src\Andreja.Portability.Cli -- import `
+  --archive D:\protected\tenant.andreja --commit `
+  --approve-export 00000000-0000-0000-0000-000000000000
+```
+
+Use a fresh random archive key, deliver it separately, and keep it in
+operator-controlled secret storage. The archive is an authenticated AES-256-GCM
+envelope; the key is zeroed from process memory after use. The command writes a
+same-directory partial file with write-through semantics, atomically renames it,
+never overwrites a destination, removes partial files on cancellation/failure, and
+logs only IDs, opaque tenant references, counts, and lengths.
+
 ## Export sequence
 
 1. Authorize the export in the application and select the intended tenant/data.
-2. Materialize a consistent snapshot without logging record content.
+2. Materialize a tenant-scoped PostgreSQL repeatable-read snapshot without logging
+   record content.
 3. Write each versioned artifact, then its length/count and SHA-256 to the manifest.
 4. Emit all exclusions and required channel/provider reauthorization actions.
-5. Validate the JSON schema and reopen every artifact through
-   `ApplicationExportVerifier`.
-6. Encrypt the completed archive to a user-controlled destination and remove
-   plaintext staging data.
+5. Canonicalize every JSON object, store entries in stable order, and validate exact
+   counts, lengths, paths, contract versions, and SHA-256 digests.
+6. Encrypt the in-memory bounded ZIP to a user-controlled destination; no plaintext
+   staging file is created.
 
-The production exporter must not create inactive channel, grant, or federation
-persistence merely to fill the contract. Approved conformance fixtures may use
-empty artifacts.
+The current persistent slice exports tenant, AppUser, external identity mapping,
+principal, membership, contact, task, task receipt, proposal, proposal receipt,
+task/proposal audit, tenant settings, and proposal/source provenance. Attachments,
+persisted sharing grants/consent, and persisted semantic assertions are not
+implemented in Phase 1A, so their required artifacts are explicit zero-record
+files. The exporter does not invent persistence to fill the contract.
 
 ## Dry-run and clean-instance import
 
 Import is deny-by-default:
 
-1. Decrypt into a least-privilege staging location.
+1. Authenticate/decrypt the bounded archive in memory. Reject the archive before
+   parsing on envelope authentication failure.
 2. Parse `manifest.json` with duplicate/unknown-property rejection and validate the
    v1 schema.
-3. Run `ApplicationExportVerifier.ValidateAsync`. It rejects unsupported versions,
-   missing areas/exclusions, path traversal/duplicates, invalid lengths/checksums,
-   and any target for which `ICleanInstanceImportProbe` does not prove clean.
+3. Reject missing/extra/duplicate entries and JSON properties, unsafe paths,
+   symbolic links, unsupported versions/types, oversized files/counts, compression
+   bombs, checksum/length/count mismatch, cross-tenant rows, and foreign lineage.
 4. Produce a dry-run report with tenant/identity mapping, conflicts, exclusions,
    counts, inactive grants, and reauthorization actions. Perform no writes.
-5. Obtain explicit operator approval of mapping/conflict policy, then commit once
-   under the export/import ID. The future importer must make retry idempotent.
+5. Apply the `ApplicationPortability` migration explicitly. Import acquires a
+   database advisory lock, proves every application/identity/security table empty,
+   and requires `--approve-export` with the dry-run export ID. It commits all rows
+   plus its digest ledger in one serializable transaction. A byte-identical retry is
+   idempotent; a different or conflicting import is rejected.
 6. Restore identity and host keys only through their separate recovery procedure.
    Reauthorize every provider/channel; never recreate a credential from the
    archive.
-7. Keep imported grants inactive until principals resolve and current bilateral
-   consent is revalidated.
+7. No credential user, passkey, recovery code, recent-auth grant, provider token,
+   Data Protection/TLS/signing/bootstrap key, cache, telemetry, or runtime secret is
+   imported. AppUser and Principal IDs remain stable, but operators create new local
+   credential mappings and complete every reported provider reauthorization.
 8. Compare counts, attachments, audit continuity, provenance, settings, exclusions,
    user-visible records, and delete behavior on the clean instance.
 
-A valid archive does not authorize overwriting an existing instance. The clean
-probe is an explicit composition seam so the persistence slice can implement the
-authoritative check later without coupling the portability contract to PostgreSQL.
-Import writing/domain behavior is intentionally not implemented by this operations
-layer.
+A valid archive never authorizes overwrite. A target containing any application or
+identity row (including excluded credential/security rows) is dirty. Migration
+history is the sole permitted pre-import state. Failure, cancellation, process loss
+before commit, or a constraint error rolls back the transaction; no partial import
+is retained.
 
 ## Compatibility and security
 
-Archive v1 acceptance is exact. A future reader may add an explicit compatibility
+Archive v1 and schema `1.0.0` acceptance is exact. A future reader may add an explicit compatibility
 window only after human review; it must never guess how to reinterpret an unknown
-schema. Verify release provenance before parsing, bound archive/file/count sizes,
-avoid following links, and keep extraction beneath staging. Checksums detect
+schema. Verify release provenance before parsing. Current hard limits are 64 MiB
+encrypted/compressed, 128 MiB expanded, 32 MiB per artifact, 100,000 records per
+artifact, and 100:1 per-entry expansion. Avoid following links. Checksums detect
 corruption but do not authenticate the exporter, so distribution signature policy
 is a separate operator decision.
 

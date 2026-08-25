@@ -188,7 +188,7 @@ Expected single-line result after cleanup:
 | Phone/tablet/desktop and keyboard | **PASS (basic)** | 320/768/1280 had no horizontal overflow, a labelled main region, and zero unnamed interactive controls; six real Tab events reached at least three distinct controls. No human assistive-technology study was performed. |
 | PostgreSQL dump/restore | **PARTIAL / BLOCKED for exit** | Pinned `pg_dump`/`pg_restore` clean-instance rehearsal restored 5 migrations, 1 synthetic identity, 1 passkey, 4 security-audit rows, and 0 deleted tasks. The plaintext synthetic dump was checksum-verified and destroyed, but encrypted recovery-set custody plus restored app sign-in with restored keys was not run. |
 | Data Protection persistence/at-rest | **PARTIAL / BLOCKED for exit** | One mode-`0600` key file persisted; browser sign-in survived app restart. Host-volume encryption and an encrypted, separately held recovery copy were not independently demonstrated. |
-| Application export/import | **BLOCKED** | Open Loops JSON export passed, but clean-instance application import mutation is not implemented. Contract verification is not a substitute; see #87. |
+| Application export/import | **PASS (supplemental #87)** | Production local CLI emitted a canonical authenticated archive from a repeatable-read tenant snapshot; exact-schema dry-run and serializable clean-instance commit passed against two disposable PostgreSQL 17 databases. Source/target portable counts matched `1|1|1|1|1|1|1|1|1`; the user-visible task matched; excluded credential/passkey/recovery/grant/token/login/bootstrap rows totaled zero; identical retry was idempotent. No real data or archive was retained. |
 | Offline startup/no egress | **PASS for local evidence** | `Test-OfflineEvidence.ps1` verified all 5 immutable images were preloaded, used `--pull never`, required both networks internal, passed audited-image live/ready before and after restart, and rejected a TEST-NET `192.0.2.1` connection from the app network namespace. |
 | OTel metrics/traces/logs | **PASS** | Counters were sampled before and strictly after the complete browser flow plus app restart. Accepted spans increased `1 -> 188` (delta `187`, versus the required non-health threshold `10`), metric points `0 -> 119`, and fixed-content logs `1 -> 2`. Prometheus reported policy checks `55`, suppressed attributes `181`, and `sum(violations) or vector(0) = 0`. Unit canaries prove task/prompt/response/token/recovery/raw-ID attributes are removed. |
 | Update/rollback | **BLOCKED** | The audited digest started against preserved state, but no second separately approved and signed revision existed. Restart or replacing an unaudited test image is not represented as an update/rollback rehearsal. |
@@ -211,6 +211,26 @@ Expected single-line result after cleanup:
 Issue #62's tooling premise is resolved: local Linux ARM64 Docker, PostgreSQL,
 and a real-browser virtual authenticator are available and reproducible. Phase
 1A exit remains blocked by trusted OCI signing, encrypted database-plus-key
-recovery with restored sign-in, clean-instance application import, a genuine
+recovery with restored sign-in, a genuine
 approved update/rollback pair, and human approval of SLO/RPO/RTO, retention,
 cost, and residual risk. None of those gates is waived by the passing rows.
+
+## Supplemental application-portability evidence (#87)
+
+The #87 fallback began from clean live `main`
+`27a702c9a6308aa7be41ec9930829b417a6d5e3e`. It used only synthetic fixed
+records and a locally generated one-run archive key. PostgreSQL `17-alpine` ran
+locally in Docker; two explicitly migrated disposable databases were used.
+
+- solution build: zero warnings/errors;
+- unit/WAF operations contract: duplicate-area and no-web-mutation negatives;
+- live integration:
+  `ApplicationPortabilityTests.ExportDryRunAndAtomicImportRoundTripPortableDataOnly`;
+- operator rehearsal: dry-run, approved atomic commit, source/target count and
+  visible-task comparison, excluded-table zero check, and idempotent retry;
+- authenticated-envelope tamper was rejected before any mutation;
+- temporary archive, key, SQL fixtures, databases, and container were destroyed.
+
+This closes only #87's implementation/evidence gap. It does not claim Phase 1A
+exit, release authorization, trusted OCI provenance, recovery custody, or
+update/rollback approval.

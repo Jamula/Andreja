@@ -7,6 +7,8 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Net;
+using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Andreja.UnitTests;
 
@@ -111,6 +113,49 @@ public sealed class OperationsContractTests
         Assert.Contains(
             $"unsupported-artifact-contract-version:{semantic.Path}",
             result.Errors);
+    }
+
+    [Fact]
+    public async Task ExportVerifierRejectsDuplicateDataArea()
+    {
+        var files = CreateArtifacts();
+        var complete = CreateManifest(files);
+        var manifest = complete with
+        {
+            Artifacts =
+            [
+                .. complete.Artifacts,
+                complete.Artifacts[0] with { Path = "duplicate-records.ndjson" },
+            ],
+        };
+        files["duplicate-records.ndjson"] = files[complete.Artifacts[0].Path];
+
+        var result = await ApplicationExportVerifier.ValidateAsync(
+            manifest,
+            new CleanInstanceProbe(isClean: true),
+            (path, _) => ValueTask.FromResult<Stream>(new MemoryStream(files[path])));
+
+        Assert.False(result.IsValid);
+        Assert.Contains("duplicate-data-area", result.Errors);
+    }
+
+    [Fact]
+    public async Task ProductionWebApplicationFactoryDoesNotExposePortabilityMutation()
+    {
+        using var factory = new ProductionWebApplicationFactory();
+        using var client = factory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        foreach (var path in new[]
+        {
+            "/api/portability/export",
+            "/api/portability/import",
+            "/operations/application-export",
+        })
+        {
+            using var response = await client.GetAsync(path);
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
     }
 
     [Fact]
