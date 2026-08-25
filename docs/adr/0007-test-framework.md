@@ -1,8 +1,12 @@
-# ADR 0006: Retain xUnit 2 while evaluating the long-term test platform
+# ADR 0007: Retain xUnit 2 while evaluating the long-term test platform
 
 - **Status:** Proposed
 - **Date:** 2026-08-24
 - **Issue:** [#96](https://github.com/Jamula/Andreja/issues/96)
+- **Governing:** [Platform plan](../plan.md#phase-1a---self-hosted-assistant-walking-skeleton),
+  [company charter](../charter.md#commitments), and
+  [ADR 0000](0000-plan-ratification.md)
+- **Proposed by:** Data (Quality Engineering Lead)
 - **Decision owner:** Cyrus Jamula
 - **Scope:** .NET 10 unit, architecture, WebApplicationFactory, EF Core, and
   PostgreSQL integration tests
@@ -13,14 +17,17 @@ Retain xUnit 2.9.3 for the current suite and do not migrate it to MSTest now.
 Modern MSTest 4.3.3 with `MSTest.Sdk` and Microsoft.Testing.Platform (MTP) 2.3.3
 is viable, actively supported, and reached semantic parity in the spike. It did
 not, however, produce a material execution, reliability, dependency, or
-operability advantage that justifies a five-to-eight-engineer-day migration and
+operability advantage that justifies a 5.5–8-engineer-day migration and
 an all-at-once runner/CI change.
 
 This is not an endorsement of xUnit 2 as the indefinite platform. NuGet and
 xUnit's documentation mark v2 as deprecated/maintenance-only, with feature work
-in v3. Before 2026-10-31, before the inventory reaches 400 tests, or before a
-runner/SDK incompatibility blocks the suite (whichever comes first), compare
-xUnit v3 with MSTest/MTP in a separate reviewed decision. Until then:
+in v3. Before 2026-10-31, before the inventory reaches 400 executed tests, or
+before a runner/SDK incompatibility blocks the suite (whichever comes first),
+compare xUnit v3 with its native MTP support against MSTest/MTP in
+[tracked decision #108](https://github.com/Jamula/Andreja/issues/108). xUnit v3
+is the required untested alternative at that deadline; this evaluation did not
+exercise it. Until then:
 
 - add no new framework-specific fixture abstraction without review;
 - keep exact test-inventory and skipped-test evidence;
@@ -33,16 +40,18 @@ The spike started from then-live `origin/main` commit `51b4eb4` and .NET SDK
 10.0.301. Before commit, the clean branch was rebased and revalidated against
 live `origin/main` commit `c88e057`.
 
-The current suite has:
+The current Debug suite has:
 
 | Item | Inventory |
 | --- | ---: |
-| Discovered service-free tests | 271 (253 unit + 18 architecture) |
-| Discovered PostgreSQL tests | 22 |
-| Total discovered tests | 293 |
+| Discovered service-free tests | 274 (256 unit + 18 architecture) |
+| Executed service-free tests | 275 (257 unit + 18 architecture) |
+| Discovered / executed PostgreSQL tests | 22 / 22 |
+| Total discovered / executed tests | 296 / 297 |
+| Passed / failed / skipped in the Debug execution | 297 / 0 / 0 |
 | Declared test methods | 209 (188 facts + 21 theories) |
 | Data declarations | 101 `InlineData` + 2 `MemberData` |
-| Nonblank test C# lines | 10,439 |
+| Nonblank tracked test C# source lines | 10,346 |
 | xUnit assertion calls | 923 across 18 assertion forms |
 | Async lifecycle / class fixture use | 2 `IAsyncLifetime` classes / 1 `IClassFixture` |
 | Collection fixtures, traits, explicit skips, output helpers | 0 |
@@ -54,6 +63,27 @@ service-free CI runs Debug and Release with VSTest-style `dotnet test`,
 `--logger trx`, and uploaded result artifacts. PostgreSQL tests compile in
 normal CI and run only against an explicitly disposable `andreja_test_*`
 database.
+
+The line count is the exact nonblank-line total from the 28 tracked paths
+returned by `git ls-files 'tests/*.cs'`; generated `obj` sources are excluded.
+
+Debug inventory was regenerated per assembly with `dotnet test --list-tests`,
+then execution with per-assembly TRX:
+
+| Assembly | Discovered | Executed | Passed | Failed | Skipped |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `Andreja.UnitTests` | 256 | 257 | 257 | 0 | 0 |
+| `Andreja.ArchitectureTests` | 18 | 18 | 18 | 0 | 0 |
+| `Andreja.PostgreSqlIntegrationTests` | 22 | 22 | 22 | 0 | 0 |
+| **Total** | **296** | **297** | **297** | **0** | **0** |
+
+The known one-test discovery/execution delta is
+`PortabilityCommandTests.InfrastructureFailuresUseFixedContentMinimizedMessages`.
+Its `MemberData` contains two rows with `Exception` instances. VSTest discovery
+reports the non-pre-enumerated theory once; xUnit enumerates and executes two
+runtime rows. This is expected, but it means an inventory gate must record and
+compare discovered, executed, passed, failed, and skipped counts separately
+per assembly and configuration rather than assert discovered equals executed.
 
 ## Method
 
@@ -122,10 +152,13 @@ The successful MTP path required:
 Official xUnit documentation says v2 has MTP support only through
 `YTest.MTP.XUnit2`, a third-party package unsupported by xUnit or Microsoft.
 Official .NET documentation also calls mixed VSTest/MTP solutions unsupported
-and notes that framework-specific MTP options differ. Therefore a direct modern
-MSTest/MTP migration cannot safely be incremental inside the current solution:
-either retain VSTest during conversion (forgoing the target architecture) or
-cut the full suite, `global.json`, local commands, and CI together.
+and notes that framework-specific MTP options differ. Therefore an incremental
+**MSTest.Sdk/MTP conversion** while remaining xUnit 2 projects use VSTest is not
+a supported path: either retain VSTest during conversion (forgoing the target
+architecture) or cut the full suite, `global.json`, local commands, and CI
+together. This conclusion does not apply to xUnit v3's native MTP path; that
+required alternative remains untested and is explicitly in scope for issue
+[#108](https://github.com/Jamula/Andreja/issues/108).
 
 MTP test executables, `dotnet test`, direct run/debug, Test Explorer, TRX, and
 GitHub Actions reporting are documented. The default MSTest.Sdk profile also
@@ -205,8 +238,8 @@ A conversion is not just 209 attribute substitutions:
 | Review/convert 923 assertions, especially throws, predicates, strings, collections, and argument ordering | 1.5–2 days |
 | Async lifecycle, WAF class fixture, PostgreSQL lifecycle, and explicit parallel/resource audit | 1–1.5 days |
 | CLI, Debug/Release CI, filters, TRX/artifacts, analyzers, local docs, and IDE checks | 1–1.5 days |
-| Exact 293-row parity, disposable PostgreSQL repetition, failure/skip/timeout/output evidence, and review fixes | 1–1.5 days |
-| **Total** | **5–8 engineer days; approximately 1–2 calendar weeks with review** |
+| Exact 296-discovered/297-executed parity, disposable PostgreSQL repetition, failure/skip/timeout/output evidence, and review fixes | 1–1.5 days |
+| **Total** | **5.5–8 engineer days; approximately 1–2 calendar weeks with review** |
 
 This excludes feature work and assumes mechanical assertion conversion does not
 expose behavior differences. A permanent mixed-framework state would add
@@ -218,12 +251,12 @@ runner, filter, analyzer, and contributor complexity and is rejected.
 
 **Pros**
 
-- zero suite behavior drift and no interruption to 293 working tests;
+- zero suite behavior drift and no interruption to 297 executed tests;
 - preserves concise constructors, async lifetime, class fixture, collection,
   and default class-level concurrency semantics;
 - current CLI, IDE adapter, TRX, Debug/Release CI, WAF, and PostgreSQL evidence
   remain proven;
-- avoids spending five to eight days without a measured reliability or
+- avoids spending 5.5–8 engineer days without a measured reliability or
   performance gain.
 
 **Cons**
@@ -251,7 +284,8 @@ runner, filter, analyzer, and contributor complexity and is rejected.
   stable equivalent;
 - current .NET 10 VSTest commands fail for the MTP project, forcing coordinated
   `global.json`, CI, filter, and artifact changes;
-- incremental xUnit-v2/MTP coexistence is unsupported;
+- an incremental MSTest.Sdk/MTP conversion alongside VSTest-based xUnit 2
+  projects is unsupported;
 - the SDK profile adds extensions, telemetry configuration, and mixed license
   obligations that still require governance.
 
@@ -262,8 +296,9 @@ runner, filter, analyzer, and contributor complexity and is rejected.
 2. Treat xUnit 2 as a bounded holding state, not the long-term default.
 3. Preserve the current test-authentication boundary: fake headers remain
    rejected and no framework may add a production authentication handler.
-4. Preserve exact discovered-test and skipped-test evidence in any future
-   runner change. A passing command with fewer tests is a failure.
+4. Preserve discovered, executed, passed, failed, and skipped evidence
+   separately per assembly/configuration in any future runner change. A passing
+   command with fewer tests or an unexplained delta is a failure.
 5. Do not mix frameworks permanently. A temporary conversion branch must stay
    isolated and must not delete the xUnit source until parity is reviewed.
 6. Require architecture/quality, security/package provenance, CI/operations,
@@ -275,7 +310,9 @@ runner, filter, analyzer, and contributor complexity and is rejected.
 Stop a future conversion and retain the last proven xUnit commit if any of these
 occur:
 
-- discovered inventory is below the baseline 293 plus reviewed suite changes;
+- discovered inventory is below 296, executed inventory is below 297, or the
+  known `PortabilityCommandTests` +1 execution delta changes without a reviewed
+  suite change;
 - an intentional skip is absent from console, per-test TRX, or aggregate
   inventory evidence;
 - anonymous, fake-header, antiforgery, tenant/principal, WAF, EF migration, or
@@ -293,16 +330,18 @@ checkpoint before removing any xUnit package or source.
 
 ## Follow-up
 
-1. Open a bounded xUnit v3 versus MSTest/MTP decision by 2026-10-31, with the
-   same representative and full-suite gates.
-2. Separately evaluate current compatible releases of
-   `xunit.runner.visualstudio` and `Microsoft.NET.Test.Sdk`; do not combine that
-   dependency update with a framework migration.
-3. Add an inventory gate that records discovered, executed, passed, failed, and
-   skipped counts per assembly and rejects silent count loss.
-4. If MSTest remains the candidate, prototype a class-scoped PostgreSQL fixture
-   design that does not run database setup for unrelated filters, then validate
-   Visual Studio/VS Code discovery on supported developer hosts.
+1. [Issue #108](https://github.com/Jamula/Andreja/issues/108), owned by Cyrus
+   Jamula, tracks the bounded xUnit v3-native-MTP versus MSTest/MTP decision due
+   by 2026-10-31 or the earlier holding-state trigger. It also owns the
+   conditional class-scoped PostgreSQL fixture and IDE evidence.
+2. [Issue #109](https://github.com/Jamula/Andreja/issues/109), owned by Cyrus
+   Jamula with Data quality ownership, tracks the per-assembly/configuration
+   discovered, executed, passed, failed, and skipped inventory gate.
+3. [Issue #110](https://github.com/Jamula/Andreja/issues/110), owned by Cyrus
+   Jamula with Jett Reno named for CI/operations review, separately tracks
+   compatible `xunit.runner.visualstudio` and `Microsoft.NET.Test.Sdk` updates.
+
+All three issues remain backlog and must not start as part of this ADR.
 
 ## Official sources
 
@@ -312,6 +351,7 @@ Accessed 2026-08-24:
 - [xUnit shared context](https://xunit.net/docs/shared-context)
 - [xUnit parallel execution](https://xunit.net/docs/running-tests-in-parallel)
 - [xUnit v2 on MTP (third-party, unsupported bridge)](https://xunit.net/docs/getting-started/v2/microsoft-testing-platform)
+- [xUnit v3 native MTP support](https://xunit.net/docs/getting-started/v3/microsoft-testing-platform)
 - [xUnit 2.9.3 NuGet package, deprecation, and Apache-2.0 notice](https://www.nuget.org/packages/xunit/2.9.3)
 - [MSTest overview and support policy](https://learn.microsoft.com/dotnet/core/testing/unit-testing-mstest-intro)
 - [MSTest test attributes and assertions](https://learn.microsoft.com/dotnet/core/testing/unit-testing-mstest-writing-tests)
