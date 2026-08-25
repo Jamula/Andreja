@@ -10,3 +10,6 @@
 *.sh text eol=lf
 Dockerfile text eol=lf
 *.yaml text eol=lf
+docs/architecture/*.excalidraw text eol=lf
+docs/architecture/*.svg text eol=lf
+scripts/docs/*.py text eol=lf
