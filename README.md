@@ -13,6 +13,8 @@ remains pending explicit ratification.
 - `dotnet-ef` 10.0.9 for migration inspection and script generation.
 - Python 3, available as `python`, for documentation consistency checks.
 - PowerShell 7 for repository validation scripts.
+- Node.js 22 and Microsoft Edge for browser, passkey, viewport, and telemetry
+  evidence.
 - Docker with Buildx and Compose for live PostgreSQL, OCI, and self-host
   evidence.
 
@@ -26,6 +28,7 @@ if ((dotnet --version) -ne "10.0.301") {
 }
 python --version
 pwsh --version
+node --version
 
 $efVersion = dotnet ef --version 2>$null
 if ($LASTEXITCODE -ne 0) {
@@ -94,12 +97,15 @@ This Docker example is loopback-only and disposable:
 
 ```powershell
 $postgresImage = "postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3"
-docker run --rm --detach `
+$postgresContainer = docker run --rm --detach `
   --name andreja-tests-postgres `
   --publish 127.0.0.1:55432:5432 `
   --env POSTGRES_PASSWORD=andreja-test-only `
   --env POSTGRES_DB=andreja_test_local `
   $postgresImage
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($postgresContainer)) {
+  throw "Unable to create the disposable PostgreSQL container."
+}
 
 $env:ANDREJA_TEST_POSTGRES = "Host=127.0.0.1;Port=55432;Database=andreja_test_local;Username=postgres;Password=andreja-test-only;SSL Mode=Disable"
 
@@ -126,13 +132,40 @@ try {
 }
 finally {
   Remove-Item Env:\ANDREJA_TEST_POSTGRES -ErrorAction SilentlyContinue
-  docker stop andreja-tests-postgres
+  if (-not [string]::IsNullOrWhiteSpace($postgresContainer)) {
+    docker stop $postgresContainer
+  }
 }
 ```
 
 Never point this suite at a shared or production database. See the
 [PostgreSQL evidence guide](tests/Andreja.PostgreSqlIntegrationTests/README.md)
 for its safety checks and coverage.
+
+### Run browser, telemetry, and offline evidence
+
+These layers require the pinned evidence Compose profile, ignored synthetic
+secrets, local TLS certificate, explicit migrations, and preloaded immutable
+images. Complete the setup in
+[`docs/phase-1a/evidence-44.md`](docs/phase-1a/evidence-44.md), then run:
+
+```powershell
+node --check scripts\evidence\browser-e2e.mjs
+$env:ANDREJA_BOOTSTRAP_TOKEN_FILE =
+  (Resolve-Path .andreja\bootstrap_token_source).Path
+pwsh -NoProfile -File scripts\evidence\Test-TelemetryEvidence.ps1
+
+pwsh -NoProfile -File scripts\evidence\Test-OfflineEvidence.ps1 `
+  -AuditedAppImage $env:ANDREJA_IMAGE `
+  -DestroySyntheticVolumes
+
+Remove-Item Env:\ANDREJA_BOOTSTRAP_TOKEN_FILE -ErrorAction SilentlyContinue
+```
+
+The telemetry command drives the real Edge virtual-authenticator flow and
+requires nonzero browser-request traces, metrics, and logs with zero policy
+violations. The offline command requires preloaded digest-pinned images,
+`--pull never`, internal networks, restart health, and failed TEST-NET egress.
 
 ## Run locally end to end
 
@@ -230,8 +263,14 @@ if ($LASTEXITCODE -ne 0) {
 
 # Create and restore-test the backup, review the generated migration SQL, and
 # set the approved migration names before running this command.
+$backupDumpPath = Read-Host `
+  "Path to the restore-tested dump created by the backup runbook"
+if (-not (Test-Path -LiteralPath $backupDumpPath -PathType Leaf)) {
+  throw "The restore-tested backup dump was not found."
+}
+
 pwsh -NoProfile -File scripts\operations\migrate-database.ps1 `
-  -BackupDumpPath .andreja\backup.dump `
+  -BackupDumpPath $backupDumpPath `
   -ReviewedMigrationScriptPath .andreja\reviewed-migration.sql `
   -DatabaseName andreja `
   -ApprovedMigrations @("REPLACE_WITH_REVIEWED_MIGRATION_NAMES") `
@@ -275,8 +314,14 @@ Verify persistent state survives a restart, then stop without deleting volumes:
 
 ```powershell
 docker compose restart app
+if ($LASTEXITCODE -ne 0) {
+  throw "The application failed to restart."
+}
 Invoke-WebRequest "$publicOrigin/health/ready"
 docker compose down
+if ($LASTEXITCODE -ne 0) {
+  throw "The self-hosted stack failed to stop cleanly."
+}
 Remove-Item Env:\ANDREJA_IMAGE -ErrorAction SilentlyContinue
 ```
 
