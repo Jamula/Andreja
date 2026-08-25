@@ -7,13 +7,13 @@ on:
       - 'docs/**'
       - '.github/scripts/check_docs_consistency.py'
       - '.github/workflows/docs-consistency.yml'
-      - 'scripts/docs/generate_architecture_diagram.py'
+      - 'scripts/docs/**'
   pull_request:
     paths:
       - 'docs/**'
       - '.github/scripts/check_docs_consistency.py'
       - '.github/workflows/docs-consistency.yml'
-      - 'scripts/docs/generate_architecture_diagram.py'
+      - 'scripts/docs/**'
 
 permissions:
   contents: read
@@ -33,3 +33,6 @@ jobs:
 
       - name: Check architecture source and deterministic renders
         run: python3 scripts/docs/generate_architecture_diagram.py --check
+
+      - name: Test architecture PNG structural policy
+        run: python3 scripts/docs/test_architecture_diagram.py

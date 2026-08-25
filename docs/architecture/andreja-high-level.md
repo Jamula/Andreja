@@ -10,7 +10,7 @@ remain normative.
 
 ## Scope and notation
 
-This is an evidence view of `origin/main` at commit `c88e057` on 2026-08-24.
+This is an evidence view of `origin/main` at commit `e93a538` on 2026-08-24.
 "Current" means implementation or operational evidence is present in that
 snapshot; it is not a production-readiness or availability claim.
 
@@ -112,6 +112,7 @@ author must complete this checklist:
   ```powershell
   python scripts\docs\generate_architecture_diagram.py --render-png
   python scripts\docs\generate_architecture_diagram.py --check
+  python scripts\docs\test_architecture_diagram.py
   python .github\scripts\check_docs_consistency.py
   ```
 
@@ -120,8 +121,9 @@ source SHA-256 in the SVG, and writes source, SVG, raster, and combined binding
 SHA-256 values into validated PNG chunks. `--check` validates PNG structure and
 CRC values, verifies the cryptographic binding, and compares the complete PNG
 bytes against the committed SHA-256 manifest. Extra metadata, EXIF, animation,
-or other chunks therefore fail. The hosted Docs Consistency workflow enforces
-this portable check; `--render-png` atomically regenerates both the image and
-manifest with Edge. A manual Microsoft-internal Excalidraw review remains
-required because byte-level checks cannot detect visual clipping or misleading
-layout.
+or other chunks fail even if the manifest is regenerated: only `IHDR`,
+contiguous `IDAT`, the exact four provenance `tEXt` chunks, and `IEND` are
+allowlisted. The hosted Docs Consistency workflow enforces this portable check;
+`--render-png` atomically regenerates both the image and manifest with Edge. A
+manual Microsoft-internal Excalidraw review remains required because byte-level
+checks cannot detect visual clipping or misleading layout.

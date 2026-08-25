@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1460" viewBox="0 0 1920 1460"
-     role="img" aria-labelledby="title desc" data-source-sha256="446f85c8ef38a6cd5bb7bdb2aa9be8c1f6ccb38972bb429ca68a66bf256336fb">
+     role="img" aria-labelledby="title desc" data-source-sha256="6299e710533fa161a66c619b368bb4323b7924c9d354c903a7b282ad4f4a0f42">
   <title id="title">Andreja high-level architecture and data flows</title>
   <desc id="desc">Current Phase 1A components, current local conformance contracts, future gated components,
   six labelled trust boundaries, ten numbered data flows, local data custody, and extension seams.</desc>
@@ -117,9 +117,9 @@
   <polyline points="775,710 640,720 640,1050 475,1050 475,1140" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
   <rect x="614" y="885" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
   <text x="640" y="902" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="640" dy="0">F3c</tspan></text>
-  <polyline points="772,375 910,390 910,657 895,657" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
-  <rect x="849" y="394" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
-  <text x="875" y="411" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="875" dy="0">F4</tspan></text>
+  <polyline points="700,375 642,390 642,657 655,657" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="639" y="394" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="665" y="411" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="665" dy="0">F4</tspan></text>
   <polyline points="895,657 920,657" fill="none" stroke="#2f9e44" stroke-width="3" marker-end="url(#arrow-green)"/>
   <rect x="881" y="621" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
   <text x="907" y="638" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="907" dy="0">F5a</tspan></text>
@@ -133,8 +133,8 @@
   <rect x="344" y="804" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
   <text x="370" y="821" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="370" dy="0">F6</tspan></text>
   <polyline points="510,980 600,1040 600,1290" fill="none" stroke="#0c8599" stroke-width="3" marker-end="url(#arrow-teal)"/>
-  <rect x="544" y="1044" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
-  <text x="570" y="1061" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="570" dy="0">F7</tspan></text>
+  <rect x="544" y="1084" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
+  <text x="570" y="1101" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="570" dy="0">F7</tspan></text>
   <polyline points="475,1255 780,1290" fill="none" stroke="#862e9c" stroke-width="3" stroke-dasharray="3 8" marker-end="url(#arrow-purple)"/>
   <rect x="601" y="1246" width="52" height="25" rx="8" fill="#ffffff" stroke="#495057" stroke-width="1"/>
   <text x="627" y="1263" text-anchor="middle" font-size="15" font-weight="bold" fill="#000000"><tspan x="627" dy="0">F8a</tspan></text>

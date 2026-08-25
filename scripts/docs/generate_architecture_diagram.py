@@ -31,6 +31,7 @@ PNG_METADATA_KEYS = {
     "raster": "Andreja-Raster-SHA256",
     "binding": "Andreja-Binding-SHA256",
 }
+PNG_ALLOWED_CHUNK_TYPES = {b"IHDR", b"IDAT", b"tEXt", b"IEND"}
 
 COLORS = {
     "blue": ("#1864ab", "#d0ebff"),
@@ -384,14 +385,14 @@ def build_diagram() -> Diagram:
         via=[(640, 720), (640, 1050), (475, 1050)],
     )
     d.arrow(
-        772,
+        700,
         375,
-        895,
+        655,
         657,
         "F4",
         color="green",
-        via=[(910, 390), (910, 657)],
-        label_at=(875, 410),
+        via=[(642, 390), (642, 657)],
+        label_at=(665, 410),
     )
     d.arrow(895, 657, 920, 657, "F5a", color="green", label_dy=-20)
     d.arrow(1060, 710, 1060, 740, "F5b", color="green", label_dx=-35, label_dy=0)
@@ -425,7 +426,7 @@ def build_diagram() -> Diagram:
         "F7",
         color="teal",
         via=[(600, 1040)],
-        label_at=(570, 1060),
+        label_at=(570, 1100),
     )
     d.arrow(475, 1255, 780, 1290, "F8a", color="purple", status="future", label_dy=-10)
     d.arrow(945, 1255, 945, 1290, "F8b", color="purple", status="future", label_dx=-35, label_dy=0)
@@ -557,8 +558,52 @@ def png_chunk(chunk_type: bytes, data: bytes) -> bytes:
     return struct.pack(">I", len(data)) + chunk_type + data + struct.pack(">I", crc)
 
 
+def validate_png_policy(chunks: list[tuple[bytes, bytes]], *, require_provenance: bool) -> None:
+    chunk_types = [chunk_type for chunk_type, _ in chunks]
+    disallowed = sorted(set(chunk_types) - PNG_ALLOWED_CHUNK_TYPES)
+    if disallowed:
+        names = ", ".join(chunk.decode("ascii", errors="replace") for chunk in disallowed)
+        raise ValueError(f"Non-allowlisted PNG chunk: {names}")
+    if chunk_types[0] != b"IHDR" or chunk_types.count(b"IHDR") != 1:
+        raise ValueError("PNG policy requires exactly one leading IHDR.")
+    if chunk_types[-1] != b"IEND" or chunk_types.count(b"IEND") != 1:
+        raise ValueError("PNG policy requires exactly one trailing IEND.")
+    idat_indices = [index for index, chunk_type in enumerate(chunk_types) if chunk_type == b"IDAT"]
+    if not idat_indices:
+        raise ValueError("PNG policy requires IDAT data.")
+    if idat_indices != list(range(idat_indices[0], idat_indices[-1] + 1)):
+        raise ValueError("PNG policy requires contiguous IDAT chunks.")
+
+    metadata: dict[str, str] = {}
+    for chunk_type, data in chunks:
+        if chunk_type != b"tEXt":
+            continue
+        if b"\0" not in data:
+            raise ValueError("PNG policy requires keyword/value tEXt chunks.")
+        keyword_bytes, value_bytes = data.split(b"\0", 1)
+        try:
+            keyword = keyword_bytes.decode("ascii")
+            value = value_bytes.decode("ascii")
+        except UnicodeDecodeError:
+            raise ValueError("PNG provenance tEXt must be ASCII.") from None
+        if keyword not in PNG_METADATA_KEYS.values():
+            raise ValueError(f"Non-allowlisted PNG tEXt keyword: {keyword}")
+        if keyword in metadata:
+            raise ValueError(f"Duplicate PNG provenance tEXt keyword: {keyword}")
+        if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+            raise ValueError(f"Invalid PNG provenance SHA-256 for {keyword}")
+        metadata[keyword] = value
+
+    expected_keywords = set(PNG_METADATA_KEYS.values())
+    if require_provenance and set(metadata) != expected_keywords:
+        missing = ", ".join(sorted(expected_keywords - set(metadata)))
+        raise ValueError(f"PNG policy is missing provenance tEXt: {missing}")
+    if not require_provenance and metadata and set(metadata) != expected_keywords:
+        raise ValueError("PNG policy permits either no provenance or the exact provenance set.")
+
+
 def png_raster_hash(chunks: list[tuple[bytes, bytes]]) -> str:
-    raster_chunks = {b"IHDR", b"PLTE", b"tRNS", b"IDAT"}
+    raster_chunks = {b"IHDR", b"IDAT"}
     material = b"".join(chunk_type + data for chunk_type, data in chunks if chunk_type in raster_chunks)
     if not material:
         raise ValueError("PNG contains no raster data.")
@@ -572,6 +617,7 @@ def png_binding_hash(source_hash: str, svg_hash: str, raster_hash: str) -> str:
 
 def embed_png_provenance(path: Path, source_hash: str, svg_hash: str) -> None:
     chunks = png_chunks(path.read_bytes())
+    validate_png_policy(chunks, require_provenance=False)
     raster_hash = png_raster_hash(chunks)
     values = {
         PNG_METADATA_KEYS["source"]: source_hash,
@@ -592,8 +638,9 @@ def embed_png_provenance(path: Path, source_hash: str, svg_hash: str) -> None:
     path.write_bytes(output)
 
 
-def verify_png(path: Path, source_hash: str, svg_hash: str) -> str:
-    chunks = png_chunks(path.read_bytes())
+def verify_png_bytes(data: bytes, source_hash: str, svg_hash: str) -> str:
+    chunks = png_chunks(data)
+    validate_png_policy(chunks, require_provenance=True)
     ihdr = next((data for chunk_type, data in chunks if chunk_type == b"IHDR"), None)
     if ihdr is None or len(ihdr) < 8:
         raise ValueError("PNG is missing a valid IHDR.")
@@ -618,6 +665,14 @@ def verify_png(path: Path, source_hash: str, svg_hash: str) -> str:
     if mismatches:
         raise ValueError("PNG provenance mismatch: " + ", ".join(mismatches))
     return raster_hash
+
+
+def verify_png_artifact(data: bytes, manifest: str, source_hash: str, svg_hash: str) -> None:
+    verify_png_bytes(data, source_hash, svg_hash)
+    actual_png_hash = hashlib.sha256(data).hexdigest()
+    expected_hash_line = f"{actual_png_hash}  {PNG_PATH.name}\n"
+    if manifest != expected_hash_line:
+        raise ValueError(f"full PNG SHA-256 does not match {PNG_HASH_PATH.name}")
 
 
 def render_svg_png(output_path: Path) -> None:
@@ -689,14 +744,15 @@ def main() -> int:
             failures.append(str(PNG_PATH.relative_to(ROOT)))
         else:
             try:
-                verify_png(PNG_PATH, source_hash, svg_hash)
                 committed_png = PNG_PATH.read_bytes()
-                actual_png_hash = hashlib.sha256(committed_png).hexdigest()
-                expected_hash_line = f"{actual_png_hash}  {PNG_PATH.name}\n"
                 if not PNG_HASH_PATH.exists():
                     raise ValueError(f"missing {PNG_HASH_PATH.relative_to(ROOT)}")
-                if PNG_HASH_PATH.read_text(encoding="ascii") != expected_hash_line:
-                    raise ValueError(f"full PNG SHA-256 does not match {PNG_HASH_PATH.name}")
+                verify_png_artifact(
+                    committed_png,
+                    PNG_HASH_PATH.read_text(encoding="ascii"),
+                    source_hash,
+                    svg_hash,
+                )
             except (FileNotFoundError, RuntimeError, ValueError) as error:
                 failures.append(f"{PNG_PATH.relative_to(ROOT)} ({error})")
             finally:
