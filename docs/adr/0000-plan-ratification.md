@@ -68,7 +68,7 @@ not match the merged `docs/plan.md`.
 ### 2026-08-25 — Phase 0 artifact and execution status reconciliation
 
 - **Tracking issue:** [#73](https://github.com/Jamula/Andreja/issues/73)
-- **Pull request:** Draft amendment PR; number recorded before merge.
+- **Pull request:** [#113](https://github.com/Jamula/Andreja/pull/113)
 - **Plan SHA-256:** `ba3e687d16a275db466b09e05eedd9070e4de23c46da105cc811ddb4131163e7`
 - **Approver:** Cyrus Jamula
 - **Approver status:** Explicit Cyrus direction recorded for this amendment on
