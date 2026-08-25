@@ -1656,7 +1656,7 @@ test('full second snapshot prevents a late thread from publishing success', asyn
   assert.equal(result.result.state, 'rejected');
 });
 
-test('base push enumerates durable mappings and publishes every head pending first', async () => {
+test('base push paginates durable mappings and publishes live heads before CAS', async () => {
   const first = pull(115);
   const second = pull(116, {
     head: {
@@ -1682,10 +1682,40 @@ test('base push enumerates durable mappings and publishes every head pending fir
     },
     reviews: { 115: [firstReview], 116: [secondReview] },
   });
+  const firstMapping = mapping(first);
+  const secondMapping = mapping(second);
   const store = new FakeStore({
-    mappings: [mapping(first), mapping(second)],
+    mappings: [firstMapping, secondMapping],
     ...canonicalPolicyStateFromComments(client.state.comments),
   });
+  const mappingPageCursors = [];
+  store.listPullMappingsByBase = async ({ cursor, perPage }) => {
+    mappingPageCursors.push(cursor);
+    assert.equal(perPage, 100);
+    if (cursor === null) {
+      return {
+        mappings: [structuredClone(firstMapping)],
+        pageInfo: { hasNextPage: true, endCursor: 'base-page-2' },
+      };
+    }
+    assert.equal(cursor, 'base-page-2');
+    return {
+      mappings: [structuredClone(secondMapping)],
+      pageInfo: { hasNextPage: false, endCursor: null },
+    };
+  };
+  const originalCas = store.compareAndSwapPullMapping.bind(store);
+  const preEvaluationCas = [];
+  store.compareAndSwapPullMapping = async (request) => {
+    if (request.expectedVersion === 1) {
+      preEvaluationCas.push(request.pullNumber);
+      assert.equal(
+        latestCheck(client, request.mapping.headSha).status,
+        'in_progress');
+      assert.equal(client.callLog.includes('paginate:pulls'), false);
+    }
+    return originalCas(request);
+  };
   client.state.pulls.forEach((candidate) => {
     candidate.base.sha = NEXT_BASE;
   });
@@ -1703,12 +1733,10 @@ test('base push enumerates durable mappings and publishes every head pending fir
     evaluatorOptions: { poll: false, stabilitySeconds: 0 },
   });
   const log = client.callLog.slice(start);
-  assert.deepEqual(log.slice(0, 3), [
-    'checks.create',
-    'checks.create',
-    'checks.create',
-  ]);
-  assert.ok(log.indexOf('paginate:pulls') > 2);
+  assert.deepEqual(mappingPageCursors, [null, 'base-page-2']);
+  assert.deepEqual(preEvaluationCas, [115, 116]);
+  assert.ok(log.indexOf('pulls.get:115') < log.indexOf('paginate:pulls'));
+  assert.ok(log.indexOf('pulls.get:116') < log.indexOf('paginate:pulls'));
   assert.equal(latestCheck(client, HEAD).conclusion, 'failure');
   assert.equal(latestCheck(client, NEXT_HEAD).conclusion, 'failure');
   assert.equal(latestCheck(client, NEXT_BASE).conclusion, 'success');
@@ -1716,6 +1744,173 @@ test('base push enumerates durable mappings and publishes every head pending fir
   assert.match(
     latestCheck(client, NEXT_BASE).output.summary,
     /not merge-group evidence/i);
+});
+
+test('base push invalidates reused live H2 before mapping CAS and evaluation', async () => {
+  const state = seededState();
+  const reusedPull = pull(999, {
+    head: {
+      sha: NEXT_HEAD,
+      ref: 'previously-reviewed',
+      repo: { id: REPOSITORY_ID, full_name: 'Jamula/Andreja' },
+    },
+  });
+  const priorGeneration = await createGeneration({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('reconciliation', {}),
+    headSha: NEXT_HEAD,
+    publisherAppId: APP_ID,
+    mappings: [mapping(reusedPull, { issues: [999] })],
+    association: { kind: 'reconciliation', pullNumbers: [999] },
+  });
+  await completeGeneration({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('reconciliation', {}),
+    checkRun: priorGeneration,
+    publisherAppId: APP_ID,
+    result: { state: 'approved', reasons: ['A prior use of H2 completed.'] },
+  });
+  assert.equal(latestCheck(state.client, NEXT_HEAD).conclusion, 'success');
+
+  state.client.state.pulls[0].head.sha = NEXT_HEAD;
+  state.client.state.pulls[0].head.ref = 'feature-115-reused';
+  state.client.state.pulls[0].base.sha = NEXT_BASE;
+  state.client.state.branches.main = NEXT_BASE;
+  const handlerStart = state.client.callLog.length;
+  const originalCreate = state.client.rest.checks.create;
+  let sawFetchBeforePending = false;
+  state.client.rest.checks.create = async (parameters) => {
+    if (parameters.head_sha === NEXT_HEAD) {
+      assert.ok(state.client.callLog
+        .slice(handlerStart)
+        .includes('pulls.get:115'));
+      sawFetchBeforePending = true;
+    }
+    return originalCreate(parameters);
+  };
+  const originalCas =
+    state.store.compareAndSwapPullMapping.bind(state.store);
+  let sawPendingBeforeMapping = false;
+  state.store.compareAndSwapPullMapping = async (request) => {
+    if (request.pullNumber === 115 && request.expectedVersion === 1) {
+      const runs = state.client.state.checkRuns.filter((run) =>
+        run.head_sha === NEXT_HEAD);
+      assert.equal(runs.at(-2).conclusion, 'success');
+      assert.equal(runs.at(-1).status, 'in_progress');
+      sawPendingBeforeMapping = true;
+    }
+    return originalCas(request);
+  };
+  const originalPaginate = state.client.paginate.bind(state.client);
+  let sawPendingBeforeEvaluation = false;
+  state.client.paginate = async (operation, parameters) => {
+    if (operation.kind === 'pulls') {
+      assert.equal(latestCheck(state.client, NEXT_HEAD).status, 'in_progress');
+      sawPendingBeforeEvaluation = true;
+    }
+    return originalPaginate(operation, parameters);
+  };
+
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('push', {
+      ref: 'refs/heads/main',
+      before: BASE,
+      after: NEXT_BASE,
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+
+  assert.equal(sawFetchBeforePending, true);
+  assert.equal(sawPendingBeforeMapping, true);
+  assert.equal(sawPendingBeforeEvaluation, true);
+  const current = await state.store.getPullMapping(115);
+  assert.equal(current.headSha, NEXT_HEAD);
+  assert.equal(current.headRef, 'feature-115-reused');
+  assert.equal(current.baseSha, NEXT_BASE);
+  assert.equal(latestCheck(state.client, NEXT_HEAD).conclusion, 'failure');
+  assert.ok(state.store.policyEvents.get(115).some((event) =>
+    event.kind === 'bind-issue' &&
+    event.observationEpoch.identity.headSha === NEXT_HEAD &&
+    event.observationEpoch.identity.baseSha === NEXT_BASE));
+});
+
+test('base push API rate limit fails mapped and base generations closed', async () => {
+  const state = seededState();
+  state.client.state.pulls[0].base.sha = NEXT_BASE;
+  state.client.state.branches.main = NEXT_BASE;
+  state.client.failNext(
+    'pulls.get',
+    Object.assign(new Error('private base-push detail'), { status: 429 }));
+
+  const result = await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('push', {
+      ref: 'refs/heads/main',
+      before: BASE,
+      after: NEXT_BASE,
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+
+  assert.equal((await state.store.getPullMapping(115)).headSha, HEAD);
+  assert.equal(latestCheck(state.client, HEAD).conclusion, 'failure');
+  assert.equal(latestCheck(state.client, NEXT_BASE).conclusion, 'failure');
+  assert.ok(result.results.every((item) => item.result.state === 'rejected'));
+  assert.match(
+    latestCheck(state.client, NEXT_BASE).output.summary,
+    /rate-limited|failed closed/);
+  assert.doesNotMatch(
+    latestCheck(state.client, NEXT_BASE).output.summary,
+    /private base-push detail/);
+});
+
+test('base mapping pagination rate limit fails partial pages closed', async () => {
+  const state = seededState();
+  state.client.state.pulls[0].base.sha = NEXT_BASE;
+  state.client.state.branches.main = NEXT_BASE;
+  const durable = await state.store.getPullMapping(115);
+  const cursors = [];
+  state.store.listPullMappingsByBase = async ({ cursor }) => {
+    cursors.push(cursor);
+    if (cursor === null) {
+      return {
+        mappings: [durable],
+        pageInfo: { hasNextPage: true, endCursor: 'next-base-page' },
+      };
+    }
+    throw Object.assign(
+      new Error('private durable-page detail'),
+      { status: 429 });
+  };
+
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('push', {
+      ref: 'refs/heads/main',
+      before: BASE,
+      after: NEXT_BASE,
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+
+  assert.deepEqual(cursors, [null, 'next-base-page']);
+  assert.equal(latestCheck(state.client, HEAD).conclusion, 'failure');
+  assert.equal(latestCheck(state.client, NEXT_BASE).conclusion, 'failure');
+  assert.match(
+    latestCheck(state.client, NEXT_BASE).output.summary,
+    /rate-limited|failed closed/);
+  assert.doesNotMatch(
+    latestCheck(state.client, NEXT_BASE).output.summary,
+    /private durable-page detail/);
 });
 
 test('push handler rejects tags, feature refs, and deletions without a check', async (t) => {
@@ -1974,6 +2169,85 @@ test('periodic reconciliation catches dropped thread and revocation deliveries',
   assert.ok(log.indexOf('paginate:pulls') > 0);
   assert.equal(latestCheck(state.client).conclusion, 'failure');
   assert.match(latestCheck(state.client).output.summary, /unresolved|not authorized/);
+});
+
+test('reconciliation recovers a dropped reopen from closed v5 idempotently', async () => {
+  const state = seededState();
+  const closed = await state.store.getPullMapping(115);
+  closed.open = false;
+  closed.version = 5;
+  state.store.mappings.set(115, structuredClone(closed));
+  const originalCas =
+    state.store.compareAndSwapPullMapping.bind(state.store);
+  const expectedVersions = [];
+  state.store.compareAndSwapPullMapping = async (request) => {
+    expectedVersions.push(request.expectedVersion);
+    if (request.expectedVersion === 5) {
+      assert.equal(latestCheck(state.client, HEAD).status, 'in_progress');
+    }
+    return originalCas(request);
+  };
+
+  await runReconciliation(state);
+
+  const first = await state.store.getPullMapping(115);
+  const firstIdentity = exactMappingIdentity(first);
+  const eventCount = state.store.policyEvents.get(115).length;
+  assert.equal(first.open, true);
+  assert.equal(expectedVersions[0], 5);
+  assert.equal(latestCheck(state.client, HEAD).conclusion, 'success');
+
+  await runReconciliation(state);
+
+  const second = await state.store.getPullMapping(115);
+  assert.equal(second.open, true);
+  assert.deepEqual(exactMappingIdentity(second), firstIdentity);
+  assert.equal(state.store.policyEvents.get(115).length, eventCount);
+  assert.ok(second.version > first.version);
+  assert.equal(latestCheck(state.client, HEAD).conclusion, 'success');
+  assert.equal(
+    state.client.state.checkRuns.filter((run) =>
+      run.head_sha === HEAD && run.conclusion === 'failure').length,
+    0);
+});
+
+test('dropped-reopen CAS conflict fails closed and the next sweep retries', async () => {
+  const state = seededState();
+  const closed = await state.store.getPullMapping(115);
+  closed.open = false;
+  closed.version = 5;
+  state.store.mappings.set(115, structuredClone(closed));
+  const originalCas =
+    state.store.compareAndSwapPullMapping.bind(state.store);
+  const expectedVersions = [];
+  let conflict = true;
+  state.store.compareAndSwapPullMapping = async (request) => {
+    expectedVersions.push(request.expectedVersion);
+    if (conflict && request.expectedVersion === 5) {
+      conflict = false;
+      const concurrent = { ...structuredClone(closed), version: 6 };
+      state.store.mappings.set(115, concurrent);
+      return { applied: false, current: structuredClone(concurrent) };
+    }
+    return originalCas(request);
+  };
+
+  const failed = await runReconciliation(state);
+
+  assert.equal((await state.store.getPullMapping(115)).open, false);
+  assert.equal(latestCheck(state.client, HEAD).conclusion, 'failure');
+  assert.match(
+    latestCheck(state.client, HEAD).output.summary,
+    /mapping changed concurrently|failed closed/);
+  assert.ok(failed.some((item) => item.result.state === 'rejected'));
+
+  const retried = await runReconciliation(state);
+
+  const recovered = await state.store.getPullMapping(115);
+  assert.equal(recovered.open, true);
+  assert.deepEqual(expectedVersions.slice(0, 3), [5, 6, 7]);
+  assert.equal(latestCheck(state.client, HEAD).conclusion, 'success');
+  assert.ok(retried.some((item) => item.result.state === 'approved'));
 });
 
 test('reconciliation detects a dropped synchronize on the current head', async () => {
@@ -2617,9 +2891,11 @@ test('fixture catalog includes every external-worker regression class', () => {
   const scenarios = new Set(fixtures.map((item) => item.scenario).filter(Boolean));
   assert.deepEqual(scenarios, new Set([
     'base-advance-enumeration',
+    'base-push-live-authority',
     'merge-group-constituents',
     'reviewer-revocation',
     'dropped-delivery-reconciliation',
+    'dropped-reopen-reconciliation',
     'event-specific-canary',
     'canonical-policy-projection',
     'protected-push-identity',

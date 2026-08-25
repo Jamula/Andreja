@@ -41,6 +41,15 @@
     ]
   },
   {
+    "name": "Base push resolves live head before invalidating a reused success",
+    "scenario": "base-push-live-authority",
+    "events": [
+      { "kind": "durable-h1-live-h2-with-prior-h2-success", "expected": "approved-before-delivery" },
+      { "kind": "per-number-live-pr-fetch", "expected": "pending-on-h2-before-cas-or-evaluation" },
+      { "kind": "mapping-page-or-live-api-failure", "expected": "known-heads-and-base-failed-closed" }
+    ]
+  },
+  {
     "name": "Merge group revalidates constituent policies",
     "scenario": "merge-group-constituents",
     "events": [
@@ -100,6 +109,15 @@
       { "kind": "full-open-pr-pagination", "expected": "all-live-prs-enumerated" },
       { "kind": "dropped-synchronize-or-retarget", "expected": "pending-on-current-head-before-mapping-update" },
       { "kind": "previously-successful-commit-reused", "expected": "newest-generation-rejected-until-current-evidence" }
+    ]
+  },
+  {
+    "name": "Reconciliation recovers a dropped reopen from closed durable state",
+    "scenario": "dropped-reopen-reconciliation",
+    "events": [
+      { "kind": "live-open-with-durable-closed-v5", "expected": "pending-then-cas-from-v5" },
+      { "kind": "repeated-full-sweep", "expected": "stable-idempotent-open-state" },
+      { "kind": "mapping-cas-conflict-then-next-sweep", "expected": "failed-closed-then-recovered" }
     ]
   }
 ]

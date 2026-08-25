@@ -103,11 +103,15 @@ A conflict publishes/finalizes a fail-closed generation on the newest durable
 head and waits for a later live reconciliation.
 
 For every event that can invalidate a success, the worker identifies targets
-from durable state and publishes a new `in_progress` check on **all** affected
-heads before reading mutable GitHub policy metadata. A terminal writer may
-update only while both the durable generation and exact-App check-run are still
-newest. API failures, 403/429 responses, mapping disagreement, stale writers,
-or a changed second snapshot fail closed with sanitized reasons.
+without trusting a durable head as live authority and publishes a new
+`in_progress` check on **all** affected live heads before mapping mutation or
+policy evaluation. A base push resolves each durable target through the live PR
+API by number before publishing that PR generation. Other webhook paths also
+cover their valid event and durable hints while resolving live identity. A
+terminal writer may update only while both the durable generation and exact-App
+check-run are still newest. API failures, 403/429 responses, mapping
+disagreement, stale writers, or a changed second snapshot fail closed with
+sanitized reasons.
 
 Webhook PR snapshots are wake-up hints, not durable authority. PR, review,
 review-comment, review-thread, issue-comment, close, and reopen handling first
@@ -158,9 +162,9 @@ and dropped-delivery behavior cannot expose an older success.
 | `pull_request_review_thread` | External App webhook only; pending-first fetch/CAS the live PR and reevaluate, with native thread resolution still required |
 | `issue_comment` | Resolve the durable PR, pending-first fetch/CAS its live identity, restore any deleted exact-App projection, and reevaluate |
 | `issues` | Resolve affected PRs only from durable issue mappings, publish every head pending, then reevaluate |
-| `push` | Reject tags, deletions, and non-allowlisted refs; for an allowlisted protected base, resolve every affected open PR, publish each head pending, verify the supplied `after` is the live protected tip before any success, then reevaluate |
+| `push` | Reject tags, deletions, and non-allowlisted refs; completely paginate mappings for an allowlisted protected base, fetch every PR by number, publish pending on each live current head before full-identity CAS migration or evaluation, verify the supplied `after` is the live protected tip before any success, then re-observe and reevaluate |
 | `member`, `membership`, `organization` | Resolve dependent reviewer mappings (or conservatively all open PRs), publish pending, and recheck live permission |
-| `reconciliation` | Periodically publish known heads pending, fully paginate all live open PRs, compare exact head/base/diff identity, publish the current head pending before updating drifted mappings, and perform a full permission/policy/thread reconciliation |
+| `reconciliation` | Periodically publish known open heads pending, fully paginate all live open PRs, resolve each exact durable mapping by PR number even when it is marked closed, publish the live current head pending, CAS closed-to-open or identity drift using that mapping's version, and perform a full permission/policy/thread reconciliation |
 | `merge_group` | Publish the merge-group head pending and revalidate every exact constituent PR against the current base |
 | `specialist_attestation` | Publish pending before downloading and validating an allowlisted exact-run evidence artifact |
 | `trusted_dispatch` | Require an authenticated human with current maintain/admin permission; never run through repository Actions |
@@ -171,13 +175,35 @@ A default/base push is not merely a successful default-branch check. The
 worker accepts only an exact `refs/heads/<allowlisted-protected-base>` ref with
 a nonzero `after` SHA. Tags, feature branches, branch deletions, and malformed
 refs are rejected without publishing a required-context result on their SHA.
-For an accepted ref it must first enumerate every open PR mapped to the changed
-base and publish a new pending generation on each distinct PR head. It then
-fetches the branch and requires the exact repository/ref, protected status,
-and current tip to equal `after`; it verifies the tip again after reevaluation
-and before completing any success. Only afterward may it publish a separately
-bound default/base `not_applicable` result. That result can never count as
-merge-group evidence.
+For an accepted ref it must completely paginate every mapping for the changed
+base. A partial, duplicate, mismatched, non-advancing, failed, or rate-limited
+page fails closed. For every mapping the worker then fetches the live PR by
+number; it never publishes only against the durable head. It publishes pending
+on the live head before comparing the full head repository/ref/SHA, base
+repository/ref/SHA, open state, and diff identity, then CAS-migrates with the
+mapping version it read. A conflict also publishes the conflicting durable head
+pending and leaves retry to a later sweep. Only after all live heads are pending
+and mappings are current may the worker re-observe identity-bound policy and
+evaluate.
+
+The worker also fetches the branch and requires the exact repository/ref,
+protected status, and current tip to equal `after`; it verifies the tip again
+after reevaluation and before completing any success. Only afterward may it
+publish a separately bound default/base `not_applicable` result. That result can
+never count as merge-group evidence. A live-PR or pagination API failure
+publishes every safely known head failed and fails the base generation; external
+App provisioning remains blocked until negative canaries prove this behavior.
+
+### Dropped reopen recovery
+
+The open-PR sweep does not use the open-only durable index to decide whether an
+enumerated PR is new. It calls the exact mapping lookup for every live open PR.
+If that lookup returns a closed mapping at version `v`, the worker publishes
+pending on the live head, CASes the exact live identity and `open=true` with
+expected version `v`, and only then evaluates. A conflict is terminal for that
+sweep and failed closed; the next sweep resolves the new durable version and
+retries. Repeated successful sweeps preserve the same semantic identity and
+policy state without duplicating canonical observations.
 
 ### Merge groups
 
@@ -294,11 +320,14 @@ A future activation proposal must provide all of the following:
 7. policy-comment edit/delete/marker-removal/digest-mismatch canaries proving
    canonical restoration without policy reduction;
 8. reviewer permission-revocation and periodic full-reconciliation canaries,
-   including dropped synchronize/retarget identity drift, reused successful
-   commits, full pagination, and page/API failure;
+   including dropped synchronize/retarget identity drift, dropped reopen from a
+   closed versioned mapping, repeated-sweep idempotence, conflict-then-retry,
+   reused successful commits, full pagination, and page/API failure;
 9. tag/feature/deletion/stale-tip push rejection plus valid-base advance,
-   retarget, issue-policy increase/reduction and automatic all-source
-   re-observation after head/retarget/base identity changes,
+   per-number live-head resolution after a dropped synchronize, reused-success
+   invalidation before mapping CAS/evaluation, complete mapping pagination,
+   API/rate-limit failure, retarget, issue-policy increase/reduction and
+   automatic all-source re-observation after head/retarget/base identity changes,
    Copilot delay, newest rejection, thread reopening/resolution, and
    break-glass transitions with no merge-ready interval;
 10. distinct provenance for PR and default/base push paths; and

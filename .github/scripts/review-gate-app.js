@@ -1453,6 +1453,72 @@ async function listAllOpenPulls({ client, envelope }) {
   throw new Error('Open-PR pagination exceeded the fail-closed safety bound.');
 }
 
+async function listAllBasePullMappings({ store, base }) {
+  const list = requireStoreMethod(store, 'listPullMappingsByBase');
+  const mappings = [];
+  const seenPulls = new Set();
+  const seenCursors = new Set();
+  let cursor = null;
+  try {
+    for (let page = 1; page <= 1000; page += 1) {
+      const response = await list({
+        repositoryId: base.repositoryId,
+        ref: base.ref,
+        cursor,
+        perPage: 100,
+      });
+      const legacyCompleteResponse = Array.isArray(response);
+      const pageMappings = legacyCompleteResponse
+        ? response
+        : response?.mappings;
+      const pageInfo = legacyCompleteResponse
+        ? { hasNextPage: false, endCursor: null }
+        : response?.pageInfo;
+      if (!Array.isArray(pageMappings) ||
+          typeof pageInfo?.hasNextPage !== 'boolean') {
+        throw new Error('Base-mapping pagination returned malformed data.');
+      }
+      for (const mapping of pageMappings) {
+        const identity = exactMappingIdentity(mapping);
+        durableMappingVersion(mapping);
+        if (seenPulls.has(identity.pullNumber) ||
+            Number(mapping.repositoryId) !== Number(base.repositoryId) ||
+            String(mapping.repository).toLowerCase() !==
+              String(base.repository).toLowerCase() ||
+            Number(identity.baseRepositoryId) !== Number(base.repositoryId) ||
+            identity.baseRepository.toLowerCase() !==
+              String(base.repository).toLowerCase() ||
+            identity.baseRef !== base.ref) {
+          throw new Error(
+            'Base-mapping pagination returned duplicate or mismatched identity.');
+        }
+        seenPulls.add(identity.pullNumber);
+        mappings.push(mapping);
+      }
+      if (!pageInfo.hasNextPage) {
+        return mappings.sort((left, right) =>
+          Number(left.pullNumber) - Number(right.pullNumber));
+      }
+      const nextCursor = String(pageInfo.endCursor || '');
+      if (!nextCursor || seenCursors.has(nextCursor)) {
+        throw new Error('Base-mapping pagination did not advance its cursor.');
+      }
+      seenCursors.add(nextCursor);
+      cursor = nextCursor;
+    }
+    throw new Error('Base-mapping pagination exceeded the fail-closed safety bound.');
+  } catch (error) {
+    if (error && typeof error === 'object') {
+      try {
+        error.partialBaseMappings = [...mappings];
+      } catch {
+        // A non-extensible API error still fails the base generation closed.
+      }
+    }
+    throw error;
+  }
+}
+
 function aggregateSnapshots(snapshots, headSha) {
   const rejected = snapshots.filter((snapshot) =>
     snapshot.stale || snapshot.result.state === 'rejected');
@@ -2377,21 +2443,6 @@ async function handleBasePushEvent(options) {
   } = options;
   assertExternalEnvelope(envelope);
   const base = baseFromPush(envelope, protectedBaseBranches);
-  const mappings = await requireStoreMethod(
-    store,
-    'listPullMappingsByBase')({
-    repositoryId: base.repositoryId,
-    ref: base.ref,
-  });
-  const pending = await startPendingBatch({
-    client,
-    store,
-    envelope,
-    publisherAppId,
-    mappings,
-    associationKind: 'base_push',
-    baseOverride: base,
-  });
   const baseGeneration = await createGeneration({
     client,
     store,
@@ -2402,34 +2453,134 @@ async function handleBasePushEvent(options) {
     association: { kind: 'default_branch', ref: base.ref },
     baseOverride: base,
   });
+  let mappings = [];
+  const pending = [];
+  const covered = new Set();
+  const publishPending = async (candidates, associationKind) => {
+    for (const mapping of uniqueMappingHints(candidates)) {
+      const key = mappingHintKey(mapping);
+      if (covered.has(key)) {
+        continue;
+      }
+      const added = await startPendingBatch({
+        client,
+        store,
+        envelope,
+        publisherAppId,
+        mappings: [mapping],
+        associationKind,
+        baseOverride: base,
+      });
+      pending.push(...added);
+      covered.add(key);
+    }
+  };
   let evaluated;
   let baseResult;
   try {
+    mappings = await listAllBasePullMappings({ store, base });
+    const resolved = [];
+    for (const mapping of mappings) {
+      const response = await client.rest.pulls.get({
+        ...repoParameters(envelope),
+        pull_number: Number(mapping.pullNumber),
+      });
+      const pullRequest = response.data;
+      if (Number(pullRequest?.number) !== Number(mapping.pullNumber)) {
+        throw new Error('The live PR API returned a different pull request.');
+      }
+      const liveMapping = currentMapping(envelope, pullRequest, mapping);
+      await publishPending(
+        [liveMapping],
+        'base_push-live-authority');
+      const identityChanged = !sameMappingIdentity(mapping, liveMapping) ||
+        Boolean(mapping.open) !== Boolean(liveMapping.open);
+      resolved.push({ durable: mapping, live: liveMapping, identityChanged });
+    }
+
+    for (const group of groupMappingsByHead(resolved.map((item) => item.live))) {
+      if (group.mappings.length <= 1) {
+        continue;
+      }
+      pending.push(...await startPendingBatch({
+        client,
+        store,
+        envelope,
+        publisherAppId,
+        mappings: group.mappings,
+        associationKind: 'base_push-shared-live-head',
+        baseOverride: base,
+      }));
+    }
+
+    const currentMappings = [];
+    for (const item of resolved) {
+      if (!item.identityChanged && !sameMappingState(item.durable, item.live)) {
+        throw new Error(
+          'The live mapping changed non-identity state before base evaluation.');
+      }
+      const persisted = await persistPullMapping(store, item.live, {
+        expectedVersion: durableMappingVersion(item.durable),
+      });
+      if (!persisted.applied) {
+        if (persisted.current) {
+          await publishPending(
+            [persisted.current],
+            'base_push-cas-conflict');
+        }
+        throw mappingCasConflict();
+      }
+      currentMappings.push(persisted.mapping);
+    }
+
     await verifyProtectedBaseTip({ client, envelope, base });
-    evaluated = await evaluateGenerationBatch({
+    const newest = newestPendingByHead(pending);
+    const openHeads = new Set(currentMappings
+      .filter((mapping) => mapping.open)
+      .map((mapping) => mapping.headSha));
+    const closed = newest
+      .filter((item) => !openHeads.has(item.headSha))
+      .map((item) => ({
+        generation: item.generation,
+        result: {
+          state: 'rejected',
+          reasons: ['The live API confirmed that the pull request is closed.'],
+        },
+      }));
+    const open = newest.filter((item) => openHeads.has(item.headSha));
+    const openEvaluated = await evaluateGenerationBatch({
       client,
       store,
       envelope,
       publisherAppId,
-      generations: pending,
+      generations: open,
       evaluatorOptions,
       requiredBase: base,
     });
-    if (evaluated.some((item) => item.evaluationFailed)) {
+    evaluated = [...closed, ...openEvaluated];
+    if (openEvaluated.some((item) => item.evaluationFailed)) {
       throw new Error('Affected PR reevaluation failed before base completion.');
     }
     await verifyProtectedBaseTip({ client, envelope, base });
-    baseResult = notApplicableBaseResult(base, pending.length);
+    baseResult = notApplicableBaseResult(base, open.length);
   } catch (error) {
+    const fallbackMappings = mappings.length > 0
+      ? mappings
+      : error?.partialBaseMappings || [];
+    try {
+      await publishPending(
+        fallbackMappings,
+        'base_push-failure-durable-fallback');
+    } catch {
+      // The base generation still records the independently hosted worker failure.
+    }
     const result = {
       state: 'rejected',
       reasons: [
-        error?.status === 403 || error?.status === 429
-          ? sanitizedApiFailure(error)
-          : 'The protected base branch identity or tip failed closed verification.',
+        sanitizedWorkerFailure(error),
       ],
     };
-    evaluated = pending.map((item) => ({
+    evaluated = newestPendingByHead(pending).map((item) => ({
       result,
       generation: item.generation,
     }));
@@ -2737,6 +2888,42 @@ async function handleReconciliation(options) {
   const liveByNumber = new Map(livePulls.map((pullRequest) =>
     [Number(pullRequest.number), pullRequest]));
   try {
+    for (const pullRequest of livePulls) {
+      const pullNumber = Number(pullRequest.number);
+      const listed = knownByNumber.get(pullNumber) || null;
+      const durable = await requireStoreMethod(
+        store,
+        'getPullMapping')(pullNumber);
+      if (!durable) {
+        if (listed) {
+          throw new Error(
+            'The durable mapping index and exact PR lookup disagreed.');
+        }
+        continue;
+      }
+      const durableVersion = durableMappingVersion(durable);
+      const durableIdentity = exactMappingIdentity(durable);
+      if (durableIdentity.pullNumber !== pullNumber ||
+          Number(durable.repositoryId) !== Number(envelope.repository.id) ||
+          String(durable.repository).toLowerCase() !==
+            envelope.repository.fullName.toLowerCase()) {
+        throw new Error('The exact durable PR mapping lookup returned mismatched state.');
+      }
+      if (listed) {
+        const listedVersion = durableMappingVersion(listed);
+        if (durableVersion < listedVersion ||
+            (durableVersion === listedVersion &&
+             (!sameMappingState(durable, listed) ||
+              Number(durable.repositoryId) !== Number(listed.repositoryId) ||
+              String(durable.repository).toLowerCase() !==
+                String(listed.repository).toLowerCase()))) {
+          throw new Error(
+            'The durable mapping index returned stale or conflicting state.');
+        }
+      }
+      knownByNumber.set(pullNumber, durable);
+    }
+
     for (const mapping of known) {
       if (liveByNumber.has(Number(mapping.pullNumber))) {
         continue;
@@ -2753,6 +2940,20 @@ async function handleReconciliation(options) {
       liveByNumber.set(Number(mapping.pullNumber), pullRequest);
     }
   } catch (error) {
+    for (const pullRequest of livePulls) {
+      try {
+        allPending.push(...await startPendingBatch({
+          client,
+          store,
+          envelope,
+          publisherAppId,
+          mappings: [currentMapping(envelope, pullRequest)],
+          associationKind: 'reconciliation-live-lookup-failure',
+        }));
+      } catch {
+        // Already-published known generations remain fail closed.
+      }
+    }
     return completePendingBatch({
       client,
       store,
