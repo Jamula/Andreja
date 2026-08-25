@@ -422,7 +422,7 @@ public static class PostgreSqlApplicationPortability
             if (!ApplicationExportVerifier.IsSafeRelativePath(entry.FullName)
                 || !files.TryAdd(entry.FullName, []))
             {
-                throw new InvalidDataException("The archive contains an unsafe or duplicate path.");
+                throw new InvalidDataException("The archive contains an invalid or duplicate path.");
             }
             var unixMode = (entry.ExternalAttributes >> 16) & 0xF000;
             if (unixMode == 0xA000)
