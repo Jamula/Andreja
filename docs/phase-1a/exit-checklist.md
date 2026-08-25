@@ -59,8 +59,9 @@ owner, command/test ID, result, and known exclusions.
 - [ ] Empty/prior-schema migrations pass; startup cannot migrate implicitly.
 - [ ] Encrypted PostgreSQL logical restore plus identity/key recovery succeeds in a
       clean instance.
-- [ ] Portable Andreja export/import succeeds separately and proves all declared
-      exclusions and reauthorization requirements.
+- [x] Portable Andreja export/import succeeds separately against disposable
+      PostgreSQL and proves all declared exclusions and reauthorization
+      requirements; see the supplemental #87 section in `evidence-44.md`.
 - [ ] Restart and approved update/rollback paths preserve data, identity,
       configuration, audit, and idempotency.
 - [ ] Local OTel evidence queries run with nonzero sample counts and canary tests

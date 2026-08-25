@@ -19,8 +19,13 @@ public static class ApplicationExportContract
             "recovery-secrets",
             "provider-tokens",
             "data-protection-keys",
+            "tls-private-keys",
+            "signing-keys",
+            "bootstrap-secrets",
             "caches",
             "sensitive-inferences",
+            "telemetry",
+            "runtime-secrets",
         };
 
     public static readonly IReadOnlyDictionary<PortableDataArea, string>
@@ -156,6 +161,10 @@ public static class ApplicationExportVerifier
         {
             errors.Add("missing-data-area");
         }
+        if (manifest.Artifacts.Count != dataAreas.Count)
+        {
+            errors.Add("duplicate-data-area");
+        }
 
         var exclusions = manifest.Exclusions.Select(exclusion => exclusion.Code).ToHashSet(
             StringComparer.Ordinal);
@@ -208,7 +217,7 @@ public static class ApplicationExportVerifier
         return new ApplicationImportValidationResult(errors.Count == 0, targetIsClean, errors);
     }
 
-    private static bool IsSafeRelativePath(string path)
+    public static bool IsSafeRelativePath(string path)
     {
         if (string.IsNullOrWhiteSpace(path) ||
             path.StartsWith('/') ||

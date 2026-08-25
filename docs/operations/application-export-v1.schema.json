@@ -25,6 +25,7 @@
     "artifacts": {
       "type": "array",
       "minItems": 7,
+      "maxItems": 7,
       "items": { "$ref": "#/$defs/artifact" },
       "allOf": [
         { "contains": { "properties": { "dataArea": { "const": "Records" } } } },
@@ -38,7 +39,8 @@
     },
     "exclusions": {
       "type": "array",
-      "minItems": 7,
+      "minItems": 12,
+      "maxItems": 12,
       "items": { "$ref": "#/$defs/exclusion" },
       "allOf": [
         { "contains": { "properties": { "code": { "const": "credentials" } } } },
@@ -46,8 +48,13 @@
         { "contains": { "properties": { "code": { "const": "recovery-secrets" } } } },
         { "contains": { "properties": { "code": { "const": "provider-tokens" } } } },
         { "contains": { "properties": { "code": { "const": "data-protection-keys" } } } },
+        { "contains": { "properties": { "code": { "const": "tls-private-keys" } } } },
+        { "contains": { "properties": { "code": { "const": "signing-keys" } } } },
+        { "contains": { "properties": { "code": { "const": "bootstrap-secrets" } } } },
         { "contains": { "properties": { "code": { "const": "caches" } } } },
-        { "contains": { "properties": { "code": { "const": "sensitive-inferences" } } } }
+        { "contains": { "properties": { "code": { "const": "sensitive-inferences" } } } },
+        { "contains": { "properties": { "code": { "const": "telemetry" } } } },
+        { "contains": { "properties": { "code": { "const": "runtime-secrets" } } } }
       ]
     },
     "reauthorization": {

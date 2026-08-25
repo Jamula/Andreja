@@ -119,16 +119,6 @@ public sealed class ExternalIdentity
             throw new ArgumentException("Identity IDs are required.");
         }
 
-        if (!Uri.TryCreate(issuer, UriKind.Absolute, out var issuerUri)
-            || issuerUri.Scheme != Uri.UriSchemeHttps
-            || !string.IsNullOrEmpty(issuerUri.Query)
-            || !string.IsNullOrEmpty(issuerUri.Fragment))
-        {
-            throw new ArgumentException(
-                "Issuer must be an absolute HTTPS URI without query or fragment.",
-                nameof(issuer));
-        }
-
         ArgumentException.ThrowIfNullOrWhiteSpace(subject);
         var normalizedSubject = subject.Trim();
         if (normalizedSubject.Length > 512)
@@ -138,9 +128,7 @@ public sealed class ExternalIdentity
 
         Id = id;
         AppUserId = appUserId;
-        Issuer = issuerUri.GetComponents(
-            UriComponents.SchemeAndServer | UriComponents.Path,
-            UriFormat.UriEscaped).TrimEnd('/');
+        Issuer = NormalizeIssuer(issuer);
         Subject = normalizedSubject;
     }
 
@@ -151,6 +139,23 @@ public sealed class ExternalIdentity
     public string Issuer { get; private set; } = string.Empty;
 
     public string Subject { get; private set; } = string.Empty;
+
+    public static string NormalizeIssuer(string issuer)
+    {
+        if (!Uri.TryCreate(issuer, UriKind.Absolute, out var issuerUri)
+            || issuerUri.Scheme != Uri.UriSchemeHttps
+            || !string.IsNullOrEmpty(issuerUri.Query)
+            || !string.IsNullOrEmpty(issuerUri.Fragment))
+        {
+            throw new ArgumentException(
+                "Issuer must be an absolute HTTPS URI without query or fragment.",
+                nameof(issuer));
+        }
+
+        return issuerUri.GetComponents(
+            UriComponents.SchemeAndServer | UriComponents.Path,
+            UriFormat.UriEscaped).TrimEnd('/');
+    }
 }
 
 public sealed class Principal

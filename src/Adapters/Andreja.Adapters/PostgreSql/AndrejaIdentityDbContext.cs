@@ -50,6 +50,8 @@ public sealed class AndrejaIdentityDbContext(
 
     internal DbSet<ProposalReceiptRecord> ProposalReceipts => Set<ProposalReceiptRecord>();
 
+    internal DbSet<ApplicationImportRecord> ApplicationImports => Set<ApplicationImportRecord>();
+
     private TenantId CurrentTenantId =>
         contextAccessor.Current?.TenantId ?? new TenantId(Guid.Empty);
 
@@ -69,6 +71,7 @@ public sealed class AndrejaIdentityDbContext(
         ConfigureIdentitySecurity(builder);
         ConfigureOpenLoopTasks(builder);
         ConfigureProposals(builder);
+        ConfigurePortability(builder);
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
@@ -579,6 +582,19 @@ public sealed class AndrejaIdentityDbContext(
                 })
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasQueryFilter(receipt => receipt.TenantId == CurrentTenantId);
+        });
+    }
+
+    private static void ConfigurePortability(ModelBuilder builder)
+    {
+        builder.Entity<ApplicationImportRecord>(entity =>
+        {
+            entity.ToTable("application_imports", "portability");
+            entity.HasKey(import => import.ExportId);
+            entity.Property(import => import.ExportId).ValueGeneratedNever();
+            entity.Property(import => import.ManifestSha256).HasMaxLength(64);
+            entity.Property(import => import.TenantReference).HasMaxLength(64);
+            entity.HasIndex(import => import.ManifestSha256).IsUnique();
         });
     }
 

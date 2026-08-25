@@ -1,12 +1,16 @@
 using Andreja.Adapters.OpenTelemetry;
+using Andreja.Adapters.PostgreSql;
 using Andreja.AppHost.Hosting;
 using Andreja.Platform.Contracts.Portability;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Net;
+using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Andreja.UnitTests;
 
@@ -114,6 +118,142 @@ public sealed class OperationsContractTests
     }
 
     [Fact]
+    public async Task ExportVerifierRejectsDuplicateDataArea()
+    {
+        var files = CreateArtifacts();
+        var complete = CreateManifest(files);
+        var manifest = complete with
+        {
+            Artifacts =
+            [
+                .. complete.Artifacts,
+                complete.Artifacts[0] with { Path = "duplicate-records.ndjson" },
+            ],
+        };
+        files["duplicate-records.ndjson"] = files[complete.Artifacts[0].Path];
+
+        var result = await ApplicationExportVerifier.ValidateAsync(
+            manifest,
+            new CleanInstanceProbe(isClean: true),
+            (path, _) => ValueTask.FromResult<Stream>(new MemoryStream(files[path])));
+
+        Assert.False(result.IsValid);
+        Assert.Contains("duplicate-data-area", result.Errors);
+    }
+
+    [Fact]
+    public void PortabilityZipWriterStoresOverCompressibleEntriesWithinReaderLimit()
+    {
+        var content = Enumerable.Repeat((byte)'A', 64 * 1024).ToArray();
+        var files = new Dictionary<string, byte[]>(StringComparer.Ordinal)
+        {
+            ["records.ndjson"] = content,
+        };
+        var zipBytes = PostgreSqlApplicationPortability.CreateZip(files);
+        var repeatedZipBytes = PostgreSqlApplicationPortability.CreateZip(files);
+        try
+        {
+            Assert.Equal(zipBytes, repeatedZipBytes);
+            using var input = new MemoryStream(zipBytes, writable: false);
+            using var archive = new ZipArchive(input, ZipArchiveMode.Read);
+            var entry = Assert.Single(archive.Entries);
+            Assert.True(entry.Length <= entry.CompressedLength * 100);
+            using var expanded = new MemoryStream();
+            using (var stream = entry.Open())
+            {
+                stream.CopyTo(expanded);
+            }
+            Assert.Equal(content, expanded.ToArray());
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(content);
+            CryptographicOperations.ZeroMemory(zipBytes);
+            CryptographicOperations.ZeroMemory(repeatedZipBytes);
+        }
+    }
+
+    [Fact]
+    public void PortabilityZipWriterRejectsReaderExpansionLimits()
+    {
+        Assert.Throws<InvalidDataException>(() =>
+            PostgreSqlApplicationPortability.ValidateExpandedArchiveLengths(
+                [PostgreSqlApplicationPortability.MaximumArtifactBytes + 1]));
+        Assert.Throws<InvalidDataException>(() =>
+            PostgreSqlApplicationPortability.ValidateExpandedArchiveLengths(
+                Enumerable.Repeat(
+                    PostgreSqlApplicationPortability.MaximumArtifactBytes,
+                    5)));
+    }
+
+    [Theory]
+    [InlineData("artifacts", "null")]
+    [InlineData("artifacts", "[null]")]
+    [InlineData("exclusions", "[null]")]
+    [InlineData("reauthorization", "[null]")]
+    public void PortabilityManifestRejectsNullRequiredValues(
+        string property,
+        string value)
+    {
+        var exportId = Guid.NewGuid();
+        var tenantReference = new string('a', 64);
+        var manifest = $$"""
+            {"applicationVersion":"1","archiveVersion":"1","artifacts":[],"createdAtUtc":"2026-08-25T00:00:00+00:00","exclusions":[],"exportId":"{{exportId:D}}","reauthorization":[],"schemaVersion":"1.0.0","tenantReference":"{{tenantReference}}"}
+            """.Trim();
+        manifest = manifest.Replace(
+            $"\"{property}\":[]",
+            $"\"{property}\":{value}",
+            StringComparison.Ordinal);
+
+        var exception = Assert.Throws<InvalidDataException>(() =>
+            PostgreSqlApplicationPortability.ParseManifest(
+                PostgreSqlApplicationPortability.Canonicalize(
+                    Encoding.UTF8.GetBytes(manifest))));
+
+        Assert.Contains("null required value", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task PortabilityArchiveReaderEnforcesBoundOnOpenedHandle()
+    {
+        var path = Path.Join(
+            AppContext.BaseDirectory,
+            $"bounded-archive-{Guid.NewGuid():N}.bin");
+        await File.WriteAllBytesAsync(path, new byte[1025]);
+        try
+        {
+            await Assert.ThrowsAsync<InvalidDataException>(() =>
+                PostgreSqlApplicationPortability.ReadBoundedFileAsync(
+                    path,
+                    1024,
+                    CancellationToken.None));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task ProductionWebApplicationFactoryDoesNotExposePortabilityMutation()
+    {
+        using var factory = new ProductionWebApplicationFactory();
+        using var client = factory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        foreach (var path in new[]
+        {
+            "/api/portability/export",
+            "/api/portability/import",
+            "/operations/application-export",
+        })
+        {
+            using var response = await client.GetAsync(path);
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+    }
+
+    [Fact]
     public async Task ReadinessRequiresWritableKeyState()
     {
         var path = Path.Combine(Path.GetTempPath(), $"andreja-{Guid.NewGuid():N}");
@@ -154,6 +294,8 @@ public sealed class OperationsContractTests
             Path.Combine(root, "deploy", "compose.migration.yaml"));
         var schema = File.ReadAllText(
             Path.Combine(root, "docs", "operations", "application-export-v1.schema.json"));
+        var portabilityCli = File.ReadAllText(
+            Path.Combine(root, "src", "Andreja.Portability.Cli", "Program.cs"));
 
         Assert.Contains("image: ${ANDREJA_IMAGE:?", compose, StringComparison.Ordinal);
         Assert.Contains(
@@ -194,6 +336,31 @@ public sealed class OperationsContractTests
                 .GetProperty("archiveVersion")
                 .GetProperty("const")
                 .GetString());
+        Assert.Equal(
+            Enum.GetValues<PortableDataArea>().Length,
+            document.RootElement.GetProperty("properties")
+                .GetProperty("artifacts")
+                .GetProperty("minItems")
+                .GetInt32());
+        Assert.Equal(
+            Enum.GetValues<PortableDataArea>().Length,
+            document.RootElement.GetProperty("properties")
+                .GetProperty("artifacts")
+                .GetProperty("maxItems")
+                .GetInt32());
+        Assert.Equal(
+            ApplicationExportContract.RequiredExclusions.Count,
+            document.RootElement.GetProperty("properties")
+                .GetProperty("exclusions")
+                .GetProperty("minItems")
+                .GetInt32());
+        Assert.Equal(
+            ApplicationExportContract.RequiredExclusions.Count,
+            document.RootElement.GetProperty("properties")
+                .GetProperty("exclusions")
+                .GetProperty("maxItems")
+                .GetInt32());
+        Assert.Contains("or TimeoutException", portabilityCli, StringComparison.Ordinal);
         foreach (var exclusion in ApplicationExportContract.RequiredExclusions)
         {
             Assert.Contains(exclusion, schema, StringComparison.Ordinal);

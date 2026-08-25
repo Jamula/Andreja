@@ -3,6 +3,7 @@
     <Project Path="src/Andreja.Api.Contracts/Andreja.Api.Contracts.csproj" />
     <Project Path="src/Andreja.AppHost/Andreja.AppHost.csproj" />
     <Project Path="src/Andreja.Platform.Contracts/Andreja.Platform.Contracts.csproj" />
+    <Project Path="src/Andreja.Portability.Cli/Andreja.Portability.Cli.csproj" />
   </Folder>
   <Folder Name="/src/Adapters/">
     <Project Path="src/Adapters/Andreja.Adapters/Andreja.Adapters.csproj" />
