@@ -1,0 +1,34 @@
+[
+  {
+    "name": "PR 100 required CI completed before Copilot",
+    "incident": "#100",
+    "mergedAtSeconds": 148,
+    "firstReviewAtSeconds": 237,
+    "events": [
+      { "atSeconds": 0, "kind": "opened", "expected": "pending" },
+      { "atSeconds": 71, "kind": "required-ci-complete", "expected": "pending" },
+      { "atSeconds": 237, "kind": "copilot-review", "expected": "approved" }
+    ]
+  },
+  {
+    "name": "PR 101 required CI completed before Copilot",
+    "incident": "#101",
+    "mergedAtSeconds": 174,
+    "firstReviewAtSeconds": 489,
+    "events": [
+      { "atSeconds": 0, "kind": "opened", "expected": "pending" },
+      { "atSeconds": 87, "kind": "required-ci-complete", "expected": "pending" },
+      { "atSeconds": 489, "kind": "copilot-review", "expected": "approved" }
+    ]
+  },
+  {
+    "name": "PR 105 required CI was already complete when review began",
+    "incident": "#105",
+    "mergedAtSeconds": 78,
+    "firstReviewAtSeconds": 267,
+    "events": [
+      { "atSeconds": 0, "kind": "opened-with-ci-complete", "expected": "pending" },
+      { "atSeconds": 267, "kind": "copilot-review", "expected": "approved" }
+    ]
+  }
+]
