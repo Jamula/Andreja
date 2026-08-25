@@ -149,8 +149,12 @@ for its safety checks and coverage.
 
 These layers require the pinned evidence Compose profile, ignored synthetic
 secrets, local TLS certificate, explicit migrations, and preloaded immutable
-images. Complete the setup in
-[`docs/phase-1a/evidence-44.md`](docs/phase-1a/evidence-44.md), then run:
+images. Complete the version-current setup in the self-host runbook, especially
+[image acquisition and verification](docs/operations/self-hosting.md#acquire-and-verify-images),
+[the TLS proxy](docs/operations/self-hosting.md#same-host-tls-reverse-proxy),
+[explicit migrations](docs/operations/self-hosting.md#explicit-database-migration),
+and [local telemetry](docs/operations/self-hosting.md#local-telemetry-and-evidence),
+then run:
 
 ```powershell
 node --check scripts\evidence\browser-e2e.mjs
