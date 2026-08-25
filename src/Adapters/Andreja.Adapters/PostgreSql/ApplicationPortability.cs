@@ -342,12 +342,6 @@ public static class PostgreSqlApplicationPortability
             }
 
             await EnsureCleanAsync(connection, transaction, cancellationToken);
-            if (!commit)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return CreateReport(manifest, dryRun: true, idempotent: false);
-            }
-
             await InsertAllAsync(connection, transaction, records, cancellationToken);
             await InsertImportRecordAsync(
                 connection,
@@ -355,6 +349,12 @@ public static class PostgreSqlApplicationPortability
                 manifest,
                 manifestDigest,
                 cancellationToken);
+            if (!commit)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return CreateReport(manifest, dryRun: true, idempotent: false);
+            }
+
             await transaction.CommitAsync(cancellationToken);
             return CreateReport(manifest, dryRun: false, idempotent: false);
         }
@@ -410,7 +410,9 @@ public static class PostgreSqlApplicationPortability
                     var issuer = document.RootElement.GetProperty("value").GetProperty("Issuer").GetString();
                     if (Uri.TryCreate(issuer, UriKind.Absolute, out var uri))
                     {
-                        providerReferences.Add(uri.GetLeftPart(UriPartial.Authority));
+                        providerReferences.Add(uri.GetComponents(
+                            UriComponents.SchemeAndServer | UriComponents.Path,
+                            UriFormat.UriEscaped).TrimEnd('/'));
                     }
                 }
             }
@@ -418,20 +420,60 @@ public static class PostgreSqlApplicationPortability
         return (output.ToArray(), count);
     }
 
-    private static byte[] CreateZip(IReadOnlyDictionary<string, byte[]> files)
+    internal static byte[] CreateZip(IReadOnlyDictionary<string, byte[]> files)
+    {
+        var compressed = CreateZip(files, new HashSet<string>(StringComparer.Ordinal));
+        var storedEntries = EntriesExceedingCompressionRatio(compressed);
+        if (storedEntries.Count == 0)
+        {
+            return compressed;
+        }
+
+        try
+        {
+            return CreateZip(files, storedEntries);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(compressed);
+        }
+    }
+
+    private static byte[] CreateZip(
+        IReadOnlyDictionary<string, byte[]> files,
+        HashSet<string> storedEntries)
     {
         using var output = new MemoryStream();
         using (var zip = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
         {
             foreach (var file in files.OrderBy(item => item.Key, StringComparer.Ordinal))
             {
-                var entry = zip.CreateEntry(file.Key, CompressionLevel.Optimal);
+                var compression = storedEntries.Contains(file.Key)
+                    ? CompressionLevel.NoCompression
+                    : CompressionLevel.Optimal;
+                var entry = zip.CreateEntry(file.Key, compression);
                 entry.LastWriteTime = StableZipTimestamp;
                 using var stream = entry.Open();
                 stream.Write(file.Value);
             }
         }
         return output.ToArray();
+    }
+
+    private static HashSet<string> EntriesExceedingCompressionRatio(byte[] zipBytes)
+    {
+        var entries = new HashSet<string>(StringComparer.Ordinal);
+        using var input = new MemoryStream(zipBytes, writable: false);
+        using var zip = new ZipArchive(input, ZipArchiveMode.Read);
+        foreach (var entry in zip.Entries)
+        {
+            if (entry.CompressedLength > 0
+                && entry.Length > entry.CompressedLength * MaximumCompressionRatio)
+            {
+                entries.Add(entry.FullName);
+            }
+        }
+        return entries;
     }
 
     private static byte[] Encrypt(ReadOnlySpan<byte> plaintext, ReadOnlySpan<byte> key)
@@ -739,12 +781,10 @@ public static class PostgreSqlApplicationPortability
                 throw new InvalidDataException("A contact has foreign principal lineage.");
             }
         }
-        foreach (var task in records["task"])
+        if (records["task"].Any(
+                task => !principals.Contains(task.GetProperty("OwnerPrincipalId").GetGuid())))
         {
-            if (!principals.Contains(task.GetProperty("OwnerPrincipalId").GetGuid()))
-            {
-                throw new InvalidDataException("A task has foreign principal lineage.");
-            }
+            throw new InvalidDataException("A task has foreign principal lineage.");
         }
         foreach (var receipt in records["taskReceipt"])
         {

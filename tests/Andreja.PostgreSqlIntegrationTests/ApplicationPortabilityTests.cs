@@ -70,6 +70,17 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
         {
             database.Tenants.Add(new(tenantId, "PORTABLE", "Portable", "local"));
             database.AppUsers.Add(new(appUserId, "Portable user"));
+            database.ExternalIdentities.AddRange(
+                new(
+                    ExternalIdentityId.New(),
+                    appUserId,
+                    "https://issuer.example/realm-a/",
+                    "portable-a"),
+                new(
+                    ExternalIdentityId.New(),
+                    appUserId,
+                    "https://issuer.example/realm-b",
+                    "portable-b"));
             database.Principals.Add(new(principalId, tenantId, appUserId, "Portable principal"));
             database.Memberships.Add(new(
                 MembershipId.New(),
@@ -85,6 +96,11 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                 principalId));
             await database.SaveChangesAsync();
         }
+        await SeedExcludedSecurityDataAsync(appUserId);
+        Assert.Equal(1, await CountAsync(sourceConnectionString, "identity.credential_users"));
+        Assert.Equal(1, await CountAsync(sourceConnectionString, "identity.user_passkeys"));
+        Assert.Equal(1, await CountAsync(sourceConnectionString, "identity.recovery_codes"));
+        Assert.Equal(1, await CountAsync(sourceConnectionString, "identity.user_tokens"));
 
         var taskId = Guid.CreateVersion7();
         var proposalId = Guid.CreateVersion7();
@@ -162,6 +178,31 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                     approvedExportId: Guid.NewGuid()));
             Assert.Equal(0, await CountAsync(targetConnectionString, "identity.tenants"));
 
+            await ExecuteAsync(
+                targetConnectionString,
+                """
+                ALTER TABLE identity.tenants
+                ADD CONSTRAINT "CK_portability_dry_run"
+                CHECK ("NormalizedName" <> 'PORTABLE')
+                """);
+            await Assert.ThrowsAsync<PostgresException>(() =>
+                PostgreSqlApplicationPortability.ImportAsync(
+                    targetConnectionString,
+                    archive,
+                    key,
+                    commit: false,
+                    approvedExportId: null));
+            Assert.Equal(0, await CountAsync(targetConnectionString, "identity.tenants"));
+            Assert.Equal(0, await CountAsync(
+                targetConnectionString,
+                "portability.application_imports"));
+            await ExecuteAsync(
+                targetConnectionString,
+                """
+                ALTER TABLE identity.tenants
+                DROP CONSTRAINT "CK_portability_dry_run"
+                """);
+
             var dryRun = await PostgreSqlApplicationPortability.ImportAsync(
                 targetConnectionString,
                 archive,
@@ -171,7 +212,16 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
             Assert.True(dryRun.DryRun);
             Assert.False(dryRun.IdempotentReplay);
             Assert.Equal(exported.ExportId, dryRun.ExportId);
+            Assert.Equal(
+                [
+                    "https://issuer.example/realm-a",
+                    "https://issuer.example/realm-b",
+                ],
+                dryRun.Reauthorization.Select(item => item.ProviderReference));
             Assert.Equal(0, await CountAsync(targetConnectionString, "identity.tenants"));
+            Assert.Equal(0, await CountAsync(
+                targetConnectionString,
+                "portability.application_imports"));
 
             await ExecuteAsync(
                 targetConnectionString,
@@ -573,6 +623,63 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
         command.Parameters.AddWithValue("at", DateTimeOffset.UtcNow);
         await command.ExecuteNonQueryAsync();
         return tenantId.Value;
+    }
+
+    private async Task SeedExcludedSecurityDataAsync(AppUserId appUserId)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddOptions();
+        services.AddAndrejaIdentityPostgreSql(sourceConnectionString);
+        services
+            .AddIdentityCore<AspNetIdentityUser>(
+                options => options.Stores.SchemaVersion = IdentitySchemaVersions.Version3)
+            .AddRoles<IdentityRole<Guid>>()
+            .AddEntityFrameworkStores<AndrejaIdentityDbContext>();
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<AspNetIdentityUser>>();
+        var credentialUser = new AspNetIdentityUser
+        {
+            Id = Guid.CreateVersion7(),
+            AppUserId = appUserId,
+            UserName = "portable-owner",
+            EmailConfirmed = true,
+        };
+        Assert.True((await users.CreateAsync(credentialUser)).Succeeded);
+        var passkey = new UserPasskeyInfo(
+            [1, 2, 3, 4],
+            RandomNumberGenerator.GetBytes(77),
+            DateTimeOffset.UtcNow,
+            signCount: 0,
+            transports: ["internal"],
+            isUserVerified: true,
+            isBackupEligible: false,
+            isBackedUp: false,
+            attestationObject: [],
+            clientDataJson: [])
+        {
+            Name = "Synthetic passkey",
+        };
+        Assert.True((await users.AddOrUpdatePasskeyAsync(
+            credentialUser,
+            passkey)).Succeeded);
+        Assert.True((await users.SetAuthenticationTokenAsync(
+            credentialUser,
+            "synthetic-provider",
+            "access-token",
+            "synthetic-token")).Succeeded);
+
+        var database = scope.ServiceProvider.GetRequiredService<AndrejaIdentityDbContext>();
+        database.IdentityRecoveryCodes.Add(new(
+            Guid.CreateVersion7(),
+            credentialUser.Id,
+            RandomNumberGenerator.GetBytes(32),
+            RandomNumberGenerator.GetBytes(16),
+            RandomNumberGenerator.GetBytes(32),
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow.AddDays(1)));
+        await database.SaveChangesAsync();
     }
 
     private async Task<string> CreateMigratedTargetAsync(string purpose)

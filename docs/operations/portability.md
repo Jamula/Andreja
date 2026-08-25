@@ -55,10 +55,13 @@ dotnet run --project src\Andreja.Portability.Cli -- import `
 
 Use a fresh random archive key, deliver it separately, and keep it in
 operator-controlled secret storage. The archive is an authenticated AES-256-GCM
-envelope; the key is zeroed from process memory after use. The command writes a
-same-directory partial file with write-through semantics, atomically renames it,
-never overwrites a destination, removes partial files on cancellation/failure, and
-logs only IDs, opaque tenant references, counts, and lengths.
+envelope. The decoded key byte buffer is zeroed after use, but its base64 string and
+the originating process environment cannot be reliably erased by managed code.
+Remove the key from its secret source and environment, then terminate the operator
+process when finished. The command writes a same-directory partial file with
+write-through semantics, atomically renames it, never overwrites a destination,
+removes partial files on cancellation/failure, and logs only IDs, opaque tenant
+references, counts, and lengths.
 
 ## Export sequence
 
@@ -90,8 +93,8 @@ Import is deny-by-default:
 3. Reject missing/extra/duplicate entries and JSON properties, unsafe paths,
    symbolic links, unsupported versions/types, oversized files/counts, compression
    bombs, checksum/length/count mismatch, cross-tenant rows, and foreign lineage.
-4. Produce a dry-run report with tenant/identity mapping, conflicts, exclusions,
-   counts, inactive grants, and reauthorization actions. Perform no writes.
+4. Prepare the dry-run report with tenant/identity mapping, conflicts, exclusions,
+   counts, inactive grants, and reauthorization actions.
 5. Apply the `ApplicationPortability` migration explicitly. Import first acquires
    one database-scoped, session-level PostgreSQL advisory lock on a dedicated
    non-pooled connection. Only after the lock is held does it open the serializable
@@ -106,10 +109,12 @@ Import is deny-by-default:
    The dedicated connection has pooling and multiplexing disabled and is always
    closed/disposed, so a broken explicit unlock cannot leak a session lock into the
    pool; PostgreSQL releases it when the session closes.
-7. Commit requires `--approve-export` with the dry-run export ID. It commits all rows
-   plus its digest ledger in one serializable transaction. A byte-identical retry is
-   idempotent; a different or conflicting import is rejected after acquiring the
-   same lock and starting a fresh transaction.
+7. Dry run inserts all candidate rows plus the digest ledger in the serializable
+   transaction, exercises their constraints, then rolls back so no writes are
+   retained. Commit requires `--approve-export` with the dry-run export ID and
+   commits that write set once. A byte-identical retry is idempotent; a different or
+   conflicting import is rejected after acquiring the same lock and starting a
+   fresh transaction.
 8. Restore identity and host keys only through their separate recovery procedure.
    Reauthorize every provider/channel; never recreate a credential from the
    archive.

@@ -69,6 +69,7 @@ internal static class PortabilityCommand
                 or IOException
                 or Npgsql.NpgsqlException
                 or FormatException
+                or TimeoutException
                 or System.Text.Json.JsonException)
         {
             Console.Error.WriteLine($"Portability operation rejected: {exception.Message}");

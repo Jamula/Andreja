@@ -1,9 +1,11 @@
 using Andreja.Adapters.OpenTelemetry;
+using Andreja.Adapters.PostgreSql;
 using Andreja.AppHost.Hosting;
 using Andreja.Platform.Contracts.Portability;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -140,6 +142,38 @@ public sealed class OperationsContractTests
     }
 
     [Fact]
+    public void PortabilityZipWriterStoresOverCompressibleEntriesWithinReaderLimit()
+    {
+        var content = Enumerable.Repeat((byte)'A', 64 * 1024).ToArray();
+        var files = new Dictionary<string, byte[]>(StringComparer.Ordinal)
+        {
+            ["records.ndjson"] = content,
+        };
+        var zipBytes = PostgreSqlApplicationPortability.CreateZip(files);
+        var repeatedZipBytes = PostgreSqlApplicationPortability.CreateZip(files);
+        try
+        {
+            Assert.Equal(zipBytes, repeatedZipBytes);
+            using var input = new MemoryStream(zipBytes, writable: false);
+            using var archive = new ZipArchive(input, ZipArchiveMode.Read);
+            var entry = Assert.Single(archive.Entries);
+            Assert.True(entry.Length <= entry.CompressedLength * 100);
+            using var expanded = new MemoryStream();
+            using (var stream = entry.Open())
+            {
+                stream.CopyTo(expanded);
+            }
+            Assert.Equal(content, expanded.ToArray());
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(content);
+            CryptographicOperations.ZeroMemory(zipBytes);
+            CryptographicOperations.ZeroMemory(repeatedZipBytes);
+        }
+    }
+
+    [Fact]
     public async Task ProductionWebApplicationFactoryDoesNotExposePortabilityMutation()
     {
         using var factory = new ProductionWebApplicationFactory();
@@ -199,6 +233,8 @@ public sealed class OperationsContractTests
             Path.Combine(root, "deploy", "compose.migration.yaml"));
         var schema = File.ReadAllText(
             Path.Combine(root, "docs", "operations", "application-export-v1.schema.json"));
+        var portabilityCli = File.ReadAllText(
+            Path.Combine(root, "src", "Andreja.Portability.Cli", "Program.cs"));
 
         Assert.Contains("image: ${ANDREJA_IMAGE:?", compose, StringComparison.Ordinal);
         Assert.Contains(
@@ -251,6 +287,13 @@ public sealed class OperationsContractTests
                 .GetProperty("exclusions")
                 .GetProperty("minItems")
                 .GetInt32());
+        Assert.Equal(
+            ApplicationExportContract.RequiredExclusions.Count,
+            document.RootElement.GetProperty("properties")
+                .GetProperty("exclusions")
+                .GetProperty("maxItems")
+                .GetInt32());
+        Assert.Contains("or TimeoutException", portabilityCli, StringComparison.Ordinal);
         foreach (var exclusion in ApplicationExportContract.RequiredExclusions)
         {
             Assert.Contains(exclusion, schema, StringComparison.Ordinal);

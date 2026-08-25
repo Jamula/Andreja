@@ -39,6 +39,7 @@
     "exclusions": {
       "type": "array",
       "minItems": 12,
+      "maxItems": 12,
       "items": { "$ref": "#/$defs/exclusion" },
       "allOf": [
         { "contains": { "properties": { "code": { "const": "credentials" } } } },
