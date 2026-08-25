@@ -674,6 +674,12 @@
     }
 
     @media (forced-colors: active) {
+      :focus-visible {
+        box-shadow: none;
+        outline: 3px solid CanvasText;
+        outline-offset: 3px;
+      }
+
       .status-tag,
       .planning-note,
       .primary-link,

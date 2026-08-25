@@ -124,6 +124,53 @@ approval and metering before provisioning.
   stronger source ownership separation, but the ratified plan currently requires
   a project in this repository and license/brand/release ownership is unresolved.
 
+## Ethics and sustainability impact assessment
+
+1. **People and agency:** Prospective users, operators, developers, and support
+   seekers benefit from versioned, searchable explanations that distinguish
+   plans from evidence. They retain ordinary browser control and can leave
+   without an account or data trail controlled by this artifact. Misleading or
+   inaccessible content can still harm decisions, so owned expiry, correction,
+   withdrawal, and non-search navigation are required.
+2. **Data and consent:** The artifact processes only reviewed public content.
+   Search queries remain in browser memory; no inference, model, retention,
+   sharing, feedback, account, or deletion workflow exists. A host/CDN may
+   process request metadata, which blocks deployment until purpose, fields,
+   retention, residency, subprocessors, access, and deletion are reviewed.
+3. **Equity and accessibility:** Device, bandwidth, ability, language, culture,
+   technical comfort, and self-host/managed access can exclude people. WCAG 2.2
+   AA evidence, low-script/static delivery, plain status language, responsive
+   reflow, locale readiness, and multiple navigation paths are launch gates;
+   untranslated content remains a limitation, not an implied supported locale.
+4. **AI and safety:** The site and search use no AI. Future AI-authored drafts
+   remain untrusted content requiring provenance, factual review, claim approval,
+   and human publication. Automation cannot approve a claim or accessibility
+   conformance.
+5. **Sustainability:** Static generation avoids always-on app compute, database,
+   queue, and SSR patching. Costs remain build, storage, requests/CDN, logs,
+   domains, dependencies, maintenance, accessibility, content, and support. The
+   Phase 0 cap is $0; any Phase 1B ceiling needs explicit approval and measured
+   lifecycle review.
+6. **Stakeholders and incentives:** Growth, sponsor, host, search, and analytics
+   vendors may favor tracking, conversion language, lock-in, or premature
+   claims. No sponsor, ads, analytics, or engagement optimization is included;
+   the charter, claims inventory, user trust, and public-interest correction
+   path outrank promotion.
+7. **Evidence and alternatives:** Ratified boundaries and repository research
+   support static delivery; the local prototype demonstrates the information
+   architecture and in-artifact search. SSR, hosted documentation/search, static
+   OCI, app-hosted pages, and a source-repository split were assessed. A
+   documented request-time requirement or failure to meet measured static
+   accessibility/performance/operability needs could disprove the choice.
+8. **Owner and stop conditions:** Cyrus owns the decision; named workstream
+   owners govern experience, architecture, security, privacy, operations, cost,
+   quality, support, legal, and public wording. Indicators include expired
+   claims/pages, accessibility blockers, non-static requests/storage, artifact
+   reproducibility, preview exposure, rollback, request-log fields, and spend.
+   The stop conditions below require pause, withdrawal, rollback, remediation,
+   or exit; residual risks include supply-chain compromise, hosting metadata,
+   stale content, accessibility gaps, and provider/domain control.
+
 ## Stop conditions
 
 Do not build, preview, or publish when any of these is true:

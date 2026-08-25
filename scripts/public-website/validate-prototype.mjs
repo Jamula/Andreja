@@ -6,7 +6,8 @@ import http from "node:http";
 import path from "node:path";
 
 const root = process.cwd();
-const prototypeRoot = path.join(root, "docs", "public-website", "prototype");
+const publicWebsiteRoot = path.join(root, "docs", "public-website");
+const prototypeRoot = path.join(publicWebsiteRoot, "prototype");
 const indexPath = path.join(prototypeRoot, "index.html");
 const edgePath = process.env.EDGE_PATH
   ?? "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
@@ -84,9 +85,11 @@ async function waitForValue(action, timeoutMilliseconds = 15000) {
 function startServer() {
   const server = http.createServer((request, response) => {
     const url = new URL(request.url, "http://127.0.0.1");
-    const relative = url.pathname === "/" ? "index.html" : url.pathname.replace(/^\/+/, "");
-    const requestedPath = path.resolve(prototypeRoot, relative);
-    if (!requestedPath.startsWith(`${path.resolve(prototypeRoot)}${path.sep}`)) {
+    const relative = url.pathname.endsWith("/")
+      ? `${url.pathname}index.html`
+      : url.pathname;
+    const requestedPath = path.resolve(publicWebsiteRoot, relative.replace(/^\/+/, ""));
+    if (!requestedPath.startsWith(`${path.resolve(publicWebsiteRoot)}${path.sep}`)) {
       response.writeHead(403).end();
       return;
     }
@@ -137,7 +140,18 @@ try {
   server = await startServer();
   const { port } = server.address();
   const baseUrl = `http://127.0.0.1:${port}`;
+  const pageUrl = `${baseUrl}/prototype/`;
   const requests = [];
+  const linkedDocuments = [
+    "/design-hosting-matrix.md",
+    "/claims-inventory.md",
+  ];
+  for (const documentPath of linkedDocuments) {
+    const response = await fetch(`${baseUrl}${documentPath}`);
+    if (!response.ok) {
+      throw new Error(`Prototype governance link failed: ${documentPath} returned ${response.status}.`);
+    }
+  }
 
   await rm(userDataPath, {
     recursive: true,
@@ -154,14 +168,14 @@ try {
     "--disable-sync",
     "--metrics-recording-only",
     "--no-first-run",
-    `${baseUrl}/?scoutTheme=dark`,
+    `${pageUrl}?scoutTheme=dark`,
   ], { windowsHide: true, stdio: "ignore" });
 
   const target = await waitForValue(async () => {
     const response = await fetch(`http://127.0.0.1:${debuggingPort}/json/list`);
     if (!response.ok) return null;
     const targets = await response.json();
-    return targets.find(item => item.type === "page" && item.url.startsWith(baseUrl));
+    return targets.find(item => item.type === "page" && item.url.startsWith(pageUrl));
   });
 
   cdp = new Cdp(target.webSocketDebuggerUrl);
@@ -232,6 +246,8 @@ try {
   }
   await cdp.send("Emulation.clearDeviceMetricsOverride");
 
+  await sleep(250);
+  const searchRequestStart = requests.length;
   const searchResult = await evaluate(`(() => {
     const input = document.querySelector("#site-search");
     input.value = "privacy";
@@ -245,8 +261,13 @@ try {
   if (searchResult.count < 1 || !searchResult.status.includes("result")) {
     throw new Error(`In-artifact search failed: ${JSON.stringify(searchResult)}`);
   }
+  await sleep(250);
+  const searchRequests = requests.slice(searchRequestStart);
+  if (searchRequests.length > 0) {
+    throw new Error(`Search caused network requests: ${JSON.stringify(searchRequests)}`);
+  }
 
-  await cdp.send("Page.navigate", { url: `${baseUrl}/?scoutTheme=dark` });
+  await cdp.send("Page.navigate", { url: `${pageUrl}?scoutTheme=dark` });
   await waitForValue(() => evaluate("document.querySelector('#page-title') !== null"));
   await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Tab", code: "Tab" });
   await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab" });
@@ -255,13 +276,23 @@ try {
     throw new Error(`Expected skip link to be first keyboard target; got ${firstFocus}.`);
   }
 
-  const storage = await evaluate(`(() => ({
+  const storage = await evaluate(`(async () => ({
     localStorage: localStorage.length,
     sessionStorage: sessionStorage.length,
+    indexedDatabases: typeof indexedDB.databases === "function"
+      ? (await indexedDB.databases()).length
+      : null,
+    cacheEntries: "caches" in globalThis ? (await caches.keys()).length : null,
+    serviceWorkerRegistrations: "serviceWorker" in navigator
+      ? (await navigator.serviceWorker.getRegistrations()).length
+      : null,
     serviceWorkerControlled: Boolean(navigator.serviceWorker?.controller),
   }))()`);
   const cookies = await cdp.send("Network.getCookies", { urls: [baseUrl] });
   if (storage.localStorage !== 0 || storage.sessionStorage !== 0
+    || (storage.indexedDatabases ?? 0) !== 0
+    || (storage.cacheEntries ?? 0) !== 0
+    || (storage.serviceWorkerRegistrations ?? 0) !== 0
     || storage.serviceWorkerControlled || cookies.cookies.length !== 0) {
     throw new Error(`Browser storage check failed: ${JSON.stringify({ storage, cookies: cookies.cookies.length })}`);
   }
@@ -278,10 +309,12 @@ try {
   console.log(JSON.stringify({
     result: "PASS",
     staticChecks: true,
+    linkedDocuments,
     landmarks,
     viewports,
     searchResult,
     storage,
+    searchRequests: 0,
     crossOriginRequests: 0,
   }, null, 2));
 } finally {

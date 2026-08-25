@@ -9,11 +9,12 @@ production site or public-claim source.
 Open `index.html` directly, or serve only on loopback:
 
 ```powershell
-python -m http.server 4173 --bind 127.0.0.1 --directory docs\public-website\prototype
+python -m http.server 4173 --bind 127.0.0.1 --directory docs\public-website
 ```
 
-Then visit `http://127.0.0.1:4173/`. Stop the process when finished. Do not bind
-to a non-loopback interface or publish the directory.
+Then visit `http://127.0.0.1:4173/prototype/`. Serving the packet root keeps the
+prototype's local governance links usable. Stop the process when finished. Do
+not bind to a non-loopback interface or publish the directory.
 
 The theme follows the operating-system preference. Append
 `?scoutTheme=light` or `?scoutTheme=dark` to exercise a specific theme.
