@@ -151,15 +151,28 @@ images. Complete the setup in
 
 ```powershell
 node --check scripts\evidence\browser-e2e.mjs
-$env:ANDREJA_BOOTSTRAP_TOKEN_FILE =
-  (Resolve-Path .andreja\bootstrap_token_source).Path
-pwsh -NoProfile -File scripts\evidence\Test-TelemetryEvidence.ps1
+if ($LASTEXITCODE -ne 0) {
+  throw "The browser evidence script has a syntax error."
+}
 
-pwsh -NoProfile -File scripts\evidence\Test-OfflineEvidence.ps1 `
-  -AuditedAppImage $env:ANDREJA_IMAGE `
-  -DestroySyntheticVolumes
+try {
+  $env:ANDREJA_BOOTSTRAP_TOKEN_FILE =
+    (Resolve-Path .andreja\bootstrap_token_source).Path
+  pwsh -NoProfile -File scripts\evidence\Test-TelemetryEvidence.ps1
+  if ($LASTEXITCODE -ne 0) {
+    throw "Browser and telemetry evidence failed."
+  }
 
-Remove-Item Env:\ANDREJA_BOOTSTRAP_TOKEN_FILE -ErrorAction SilentlyContinue
+  pwsh -NoProfile -File scripts\evidence\Test-OfflineEvidence.ps1 `
+    -AuditedAppImage $env:ANDREJA_IMAGE `
+    -DestroySyntheticVolumes
+  if ($LASTEXITCODE -ne 0) {
+    throw "Offline and no-egress evidence failed."
+  }
+}
+finally {
+  Remove-Item Env:\ANDREJA_BOOTSTRAP_TOKEN_FILE -ErrorAction SilentlyContinue
+}
 ```
 
 The telemetry command drives the real Edge virtual-authenticator flow and
@@ -317,7 +330,21 @@ docker compose restart app
 if ($LASTEXITCODE -ne 0) {
   throw "The application failed to restart."
 }
-Invoke-WebRequest "$publicOrigin/health/ready"
+$ready = $false
+for ($attempt = 0; $attempt -lt 60; $attempt++) {
+  try {
+    Invoke-WebRequest "$publicOrigin/health/ready"
+    $ready = $true
+    break
+  }
+  catch {
+    Start-Sleep -Seconds 2
+  }
+}
+if (-not $ready) {
+  throw "The application did not become ready after restart."
+}
+
 docker compose down
 if ($LASTEXITCODE -ne 0) {
   throw "The self-hosted stack failed to stop cleanly."
