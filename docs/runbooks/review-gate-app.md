@@ -86,10 +86,14 @@ Matching a check name or prefix is insufficient.
 The worker contract requires durable mappings for:
 
 - base repository/ref to every open PR and current head;
+- exact PR/head repository/ref/SHA, base repository/ref/SHA, and diff-identity
+  digest for every open PR;
 - bound issue to PR;
 - reviewer identity to PRs whose evidence depends on that reviewer;
 - merge group to exact constituent PRs; and
-- repository/head to the newest monotonic generation.
+- repository/head to the newest monotonic generation;
+- an immutable canonical policy-event ledger; and
+- canonical event ID to current App-comment projection ID and body digest.
 
 For every event that can invalidate a success, the worker identifies targets
 from durable state and publishes a new `in_progress` check on **all** affected
@@ -97,6 +101,21 @@ heads before reading mutable GitHub policy metadata. A terminal writer may
 update only while both the durable generation and exact-App check-run are still
 newest. API failures, 403/429 responses, mapping disagreement, stale writers,
 or a changed second snapshot fail closed with sanitized reasons.
+
+The durable canonical policy-event ledger is the only policy authority. App
+comments are presentation projections. Every event evaluation and every
+scheduled sweep compares each durable projection ID and digest with the exact
+canonical rendering. An edited, deleted, missing, malformed, marker-free,
+wrong-App, or digest-mismatched projection publishes pending first, fails the
+generation, and is restored from the canonical event when safe. A comment can
+never create, replace, or reduce canonical policy.
+
+The worker store must implement immutable/idempotent
+`appendPolicyLedgerEvent`, complete `listPolicyLedgerEvents`,
+`upsertPolicyProjection`, and complete `listPolicyProjections` operations in
+the same independently protected durability boundary as generations and PR
+mappings. A conflicting event ID, duplicate projection/comment identity,
+partial page, or store failure is terminal and fail closed.
 
 The durable store claims each authenticated delivery ID before dispatch.
 Redelivery returns the existing claim and cannot start a second writer. A
@@ -118,9 +137,9 @@ and dropped-delivery behavior cannot expose an older success.
 | `pull_request_review_thread` | External App webhook only; publish pending and reevaluate, with native thread resolution still required |
 | `issue_comment` | Publish pending before restoring any deleted exact-App policy record and reevaluating |
 | `issues` | Resolve affected PRs only from durable issue mappings, publish every head pending, then reevaluate |
-| `push` | Resolve every affected open PR from durable base mappings, publish each head pending, then reevaluate against the new base |
+| `push` | Reject tags, deletions, and non-allowlisted refs; for an allowlisted protected base, resolve every affected open PR, publish each head pending, verify the supplied `after` is the live protected tip before any success, then reevaluate |
 | `member`, `membership`, `organization` | Resolve dependent reviewer mappings (or conservatively all open PRs), publish pending, and recheck live permission |
-| `reconciliation` | Periodically publish all known heads pending, discover missed open PRs, and perform a full permission/policy/thread reconciliation |
+| `reconciliation` | Periodically publish known heads pending, fully paginate all live open PRs, compare exact head/base/diff identity, publish the current head pending before updating drifted mappings, and perform a full permission/policy/thread reconciliation |
 | `merge_group` | Publish the merge-group head pending and revalidate every exact constituent PR against the current base |
 | `specialist_attestation` | Publish pending before downloading and validating an allowlisted exact-run evidence artifact |
 | `trusted_dispatch` | Require an authenticated human with current maintain/admin permission; never run through repository Actions |
@@ -128,10 +147,15 @@ and dropped-delivery behavior cannot expose an older success.
 ### Base advances
 
 A default/base push is not merely a successful default-branch check. The
-worker must first enumerate every open PR mapped to the changed base, publish a
-new pending generation on each distinct PR head, and then reevaluate current
-base identity and evidence. Only afterward may it publish a separately bound
-default/base `not_applicable` result. That result can never count as
+worker accepts only an exact `refs/heads/<allowlisted-protected-base>` ref with
+a nonzero `after` SHA. Tags, feature branches, branch deletions, and malformed
+refs are rejected without publishing a required-context result on their SHA.
+For an accepted ref it must first enumerate every open PR mapped to the changed
+base and publish a new pending generation on each distinct PR head. It then
+fetches the branch and requires the exact repository/ref, protected status,
+and current tip to equal `after`; it verifies the tip again after reevaluation
+and before completing any success. Only afterward may it publish a separately
+bound default/base `not_applicable` result. That result can never count as
 merge-group evidence.
 
 ### Merge groups
@@ -154,9 +178,15 @@ API failure is rejected.
 Author-controlled PR bodies, closing references, labels, and label removal
 never reduce requirements.
 
+App-authored policy comments also never define requirements. The independently
+protected durable store appends and validates canonical events first; comments
+carry exact, digest-bound projections only. Projection repair is fail-closed
+for the event that detects tampering even when restoration succeeds.
+
 Each authenticated `bind-issue` or `require-domain` observation has a unique
-epoch containing its exact PR/head/base identity, event path, delivery ID, and
-worker revision. The event ID covers the entire event rather than a
+epoch containing its exact PR number, head repository/ref/SHA, base
+repository/ref/SHA, diff-identity digest, event path, delivery ID, and worker
+revision. The event ID covers the entire event rather than a
 deterministic source key.
 
 For each source, the newest observation supersedes its historical observation
@@ -230,12 +260,17 @@ A future activation proposal must provide all of the following:
 6. startup, missing credential, queue failure, worker restart, stale writer,
    wrong-App, 403/429, rate-limit, dropped/redelivered webhook, and durable-store
    failure canaries;
-7. reviewer permission-revocation and periodic full-reconciliation canaries;
-8. push, retarget, base advance, issue-policy increase/reduction/re-observation,
+7. policy-comment edit/delete/marker-removal/digest-mismatch canaries proving
+   canonical restoration without policy reduction;
+8. reviewer permission-revocation and periodic full-reconciliation canaries,
+   including dropped synchronize/retarget identity drift, reused successful
+   commits, full pagination, and page/API failure;
+9. tag/feature/deletion/stale-tip push rejection plus valid-base advance,
+   retarget, issue-policy increase/reduction/re-observation,
    Copilot delay, newest rejection, thread reopening/resolution, and
    break-glass transitions with no merge-ready interval;
-9. distinct provenance for PR and default/base push paths; and
-10. a **real merge-queue `merge_group`** with exact constituent/current-base
+10. distinct provenance for PR and default/base push paths; and
+11. a **real merge-queue `merge_group`** with exact constituent/current-base
     evidence. A default push, synthetic SHA, or copied external ID does not
     count.
 

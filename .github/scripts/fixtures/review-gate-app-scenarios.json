@@ -74,5 +74,32 @@
       { "kind": "default-base-push", "expected": "not-merge-group-evidence" },
       { "kind": "real-merge-group", "expected": "constituent-bound-evidence" }
     ]
+  },
+  {
+    "name": "Durable canonical policy survives comment projection tampering",
+    "scenario": "canonical-policy-projection",
+    "events": [
+      { "kind": "prior-head-success", "expected": "approved" },
+      { "kind": "comment-edited-deleted-or-marker-removed", "expected": "pending-then-rejected" },
+      { "kind": "canonical-projection-restored", "expected": "policy-not-reduced" }
+    ]
+  },
+  {
+    "name": "Push accepts only the current protected base tip",
+    "scenario": "protected-push-identity",
+    "events": [
+      { "kind": "tag-feature-or-deletion", "expected": "rejected-without-check" },
+      { "kind": "stale-protected-tip", "expected": "failed-check" },
+      { "kind": "current-protected-tip", "expected": "base-reconciled-only" }
+    ]
+  },
+  {
+    "name": "Reconciliation refreshes every live exact PR identity",
+    "scenario": "reconciliation-identity-drift",
+    "events": [
+      { "kind": "full-open-pr-pagination", "expected": "all-live-prs-enumerated" },
+      { "kind": "dropped-synchronize-or-retarget", "expected": "pending-on-current-head-before-mapping-update" },
+      { "kind": "previously-successful-commit-reused", "expected": "newest-generation-rejected-until-current-evidence" }
+    ]
   }
 ]

@@ -3,11 +3,11 @@
 const crypto = require('node:crypto');
 
 const CHECK_NAME = 'Andreja review policy';
-const CHECK_EXTERNAL_PREFIX = 'andreja-review-gate:v4';
-const POLICY_EVENT_MARKER_PREFIX = 'andreja-review-policy-event:v4:';
-const REVIEW_MARKER_PREFIX = 'andreja-review-evidence:v4:';
-const POLICY_EVENT_SCHEMA_VERSION = 4;
-const CONTRACT_REVISION = 'review-gate-contract-v4';
+const CHECK_EXTERNAL_PREFIX = 'andreja-review-gate:v5';
+const POLICY_EVENT_MARKER_PREFIX = 'andreja-review-policy-event:v5:';
+const REVIEW_MARKER_PREFIX = 'andreja-review-evidence:v5:';
+const POLICY_EVENT_SCHEMA_VERSION = 5;
+const CONTRACT_REVISION = 'review-gate-contract-v5';
 const COPILOT_REVIEWER = Object.freeze({
   id: 175728472,
   login: 'copilot-pull-request-reviewer[bot]',
@@ -75,6 +75,9 @@ function requiredDomains(labelSets = []) {
 function validatePullIdentity(identity) {
   const normalized = {
     pullNumber: Number(identity?.pullNumber),
+    headRepositoryId: Number(identity?.headRepositoryId),
+    headRepository: String(identity?.headRepository || ''),
+    headRef: String(identity?.headRef || ''),
     headSha: String(identity?.headSha || ''),
     baseRepositoryId: Number(identity?.baseRepositoryId),
     baseRepository: String(identity?.baseRepository || ''),
@@ -83,6 +86,10 @@ function validatePullIdentity(identity) {
   };
   if (!Number.isInteger(normalized.pullNumber) ||
       normalized.pullNumber <= 0 ||
+      !Number.isInteger(normalized.headRepositoryId) ||
+      normalized.headRepositoryId <= 0 ||
+      !normalized.headRepository ||
+      !normalized.headRef ||
       !/^[0-9a-f]{40}$/.test(normalized.headSha) ||
       !Number.isInteger(normalized.baseRepositoryId) ||
       normalized.baseRepositoryId <= 0 ||
@@ -91,12 +98,30 @@ function validatePullIdentity(identity) {
       !/^[0-9a-f]{40}$/.test(normalized.baseSha)) {
     throw new Error('The pull request did not expose a complete diff identity.');
   }
+  normalized.diffIdentity = securityDigest({
+    pullNumber: normalized.pullNumber,
+    headRepositoryId: normalized.headRepositoryId,
+    headRepository: normalized.headRepository.toLowerCase(),
+    headRef: normalized.headRef,
+    headSha: normalized.headSha,
+    baseRepositoryId: normalized.baseRepositoryId,
+    baseRepository: normalized.baseRepository.toLowerCase(),
+    baseRef: normalized.baseRef,
+    baseSha: normalized.baseSha,
+  });
+  if (identity?.diffIdentity &&
+      String(identity.diffIdentity) !== normalized.diffIdentity) {
+    throw new Error('The pull request diff identity digest is invalid.');
+  }
   return normalized;
 }
 
 function pullIdentity(pullRequest) {
   return validatePullIdentity({
     pullNumber: Number(pullRequest?.number),
+    headRepositoryId: Number(pullRequest?.head?.repo?.id),
+    headRepository: String(pullRequest?.head?.repo?.full_name || ''),
+    headRef: String(pullRequest?.head?.ref || ''),
     headSha: String(pullRequest?.head?.sha || ''),
     baseRepositoryId: Number(pullRequest?.base?.repo?.id),
     baseRepository: String(pullRequest?.base?.repo?.full_name || ''),
@@ -106,13 +131,12 @@ function pullIdentity(pullRequest) {
 }
 
 function samePullIdentity(left, right) {
-  return Number(left?.pullNumber) === Number(right?.pullNumber) &&
-    left?.headSha === right?.headSha &&
-    Number(left?.baseRepositoryId) === Number(right?.baseRepositoryId) &&
-    String(left?.baseRepository || '').toLowerCase() ===
-      String(right?.baseRepository || '').toLowerCase() &&
-    left?.baseRef === right?.baseRef &&
-    left?.baseSha === right?.baseSha;
+  try {
+    return validatePullIdentity(left).diffIdentity ===
+      validatePullIdentity(right).diffIdentity;
+  } catch {
+    return false;
+  }
 }
 
 function repositoryUrl(value, repository) {
@@ -232,6 +256,29 @@ function policyEventComment(event) {
   ].join('\n');
 }
 
+function policyEventValidationError(event) {
+  if (!event || typeof event !== 'object' || Array.isArray(event)) {
+    return 'The App-authored policy event is malformed.';
+  }
+  const eventId = event.eventId;
+  const integrityDigest = event.integrityDigest;
+  const signed = { ...event };
+  delete signed.integrityDigest;
+  const eventKey = { ...signed };
+  delete eventKey.eventId;
+  if (!POLICY_EVENT_KINDS.has(event.kind) ||
+      event.schemaVersion !== POLICY_EVENT_SCHEMA_VERSION ||
+      !/^[0-9a-f]{64}$/.test(String(eventId || '')) ||
+      !/^[0-9a-f]{64}$/.test(String(integrityDigest || '')) ||
+      policyEventDigest(eventKey) !== eventId ||
+      securityDigest(signed) !== integrityDigest ||
+      ((event.kind === 'bind-issue' || event.kind === 'require-domain') &&
+       !validObservationEpoch(event.observationEpoch))) {
+    return 'The App-authored policy event failed integrity validation.';
+  }
+  return null;
+}
+
 function parsePolicyEventComment(body) {
   const expression = new RegExp(
     `<!--\\s*${POLICY_EVENT_MARKER_PREFIX}([A-Za-z0-9_-]+)\\s*-->`,
@@ -249,24 +296,9 @@ function parsePolicyEventComment(body) {
   } catch {
     return { event: null, error: 'The App-authored policy event is malformed.' };
   }
-  const eventId = event.eventId;
-  const integrityDigest = event.integrityDigest;
-  const signed = { ...event };
-  delete signed.integrityDigest;
-  const eventKey = { ...signed };
-  delete eventKey.eventId;
-  if (!POLICY_EVENT_KINDS.has(event.kind) ||
-      event.schemaVersion !== POLICY_EVENT_SCHEMA_VERSION ||
-      !/^[0-9a-f]{64}$/.test(String(eventId || '')) ||
-      !/^[0-9a-f]{64}$/.test(String(integrityDigest || '')) ||
-      policyEventDigest(eventKey) !== eventId ||
-      securityDigest(signed) !== integrityDigest ||
-      ((event.kind === 'bind-issue' || event.kind === 'require-domain') &&
-       !validObservationEpoch(event.observationEpoch))) {
-    return {
-      event: null,
-      error: 'The App-authored policy event failed integrity validation.',
-    };
+  const validationError = policyEventValidationError(event);
+  if (validationError) {
+    return { event: null, error: validationError };
   }
   return { event, error: null };
 }
@@ -281,10 +313,12 @@ function trustedPolicyEvents(comments, {
   const errors = [];
   for (const comment of comments || []) {
     const body = String(comment.body || '');
-    if (!body.includes(POLICY_EVENT_MARKER_PREFIX)) {
+    if (Number(comment.performed_via_github_app?.id) !== Number(appId)) {
       continue;
     }
-    if (Number(comment.performed_via_github_app?.id) !== Number(appId)) {
+    if (!body.includes(POLICY_EVENT_MARKER_PREFIX)) {
+      errors.push(
+        'An App-authored policy projection is missing its canonical marker.');
       continue;
     }
     const parsed = parsePolicyEventComment(body);
@@ -809,6 +843,7 @@ module.exports = {
   makePolicyEvent,
   makeObservationEpoch,
   parsePolicyEventComment,
+  policyEventValidationError,
   policySnapshot,
   policyEventDigest,
   policyEventComment,

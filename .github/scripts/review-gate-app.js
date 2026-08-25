@@ -7,6 +7,7 @@ const {
   CHECK_NAME,
   CONTRACT_REVISION,
   COPILOT_REVIEWER,
+  POLICY_EVENT_MARKER_PREFIX,
   REVIEW_DOMAINS,
   domainAttestationEvidence,
   evaluateReviewCompletion,
@@ -16,6 +17,7 @@ const {
   makePolicyEvent,
   parsePolicyEventComment,
   policyEventComment,
+  policyEventValidationError,
   pullIdentity,
   repositoryUrl,
   requiredDomains,
@@ -23,7 +25,6 @@ const {
   samePullIdentity,
   securityDigest,
   summarizeResult,
-  trustedPolicyEvents,
   validateEvidenceBinding,
   validatePullIdentity,
 } = require('./review-gate-policy');
@@ -33,6 +34,7 @@ const ADMIN_PERMISSIONS = new Set(['maintain', 'admin']);
 const DEFAULT_POLL_SECONDS = 30;
 const DEFAULT_MAX_WAIT_SECONDS = 12 * 60;
 const DEFAULT_STABILITY_SECONDS = 5;
+const ZERO_SHA = '0'.repeat(40);
 const EVENT_PATHS = new Set([
   'pull_request',
   'pull_request_review',
@@ -202,54 +204,250 @@ async function listPolicyComments({ client, envelope, pullNumber }) {
   });
 }
 
-async function loadPolicyLedger({
+async function restorePolicyProjection({
   client,
+  store,
+  envelope,
+  publisherAppId,
+  event,
+  projection,
+  comments,
+}) {
+  const body = policyEventComment(event);
+  const bodyDigest = securityDigest(body);
+  const exactCandidates = comments.filter((comment) =>
+    Number(comment.performed_via_github_app?.id) === Number(publisherAppId) &&
+    String(comment.body || '') === body);
+  let response;
+  const current = comments.find((comment) =>
+    Number(comment.id) === Number(projection?.commentId));
+  if (current &&
+      Number(current.performed_via_github_app?.id) === Number(publisherAppId)) {
+    response = await client.rest.issues.updateComment({
+      ...repoParameters(envelope),
+      comment_id: Number(current.id),
+      body,
+    });
+  } else if (!projection && exactCandidates.length === 1) {
+    response = { data: exactCandidates[0] };
+  } else {
+    response = await client.rest.issues.createComment({
+      ...repoParameters(envelope),
+      issue_number: event.pullNumber,
+      body,
+    });
+  }
+  const comment = response.data;
+  if (Number(comment?.performed_via_github_app?.id) !== Number(publisherAppId) ||
+      String(comment?.body || '') !== body ||
+      !Number.isInteger(Number(comment?.id)) ||
+      Number(comment.id) <= 0) {
+    throw new Error('The canonical policy projection could not be restored safely.');
+  }
+  await requireStoreMethod(store, 'upsertPolicyProjection')({
+    repositoryId: Number(envelope.repository.id),
+    repository: envelope.repository.fullName,
+    pullNumber: Number(event.pullNumber),
+    eventId: event.eventId,
+    commentId: Number(comment.id),
+    bodyDigest,
+  });
+  return comment;
+}
+
+async function reconcilePolicyProjection({
+  client,
+  store,
   envelope,
   pullRequest,
   publisherAppId,
 }) {
-  const comments = await listPolicyComments({
+  const pullNumber = Number(pullRequest.number);
+  const ledgerKey = {
+    repositoryId: Number(envelope.repository.id),
+    repository: envelope.repository.fullName,
+    pullNumber,
+  };
+  const [comments, storedEvents, storedProjections] = await Promise.all([
+    listPolicyComments({ client, envelope, pullNumber }),
+    requireStoreMethod(store, 'listPolicyLedgerEvents')(ledgerKey),
+    requireStoreMethod(store, 'listPolicyProjections')(ledgerKey),
+  ]);
+  if (!Array.isArray(storedEvents) || !Array.isArray(storedProjections)) {
+    throw new Error('The durable canonical policy ledger returned invalid state.');
+  }
+
+  const errors = [];
+  const events = [];
+  const canonical = new Map();
+  for (const event of storedEvents) {
+    const validationError = policyEventValidationError(event);
+    if (validationError ||
+        Number(event?.repositoryId) !== ledgerKey.repositoryId ||
+        String(event?.repository || '').toLowerCase() !==
+          ledgerKey.repository.toLowerCase() ||
+        Number(event?.pullNumber) !== pullNumber ||
+        canonical.has(event?.eventId)) {
+      errors.push(
+        'The durable canonical policy ledger contains malformed or duplicate state.');
+      continue;
+    }
+    canonical.set(event.eventId, event);
+    events.push(event);
+  }
+
+  const projections = new Map();
+  const projectedCommentIds = new Set();
+  for (const projection of storedProjections) {
+    const eventId = String(projection?.eventId || '');
+    if (!canonical.has(eventId) ||
+        Number(projection?.repositoryId) !== ledgerKey.repositoryId ||
+        String(projection?.repository || '').toLowerCase() !==
+          ledgerKey.repository.toLowerCase() ||
+        Number(projection?.pullNumber) !== pullNumber ||
+        !Number.isInteger(Number(projection?.commentId)) ||
+        Number(projection.commentId) <= 0 ||
+        projections.has(eventId) ||
+        projectedCommentIds.has(Number(projection.commentId))) {
+      errors.push(
+        'A durable policy projection is malformed or has no canonical event.');
+      continue;
+    }
+    projections.set(eventId, projection);
+    projectedCommentIds.add(Number(projection.commentId));
+  }
+
+  for (const event of events) {
+    const projection = projections.get(event.eventId);
+    const expectedBody = policyEventComment(event);
+    const expectedDigest = securityDigest(expectedBody);
+    const comment = comments.find((candidate) =>
+      Number(candidate.id) === Number(projection?.commentId));
+    const parsed = comment
+      ? parsePolicyEventComment(comment.body)
+      : { event: null, error: 'The canonical policy projection is missing.' };
+    let tamperReason = null;
+    if (!projection) {
+      tamperReason =
+        'A canonical policy event has no durable comment projection.';
+    } else if (projection.bodyDigest !== expectedDigest) {
+      tamperReason =
+        'A durable policy projection digest does not match its canonical event.';
+    } else if (!comment) {
+      tamperReason = 'A canonical policy projection was deleted or is missing.';
+    } else if (Number(comment.performed_via_github_app?.id) !==
+        Number(publisherAppId)) {
+      tamperReason =
+        'A canonical policy projection no longer has the dedicated App identity.';
+    } else if (!String(comment.body || '').includes(POLICY_EVENT_MARKER_PREFIX)) {
+      tamperReason =
+        'A canonical policy projection had its policy marker removed.';
+    } else if (parsed.error) {
+      tamperReason =
+        'A canonical policy projection is malformed or digest-mismatched.';
+    } else if (parsed.event.eventId !== event.eventId ||
+        String(comment.body || '') !== expectedBody ||
+        securityDigest(String(comment.body || '')) !== expectedDigest) {
+      tamperReason =
+        'An edited policy projection does not match its canonical event.';
+    }
+    if (tamperReason) {
+      errors.push(tamperReason);
+      await restorePolicyProjection({
+        client,
+        store,
+        envelope,
+        publisherAppId,
+        event,
+        projection,
+        comments,
+      });
+    }
+  }
+
+  for (const comment of comments) {
+    if (Number(comment.performed_via_github_app?.id) !== Number(publisherAppId) ||
+        !String(comment.body || '').includes(POLICY_EVENT_MARKER_PREFIX)) {
+      continue;
+    }
+    const parsed = parsePolicyEventComment(comment.body);
+    if (parsed.error || !canonical.has(parsed.event.eventId)) {
+      errors.push(
+        'An App-authored policy projection has no matching canonical ledger event.');
+    }
+  }
+  return { comments, events, errors };
+}
+
+async function loadPolicyLedger({
+  client,
+  store,
+  envelope,
+  pullRequest,
+  publisherAppId,
+}) {
+  const projection = await reconcilePolicyProjection({
     client,
+    store,
     envelope,
-    pullNumber: pullRequest.number,
+    pullRequest,
+    publisherAppId,
   });
   const identity = pullIdentity(pullRequest);
-  const trusted = trustedPolicyEvents(comments, {
-    appId: publisherAppId,
-    repositoryId: envelope.repository.id,
-    repository: envelope.repository.fullName,
-    pullNumber: pullRequest.number,
-  });
   return {
-    ...trusted,
-    comments,
+    ...projection,
     snapshot: foldPolicyEvents(
-      trusted.events,
-      trusted.errors,
+      projection.events,
+      projection.errors,
       { identity }),
   };
 }
 
 async function appendPolicyEvent({
   client,
+  store,
   envelope,
   event,
   publisherAppId,
 }) {
+  const validationError = policyEventValidationError(event);
+  if (validationError ||
+      Number(event.repositoryId) !== Number(envelope.repository.id) ||
+      String(event.repository).toLowerCase() !==
+        envelope.repository.fullName.toLowerCase()) {
+    throw new Error('The canonical policy event is malformed or cross-repository.');
+  }
+  await requireStoreMethod(store, 'appendPolicyLedgerEvent')({
+    repositoryId: Number(envelope.repository.id),
+    repository: envelope.repository.fullName,
+    pullNumber: Number(event.pullNumber),
+    event,
+  });
+  const body = policyEventComment(event);
   const response = await client.rest.issues.createComment({
     ...repoParameters(envelope),
     issue_number: event.pullNumber,
-    body: policyEventComment(event),
+    body,
   });
   if (Number(response.data?.performed_via_github_app?.id) !==
-      Number(publisherAppId)) {
+      Number(publisherAppId) ||
+      String(response.data?.body || '') !== body) {
     throw new Error('Policy event publisher does not match the configured GitHub App.');
   }
+  await requireStoreMethod(store, 'upsertPolicyProjection')({
+    repositoryId: Number(envelope.repository.id),
+    repository: envelope.repository.fullName,
+    pullNumber: Number(event.pullNumber),
+    eventId: event.eventId,
+    commentId: Number(response.data.id),
+    bodyDigest: securityDigest(body),
+  });
   return response.data;
 }
 
 async function recordCopilotAttestationFromEvent({
   client,
+  store,
   envelope,
   publisherAppId,
 }) {
@@ -283,34 +481,8 @@ async function recordCopilotAttestationFromEvent({
       reviewSubmittedAt: review.submitted_at,
     },
   });
-  await appendPolicyEvent({ client, envelope, event, publisherAppId });
+  await appendPolicyEvent({ client, store, envelope, event, publisherAppId });
   return event;
-}
-
-async function restoreDeletedPolicyEventFromEvent({
-  client,
-  envelope,
-  publisherAppId,
-}) {
-  if (envelope.delivery.eventPath !== 'issue_comment' ||
-      envelope.payload?.action !== 'deleted' ||
-      !envelope.payload.issue?.pull_request ||
-      Number(envelope.payload.comment?.performed_via_github_app?.id) !==
-        Number(publisherAppId)) {
-    return null;
-  }
-  const parsed = parsePolicyEventComment(envelope.payload.comment.body);
-  if (parsed.error ||
-      Number(parsed.event.pullNumber) !== Number(envelope.payload.issue.number)) {
-    throw new Error('A deleted App policy event could not be restored safely.');
-  }
-  await appendPolicyEvent({
-    client,
-    envelope,
-    event: parsed.event,
-    publisherAppId,
-  });
-  return parsed.event;
 }
 
 async function labelsForIssue({ client, envelope, issueNumber }) {
@@ -367,12 +539,14 @@ function sourceDefinition(event) {
 
 async function observeCurrentRequirements({
   client,
+  store,
   envelope,
   pullRequest,
   publisherAppId,
 }) {
   let ledger = await loadPolicyLedger({
     client,
+    store,
     envelope,
     pullRequest,
     publisherAppId,
@@ -451,11 +625,18 @@ async function observeCurrentRequirements({
     }));
   }
   for (const event of observations) {
-    await appendPolicyEvent({ client, envelope, event, publisherAppId });
+    await appendPolicyEvent({
+      client,
+      store,
+      envelope,
+      event,
+      publisherAppId,
+    });
   }
   if (observations.length > 0) {
     ledger = await loadPolicyLedger({
       client,
+      store,
       envelope,
       pullRequest,
       publisherAppId,
@@ -574,6 +755,7 @@ async function domainReviewEvidence({
 
 async function validateAndRecordSpecialistArtifact({
   client,
+  store,
   envelope,
   pullRequest,
   publisherAppId,
@@ -583,10 +765,14 @@ async function validateAndRecordSpecialistArtifact({
   const identity = pullIdentity(pullRequest);
   const ledger = await loadPolicyLedger({
     client,
+    store,
     envelope,
     pullRequest,
     publisherAppId,
   });
+  if (ledger.snapshot.errors.length > 0) {
+    throw new Error('The canonical policy ledger or its projection is malformed.');
+  }
   const allowed = allowlist.find((candidate) =>
     Number(candidate.appId) === Number(request.attester?.appId) &&
     candidate.slug === request.attester?.slug &&
@@ -687,12 +873,7 @@ async function validateAndRecordSpecialistArtifact({
       summary: request.summary,
     },
   });
-  await appendPolicyEvent({
-    client,
-    envelope,
-    event,
-    publisherAppId,
-  });
+  await appendPolicyEvent({ client, store, envelope, event, publisherAppId });
   return event;
 }
 
@@ -731,10 +912,22 @@ function threadSecurityState(threads) {
 
 function basicPullMapping(envelope, pullRequest) {
   const identity = pullIdentity(pullRequest);
-  return {
+  const headRepositoryId = Number(pullRequest?.head?.repo?.id);
+  const headRepository = String(pullRequest?.head?.repo?.full_name || '');
+  const headRef = String(pullRequest?.head?.ref || '');
+  if (!Number.isInteger(headRepositoryId) ||
+      headRepositoryId <= 0 ||
+      !headRepository ||
+      !headRef) {
+    throw new Error('The live pull request lacks exact head repository/ref identity.');
+  }
+  const mapping = {
     repositoryId: Number(envelope.repository.id),
     repository: envelope.repository.fullName,
     pullNumber: identity.pullNumber,
+    headRepositoryId,
+    headRepository,
+    headRef,
     headSha: identity.headSha,
     baseRepositoryId: identity.baseRepositoryId,
     baseRepository: identity.baseRepository,
@@ -744,20 +937,89 @@ function basicPullMapping(envelope, pullRequest) {
     reviewerLogins: [],
     open: pullRequest.state === 'open',
   };
+  mapping.diffIdentity = securityDigest({
+    pullNumber: mapping.pullNumber,
+    headRepositoryId: mapping.headRepositoryId,
+    headRepository: mapping.headRepository.toLowerCase(),
+    headRef: mapping.headRef,
+    headSha: mapping.headSha,
+    baseRepositoryId: mapping.baseRepositoryId,
+    baseRepository: mapping.baseRepository.toLowerCase(),
+    baseRef: mapping.baseRef,
+    baseSha: mapping.baseSha,
+  });
+  return mapping;
 }
 
 function mappingIdentity(mapping) {
   return validatePullIdentity({
     pullNumber: mapping.pullNumber,
+    headRepositoryId: mapping.headRepositoryId,
+    headRepository: mapping.headRepository,
+    headRef: mapping.headRef,
     headSha: mapping.headSha,
     baseRepositoryId: mapping.baseRepositoryId,
     baseRepository: mapping.baseRepository,
     baseRef: mapping.baseRef,
     baseSha: mapping.baseSha,
+    diffIdentity: mapping.diffIdentity,
   });
 }
 
+function exactMappingIdentity(mapping) {
+  const identity = mappingIdentity(mapping);
+  const normalized = {
+    ...identity,
+    headRepositoryId: Number(mapping?.headRepositoryId),
+    headRepository: String(mapping?.headRepository || ''),
+    headRef: String(mapping?.headRef || ''),
+  };
+  if (!Number.isInteger(normalized.headRepositoryId) ||
+      normalized.headRepositoryId <= 0 ||
+      !normalized.headRepository ||
+      !normalized.headRef) {
+    throw new Error('The durable PR mapping lacks exact head identity.');
+  }
+  const diffIdentity = securityDigest({
+    pullNumber: normalized.pullNumber,
+    headRepositoryId: normalized.headRepositoryId,
+    headRepository: normalized.headRepository.toLowerCase(),
+    headRef: normalized.headRef,
+    headSha: normalized.headSha,
+    baseRepositoryId: normalized.baseRepositoryId,
+    baseRepository: normalized.baseRepository.toLowerCase(),
+    baseRef: normalized.baseRef,
+    baseSha: normalized.baseSha,
+  });
+  if (mapping?.diffIdentity !== diffIdentity) {
+    throw new Error('The durable PR mapping has an invalid diff identity digest.');
+  }
+  return { ...normalized, diffIdentity };
+}
+
+function sameMappingIdentity(left, right) {
+  try {
+    const first = exactMappingIdentity(left);
+    const second = exactMappingIdentity(right);
+    return first.diffIdentity === second.diffIdentity &&
+      first.pullNumber === second.pullNumber;
+  } catch {
+    return false;
+  }
+}
+
+function currentMapping(envelope, pullRequest, previous = null) {
+  const mapping = basicPullMapping(envelope, pullRequest);
+  return {
+    ...mapping,
+    issueNumbers: [...new Set(previous?.issueNumbers || [])].sort(
+      (left, right) => left - right),
+    reviewerLogins: [...new Set(previous?.reviewerLogins || [])].sort(),
+  };
+}
+
 async function persistPullMapping(store, mapping) {
+  exactMappingIdentity(mapping);
   return requireStoreMethod(store, 'upsertPullMapping')(mapping);
 }
 
@@ -805,6 +1067,7 @@ async function evaluatePullSnapshot({
   }
   const ledger = await observeCurrentRequirements({
     client,
+    store,
     envelope,
     pullRequest,
     publisherAppId,
@@ -889,6 +1152,34 @@ async function openPullsSharingHead({ client, envelope, headSha }) {
   return pulls
     .filter((pullRequest) => pullRequest.head?.sha === headSha)
     .sort((left, right) => left.number - right.number);
+}
+
+async function listAllOpenPulls({ client, envelope }) {
+  const pulls = [];
+  const seen = new Set();
+  for (let page = 1; page <= 1000; page += 1) {
+    const response = await client.rest.pulls.list({
+      ...repoParameters(envelope),
+      state: 'open',
+      per_page: 100,
+      page,
+    });
+    if (!Array.isArray(response?.data)) {
+      throw new Error('Open-PR pagination returned malformed data.');
+    }
+    for (const pullRequest of response.data) {
+      if (!Number.isInteger(Number(pullRequest?.number)) ||
+          seen.has(Number(pullRequest.number))) {
+        throw new Error('Open-PR pagination returned duplicate or invalid identity.');
+      }
+      seen.add(Number(pullRequest.number));
+      pulls.push(pullRequest);
+    }
+    if (response.data.length < 100) {
+      return pulls.sort((left, right) => left.number - right.number);
+    }
+  }
+  throw new Error('Open-PR pagination exceeded the fail-closed safety bound.');
 }
 
 function aggregateSnapshots(snapshots, headSha) {
@@ -1037,8 +1328,8 @@ async function evaluateHeadUntilStable({
 function normalizedTargets(mappings, baseOverride = null) {
   return [...mappings]
     .map((mapping) => {
-      const identity = mappingIdentity(mapping);
-      return {
+      const identity = exactMappingIdentity(mapping);
+      const target = {
         ...identity,
         ...(baseOverride
           ? {
@@ -1049,12 +1340,24 @@ function normalizedTargets(mappings, baseOverride = null) {
             }
           : {}),
       };
+      target.diffIdentity = securityDigest({
+        pullNumber: target.pullNumber,
+        headRepositoryId: target.headRepositoryId,
+        headRepository: target.headRepository.toLowerCase(),
+        headRef: target.headRef,
+        headSha: target.headSha,
+        baseRepositoryId: target.baseRepositoryId,
+        baseRepository: target.baseRepository.toLowerCase(),
+        baseRef: target.baseRef,
+        baseSha: target.baseSha,
+      });
+      return target;
     })
     .sort((left, right) => left.pullNumber - right.pullNumber);
 }
 
 function validateGenerationProvenance(provenance) {
-  if (provenance.schemaVersion !== 4 ||
+  if (provenance.schemaVersion !== 5 ||
       provenance.contractRevision !== CONTRACT_REVISION ||
       !EVENT_PATHS.has(provenance.eventPath) ||
       !/^[0-9a-f]{64}$/.test(String(provenance.workerRevision || '')) ||
@@ -1074,7 +1377,7 @@ function validateGenerationProvenance(provenance) {
     throw new Error('The App-check generation provenance is incomplete.');
   }
   for (const target of provenance.targets) {
-    validatePullIdentity(target);
+    exactMappingIdentity(target);
   }
   return provenance;
 }
@@ -1136,7 +1439,7 @@ async function createGeneration({
     throw new Error('The durable store did not reserve a monotonic generation.');
   }
   const provenance = validateGenerationProvenance({
-    schemaVersion: 4,
+    schemaVersion: 5,
     contractRevision: CONTRACT_REVISION,
     eventPath: envelope.delivery.eventPath,
     workerRevision: envelope.worker.revision,
@@ -1321,7 +1624,43 @@ async function evaluatePendingBatch({
   evaluatorOptions = {},
   requiredBase = null,
 }) {
+  const evaluated = await evaluateGenerationBatch({
+    client,
+    store,
+    envelope,
+    publisherAppId,
+    generations,
+    evaluatorOptions,
+    requiredBase,
+  });
   const results = [];
+  for (const item of evaluated) {
+    const completed = await completeGeneration({
+      client,
+      store,
+      envelope,
+      checkRun: item.generation,
+      publisherAppId,
+      result: item.result,
+    });
+    results.push({
+      ...item,
+      superseded: !completed,
+    });
+  }
+  return results;
+}
+
+async function evaluateGenerationBatch({
+  client,
+  store,
+  envelope,
+  publisherAppId,
+  generations,
+  evaluatorOptions = {},
+  requiredBase = null,
+}) {
+  const evaluated = [];
   for (const item of generations) {
     let aggregate;
     try {
@@ -1336,27 +1675,16 @@ async function evaluatePendingBatch({
       });
     } catch (error) {
       aggregate = {
+        evaluationFailed: true,
         result: {
           state: 'rejected',
           reasons: [sanitizedApiFailure(error)],
         },
       };
     }
-    const completed = await completeGeneration({
-      client,
-      store,
-      envelope,
-      checkRun: item.generation,
-      publisherAppId,
-      result: aggregate.result,
-    });
-    results.push({
-      ...aggregate,
-      superseded: !completed,
-      generation: item.generation,
-    });
+    evaluated.push({ ...aggregate, generation: item.generation });
   }
-  return results;
+  return evaluated;
 }
 
 async function completePendingBatch({
@@ -1445,11 +1773,11 @@ async function handlePullRequestEvent(options) {
   assertExternalEnvelope(envelope);
   const pullRequest = envelope.payload?.pull_request;
   const mapping = basicPullMapping(envelope, pullRequest);
-  await persistPullMapping(store, mapping);
   const result = await publishAndEvaluateMappings({
     ...options,
     mappings: [mapping],
     associationKind: 'pull_request',
+    beforeEvaluate: () => persistPullMapping(store, mapping),
   });
   if (pullRequest.state !== 'open' || envelope.payload.action === 'closed') {
     await requireStoreMethod(store, 'closePullMapping')(pullRequest.number);
@@ -1462,16 +1790,19 @@ async function handleReviewEvent(options) {
   assertExternalEnvelope(envelope);
   const pullRequest = envelope.payload?.pull_request;
   const mapping = basicPullMapping(envelope, pullRequest);
-  await persistPullMapping(store, mapping);
   return publishAndEvaluateMappings({
     ...options,
     mappings: [mapping],
     associationKind: 'pull_request_review',
-    beforeEvaluate: () => recordCopilotAttestationFromEvent({
-      client,
-      envelope,
-      publisherAppId,
-    }),
+    beforeEvaluate: async () => {
+      await persistPullMapping(store, mapping);
+      await recordCopilotAttestationFromEvent({
+        client,
+        store,
+        envelope,
+        publisherAppId,
+      });
+    },
   });
 }
 
@@ -1487,7 +1818,7 @@ async function commentMappings(store, envelope) {
 }
 
 async function handleCommentEvent(options) {
-  const { envelope, store, client, publisherAppId } = options;
+  const { envelope, store } = options;
   assertExternalEnvelope(envelope);
   const mappings = await commentMappings(store, envelope);
   if (mappings.length === 0) {
@@ -1497,11 +1828,6 @@ async function handleCommentEvent(options) {
     ...options,
     mappings,
     associationKind: envelope.delivery.eventPath,
-    beforeEvaluate: () => restoreDeletedPolicyEventFromEvent({
-      client,
-      envelope,
-      publisherAppId,
-    }),
   });
 }
 
@@ -1550,12 +1876,37 @@ async function handleMembershipEvent(options) {
   });
 }
 
-function baseFromPush(envelope) {
+function allowedProtectedBaseBranches(envelope, configured) {
+  const values = configured === undefined
+    ? [envelope.repository.defaultBranch]
+    : configured;
+  if (!Array.isArray(values) ||
+      values.length === 0 ||
+      values.some((value) =>
+        !String(value || '').trim() ||
+        String(value).startsWith('refs/')) ||
+      new Set(values).size !== values.length) {
+    throw new Error('Protected base branch configuration is invalid.');
+  }
+  return new Set(values.map(String));
+}
+
+function baseFromPush(envelope, configuredProtectedBranches) {
   const ref = String(envelope.payload?.ref || '');
-  const baseRef = ref.replace(/^refs\/heads\//, '');
   const sha = String(envelope.payload?.after || '');
-  if (!baseRef || !/^[0-9a-f]{40}$/.test(sha)) {
-    throw new Error('A base push requires an exact branch ref and after SHA.');
+  const allowed = allowedProtectedBaseBranches(
+    envelope,
+    configuredProtectedBranches);
+  if (envelope.payload?.deleted === true ||
+      sha === ZERO_SHA ||
+      !/^[0-9a-f]{40}$/.test(sha) ||
+      !ref.startsWith('refs/heads/')) {
+    throw new Error(
+      'Push handling rejects deletions, tags, and malformed branch identity.');
+  }
+  const baseRef = ref.slice('refs/heads/'.length);
+  if (!allowed.has(baseRef) || ref !== `refs/heads/${baseRef}`) {
+    throw new Error('Push handling accepts only an allowlisted protected base branch.');
   }
   return {
     repositoryId: Number(envelope.repository.id),
@@ -1563,6 +1914,20 @@ function baseFromPush(envelope) {
     ref: baseRef,
     sha,
   };
+}
+
+async function verifyProtectedBaseTip({ client, envelope, base }) {
+  const response = await client.rest.repos.getBranch({
+    ...repoParameters(envelope),
+    branch: base.ref,
+  });
+  if (response.data?.name !== base.ref ||
+      response.data?.protected !== true ||
+      response.data?.commit?.sha !== base.sha) {
+    throw new Error(
+      'The supplied push SHA is not the current protected base branch tip.');
+  }
+  return base;
 }
 
 function notApplicableBaseResult(base, reevaluatedCount) {
@@ -1583,9 +1948,10 @@ async function handleBasePushEvent(options) {
     envelope,
     publisherAppId,
     evaluatorOptions = {},
+    protectedBaseBranches,
   } = options;
   assertExternalEnvelope(envelope);
-  const base = baseFromPush(envelope);
+  const base = baseFromPush(envelope, protectedBaseBranches);
   const mappings = await requireStoreMethod(
     store,
     'listPullMappingsByBase')({
@@ -1611,22 +1977,58 @@ async function handleBasePushEvent(options) {
     association: { kind: 'default_branch', ref: base.ref },
     baseOverride: base,
   });
-  const results = await evaluatePendingBatch({
-    client,
-    store,
-    envelope,
-    publisherAppId,
-    generations: pending,
-    evaluatorOptions,
-    requiredBase: base,
-  });
+  let evaluated;
+  let baseResult;
+  try {
+    await verifyProtectedBaseTip({ client, envelope, base });
+    evaluated = await evaluateGenerationBatch({
+      client,
+      store,
+      envelope,
+      publisherAppId,
+      generations: pending,
+      evaluatorOptions,
+      requiredBase: base,
+    });
+    if (evaluated.some((item) => item.evaluationFailed)) {
+      throw new Error('Affected PR reevaluation failed before base completion.');
+    }
+    await verifyProtectedBaseTip({ client, envelope, base });
+    baseResult = notApplicableBaseResult(base, pending.length);
+  } catch (error) {
+    const result = {
+      state: 'rejected',
+      reasons: [
+        error?.status === 403 || error?.status === 429
+          ? sanitizedApiFailure(error)
+          : 'The protected base branch identity or tip failed closed verification.',
+      ],
+    };
+    evaluated = pending.map((item) => ({
+      result,
+      generation: item.generation,
+    }));
+    baseResult = result;
+  }
+  const results = [];
+  for (const item of evaluated) {
+    const completed = await completeGeneration({
+      client,
+      store,
+      envelope,
+      checkRun: item.generation,
+      publisherAppId,
+      result: item.result,
+    });
+    results.push({ ...item, superseded: !completed });
+  }
   await completeGeneration({
     client,
     store,
     envelope,
     checkRun: baseGeneration,
     publisherAppId,
-    result: notApplicableBaseResult(base, pending.length),
+    result: baseResult,
   });
   return { baseGeneration, results };
 }
@@ -1881,13 +2283,9 @@ async function handleReconciliation(options) {
 
   let livePulls;
   try {
-    livePulls = await client.paginate(client.rest.pulls.list, {
-      ...repoParameters(envelope),
-      state: 'open',
-      per_page: 100,
-    });
+    livePulls = await listAllOpenPulls({ client, envelope });
   } catch (error) {
-    return completePendingBatch({
+    const failed = await completePendingBatch({
       client,
       store,
       envelope,
@@ -1898,25 +2296,60 @@ async function handleReconciliation(options) {
         reasons: [sanitizedApiFailure(error)],
       },
     });
+    if (knownPending.length === 0) {
+      throw error;
+    }
+    return failed;
   }
-  const knownNumbers = new Set(known.map((mapping) => mapping.pullNumber));
-  const discovered = livePulls
-    .filter((pullRequest) => !knownNumbers.has(pullRequest.number))
-    .map((pullRequest) => basicPullMapping(envelope, pullRequest));
-  for (const mapping of discovered) {
-    await persistPullMapping(store, mapping);
-  }
-  const discoveredPending = await startPendingBatch({
+
+  const knownByNumber = new Map(known.map((mapping) =>
+    [Number(mapping.pullNumber), mapping]));
+  const current = livePulls.map((pullRequest) => currentMapping(
+    envelope,
+    pullRequest,
+    knownByNumber.get(Number(pullRequest.number))));
+  const drifted = current.filter((mapping) => {
+    const previous = knownByNumber.get(mapping.pullNumber);
+    return !previous || !sameMappingIdentity(previous, mapping);
+  });
+
+  const currentPending = await startPendingBatch({
     client,
     store,
     envelope,
     publisherAppId,
-    mappings: discovered,
-    associationKind: 'reconciliation-discovery',
+    mappings: current,
+    associationKind: drifted.length > 0
+      ? 'reconciliation-identity-refresh'
+      : 'reconciliation-current',
+  });
+
+  for (const mapping of current) {
+    await persistPullMapping(store, mapping);
+  }
+  const liveNumbers = new Set(current.map((mapping) => mapping.pullNumber));
+  for (const mapping of known) {
+    if (!liveNumbers.has(Number(mapping.pullNumber))) {
+      await requireStoreMethod(store, 'closePullMapping')(mapping.pullNumber);
+    }
+  }
+
+  await completePendingBatch({
+    client,
+    store,
+    envelope,
+    publisherAppId,
+    generations: knownPending,
+    result: {
+      state: 'rejected',
+      reasons: [
+        'The pre-enumeration reconciliation generation was superseded by the exact live PR identity sweep.',
+      ],
+    },
   });
   return evaluatePendingBatch({
     ...options,
-    generations: [...knownPending, ...discoveredPending],
+    generations: currentPending,
   });
 }
 
@@ -1950,6 +2383,7 @@ async function handleSpecialistAttestation(options) {
     });
     await validateAndRecordSpecialistArtifact({
       client,
+      store,
       envelope,
       pullRequest: response.data,
       publisherAppId,
@@ -2082,12 +2516,14 @@ module.exports = {
   aggregateSnapshots,
   appendPolicyEvent,
   assertExternalEnvelope,
+  baseFromPush,
   basicPullMapping,
   completeGeneration,
   createGeneration,
   domainReviewEvidence,
   evaluateHeadSnapshot,
   evaluateHeadUntilStable,
+  evaluateGenerationBatch,
   evaluateMergeGroupSnapshot,
   evaluateMergeGroupUntilStable,
   evaluatePendingBatch,
@@ -2106,10 +2542,12 @@ module.exports = {
   handleSpecialistAttestation,
   handleTrustedDispatch,
   listAppGenerations,
+  listAllOpenPulls,
   listPolicyComments,
   listReviewThreads,
   loadPolicyLedger,
   mappingIdentity,
+  exactMappingIdentity,
   newestDomainCandidate,
   notApplicableBaseResult,
   observeCurrentRequirements,
@@ -2117,9 +2555,11 @@ module.exports = {
   persistPullMapping,
   publishAndEvaluateMappings,
   recordCopilotAttestationFromEvent,
-  restoreDeletedPolicyEventFromEvent,
+  reconcilePolicyProjection,
   sanitizedApiFailure,
+  sameMappingIdentity,
   startPendingBatch,
   validateAndRecordSpecialistArtifact,
   validateGenerationProvenance,
+  verifyProtectedBaseTip,
 };

@@ -12,22 +12,29 @@ const {
   CHECK_NAME,
   CONTRACT_REVISION,
   COPILOT_REVIEWER,
+  POLICY_EVENT_MARKER_PREFIX,
   evaluateReviewCompletion,
   foldPolicyEvents,
   makeObservationEpoch,
   makePolicyEvent,
+  parsePolicyEventComment,
   policyEventComment,
   pullIdentity,
   reviewMarker,
+  securityDigest,
+  stableValue,
   trustedPolicyEvents,
 } = require('./review-gate-policy');
 const {
+  basicPullMapping,
   completeGeneration,
   createGeneration,
   evaluateHeadSnapshot,
   evaluateHeadUntilStable,
+  exactMappingIdentity,
   externalIdForProvenance,
   handleEvent,
+  listAllOpenPulls,
   listReviewThreads,
   sanitizedApiFailure,
 } = require('./review-gate-app');
@@ -39,6 +46,7 @@ const {
   verifyCanaryRun,
 } = require('./review-gate-ruleset');
 const {
+  inputIdentity,
   reductionTargets,
 } = require('./record-review-gate-policy');
 
@@ -56,8 +64,8 @@ const fixtures = JSON.parse(fs.readFileSync(
   'utf8'));
 let sequence = 0;
 
-function endpoint(kind) {
-  const marker = function endpointMarker() {};
+function endpoint(kind, implementation = async () => undefined) {
+  const marker = implementation;
   marker.kind = kind;
   return marker;
 }
@@ -73,7 +81,7 @@ function pull(number = 115, overrides = {}) {
     head: {
       sha: HEAD,
       ref: `feature-${number}`,
-      repo: { full_name: 'Jamula/Andreja' },
+      repo: { id: REPOSITORY_ID, full_name: 'Jamula/Andreja' },
     },
     base: {
       sha: BASE,
@@ -214,7 +222,7 @@ function copilotAttestationEvent(pullRequest, review) {
 
 function domainReview(pullRequest, domain, policyDigest, overrides = {}) {
   const binding = {
-    schemaVersion: 4,
+    schemaVersion: 5,
     kind: 'independent-review',
     domain,
     ...pullIdentity(pullRequest),
@@ -286,10 +294,13 @@ function mapping(pullRequest, {
   reviewers = [],
 } = {}) {
   const identity = pullIdentity(pullRequest);
-  return {
+  const value = {
     repositoryId: REPOSITORY_ID,
     repository: 'Jamula/Andreja',
     pullNumber: identity.pullNumber,
+    headRepositoryId: Number(pullRequest.head.repo.id),
+    headRepository: pullRequest.head.repo.full_name,
+    headRef: pullRequest.head.ref,
     headSha: identity.headSha,
     baseRepositoryId: identity.baseRepositoryId,
     baseRepository: identity.baseRepository,
@@ -299,16 +310,90 @@ function mapping(pullRequest, {
     reviewerLogins: reviewers,
     open: true,
   };
+  value.diffIdentity = securityDigest({
+    pullNumber: value.pullNumber,
+    headRepositoryId: value.headRepositoryId,
+    headRepository: value.headRepository.toLowerCase(),
+    headRef: value.headRef,
+    headSha: value.headSha,
+    baseRepositoryId: value.baseRepositoryId,
+    baseRepository: value.baseRepository.toLowerCase(),
+    baseRef: value.baseRef,
+    baseSha: value.baseSha,
+  });
+  return value;
+}
+
+function canonicalPolicyState(events, comments) {
+  return {
+    policyEvents: structuredClone(events),
+    projections: events.map((event) => {
+      const comment = (comments[event.pullNumber] || []).find((candidate) =>
+        String(candidate.body || '') === policyEventComment(event));
+      if (!comment) {
+        throw new Error(`Test fixture lacks projection for ${event.eventId}.`);
+      }
+      return {
+        repositoryId: REPOSITORY_ID,
+        repository: 'Jamula/Andreja',
+        pullNumber: event.pullNumber,
+        eventId: event.eventId,
+        commentId: Number(comment.id),
+        bodyDigest: securityDigest(comment.body),
+      };
+    }),
+  };
+}
+
+function canonicalPolicyStateFromComments(comments) {
+  const events = Object.values(comments).flat().map((comment) => {
+    const parsed = parsePolicyEventComment(comment.body);
+    if (parsed.error) {
+      throw new Error(parsed.error);
+    }
+    return parsed.event;
+  });
+  return canonicalPolicyState(events, comments);
+}
+
+async function appendCanonicalFixture(store, event, comment) {
+  await store.appendPolicyLedgerEvent({
+    repositoryId: REPOSITORY_ID,
+    repository: 'Jamula/Andreja',
+    pullNumber: event.pullNumber,
+    event,
+  });
+  await store.upsertPolicyProjection({
+    repositoryId: REPOSITORY_ID,
+    repository: 'Jamula/Andreja',
+    pullNumber: event.pullNumber,
+    eventId: event.eventId,
+    commentId: Number(comment.id),
+    bodyDigest: securityDigest(comment.body),
+  });
 }
 
 class FakeStore {
-  constructor({ mappings = [], mergeGroups = {} } = {}) {
+  constructor({
+    mappings = [],
+    mergeGroups = {},
+    policyEvents = [],
+    projections = [],
+  } = {}) {
     this.mappings = new Map(mappings.map((item) =>
       [item.pullNumber, structuredClone(item)]));
     this.mergeGroups = structuredClone(mergeGroups);
     this.generations = [];
     this.sequences = new Map();
     this.deliveries = new Map();
+    this.policyEvents = new Map();
+    for (const event of policyEvents) {
+      const values = this.policyEvents.get(Number(event.pullNumber)) || [];
+      values.push(structuredClone(event));
+      this.policyEvents.set(Number(event.pullNumber), values);
+    }
+    this.projections = new Map(projections.map((projection) =>
+      [projection.eventId, structuredClone(projection)]));
   }
 
   async upsertPullMapping(value) {
@@ -420,6 +505,34 @@ class FakeStore {
     return numbers.map((number) => structuredClone(this.mappings.get(number)))
       .filter(Boolean);
   }
+
+  async appendPolicyLedgerEvent(record) {
+    const values = this.policyEvents.get(Number(record.pullNumber)) || [];
+    const existing = values.find((event) => event.eventId === record.event.eventId);
+    if (existing &&
+        securityDigest(existing) !== securityDigest(record.event)) {
+      throw new Error('Conflicting canonical policy event.');
+    }
+    if (!existing) {
+      values.push(structuredClone(record.event));
+      this.policyEvents.set(Number(record.pullNumber), values);
+    }
+  }
+
+  async listPolicyLedgerEvents({ pullNumber }) {
+    return structuredClone(this.policyEvents.get(Number(pullNumber)) || []);
+  }
+
+  async upsertPolicyProjection(projection) {
+    this.projections.set(projection.eventId, structuredClone(projection));
+  }
+
+  async listPolicyProjections({ pullNumber }) {
+    return [...this.projections.values()]
+      .filter((projection) =>
+        Number(projection.pullNumber) === Number(pullNumber))
+      .map((projection) => structuredClone(projection));
+  }
 }
 
 class FakeClient {
@@ -432,6 +545,7 @@ class FakeClient {
     permissions = { reviewer: 'write', maintainer: 'admin' },
     appId = APP_ID,
     branches = { main: BASE },
+    protectedBranches = ['main'],
     mergeGroups = {},
     specialistRuns = {},
     specialistArtifacts = {},
@@ -449,6 +563,7 @@ class FakeClient {
       appId,
       issues: {},
       branches: structuredClone(branches),
+      protectedBranches: new Set(protectedBranches),
       mergeGroups: structuredClone(mergeGroups),
       specialistRuns: structuredClone(specialistRuns),
       specialistArtifacts: structuredClone(specialistArtifacts),
@@ -498,6 +613,19 @@ class FakeClient {
           this.state.comments[parameters.issue_number].push(comment);
           return { data: structuredClone(comment) };
         },
+        updateComment: async (parameters) => {
+          this.#maybeFail('issues.updateComment');
+          this.callLog.push(`issues.updateComment:${parameters.comment_id}`);
+          for (const commentsForPull of Object.values(this.state.comments)) {
+            const comment = commentsForPull.find((candidate) =>
+              Number(candidate.id) === Number(parameters.comment_id));
+            if (comment) {
+              comment.body = parameters.body;
+              return { data: structuredClone(comment) };
+            }
+          }
+          throw Object.assign(new Error('Comment not found.'), { status: 404 });
+        },
         get: async ({ issue_number }) => ({
           data: this.state.issues[issue_number] || {
             number: issue_number,
@@ -516,7 +644,18 @@ class FakeClient {
               candidate.number === pull_number)),
           };
         },
-        list: endpoint('pulls'),
+        list: endpoint('pulls', async (parameters) => {
+          this.#maybeFail('pulls.list');
+          const page = Number(parameters.page || 1);
+          const perPage = Number(parameters.per_page || 30);
+          this.callLog.push(`pulls.list:${page}`);
+          const pulls = this.state.pulls.filter((candidate) =>
+            candidate.state === (parameters.state || candidate.state));
+          const start = (page - 1) * perPage;
+          return {
+            data: structuredClone(pulls.slice(start, start + perPage)),
+          };
+        }),
         listReviews: endpoint('reviews'),
       },
       repos: {
@@ -530,7 +669,13 @@ class FakeClient {
         getBranch: async ({ branch }) => {
           this.#maybeFail('repos.getBranch');
           this.callLog.push(`repos.getBranch:${branch}`);
-          return { data: { commit: { sha: this.state.branches[branch] } } };
+          return {
+            data: {
+              name: branch,
+              protected: this.state.protectedBranches.has(branch),
+              commit: { sha: this.state.branches[branch] },
+            },
+          };
         },
       },
     };
@@ -631,17 +776,21 @@ function seededState({
   for (const domain of domains) {
     reviews.push(domainReview(pullRequest, domain, policy.digest));
   }
+  const comments = {
+    [pullRequest.number]: events.map((event, index) =>
+      trustedComment(event, APP_ID, index + 1)),
+  };
   const client = new FakeClient({
     pulls: [pullRequest],
-    comments: {
-      [pullRequest.number]: events.map((event, index) =>
-        trustedComment(event, APP_ID, index + 1)),
-    },
+    comments,
     labels,
     reviews: { [pullRequest.number]: reviews },
     permissions,
   });
-  const store = new FakeStore({ mappings: [mapping(pullRequest)] });
+  const store = new FakeStore({
+    mappings: [mapping(pullRequest)],
+    ...canonicalPolicyState(events, comments),
+  });
   return { client, store, policy, events, reviews };
 }
 
@@ -655,6 +804,19 @@ async function runPullEvent(state, pullRequest = state.client.state.pulls[0]) {
     }),
     publisherAppId: APP_ID,
     evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+}
+
+async function runReconciliation(state, overrides = {}) {
+  return handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('reconciliation', {
+      reason: 'periodic-full-reconciliation',
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+    ...overrides,
   });
 }
 
@@ -804,6 +966,29 @@ test('reduction tooling emits exact event and epoch targets only', () => {
     pullIdentity(current)), /stale|epoch/);
 });
 
+test('trusted policy commands require the full exact diff identity', () => {
+  const identity = pullIdentity(pull());
+  const inputs = {
+    pull_number: identity.pullNumber,
+    head_repository_id: identity.headRepositoryId,
+    head_repository: identity.headRepository,
+    head_ref: identity.headRef,
+    head_sha: identity.headSha,
+    base_repository_id: identity.baseRepositoryId,
+    base_repository: identity.baseRepository,
+    base_ref: identity.baseRef,
+    base_sha: identity.baseSha,
+    diff_identity: identity.diffIdentity,
+  };
+  assert.deepEqual(inputIdentity(inputs), identity);
+  assert.throws(
+    () => inputIdentity({ ...inputs, head_ref: '' }),
+    /complete diff identity/);
+  assert.throws(
+    () => inputIdentity({ ...inputs, diff_identity: '0'.repeat(64) }),
+    /diff identity digest/);
+});
+
 test('repository Actions cannot authenticate or host the publisher contract', async () => {
   const state = seededState();
   const unsafe = envelope('pull_request', {
@@ -859,7 +1044,10 @@ test('Copilot webhook attestation binds exact PR, head, and base', async () => {
     comments: { 115: [trustedComment(bind, APP_ID, 1)] },
     reviews: { 115: [review] },
   });
-  const store = new FakeStore({ mappings: [mapping(current)] });
+  const store = new FakeStore({
+    mappings: [mapping(current)],
+    ...canonicalPolicyStateFromComments(client.state.comments),
+  });
   await handleEvent({
     client,
     store,
@@ -910,7 +1098,7 @@ test('issue policy increases are monotonic despite label and reference removal',
   assert.match(latestCheck(state.client).output.summary, /architecture/);
 });
 
-test('deleted App policy event is restored after pending publication', async () => {
+test('deleted App policy projection is rejected and restored from the ledger', async () => {
   const state = seededState();
   await runPullEvent(state);
   const removed = state.client.state.comments[115].find((comment) =>
@@ -930,9 +1118,107 @@ test('deleted App policy event is restored after pending publication', async () 
     evaluatorOptions: { poll: false, stabilitySeconds: 0 },
   });
   assert.equal(state.client.callLog[before], 'checks.create');
-  assert.equal(latestCheck(state.client).conclusion, 'success');
+  assert.equal(latestCheck(state.client).conclusion, 'failure');
+  assert.match(
+    latestCheck(state.client).output.summary,
+    /malformed/);
   assert.ok(state.client.state.comments[115].some((comment) =>
     comment.body.includes('Trusted issue')));
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('reconciliation', {}),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+  assert.equal(latestCheck(state.client).conclusion, 'success');
+});
+
+test('edited App policy projection cannot become policy authority', async () => {
+  const state = seededState({ domains: ['security'] });
+  await runPullEvent(state);
+  const projected = state.client.state.comments[115].find((comment) =>
+    comment.body.includes('security review requirement'));
+  const canonicalBody = projected.body;
+  projected.body = projected.body.replace(
+    'This record was published by the dedicated review-gate GitHub App.',
+    'Edited presentation text must not affect canonical policy.');
+  const before = state.client.callLog.length;
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('issue_comment', {
+      action: 'edited',
+      issue: { number: 115, pull_request: { url: 'pull' } },
+      comment: structuredClone(projected),
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+  assert.equal(state.client.callLog[before], 'checks.create');
+  assert.equal(latestCheck(state.client).conclusion, 'failure');
+  assert.equal(projected.body, canonicalBody);
+  assert.ok(state.store.policyEvents.get(115).some((event) =>
+    event.kind === 'require-domain' && event.domain === 'security'));
+});
+
+test('marker removal is rejected and canonical projection is restored', async () => {
+  const state = seededState({ domains: ['architecture'] });
+  await runPullEvent(state);
+  const projected = state.client.state.comments[115].find((comment) =>
+    comment.body.includes('architecture review requirement'));
+  const canonicalBody = projected.body;
+  projected.body = projected.body.replace(
+    /\n<!-- andreja-review-policy-event:v5:[A-Za-z0-9_-]+ -->/,
+    '');
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('issue_comment', {
+      action: 'edited',
+      issue: { number: 115, pull_request: { url: 'pull' } },
+      comment: structuredClone(projected),
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+  assert.equal(latestCheck(state.client).conclusion, 'failure');
+  assert.equal(projected.body, canonicalBody);
+  assert.ok(projected.body.includes(POLICY_EVENT_MARKER_PREFIX));
+});
+
+test('digest-mismatched policy projection is rejected without reducing policy', async () => {
+  const state = seededState({ domains: ['privacy'] });
+  await runPullEvent(state);
+  const projected = state.client.state.comments[115].find((comment) =>
+    comment.body.includes('privacy review requirement'));
+  const canonicalBody = projected.body;
+  const parsed = parsePolicyEventComment(canonicalBody);
+  const altered = {
+    ...parsed.event,
+    integrityDigest: '0'.repeat(64),
+  };
+  const encoded = Buffer.from(
+    JSON.stringify(stableValue(altered)),
+    'utf8').toString('base64url');
+  projected.body = canonicalBody.replace(
+    new RegExp(`${POLICY_EVENT_MARKER_PREFIX}[A-Za-z0-9_-]+`),
+    `${POLICY_EVENT_MARKER_PREFIX}${encoded}`);
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('issue_comment', {
+      action: 'edited',
+      issue: { number: 115, pull_request: { url: 'pull' } },
+      comment: structuredClone(projected),
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+  assert.equal(latestCheck(state.client).conclusion, 'failure');
+  assert.equal(projected.body, canonicalBody);
+  assert.ok(state.store.policyEvents.get(115).some((event) =>
+    event.kind === 'require-domain' && event.domain === 'privacy'));
 });
 
 test('full second snapshot prevents a late thread from publishing success', async () => {
@@ -965,7 +1251,7 @@ test('base push enumerates durable mappings and publishes every head pending fir
     head: {
       sha: NEXT_HEAD,
       ref: 'feature-116',
-      repo: { full_name: 'Jamula/Andreja' },
+      repo: { id: REPOSITORY_ID, full_name: 'Jamula/Andreja' },
     },
     user: { login: 'other-author', id: 116, type: 'User' },
   });
@@ -987,6 +1273,7 @@ test('base push enumerates durable mappings and publishes every head pending fir
   });
   const store = new FakeStore({
     mappings: [mapping(first), mapping(second)],
+    ...canonicalPolicyStateFromComments(client.state.comments),
   });
   client.state.pulls.forEach((candidate) => {
     candidate.base.sha = NEXT_BASE;
@@ -1020,13 +1307,73 @@ test('base push enumerates durable mappings and publishes every head pending fir
     /not merge-group evidence/i);
 });
 
+test('push handler rejects tags, feature refs, and deletions without a check', async (t) => {
+  const cases = [
+    {
+      name: 'tag',
+      payload: { ref: 'refs/tags/v1.0.0', after: NEXT_BASE },
+    },
+    {
+      name: 'feature branch',
+      payload: { ref: 'refs/heads/feature-attacker', after: NEXT_BASE },
+    },
+    {
+      name: 'deletion',
+      payload: {
+        ref: 'refs/heads/main',
+        after: '0'.repeat(40),
+        deleted: true,
+      },
+    },
+  ];
+  for (const candidate of cases) {
+    await t.test(candidate.name, async () => {
+      const client = new FakeClient();
+      const store = new FakeStore();
+      await assert.rejects(() => handleEvent({
+        client,
+        store,
+        envelope: envelope('push', candidate.payload),
+        publisherAppId: APP_ID,
+        evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+      }), /rejects|allowlisted protected/);
+      assert.equal(client.state.checkRuns.length, 0);
+    });
+  }
+});
+
+test('push handler rejects a stale supplied protected-branch tip', async () => {
+  const client = new FakeClient({ branches: { main: BASE } });
+  const store = new FakeStore();
+  const result = await handleEvent({
+    client,
+    store,
+    envelope: envelope('push', {
+      ref: 'refs/heads/main',
+      before: '9'.repeat(40),
+      after: NEXT_BASE,
+      deleted: false,
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+  assert.equal(result.results.length, 0);
+  assert.equal(latestCheck(client, NEXT_BASE).conclusion, 'failure');
+  assert.doesNotMatch(
+    latestCheck(client, NEXT_BASE).output.title,
+    /Not applicable/);
+  assert.equal(
+    client.state.checkRuns.some((run) => run.conclusion === 'success'),
+    false);
+});
+
 test('merge group revalidates all constituent PRs against the current base', async () => {
   const first = pull(115);
   const second = pull(116, {
     head: {
       sha: NEXT_HEAD,
       ref: 'feature-116',
-      repo: { full_name: 'Jamula/Andreja' },
+      repo: { id: REPOSITORY_ID, full_name: 'Jamula/Andreja' },
     },
   });
   const firstReview = copilotReview(first.head.sha);
@@ -1050,6 +1397,7 @@ test('merge group revalidates all constituent PRs against the current base', asy
   const store = new FakeStore({
     mappings: [mapping(first), mapping(second)],
     mergeGroups: { 'merge-group-1': [115, 116] },
+    ...canonicalPolicyStateFromComments(client.state.comments),
   });
   const event = envelope('merge_group', {
     action: 'checks_requested',
@@ -1103,6 +1451,7 @@ test('merge group fails closed on constituent or live-base disagreement', async 
   const store = new FakeStore({
     mappings: [mapping(current)],
     mergeGroups: { group: [115] },
+    ...canonicalPolicyStateFromComments(client.state.comments),
   });
   const result = await handleEvent({
     client,
@@ -1170,6 +1519,127 @@ test('periodic reconciliation catches dropped thread and revocation deliveries',
   assert.ok(log.indexOf('paginate:pulls') > 0);
   assert.equal(latestCheck(state.client).conclusion, 'failure');
   assert.match(latestCheck(state.client).output.summary, /unresolved|not authorized/);
+});
+
+test('reconciliation detects a dropped synchronize on the current head', async () => {
+  const state = seededState();
+  await runPullEvent(state);
+  assert.equal(latestCheck(state.client).conclusion, 'success');
+  state.client.state.pulls[0].head.sha = NEXT_HEAD;
+  const originalUpsert = state.store.upsertPullMapping.bind(state.store);
+  state.store.upsertPullMapping = async (value) => {
+    if (value.headSha === NEXT_HEAD) {
+      assert.equal(latestCheck(state.client, NEXT_HEAD)?.status, 'in_progress');
+    }
+    return originalUpsert(value);
+  };
+  const before = state.client.callLog.length;
+  await runReconciliation(state);
+  const log = state.client.callLog.slice(before);
+  assert.equal(log[0], 'checks.create');
+  assert.ok(log.indexOf('pulls.list:1') > 0);
+  assert.ok(log.lastIndexOf('checks.create') > log.indexOf('pulls.list:1'));
+  assert.equal(latestCheck(state.client, NEXT_HEAD).conclusion, 'failure');
+  assert.equal((await state.store.getPullMapping(115)).headSha, NEXT_HEAD);
+  assert.ok(state.store.policyEvents.get(115).some((event) =>
+    event.kind === 'bind-issue' &&
+    event.observationEpoch.identity.headSha === NEXT_HEAD));
+});
+
+test('reconciliation supersedes success on a reused commit', async () => {
+  const state = seededState();
+  await runPullEvent(state);
+  const reusedPull = pull(999, {
+    head: {
+      id: 999,
+      sha: NEXT_HEAD,
+      ref: 'previously-reviewed',
+      repo: { id: REPOSITORY_ID, full_name: 'Jamula/Andreja' },
+    },
+  });
+  const priorGeneration = await createGeneration({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('reconciliation', {}),
+    headSha: NEXT_HEAD,
+    publisherAppId: APP_ID,
+    mappings: [mapping(reusedPull, { issues: [999] })],
+    association: { kind: 'reconciliation', pullNumbers: [999] },
+  });
+  await completeGeneration({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('reconciliation', {}),
+    checkRun: priorGeneration,
+    publisherAppId: APP_ID,
+    result: { state: 'approved', reasons: ['Prior exact diff was complete.'] },
+  });
+  assert.equal(latestCheck(state.client, NEXT_HEAD).conclusion, 'success');
+
+  state.client.state.pulls[0].head.sha = NEXT_HEAD;
+  state.client.state.pulls[0].head.ref = 'feature-115-rebased';
+  await runReconciliation(state);
+  const runs = state.client.state.checkRuns.filter((run) =>
+    run.head_sha === NEXT_HEAD);
+  assert.ok(runs.length >= 2);
+  assert.equal(runs.at(-1).conclusion, 'failure');
+  assert.ok(runs.at(-1).id > priorGeneration.id);
+  assert.match(runs.at(-1).output.summary, /Copilot|policy/);
+});
+
+test('reconciliation detects dropped retarget and base identity drift', async () => {
+  const state = seededState();
+  await runPullEvent(state);
+  const beforeMapping = await state.store.getPullMapping(115);
+  state.client.state.pulls[0].base = {
+    sha: NEXT_BASE,
+    ref: 'release',
+    repo: {
+      id: REPOSITORY_ID,
+      full_name: 'Jamula/Andreja',
+    },
+  };
+  await runReconciliation(state);
+  const refreshed = await state.store.getPullMapping(115);
+  assert.equal(refreshed.baseRef, 'release');
+  assert.equal(refreshed.baseSha, NEXT_BASE);
+  assert.notEqual(refreshed.diffIdentity, beforeMapping.diffIdentity);
+  assert.equal(latestCheck(state.client, HEAD).conclusion, 'failure');
+  assert.ok(state.store.policyEvents.get(115).some((event) =>
+    event.kind === 'bind-issue' &&
+    event.observationEpoch.identity.baseRef === 'release' &&
+    event.observationEpoch.identity.baseSha === NEXT_BASE));
+});
+
+test('open PR reconciliation discovery uses complete REST pagination', async () => {
+  const pulls = Array.from({ length: 205 }, (_, index) => pull(index + 1));
+  const client = new FakeClient({ pulls });
+  const result = await listAllOpenPulls({
+    client,
+    envelope: envelope('reconciliation', {}),
+  });
+  assert.equal(result.length, 205);
+  assert.deepEqual(
+    client.callLog.filter((entry) => entry.startsWith('pulls.list:')),
+    ['pulls.list:1', 'pulls.list:2', 'pulls.list:3']);
+  assert.equal(result[0].number, 1);
+  assert.equal(result.at(-1).number, 205);
+});
+
+test('reconciliation API rate limit fails the newest known heads closed', async () => {
+  const state = seededState();
+  await runPullEvent(state);
+  state.client.failNext(
+    'pulls.list',
+    Object.assign(new Error('private reconciliation detail'), { status: 429 }));
+  const before = state.client.callLog.length;
+  await runReconciliation(state);
+  assert.equal(state.client.callLog[before], 'checks.create');
+  assert.equal(latestCheck(state.client).conclusion, 'failure');
+  assert.match(latestCheck(state.client).output.summary, /rate-limited|failed closed/);
+  assert.doesNotMatch(
+    latestCheck(state.client).output.summary,
+    /private reconciliation detail/);
 });
 
 test('rate limit after pending publication leaves newest generation failed', async () => {
@@ -1297,6 +1767,7 @@ test('two PRs sharing a head aggregate every exact PR policy', async () => {
   });
   const store = new FakeStore({
     mappings: [mapping(first), mapping(second, { issues: [205] })],
+    ...canonicalPolicyStateFromComments(client.state.comments),
   });
   const blocked = await evaluateHeadSnapshot({
     client,
@@ -1368,7 +1839,10 @@ test('authenticated current-diff specialist App evidence supports one-human mode
     },
     reviews: { 115: [review] },
   });
-  const store = new FakeStore({ mappings: [mapping(current)] });
+  const store = new FakeStore({
+    mappings: [mapping(current)],
+    ...canonicalPolicyStateFromComments(client.state.comments),
+  });
   const result = await evaluateHeadSnapshot({
     client,
     store,
@@ -1459,7 +1933,10 @@ test('specialist automation downloads and validates an exact artifact before evi
       },
     },
   });
-  const store = new FakeStore({ mappings: [mapping(current)] });
+  const store = new FakeStore({
+    mappings: [mapping(current)],
+    ...canonicalPolicyStateFromComments(client.state.comments),
+  });
   const options = {
     client,
     store,
@@ -1562,15 +2039,18 @@ test('stateful #100, #101, and #105 fixtures have no ready interval', async () =
       comments: { 115: [trustedComment(bind, APP_ID, 1)] },
       reviews: { 115: [] },
     });
-    const store = new FakeStore({ mappings: [mapping(current)] });
+    const store = new FakeStore({
+      mappings: [mapping(current)],
+      ...canonicalPolicyStateFromComments(client.state.comments),
+    });
     for (const event of fixture.events) {
       if (event.kind === 'copilot-review') {
         const review = copilotReview();
         client.state.reviews[115].push(review);
-        client.state.comments[115].push(trustedComment(
-          copilotAttestationEvent(current, review),
-          APP_ID,
-          2));
+        const attestation = copilotAttestationEvent(current, review);
+        const comment = trustedComment(attestation, APP_ID, 2);
+        client.state.comments[115].push(comment);
+        await appendCanonicalFixture(store, attestation, comment);
       }
       const state = (await evaluateHeadSnapshot({
         client,
@@ -1596,6 +2076,9 @@ test('fixture catalog includes every external-worker regression class', () => {
     'reviewer-revocation',
     'dropped-delivery-reconciliation',
     'event-specific-canary',
+    'canonical-policy-projection',
+    'protected-push-identity',
+    'reconciliation-identity-drift',
   ]));
 });
 
@@ -1684,11 +2167,11 @@ function canaryProvenance({
   eventPath,
   association,
   headSha = HEAD,
-  targets = [pullIdentity(pull())],
+  targets = [exactMappingIdentity(mapping(pull()))],
   baseSha = BASE,
 }) {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     contractRevision: CONTRACT_REVISION,
     eventPath,
     workerRevision: WORKER_REVISION,

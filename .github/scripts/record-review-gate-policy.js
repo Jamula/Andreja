@@ -23,11 +23,15 @@ const OPERATIONS = new Set(['bind-issue', 'reduce-policy', 'break-glass']);
 function inputIdentity(inputs) {
   return validatePullIdentity({
     pullNumber: Number(inputs.pull_number),
+    headRepositoryId: Number(inputs.head_repository_id),
+    headRepository: String(inputs.head_repository || '').trim(),
+    headRef: String(inputs.head_ref || '').trim(),
     headSha: String(inputs.head_sha || '').trim(),
     baseRepositoryId: Number(inputs.base_repository_id),
     baseRepository: String(inputs.base_repository || '').trim(),
     baseRef: String(inputs.base_ref || '').trim(),
     baseSha: String(inputs.base_sha || '').trim(),
+    diffIdentity: String(inputs.diff_identity || '').trim(),
   });
 }
 
@@ -57,6 +61,7 @@ async function requireAdminActor({ client, envelope }) {
 
 async function currentState({
   client,
+  store,
   envelope,
   publisherAppId,
   identity,
@@ -73,10 +78,14 @@ async function currentState({
   }
   const ledger = await loadPolicyLedger({
     client,
+    store,
     envelope,
     pullRequest,
     publisherAppId,
   });
+  if (ledger.snapshot.errors.length > 0) {
+    throw new Error('The canonical policy ledger or its projection is malformed.');
+  }
   return { pullRequest, ledger };
 }
 
@@ -220,6 +229,7 @@ function breakGlass({ envelope, command, identity, actor, ledger }) {
 
 async function recordDecision({
   client,
+  store,
   envelope,
   publisherAppId,
   command,
@@ -232,6 +242,7 @@ async function recordDecision({
   const actor = await requireAdminActor({ client, envelope });
   const { ledger } = await currentState({
     client,
+    store,
     envelope,
     publisherAppId,
     identity,
@@ -257,6 +268,7 @@ async function recordDecision({
       : breakGlass({ envelope, command, identity, actor, ledger });
   await appendPolicyEvent({
     client,
+    store,
     envelope,
     event,
     publisherAppId,
@@ -280,11 +292,15 @@ async function handleAdminDecision({
   const mapping = await store.getPullMapping(identity.pullNumber);
   if (!mapping || !samePullIdentity({
     pullNumber: mapping.pullNumber,
+    headRepositoryId: mapping.headRepositoryId,
+    headRepository: mapping.headRepository,
+    headRef: mapping.headRef,
     headSha: mapping.headSha,
     baseRepositoryId: mapping.baseRepositoryId,
     baseRepository: mapping.baseRepository,
     baseRef: mapping.baseRef,
     baseSha: mapping.baseSha,
+    diffIdentity: mapping.diffIdentity,
   }, identity)) {
     throw new Error('The durable PR mapping does not match the requested exact diff.');
   }
@@ -299,6 +315,7 @@ async function handleAdminDecision({
   try {
     await recordDecision({
       client,
+      store,
       envelope,
       publisherAppId,
       command,
