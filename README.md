@@ -378,6 +378,8 @@ runtime state, or user content.
 ## Documentation
 
 - [High-level architecture and data flows](docs/architecture/andreja-high-level.md)
+- [Privacy baseline](docs/privacy.md)
+- [Threat model](docs/threat-model.md)
 - [Local development](docs/development.md)
 - [Self-host operations](docs/operations/self-hosting.md)
 - [Application export/import](docs/operations/portability.md)

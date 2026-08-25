@@ -22,6 +22,10 @@ production launch.
 7. [Exit and decision checklist](exit-checklist.md)
 8. [BYOK security and privacy contract](byok-security-privacy.md)
 
+The canonical cross-phase [privacy baseline](../privacy.md) and
+[threat model](../threat-model.md) reconcile these Phase 1A overlays with current
+implementation evidence and future gates.
+
 ## Decision boundary
 
 The packet selects only the smallest reversible Phase 1A seams:

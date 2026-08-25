@@ -16,14 +16,13 @@ does not approve launch or close this proposed packet.
 
 | Domain | Canonical source and ownership | Phase 1A use |
 |---|---|---|
-| Threat | The plan requires [`docs/threat-model.md`](../plan.md#documentation-structure); until that standalone artifact lands, [Security engineering](../plan.md#security-engineering) is the governing baseline. Tuvok owns challenge. | The threat rows below index the Phase 1A controls and proof that the canonical model must contain. |
-| Privacy | The plan requires [`docs/privacy.md`](../plan.md#documentation-structure); until it lands, [Privacy engineering](../plan.md#privacy-engineering) and the [charter](../charter.md#ethics-and-sustainability-impact-assessment) govern. Deanna Troi owns challenge. | The privacy gate below is a Phase 1A field/test overlay, not a second data inventory. |
+| Threat | The canonical [`docs/threat-model.md`](../threat-model.md) reconciles current, contract-only, evidence-blocked, and future/gated threats and controls. Tuvok owns challenge; the plan remains governing. | The threat rows below index Phase 1A controls and proof into that canonical model. |
+| Privacy | The canonical [`docs/privacy.md`](../privacy.md) owns the inventory and handling baseline; the plan and [charter](../charter.md#ethics-and-sustainability-impact-assessment) remain governing. Deanna Troi owns challenge. | The privacy gate below is a Phase 1A field/test overlay, not a second data inventory. |
 | Testing | The plan requires [`docs/testing-matrix.md`](../plan.md#documentation-structure) and defines the [validation strategy](../plan.md#validation-and-regression-strategy). Data owns challenge. | The table below supplies Phase 1A rows/test IDs to the canonical matrix. |
 | Cost | [PR #20](https://github.com/Jamula/Andreja/pull/20) proposes `docs/cost-model.md` as Quark's canonical ledger/budget source; until merged, the [plan's Cost and FinOps rules](../plan.md#cost-and-finops) govern. | This file only links the Phase 1A usage query and stop checks. It neither duplicates price/SKU figures nor changes PR #20's ledgers or authority. |
 
-When a canonical artifact is merged, its evidence identifier and revision replace the
-interim plan link here. Conflicts resolve in favor of the governing plan/charter and
-the canonical owner; this index must then be corrected.
+Conflicts resolve in favor of the governing plan/charter and canonical owner; this
+index must then be corrected.
 
 ## Threat gate
 

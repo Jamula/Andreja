@@ -103,9 +103,13 @@ rows do not weaken these exits.
 
 #### Required artifacts and next safe order
 
-The canonical `docs/privacy.md` and `docs/threat-model.md` remain open required
-artifacts. The narrower files under `docs/phase-1a/` are evidence inputs and do
-not replace them.
+The canonical [`docs/privacy.md`](privacy.md) and
+[`docs/threat-model.md`](threat-model.md) now provide descriptive cross-phase
+baselines under [#116](https://github.com/Jamula/Andreja/issues/116). They do not
+accept a Proposed ADR, approve a final residual risk, authorize production or a
+future integration, or close the retention, residency, model-provider, and
+evidence decisions they identify. The narrower files under `docs/phase-1a/`
+remain evidence inputs and do not replace them.
 
 Pages containment is the completed prerequisite under
 [#114](https://github.com/Jamula/Andreja/issues/114). The next safe execution
@@ -1320,7 +1324,7 @@ Before installation, review source/publisher provenance, immutable digest/versio
 - Built-in ASP.NET Core Identity/passkeys and local recovery flows are implemented; encrypted PostgreSQL-plus-Data-Protection-key clean restore with sign-in, genuine approved update/rollback, final support boundary, linked providers, and any optional control plane remain open.
 - CIAM provider/migration path and pricing.
 - Numeric budget, unit-cost model, Copilot token budgets, and numeric SLOs.
-- Canonical `docs/threat-model.md` and `docs/privacy.md`, including final residual risk, classification/impact assessment, retention, export, purge, residency, and model-provider rules.
+- Canonical `docs/threat-model.md` and `docs/privacy.md` descriptive baselines are present; final residual-risk acceptance, numeric retention, residency, production export/purge, and model-provider decisions remain open.
 - Federation standards comparison, identity/trust/discovery, versioning, reference/copy semantics, and conformance scope.
 - Skill/channel manifest, host, capability, grant, peer-envelope, and minimal semantic contracts are implemented; UI isolation, signing, third-party execution, and authoring compatibility remain open.
 - OneDrive, Google Drive, GitHub, and Box API scopes, terms, limits, delta/webhook behavior, and connector security/privacy.
