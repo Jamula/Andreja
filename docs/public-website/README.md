@@ -54,3 +54,13 @@ dependencies, form submission, authentication, cookies, storage, telemetry, or
 product-data path. Open it locally as described in the prototype README. Do not
 publish it: its wording is deliberately labeled as planning content and its
 routes, contacts, legal text, and claims are incomplete.
+
+Phase 0 review is loopback-only or private and access-controlled. Public Pages,
+public previews, CDN delivery, and DNS publication must be disabled; a future
+approved private preview must enforce authorization and expiry. `noindex`,
+robots directives, and `X-Robots-Tag` are not authorization.
+
+As observed on 2026-08-25, the repository's GitHub Pages endpoint
+`https://jamula.github.io/Andreja/` is publicly built from `main:/docs`. That is
+a current nonconformance and blocker, not an approved deployment. This packet
+does not change repository settings or claim the exposure is fixed.

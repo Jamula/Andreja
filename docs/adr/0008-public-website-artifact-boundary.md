@@ -22,6 +22,18 @@ Phase 0 permits only local/paper research and has a $0 cloud-infrastructure cap.
 Brand/domain, source/content license, hosting vendor, public claims, feedback,
 analytics, sponsorship, and production support remain separately gated.
 
+### Current nonconformance
+
+Phase 0 website artifacts are limited to loopback use or a private,
+access-controlled review boundary. GitHub Pages, public previews, CDN delivery,
+and DNS publication must remain disabled. Only a separately approved private
+preview may use authorization and expiry; `noindex` is never authorization.
+
+As observed on 2026-08-25, GitHub Pages publicly serves
+`https://jamula.github.io/Andreja/` from `main:/docs`. This is a blocker and
+nonconformance, not an approved deployment or evidence that this Proposed ADR
+was accepted. This ADR records but does not remediate the repository setting.
+
 ## Decision
 
 If accepted, the public/help site will:

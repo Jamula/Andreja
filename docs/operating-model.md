@@ -22,12 +22,13 @@ and stop/de-scope rules, and executive-versus-Cyrus authority.
 It is explicitly **not authoritative** for, and does not define or duplicate,
 scoring, sequencing, or launch: the issue scorecard, portfolio lanes,
 Must/Should/Could/Won't stage scope, and launch-stage evidence gates remain owned
-by [issue #5](https://github.com/Jamula/Andreja/issues/5) and its ratified
+by [issue #5](https://github.com/Jamula/Andreja/issues/5) and its review-ready
 `docs/frameworks/prioritization-launch.md` (see `docs/plan.md`
-`## Roadmap prioritization and launch framework`). Where the two documents
-describe the same workstream, issue #5's ratified framework is authoritative for
-**scoring, sequencing, and launch-stage gating**; this document is authoritative
-for **who does the work, how they hand it off, and what authority they hold**.
+`## Roadmap prioritization and launch framework`). Neither framework has an
+explicit Cyrus ratification record, so `docs/plan.md` remains authoritative
+until that decision is recorded. If ratified, the prioritization framework owns
+**scoring, sequencing, and launch-stage gating**, while this document owns
+**who does the work, how they hand it off, and what authority they hold**.
 Neither document may silently override the other; a conflict is a `type:decision`
 issue, not a unilateral edit.
 
@@ -55,12 +56,12 @@ weights, lanes, or gate checklists.
 |---|---|---|
 | Architecture, roadmap, phased scope | [`docs/plan.md`](plan.md) and accepted ADRs (`docs/adr/`) | Spock (architecture); Picard (roadmap) |
 | Execution state (what's being worked, by whom, when done) | GitHub Issues and milestones in `Jamula/Andreja` | Coordinator (Squad) |
-| Prioritization, scoring, launch-stage gates | `docs/frameworks/prioritization-launch.md` (issue #5) | Picard/Quark |
+| Prioritization, scoring, launch-stage gates | `docs/plan.md`; proposed operational expansion in `docs/frameworks/prioritization-launch.md` (issue #5) | Picard/Quark |
 | Charters, routing, ceremonies, non-negotiable directives | `.squad/directives.md`, `.squad/team.md`, `.squad/routing.md`, `.squad/ceremonies.md`, `.squad/agents/*/charter.md` | Coordinator (Squad) |
 | Who owns which work right now | This document's workstream table + `squad:{member}` / `area:*` labels | Picard (triage) |
 | Financial/cost evidence | Quark's session-close usage ledger and FinOps issues (`area:finops`) | Quark |
 | Legal/regulatory applicability | `docs/legal/regulatory-applicability.md` (pending ratification, issue #8) | Sarek |
-| Feedback/support lifecycle | `docs/frameworks/feedback-support.md` (ratified, issue #10) | Guinan |
+| Feedback/support lifecycle | Proposed operational expansion in `docs/frameworks/feedback-support.md` (review-ready draft, issue #10) | Guinan |
 
 Squad runtime state (`.squad/`) supports routing and learning; it is never a
 competing backlog to GitHub Issues, and workstreams do not maintain private plans
@@ -441,7 +442,7 @@ use `type:chore` plus a link to the retrospective issue for retro-action items.
 - Prioritization, scorecard, and launch-stage gates (owned by issue #5, not
   duplicated here): `docs/plan.md` `## Roadmap prioritization and launch
   framework`, future `docs/frameworks/prioritization-launch.md`.
-- Feedback and support lifecycle (ratified under issue #10):
+- Feedback and support lifecycle (review-ready draft under issue #10):
   `docs/frameworks/feedback-support.md`.
 - Cost model and sponsorship policy (pending ratification under issue #11):
   `docs/plan.md` `## Cost and FinOps`; future `docs/cost-model.md` and

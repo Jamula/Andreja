@@ -2,10 +2,16 @@
 
 ## Status and scope
 
+- **Status:** Review-ready draft; explicit Cyrus approval is not recorded
+- **Issue:** [#10](https://github.com/Jamula/Andreja/issues/10)
+- **Source PR:** [#16](https://github.com/Jamula/Andreja/pull/16)
+- **Decision owner:** Cyrus Jamula
+
 This framework defines how Andreja receives, protects, triages, routes, tracks,
 publishes, resolves, verifies, and learns from feedback. It implements the
-feedback direction ratified in `docs/plan.md`; it does not amend the plan or
-authorize deployment.
+feedback direction in the ratified `docs/plan.md`, but this operational
+expansion is not itself ratified. It does not amend the plan or authorize
+deployment.
 
 Guinan owns the feedback lifecycle and the user-visible loop. Feature and
 domain owners remain accountable for investigation and remediation. Security
