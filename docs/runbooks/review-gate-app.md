@@ -1,319 +1,285 @@
-# Review-gate GitHub App
+# Review-gate external GitHub App worker
 
 Issue [#104](https://github.com/Jamula/Andreja/issues/104) owns this
-design. It is repository scaffolding, not a deployed merge gate.
+design package. The repository contains a worker contract, policy library,
+stateful tests, and read-only ruleset planning. It does **not** contain or
+operate the publisher.
 
-## Current rollout status
+## Operational status: BLOCKED
 
-**Blocked. Keep PRs draft or under a manual merge hold, keep auto-merge
-disabled, and do not add the ruleset check.**
+Do not add `Andreja review policy` to the ruleset. Keep affected PRs draft or
+under a documented manual merge hold, keep auto-merge disabled, and do not
+represent this package as an operational gate.
 
-At the 2026-08-25 revision:
+At this revision:
 
-- repository Actions variables: **0**;
-- repository Actions secrets: **0**;
-- the installed `Copilot Pull Request Reviewer` App is App ID `946600`,
-  but its observed installation permissions include `checks:read`, not
-  `checks:write`;
-- existing repository checks are published as the generic GitHub Actions App,
-  App ID `15368`;
-- repository-installation enumeration was unavailable to the current
-  credential, so no other dedicated checks-writer identity could be proven;
-- no successful check from the proposed review-gate App exists; and
-- active branch ruleset `21199927` remains unchanged, with no bypass actors,
-  zero required approvals, required thread resolution, strict up-to-date
-  checking, and its five existing GitHub Actions checks.
+- active ruleset `21199927` is unchanged;
+- no bypass actor or approval-count reduction is authorized;
+- required conversation resolution remains enabled;
+- no independently hosted review-gate worker or dedicated checks-writer App
+  installation has been provisioned;
+- no least-privilege installation attestation, durable worker store, startup
+  evidence, dropped-delivery evidence, or real merge-group canary exists; and
+- Phase 0 authorizes no remote account, subscription, free-tier, trial, or
+  worker provisioning.
 
-The earlier required-workflow design was removed. Ordinary review, thread,
-issue, and dispatch workflow runs cannot supersede a same-head ruleset-workflow
-result. `cancel-in-progress` could also cancel the only ruleset-created
-generation. A generic GitHub Actions check is not an acceptable replacement.
+The exact next human prerequisite is explicit authorization and provisioning
+of a dedicated GitHub App plus an independently protected webhook worker or
+credential broker outside repository GitHub Actions. That future deployment
+must return the identity, permissions, revision, provenance, durable-state,
+negative-canary, and rollback evidence listed below before a separate reviewed
+change may enable rollout.
 
-## Required trust boundary
+## Repository Actions boundary
 
-Provisioning requires an independently owned GitHub App installed only on
-`Jamula/Andreja`. A PR-authored workflow must have no way to mint its
-installation token.
+There is no repository workflow that stores, mints, receives, or uses the
+publisher App private key or installation token. The previous publisher and
+admin workflows were deleted.
 
-Required App repository permissions:
+`.github/workflows/review-gate-app-tests.yml` executes only deterministic
+contract tests with read-only repository permission. It cannot publish a check,
+write policy metadata, administer the App, or mutate protection.
+
+`pull_request_review_thread` is a GitHub App webhook event, but it is not a
+supported GitHub Actions trigger. No Actions workflow relies on it. Native
+required-conversation-resolution remains the immediate thread-reopening block;
+late resolution recovery belongs to the external webhook worker, trusted
+manual dispatch, and periodic reconciliation.
+
+## Required independently hosted boundary
+
+The future publisher must be a dedicated GitHub App installed only on
+`Jamula/Andreja`. Its credential must be unavailable to all repository Actions,
+including revisions selected from a pull request or merge group.
+
+Required repository permissions:
 
 | Permission | Access | Purpose |
 | --- | --- | --- |
-| Checks | Read/write | Start pending generations and publish the exact required check |
-| Issues | Read/write | Read labels and append authenticated policy-ledger events |
-| Pull requests | Read | Read exact PR/head/base/reviews |
-| Administration | Read | Revalidate reviewer and policy-admin permission |
-| Metadata | Read | Resolve repository and installation identity |
-| Contents | Read | Read only trusted default-branch automation |
+| Checks | Read/write | Publish pending generations and the exact required check |
+| Issues | Read/write | Read policy labels and append authenticated ledger events |
+| Pull requests | Read | Read exact PR, review, and base identity |
+| Administration | Read | Revalidate reviewer and policy-admin authorization |
+| Metadata | Read | Bind repository and installation identity |
+| Contents | Read | Identify the reviewed contract revision only |
 
-Subscribe to pull request, pull request review, review comment/thread, issue,
-issue-comment deletion, and installation events. Select only this repository.
-Do not grant contents write, actions write, workflows write, secrets, or broad
-organization access.
+Do not grant contents write, actions write, workflows write, secrets access, or
+broad organization/repository installation. The service must authenticate
+webhook signatures before producing the normalized event envelope consumed by
+`.github/scripts/review-gate-app.js`.
 
-The default-branch workflow bridge expects only these names:
+The envelope rejects GitHub Actions hosting and binds:
 
-- variable `REVIEW_GATE_APP_CLIENT_ID`;
-- variable `REVIEW_GATE_APP_ID` (exact numeric App ID); and
-- secret `REVIEW_GATE_APP_PRIVATE_KEY`.
+- exact repository ID/name;
+- GitHub delivery ID and independently assigned worker run ID;
+- event path and authenticated ingress source;
+- immutable worker revision and worker instance;
+- PR or merge-group association;
+- head SHA and base repository/ref/SHA; and
+- monotonically reserved durable generation.
 
-The pinned `actions/create-github-app-token` action narrows the token to this
-repository. Both privileged workflows check out `github.workflow_sha`, disable
-credential persistence, execute no PR code, and use the App token for all
-policy/check writes.
+The check `external_id` is the versioned digest of that complete provenance.
+Matching a check name or prefix is insufficient.
 
-Phase 0 currently authorizes no remote provisioning. Creating or installing
-the App and storing credentials therefore requires the applicable explicit
-human authorization before this runbook can proceed.
+## Durable mappings and pending-first processing
 
-## Check and generation model
+The worker contract requires durable mappings for:
 
-The required context is:
+- base repository/ref to every open PR and current head;
+- bound issue to PR;
+- reviewer identity to PRs whose evidence depends on that reviewer;
+- merge group to exact constituent PRs; and
+- repository/head to the newest monotonic generation.
 
-```text
-Andreja review policy + exact review-gate App ID
-```
+For every event that can invalidate a success, the worker identifies targets
+from durable state and publishes a new `in_progress` check on **all** affected
+heads before reading mutable GitHub policy metadata. A terminal writer may
+update only while both the durable generation and exact-App check-run are still
+newest. API failures, 403/429 responses, mapping disagreement, stale writers,
+or a changed second snapshot fail closed with sanitized reasons.
 
-The publisher identity, not the text alone, is the security boundary.
-`.github/workflows/review-gate-app.yml` handles trusted default-branch metadata
-events through that App. Each direct PR event:
+The durable store claims each authenticated delivery ID before dispatch.
+Redelivery returns the existing claim and cannot start a second writer. A
+failed or interrupted claim remains fail closed and is recovered through full
+reconciliation rather than by replaying an ambiguous partial writer.
 
-1. creates a new `in_progress` App check on the event's PR head before policy
-   evaluation;
-2. records the event/run generation in `external_id`;
-3. evaluates every open PR sharing that head SHA;
-4. requires two identical full snapshots before success; and
-5. publishes a terminal result only if its check-run ID is still the newest
-   exact-App generation for that SHA.
+This contract does not prove the unavoidable deployment interval between
+delivery and successful check creation. Activation remains blocked until the
+independent deployment demonstrates that startup, credential, queue, restart,
+and dropped-delivery behavior cannot expose an older success.
 
-An older writer never updates after a newer generation exists. Workflows have
-no cancellation concurrency. Two PRs sharing a head are intentionally
-aggregated: the commit-scoped check succeeds only if **every** open PR sharing
-the SHA passes its own PR/base/policy evaluation. This prevents one PR's result
-from replaying onto a different base, at the cost of conservatively blocking
-both when either is incomplete.
+## Explicit event handlers
 
-`merge_group` and default-branch runs publish explicit `not_applicable`
-success: PR-head policy was already enforced. Drafts and unresolved threads
-remain native and App-enforced hard failures.
+| Event path | Required behavior |
+| --- | --- |
+| `pull_request` | Update durable PR/base/head mapping, publish pending, observe policy, and evaluate every open PR sharing the head |
+| `pull_request_review` | Publish pending, authenticate current Copilot/native review, append exact-diff attestation, and reevaluate |
+| `pull_request_review_comment` | Publish pending and reevaluate current conversation/review state |
+| `pull_request_review_thread` | External App webhook only; publish pending and reevaluate, with native thread resolution still required |
+| `issue_comment` | Publish pending before restoring any deleted exact-App policy record and reevaluating |
+| `issues` | Resolve affected PRs only from durable issue mappings, publish every head pending, then reevaluate |
+| `push` | Resolve every affected open PR from durable base mappings, publish each head pending, then reevaluate against the new base |
+| `member`, `membership`, `organization` | Resolve dependent reviewer mappings (or conservatively all open PRs), publish pending, and recheck live permission |
+| `reconciliation` | Periodically publish all known heads pending, discover missed open PRs, and perform a full permission/policy/thread reconciliation |
+| `merge_group` | Publish the merge-group head pending and revalidate every exact constituent PR against the current base |
+| `specialist_attestation` | Publish pending before downloading and validating an allowlisted exact-run evidence artifact |
+| `trusted_dispatch` | Require an authenticated human with current maintain/admin permission; never run through repository Actions |
+
+### Base advances
+
+A default/base push is not merely a successful default-branch check. The
+worker must first enumerate every open PR mapped to the changed base, publish a
+new pending generation on each distinct PR head, and then reevaluate current
+base identity and evidence. Only afterward may it publish a separately bound
+default/base `not_applicable` result. That result can never count as
+merge-group evidence.
+
+### Merge groups
+
+A merge-group check is never unconditional. The worker must:
+
+1. resolve the exact group and constituent PR numbers from durable state;
+2. publish pending on the actual merge-group head;
+3. resolve the constituents again from live GitHub state and require equality;
+4. verify the event base SHA is still the live base-ref tip;
+5. reevaluate every constituent's draft, policy, Copilot, independent evidence,
+   reviewer permission, and full thread state against that current base; and
+6. require a second identical full snapshot before success.
+
+An empty group, changed base, mapping disagreement, incomplete constituent, or
+API failure is rejected.
 
 ## Authenticated monotonic policy
 
-Closing references and PR labels are author-controlled inputs. They do not
-initialize policy.
+Author-controlled PR bodies, closing references, labels, and label removal
+never reduce requirements.
 
-A `maintain` or `admin` human must first run **Review gate App
-administration** with operation `bind-issue`, the complete live
-`PR + head + base repository/ref/SHA` identity, the current policy digest,
-reason, and repository-local audit URL. The App appends an immutable hidden
-policy event to the PR conversation. Evaluation accepts it only when
-`performed_via_github_app.id` equals the configured App ID and the event
-integrity digest, repository ID/name, and PR number all match.
+Each authenticated `bind-issue` or `require-domain` observation has a unique
+epoch containing its exact PR/head/base identity, event path, delivery ID, and
+worker revision. The event ID covers the entire event rather than a
+deterministic source key.
 
-After binding:
+For each source, the newest observation supersedes its historical observation
+without deleting history. An independently authorized reduction must contain:
 
-- every observed PR review-requirement label is persisted;
-- every observed requirement label on a bound issue is persisted;
-- removing a PR label, issue label, or `Closes #...` reference does not remove
-  an observation;
-- issue metadata events reevaluate every PR in the authenticated association
-  ledger; and
-- policy digest changes invalidate evidence created for an earlier policy.
+- current exact PR/head/base identity;
+- the historical policy digest immediately before reduction;
+- exact current observation event ID and epoch ID pairs;
+- current maintain/admin human authorization;
+- a bounded reason; and
+- a durable repository-local audit URL.
 
-Requirements can decrease only through the same admin workflow's
-`reduce-policy` operation. It requires the exact current diff, current policy
-digest, an explicit JSON list of active event IDs, a human with
-`maintain`/`admin`, a bounded reason, and an audit URL. The App record targets
-only those event IDs; a concurrently added observation remains required.
-Stale digests or stale event IDs fail.
+The fold validates the historical digest and epoch before applying the
+reduction. A push, retarget, base advance, or later authenticated observation
+creates a new epoch that no earlier reduction can suppress. Removing a label or
+closing reference alone has no effect.
 
 ## Review evidence
 
 Every ready PR requires:
 
-1. the newest native review from user ID `175728472`,
-   `copilot-pull-request-reviewer[bot]`, type `Bot`, on the current head, plus
-   an App-authored attestation captured at review submission that binds that
-   review ID to the exact PR/head/base identity;
-2. zero unresolved review threads with full GraphQL pagination; and
-3. independent evidence for every persisted domain: either a native human
-   review or a gate-App event produced only after the App service authenticates
-   an allowlisted specialist integration run.
+1. the newest native review from exact Copilot reviewer user ID `175728472`,
+   login `copilot-pull-request-reviewer[bot]`, type `Bot`, on the current head;
+2. an exact-App attestation binding that review ID to exact PR/head/base;
+3. zero unresolved review threads after full GraphQL pagination; and
+4. independent current-policy evidence for every persisted architecture,
+   security, privacy, or quality requirement.
 
-Valid domains are architecture, security, privacy, and quality. Only the newest
-review containing that domain marker is considered. The reviewer must be a
-human with current `write`, `maintain`, or `admin`, must differ from the PR
-author, and must approve. The marker binds:
+For human evidence, only the newest candidate for a domain counts. It must be a
+current `write`, `maintain`, or `admin` human distinct from the PR author, bind
+the exact current diff and policy digest, and approve. A copied, stale,
+dismissed, or rejected newest candidate blocks; the evaluator never falls back.
 
-```text
-schema v3 + domain + PR number + head SHA +
-base repository ID/name + base ref + base SHA +
-current authenticated policy digest + evidence URL + summary
-```
+For specialist automation, the external broker must authenticate an exact
+allowlisted App, run ID/attempt, immutable workflow revision, repository, head,
+and successful run. It then downloads a bounded evidence manifest, verifies
+its SHA-256 and exact PR/head/base/policy content, and only then appends an
+App-authenticated event. The artifact body is not copied into check output or
+the policy ledger. No specialist installation is currently attested.
 
-A copied, malformed, stale, dismissed, or rejected newest candidate blocks;
-the evaluator never falls back. A push, retarget, base advance, or policy
-increase invalidates prior evidence.
-
-An automation attestation binds the same exact diff and policy plus domain,
-outcome, upstream App ID/slug/run ID, evidence URL, and summary. The admin
-workflow cannot create one. The external App worker must verify the upstream
-installation/run against its reviewed allowlist before publishing. No such
-specialist integration is currently proven or configured, so this path is also
-a rollout prerequisite rather than deployed evidence.
-
-Deleting an App-authored policy comment emits a trusted `issue_comment`
-metadata event. The bridge starts a new generation and restores the exact
-integrity-checked event before evaluation. A copied marker from any other App
-or user is ignored.
-
-This does not require a second human for every PR. Authenticated current-diff
-App automation evidence is valid where policy permits it. Author self-approval
-never counts as independent domain evidence.
+Reviewer authorization is live state. Membership/permission events trigger
+immediate invalidation where available, and periodic full reconciliation
+catches unavailable or dropped events. A previously successful head becomes
+pending and then rejected when the reviewer no longer has the required
+permission.
 
 ## Break-glass
 
-Break-glass is an App-authored policy event, not a bypass actor, approval-count
-change, generic status, or workflow artifact. A `maintain`/`admin` human uses
-the admin workflow with operation `break-glass`, complete current diff
-identity, current policy digest, bounded reason, and durable audit URL.
+Break-glass is an exact-App, exact-diff, current-policy event created only after
+current maintain/admin human authorization at the external trusted admin
+ingress. It records reason and repository-local audit URL.
 
-The exact App provenance and content are revalidated. It may substitute for
-unavailable Copilot/domain evidence for that exact diff and policy. It cannot
-permit a draft or unresolved thread. Any head, base, or policy change
-invalidates it.
+It is not a bypass actor, approval-count reduction, generic status, workflow
+artifact, or permission to ignore drafts and unresolved threads. Head, base, or
+policy change invalidates it.
 
-Reasons, summaries, and audit links become repository metadata. Never include
-prompts, connector content, tokens, personal data, or private diagnostics.
+Never include prompts, connector content, tokens, personal data, artifact
+contents, or private diagnostics in policy/check/audit metadata.
 
-## Remaining platform blocker
+## Mandatory provisioning and canary evidence
 
-The checked-in Actions bridge is deliberately insufficient evidence for
-rollout by itself.
+A future activation proposal must provide all of the following:
 
-For direct PR metadata, it can create the pending App check before its first
-policy API read, but only after the workflow is scheduled, starts, mints a
-token, and checks out trusted code. For an `issues` event it must additionally
-resolve authenticated issue-to-PR mappings. Queue delay or failure before
-check creation would leave an older success visible. GitHub checks are
-commit-scoped and do not expire automatically.
+1. exact dedicated non-Actions App installation ID and independently protected
+   worker identity;
+2. least-privilege permission attestation;
+3. immutable worker revision plus delivery/run provenance;
+4. durable base/PR/issue/reviewer/merge-group/generation state evidence;
+5. proof that every invalidation publishes the newest pending generation on
+   every affected head before mutable reads;
+6. startup, missing credential, queue failure, worker restart, stale writer,
+   wrong-App, 403/429, rate-limit, dropped/redelivered webhook, and durable-store
+   failure canaries;
+7. reviewer permission-revocation and periodic full-reconciliation canaries;
+8. push, retarget, base advance, issue-policy increase/reduction/re-observation,
+   Copilot delay, newest rejection, thread reopening/resolution, and
+   break-glass transitions with no merge-ready interval;
+9. distinct provenance for PR and default/base push paths; and
+10. a **real merge-queue `merge_group`** with exact constituent/current-base
+    evidence. A default push, synthetic SHA, or copied external ID does not
+    count.
 
-Before activation, either:
+Record delivery IDs, worker runs/revisions, generation/check-run IDs, App IDs,
+external IDs, PR/group/base identities, expected and actual mergeability,
+timestamps, latency/cost, negative results, and rollback evidence on #104.
+Any merge-ready interval or ambiguous identity fails the canary.
 
-1. deploy an authorized App webhook worker with durable
-   `issue -> PR -> current head` state that starts the new generation before
-   metadata evaluation and demonstrably fails closed on delivery/API failure;
-   or
-2. empirically prove a GitHub-native mechanism that closes this exact startup
-   gap.
+## Read-only rollout planning
 
-If neither is available, the ruleset rollout remains blocked. A successful
-happy-path Actions canary does not waive this condition.
-
-## Mandatory live canary
-
-Run only after the reviewed code is on `main`, the dedicated App is authorized
-and installed, credentials are configured, and the startup blocker above has
-an enforceable implementation.
-
-1. Record live `main`, the full ruleset JSON, ETag, and digest.
-2. Open two canary PRs sharing one head SHA but using distinct PR/base
-   identities. Keep both draft and auto-merge disabled.
-3. Authentically bind each PR to different issue policies.
-4. Confirm every check run named `Andreja review policy` has the exact expected
-   App ID and `andreja-review-gate:v3:` external identity.
-5. Exercise draft/ready, Copilot late completion, current-head push, retarget,
-   base advance, PR labels, bound-issue labels, author removing closing
-   references, unresolved/resolved threads, newer review rejection, policy
-   increase, audited reduction, break-glass, two shared-head PRs, and manual
-   rerequest.
-6. Inject 403/429 and failures before/after policy reads, stale concurrent
-   writers, wrong-App checks, missing credentials, webhook redelivery, dropped
-   delivery, and worker restart. At no transition may an older success make
-   either PR merge-ready.
-7. Record event delivery IDs, check-run IDs/App IDs/external IDs, expected and
-   actual mergeability, timestamps, and rollback evidence on #104.
-
-Any merge-ready interval or ambiguous publisher fails the canary.
-
-## Latency, cost, and selective CI
-
-The observed Copilot-review latency that motivated #104 was 237 seconds on
-#100, 489 seconds on #101, and 267 seconds on #105 (median 267, maximum 489).
-The evaluator retains a 12-minute bounded wait and adds no model request; it
-waits for the already configured Copilot review. Each metadata transition does
-consume one trusted workflow/App-check evaluation plus bounded GitHub API
-calls, which must be measured during canary.
-
-Issue [#102](https://github.com/Jamula/Andreja/issues/102) may reduce unrelated
-C# work for docs-only PRs. It must not path-filter, skip, or synthesize this
-review policy. This revision coordinates that boundary but does not implement
-#102.
-
-## Guarded ruleset rollout
-
-Plan mode may use a reviewed file snapshot for offline inspection. Apply mode
-rejects `--input`, refetches live state immediately, requires the plan's exact
-digest and ETag, sends `If-Match`, and verifies the complete post-state.
-Every current required check and rule is preserved; bypass actors must remain
-empty.
+The script is intentionally incapable of apply. It performs only read-only
+planning and emits the exact blocker plus a complete rollback snapshot.
 
 ```powershell
 node .github\scripts\review-gate-ruleset.js plan-rollout `
   --repo Jamula/Andreja `
   --ruleset-id 21199927 `
-  --app-id <exact-numeric-app-id>
+  --app-id <future-exact-numeric-app-id>
 ```
 
-Use the live plan's `beforeDigest` and `etag`:
-
-```powershell
-node .github\scripts\review-gate-ruleset.js apply-rollout `
-  --repo Jamula/Andreja `
-  --ruleset-id 21199927 `
-  --app-id <exact-numeric-app-id> `
-  --expected-main-sha <live-main-sha> `
-  --expected-ruleset-digest <plan-beforeDigest> `
-  --expected-etag '<plan-etag>' `
-  --pr-canary-head-sha <canary-pr-head-sha> `
-  --pr-canary-check-run-id <approved-exact-app-check-run-id> `
-  --merge-group-canary-head-sha <merge-group-head-sha> `
-  --merge-group-canary-check-run-id <not-applicable-exact-app-check-run-id> `
-  --main-check-run-id <not-applicable-exact-app-main-check-run-id> `
-  --evidence-url https://github.com/Jamula/Andreja/issues/104#issuecomment-... `
-  --confirm "APPLY EXACT APP CHECK"
-```
-
-The script also verifies every trusted workflow/script exists at that exact
-live `main`, plus PR, real `merge_group`, and current-main check names, heads,
-App IDs, statuses, conclusions, external identities, and expected
-approved/not-applicable outputs. `412 Precondition Failed` or any post-state
-difference aborts without retrying a stale payload.
-
-## Rollback
-
-Rollback removes only the exact
-`Andreja review policy + App ID` requirement from freshly fetched live state.
-It preserves every other rule/check, uses the same ETag/`If-Match` guard, and
-requires an audit URL.
+If an exact App check is ever present, read-only rollback planning is:
 
 ```powershell
 node .github\scripts\review-gate-ruleset.js plan-rollback `
   --repo Jamula/Andreja `
   --ruleset-id 21199927 `
   --app-id <exact-numeric-app-id>
-
-node .github\scripts\review-gate-ruleset.js apply-rollback `
-  --repo Jamula/Andreja `
-  --ruleset-id 21199927 `
-  --app-id <exact-numeric-app-id> `
-  --expected-main-sha <live-main-sha> `
-  --expected-ruleset-digest <plan-beforeDigest> `
-  --expected-etag '<plan-etag>' `
-  --evidence-url https://github.com/Jamula/Andreja/issues/104#issuecomment-... `
-  --confirm "ROLLBACK EXACT APP CHECK"
 ```
 
-Preserve plan/apply output, ruleset before/after JSON, ETags, check provenance,
-canary transitions, actor, reason, and timestamps. Rollback never enables
-auto-merge or changes any other protection.
+Any `apply*` operation exits nonzero with
+`EXTERNAL_REVIEW_GATE_WORKER_NOT_INDEPENDENTLY_PROVISIONED`. The script
+contains no ruleset mutation client, HTTP write, confirmation phrase, or hidden
+override. A future activation must be a separate reviewed implementation after
+all prerequisites exist; this revision cannot enable it.
+
+## Latency, cost, and selective CI
+
+The review delay that motivated #104 was 237 seconds on #100, 489 seconds on
+#101, and 267 seconds on #105 (median 267, maximum 489). The worker contract
+adds no model request. Future canaries must measure webhook-to-pending latency,
+reconciliation delay, API calls/rate limits, durable-store cost, and total
+review latency.
+
+Issue [#102](https://github.com/Jamula/Andreja/issues/102) may reduce unrelated
+C# work for docs-only PRs. It must not path-filter, skip, synthesize, or publish
+this gate. This package coordinates that boundary only and does not implement
+#102.

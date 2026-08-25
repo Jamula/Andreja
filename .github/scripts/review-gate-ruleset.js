@@ -5,23 +5,35 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 
 const {
-  CHECK_EXTERNAL_PREFIX,
   CHECK_NAME,
 } = require('./review-gate-policy');
+const {
+  externalIdForProvenance,
+  validateGenerationProvenance,
+} = require('./review-gate-app');
 
+const ROLLOUT_BLOCKER_CODE =
+  'EXTERNAL_REVIEW_GATE_WORKER_NOT_INDEPENDENTLY_PROVISIONED';
+const ROLLOUT_BLOCKER =
+  'Ruleset apply is hard-disabled: #104 lacks an independently hosted, ' +
+  'non-Actions GitHub App worker and the required live negative canaries.';
+const ACTIVATION_PREREQUISITES = Object.freeze([
+  'Exact non-Actions GitHub App installation identity dedicated to this repository.',
+  'Least-privilege permission attestation for checks write, pull requests read, issues read/write, administration read, metadata read, and contents read.',
+  'Independently deployed worker revision and run provenance with durable PR/base/issue/reviewer/generation mappings.',
+  'Newest pending generation evidence for every affected PR head before mutable metadata reads.',
+  'Startup failure, dropped-delivery recovery, rate-limit, stale-writer, and wrong-App negative canaries.',
+  'Reviewer authorization revocation plus periodic full-reconciliation canaries.',
+  'A real merge-queue merge_group canary with exact constituent PR and current-base revalidation.',
+  'Distinct pull-request and default/base-push canaries; neither may substitute for merge_group evidence.',
+  'No merge-ready interval across push, retarget, base advance, policy change, thread reopening, or worker restart.',
+]);
 const REQUIRED_BASELINE_CHECKS = Object.freeze([
   { context: 'Build and test (Debug)', integration_id: 15368 },
   { context: 'Build and test (Release)', integration_id: 15368 },
   { context: 'Format verification', integration_id: 15368 },
   { context: 'NuGet vulnerability audit', integration_id: 15368 },
   { context: 'C# SAST (DevSkim)', integration_id: 15368 },
-]);
-const TRUSTED_PATHS = Object.freeze([
-  '.github/workflows/review-gate-app.yml',
-  '.github/workflows/review-gate-app-admin.yml',
-  '.github/scripts/review-gate-policy.js',
-  '.github/scripts/review-gate-app.js',
-  '.github/scripts/record-review-gate-policy.js',
 ]);
 
 function stableValue(value) {
@@ -68,7 +80,7 @@ function assertSafetyPolicy(ruleset) {
       pullRequest.parameters.required_review_thread_resolution !== true ||
       !status ||
       status.parameters.strict_required_status_checks_policy !== true) {
-    throw new Error('The live ruleset no longer satisfies the fail-closed safety policy.');
+    throw new Error('The ruleset no longer satisfies the fail-closed safety policy.');
   }
   const checks = statusChecks(ruleset);
   for (const required of REQUIRED_BASELINE_CHECKS) {
@@ -80,7 +92,7 @@ function assertSafetyPolicy(ruleset) {
   const keys = checks.map((check) =>
     `${check.context}:${Number(check.integration_id || 0)}`);
   if (new Set(keys).size !== keys.length) {
-    throw new Error('The live ruleset contains duplicate required-check identities.');
+    throw new Error('The ruleset contains duplicate required-check identities.');
   }
 }
 
@@ -119,6 +131,27 @@ function withChecks(ruleset, checks) {
       });
 }
 
+function blockedActivation() {
+  return {
+    state: 'BLOCKED',
+    code: ROLLOUT_BLOCKER_CODE,
+    reason: ROLLOUT_BLOCKER,
+    prerequisites: [...ACTIVATION_PREREQUISITES],
+  };
+}
+
+function rollbackSnapshot(ruleset) {
+  const payload = updatePayload(ruleset, ruleset.rules);
+  return {
+    rulesetId: Number(ruleset.id),
+    digest: digest(payload),
+    payload,
+    instruction:
+      'Preserve this snapshot for a future independently authorized rollback; ' +
+      'this revision contains no mutation command.',
+  };
+}
+
 function planRollout(ruleset, { appId, checkName = CHECK_NAME }) {
   assertSafetyPolicy(ruleset);
   const desired = gateCheck(appId, checkName);
@@ -131,12 +164,14 @@ function planRollout(ruleset, { appId, checkName = CHECK_NAME }) {
     ruleset,
     withChecks(ruleset, [...checks, desired]));
   return {
-    operation: 'rollout',
+    operation: 'plan-rollout-only',
+    activation: blockedActivation(),
     beforeDigest: digest(updatePayload(ruleset, ruleset.rules)),
-    afterDigest: digest(payload),
+    proposedDigest: digest(payload),
     preservedCheckCount: checks.length,
-    addedCheck: desired,
-    payload,
+    proposedCheck: desired,
+    proposedPayload: payload,
+    rollbackSnapshot: rollbackSnapshot(ruleset),
   };
 }
 
@@ -152,12 +187,14 @@ function planRollback(ruleset, { appId, checkName = CHECK_NAME }) {
     ruleset,
     withChecks(ruleset, checks.filter((check) => !sameCheck(check, desired))));
   return {
-    operation: 'rollback',
+    operation: 'plan-rollback-only',
+    activation: blockedActivation(),
     beforeDigest: digest(updatePayload(ruleset, ruleset.rules)),
-    afterDigest: digest(payload),
+    proposedDigest: digest(payload),
     preservedCheckCount: checks.length - 1,
-    removedCheck: desired,
-    payload,
+    proposedRemoval: desired,
+    proposedPayload: payload,
+    rollbackSnapshot: rollbackSnapshot(ruleset),
   };
 }
 
@@ -175,14 +212,13 @@ function parseArguments(argv) {
   return { operation, options };
 }
 
-function gh(args, input) {
+function ghRead(args) {
   const response = spawnSync('gh', args, {
     encoding: 'utf8',
-    input,
     maxBuffer: 8 * 1024 * 1024,
   });
   if (response.status !== 0) {
-    const error = new Error('GitHub CLI rejected the guarded ruleset operation.');
+    const error = new Error('GitHub CLI rejected the read-only ruleset query.');
     error.status = response.status;
     throw error;
   }
@@ -201,251 +237,96 @@ function parseIncludedResponse(output) {
   };
 }
 
-function loadLive(options, { allowInput = true } = {}) {
+function loadReadOnly(options) {
   if (options.input) {
-    if (!allowInput) {
-      throw new Error('--input snapshots are forbidden for apply operations.');
-    }
     return {
       etag: null,
       ruleset: JSON.parse(fs.readFileSync(options.input, 'utf8')),
     };
   }
   if (!options.repo || !options['ruleset-id']) {
-    throw new Error('--repo and --ruleset-id are required for live operations.');
+    throw new Error('--repo and --ruleset-id are required for live read-only plans.');
   }
-  return parseIncludedResponse(gh([
+  return parseIncludedResponse(ghRead([
     'api',
     '-i',
     `repos/${options.repo}/rulesets/${options['ruleset-id']}`,
   ]));
 }
 
-function repositoryUrl(value, repo) {
-  const url = new URL(String(value || ''));
-  if (url.protocol !== 'https:' || url.hostname !== 'github.com' ||
-      !url.pathname.toLowerCase().startsWith(`/${repo}/`.toLowerCase())) {
-    throw new Error('Canary/audit evidence must be a durable URL in this repository.');
-  }
-  return url.toString();
-}
-
-function verifyMainAndTrustedFiles(options) {
-  if (!options['expected-main-sha'] ||
-      !/^[0-9a-f]{40}$/.test(options['expected-main-sha'])) {
-    throw new Error('--expected-main-sha is required.');
-  }
-  const mainSha = gh([
-    'api',
-    `repos/${options.repo}/commits/main`,
-    '--jq',
-    '.sha',
-  ]).trim();
-  if (mainSha !== options['expected-main-sha']) {
-    throw new Error('The live main tip changed; restart rollout planning.');
-  }
-  for (const path of TRUSTED_PATHS) {
-    const encoded = path.split('/').map(encodeURIComponent).join('/');
-    const sha = gh([
-      'api',
-      `repos/${options.repo}/contents/${encoded}?ref=${mainSha}`,
-      '--jq',
-      '.sha',
-    ]).trim();
-    if (!/^[0-9a-f]{40}$/.test(sha)) {
-      throw new Error(`Trusted default-branch file ${path} is unavailable.`);
-    }
-  }
-}
-
 function verifyCanaryRun(run, {
   checkRunId,
   headSha,
   appId,
-  checkName,
+  expectedProvenance,
+  expectedEventPath,
+  expectedAssociationKind,
   titlePrefix,
 }) {
-  if (!Number.isInteger(checkRunId) || checkRunId <= 0 ||
-      !/^[0-9a-f]{40}$/.test(headSha)) {
-    throw new Error('An exact live canary check-run ID and head SHA are required.');
+  validateGenerationProvenance(expectedProvenance);
+  if (!Number.isInteger(checkRunId) ||
+      checkRunId <= 0 ||
+      !/^[0-9a-f]{40}$/.test(headSha) ||
+      expectedProvenance.headSha !== headSha ||
+      expectedProvenance.eventPath !== expectedEventPath ||
+      expectedProvenance.association.kind !== expectedAssociationKind) {
+    throw new Error('The canary expectation lacks exact event-path provenance.');
   }
-  if (run.name !== checkName ||
+  if (expectedEventPath === 'merge_group' &&
+      (!Array.isArray(expectedProvenance.association.pullNumbers) ||
+       expectedProvenance.association.pullNumbers.length === 0)) {
+    throw new Error('Only a real merge group with constituent PRs counts.');
+  }
+  if (run.id !== checkRunId ||
+      run.name !== CHECK_NAME ||
       run.head_sha !== headSha ||
-      Number(run.app?.id) !== appId ||
+      Number(run.app?.id) !== Number(appId) ||
       run.status !== 'completed' ||
       run.conclusion !== 'success' ||
-      !String(run.external_id || '').startsWith(`${CHECK_EXTERNAL_PREFIX}:`) ||
+      run.external_id !== externalIdForProvenance(expectedProvenance) ||
       !String(run.output?.title || '').startsWith(titlePrefix)) {
     throw new Error('The live canary lacks exact successful App-check provenance.');
   }
   return {
     checkRunId,
     headSha,
-    appId,
+    appId: Number(appId),
+    eventPath: expectedEventPath,
+    associationKind: expectedAssociationKind,
     externalId: run.external_id,
+    workerRevision: expectedProvenance.workerRevision,
+    deliveryId: expectedProvenance.deliveryId,
+    runId: expectedProvenance.runId,
   };
-}
-
-function verifyCanary(options, {
-  checkRunIdOption,
-  headSha,
-  titlePrefix,
-}) {
-  const checkRunId = Number(options[checkRunIdOption]);
-  if (!Number.isInteger(checkRunId) || checkRunId <= 0 ||
-      !/^[0-9a-f]{40}$/.test(headSha)) {
-    throw new Error('An exact live canary check-run ID and head SHA are required.');
-  }
-  const run = JSON.parse(gh([
-    'api',
-    `repos/${options.repo}/check-runs/${checkRunId}`,
-  ]));
-  return verifyCanaryRun(run, {
-    checkRunId,
-    headSha,
-    appId: Number(options['app-id']),
-    checkName: CHECK_NAME,
-    titlePrefix,
-  });
-}
-
-function verifyCanaries(options) {
-  return {
-    pullRequest: verifyCanary(options, {
-      checkRunIdOption: 'pr-canary-check-run-id',
-      headSha: String(options['pr-canary-head-sha'] || ''),
-      titlePrefix: 'Approved',
-    }),
-    mergeGroup: verifyCanary(options, {
-      checkRunIdOption: 'merge-group-canary-check-run-id',
-      headSha: String(options['merge-group-canary-head-sha'] || ''),
-      titlePrefix: 'Not applicable',
-    }),
-    defaultBranch: verifyCanary(options, {
-      checkRunIdOption: 'main-check-run-id',
-      headSha: String(options['expected-main-sha'] || ''),
-      titlePrefix: 'Not applicable',
-    }),
-  };
-}
-
-function applyPlanWithClient({
-  etag,
-  plan,
-  client,
-}) {
-  if (!etag) {
-    throw new Error('A live ETag is required for mutation.');
-  }
-  client.update(plan.payload, etag);
-  const after = client.load();
-  assertSafetyPolicy(after.ruleset);
-  if (digest(updatePayload(after.ruleset, after.ruleset.rules)) !==
-      digest(plan.payload)) {
-    throw new Error('Post-update ruleset verification failed closed.');
-  }
-  return after;
-}
-
-function cliClient(options) {
-  return {
-    update(payload, etag) {
-      gh([
-        'api',
-        `repos/${options.repo}/rulesets/${options['ruleset-id']}`,
-        '--method',
-        'PUT',
-        '-H',
-        `If-Match: ${etag}`,
-        '--input',
-        '-',
-      ], JSON.stringify(payload));
-    },
-    load() {
-      return loadLive({ ...options, input: undefined }, { allowInput: false });
-    },
-  };
-}
-
-function assertApplySnapshot(live, options) {
-  const currentDigest = digest(updatePayload(live.ruleset, live.ruleset.rules));
-  if (!options['expected-ruleset-digest'] ||
-      options['expected-ruleset-digest'] !== currentDigest) {
-    throw new Error('The live ruleset digest changed; rerun plan against live state.');
-  }
-  if (!options['expected-etag'] || options['expected-etag'] !== live.etag) {
-    throw new Error('The live ruleset ETag changed; rerun plan against live state.');
-  }
 }
 
 function main(argv = process.argv.slice(2)) {
   const { operation, options } = parseArguments(argv);
-  if (!new Set([
-    'plan-rollout',
-    'apply-rollout',
-    'plan-rollback',
-    'apply-rollback',
-  ]).has(operation)) {
+  if (String(operation || '').startsWith('apply')) {
+    throw new Error(`${ROLLOUT_BLOCKER_CODE}: ${ROLLOUT_BLOCKER}`);
+  }
+  if (!new Set(['plan-rollout', 'plan-rollback']).has(operation)) {
     throw new Error(
-      'Use plan-rollout, apply-rollout, plan-rollback, or apply-rollback.');
+      'Use plan-rollout or plan-rollback. Mutation is intentionally unavailable.');
   }
-  const isApply = operation.startsWith('apply-');
-  const isRollback = operation.endsWith('rollback');
-  if (isApply && options.input) {
-    throw new Error('--input snapshots are forbidden for apply operations.');
-  }
-  const live = loadLive(options, { allowInput: !isApply });
-  assertSafetyPolicy(live.ruleset);
+  const live = loadReadOnly(options);
   const parameters = {
     appId: Number(options['app-id']),
     checkName: CHECK_NAME,
   };
-  const plan = isRollback
+  const plan = operation === 'plan-rollback'
     ? planRollback(live.ruleset, parameters)
     : planRollout(live.ruleset, parameters);
   const output = {
     ...plan,
-    etag: live.etag,
+    observedEtag: live.etag,
+    rollbackSnapshot: {
+      ...plan.rollbackSnapshot,
+      observedEtag: live.etag,
+    },
   };
-  if (!isApply) {
-    process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
-    return output;
-  }
-
-  assertApplySnapshot(live, options);
-  verifyMainAndTrustedFiles(options);
-  repositoryUrl(options['evidence-url'], options.repo);
-  if (!isRollback) {
-    output.canaries = verifyCanaries(options);
-  }
-  const confirmation = isRollback
-    ? 'ROLLBACK EXACT APP CHECK'
-    : 'APPLY EXACT APP CHECK';
-  if (options.confirm !== confirmation) {
-    throw new Error(`The exact confirmation "${confirmation}" is required.`);
-  }
-  verifyMainAndTrustedFiles(options);
-  const after = applyPlanWithClient({
-    etag: live.etag,
-    plan,
-    client: cliClient(options),
-  });
-  verifyMainAndTrustedFiles(options);
-  const evidence = {
-    operation: plan.operation,
-    beforeEtag: live.etag,
-    afterEtag: after.etag,
-    beforeDigest: plan.beforeDigest,
-    afterDigest: plan.afterDigest,
-    preservedCheckCount: plan.preservedCheckCount,
-    appId: parameters.appId,
-    checkName: parameters.checkName,
-    mainSha: options['expected-main-sha'],
-    evidenceUrl: repositoryUrl(options['evidence-url'], options.repo),
-    canaries: output.canaries || null,
-  };
-  process.stdout.write(`${JSON.stringify(evidence, null, 2)}\n`);
-  return evidence;
+  process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
+  return output;
 }
 
 if (require.main === module) {
@@ -458,25 +339,23 @@ if (require.main === module) {
 }
 
 module.exports = {
-  CHECK_NAME,
+  ACTIVATION_PREREQUISITES,
   REQUIRED_BASELINE_CHECKS,
-  TRUSTED_PATHS,
-  applyPlanWithClient,
-  assertApplySnapshot,
+  ROLLOUT_BLOCKER,
+  ROLLOUT_BLOCKER_CODE,
   assertSafetyPolicy,
+  blockedActivation,
   digest,
   gateCheck,
-  loadLive,
+  loadReadOnly,
   main,
   parseArguments,
   parseIncludedResponse,
   planRollback,
   planRollout,
-  repositoryUrl,
+  rollbackSnapshot,
   sameCheck,
   statusChecks,
   updatePayload,
-  verifyCanary,
-  verifyCanaries,
   verifyCanaryRun,
 };

@@ -3,10 +3,11 @@
 const crypto = require('node:crypto');
 
 const CHECK_NAME = 'Andreja review policy';
-const CHECK_EXTERNAL_PREFIX = 'andreja-review-gate:v3';
-const POLICY_EVENT_MARKER_PREFIX = 'andreja-review-policy-event:v3:';
-const REVIEW_MARKER_PREFIX = 'andreja-review-evidence:v3:';
-const POLICY_EVENT_SCHEMA_VERSION = 3;
+const CHECK_EXTERNAL_PREFIX = 'andreja-review-gate:v4';
+const POLICY_EVENT_MARKER_PREFIX = 'andreja-review-policy-event:v4:';
+const REVIEW_MARKER_PREFIX = 'andreja-review-evidence:v4:';
+const POLICY_EVENT_SCHEMA_VERSION = 4;
+const CONTRACT_REVISION = 'review-gate-contract-v4';
 const COPILOT_REVIEWER = Object.freeze({
   id: 175728472,
   login: 'copilot-pull-request-reviewer[bot]',
@@ -71,25 +72,37 @@ function requiredDomains(labelSets = []) {
     [...REQUIRED_LABELS[domain]].some((label) => labels.has(label)));
 }
 
+function validatePullIdentity(identity) {
+  const normalized = {
+    pullNumber: Number(identity?.pullNumber),
+    headSha: String(identity?.headSha || ''),
+    baseRepositoryId: Number(identity?.baseRepositoryId),
+    baseRepository: String(identity?.baseRepository || ''),
+    baseRef: String(identity?.baseRef || ''),
+    baseSha: String(identity?.baseSha || ''),
+  };
+  if (!Number.isInteger(normalized.pullNumber) ||
+      normalized.pullNumber <= 0 ||
+      !/^[0-9a-f]{40}$/.test(normalized.headSha) ||
+      !Number.isInteger(normalized.baseRepositoryId) ||
+      normalized.baseRepositoryId <= 0 ||
+      !normalized.baseRepository ||
+      !normalized.baseRef ||
+      !/^[0-9a-f]{40}$/.test(normalized.baseSha)) {
+    throw new Error('The pull request did not expose a complete diff identity.');
+  }
+  return normalized;
+}
+
 function pullIdentity(pullRequest) {
-  const identity = {
+  return validatePullIdentity({
     pullNumber: Number(pullRequest?.number),
     headSha: String(pullRequest?.head?.sha || ''),
     baseRepositoryId: Number(pullRequest?.base?.repo?.id),
     baseRepository: String(pullRequest?.base?.repo?.full_name || ''),
     baseRef: String(pullRequest?.base?.ref || ''),
     baseSha: String(pullRequest?.base?.sha || ''),
-  };
-  if (!Number.isInteger(identity.pullNumber) || identity.pullNumber <= 0 ||
-      !/^[0-9a-f]{40}$/.test(identity.headSha) ||
-      !Number.isInteger(identity.baseRepositoryId) ||
-      identity.baseRepositoryId <= 0 ||
-      !identity.baseRepository ||
-      !identity.baseRef ||
-      !/^[0-9a-f]{40}$/.test(identity.baseSha)) {
-    throw new Error('The pull request did not expose a complete diff identity.');
-  }
-  return identity;
+  });
 }
 
 function samePullIdentity(left, right) {
@@ -117,17 +130,45 @@ function repositoryUrl(value, repository) {
     : null;
 }
 
-function policyEventDigest(event) {
-  if (event.kind === 'bind-issue' || event.kind === 'require-domain') {
-    return securityDigest({
-      schemaVersion: event.schemaVersion,
-      kind: event.kind,
-      repositoryId: event.repositoryId,
-      repository: event.repository,
-      pullNumber: event.pullNumber,
-      sourceKey: event.sourceKey,
-    });
+function makeObservationEpoch(identity, {
+  deliveryId,
+  eventPath,
+  workerRevision,
+}) {
+  const normalizedIdentity = validatePullIdentity(identity);
+  const normalized = {
+    identity: normalizedIdentity,
+    deliveryId: String(deliveryId || ''),
+    eventPath: String(eventPath || ''),
+    workerRevision: String(workerRevision || ''),
+  };
+  if (!normalized.deliveryId ||
+      !normalized.eventPath ||
+      !/^[0-9a-f]{64}$/.test(normalized.workerRevision)) {
+    throw new Error(
+      'An observation epoch requires delivery, event path, and worker revision.');
   }
+  return {
+    ...normalized,
+    id: securityDigest(normalized),
+  };
+}
+
+function validObservationEpoch(epoch, identity = epoch?.identity) {
+  try {
+    const expected = makeObservationEpoch(validatePullIdentity(identity), {
+      deliveryId: epoch?.deliveryId,
+      eventPath: epoch?.eventPath,
+      workerRevision: epoch?.workerRevision,
+    });
+    return epoch?.id === expected.id &&
+      samePullIdentity(epoch?.identity, expected.identity);
+  } catch {
+    return false;
+  }
+}
+
+function policyEventDigest(event) {
   return securityDigest(event);
 }
 
@@ -153,6 +194,17 @@ function makePolicyEvent(fields) {
       !Number.isFinite(Date.parse(event.createdAt)) ||
       !event.actor) {
     throw new Error('Policy event metadata is incomplete.');
+  }
+  if ((event.kind === 'bind-issue' || event.kind === 'require-domain') &&
+      (!event.sourceKey ||
+       !validObservationEpoch(event.observationEpoch) ||
+       event.deliveryId !== event.observationEpoch.deliveryId ||
+       !samePullIdentity(event.observationEpoch.identity, {
+         ...event.observationEpoch.identity,
+         pullNumber: event.pullNumber,
+       }))) {
+    throw new Error(
+      'Policy observations require a unique exact-diff observation epoch.');
   }
   event.eventId = policyEventDigest(event);
   event.integrityDigest = securityDigest(event);
@@ -208,7 +260,9 @@ function parsePolicyEventComment(body) {
       !/^[0-9a-f]{64}$/.test(String(eventId || '')) ||
       !/^[0-9a-f]{64}$/.test(String(integrityDigest || '')) ||
       policyEventDigest(eventKey) !== eventId ||
-      securityDigest(signed) !== integrityDigest) {
+      securityDigest(signed) !== integrityDigest ||
+      ((event.kind === 'bind-issue' || event.kind === 'require-domain') &&
+       !validObservationEpoch(event.observationEpoch))) {
     return {
       event: null,
       error: 'The App-authored policy event failed integrity validation.',
@@ -254,29 +308,16 @@ function trustedPolicyEvents(comments, {
   return { events, errors };
 }
 
-function foldPolicyEvents(events, errors = []) {
-  const ordered = [...events].sort((left, right) =>
-    Date.parse(left.createdAt) - Date.parse(right.createdAt) ||
-    left.eventId.localeCompare(right.eventId));
-  const observations = new Map();
-  const reduced = new Set();
-  for (const event of ordered) {
-    if (event.kind === 'bind-issue' || event.kind === 'require-domain') {
-      observations.set(event.eventId, event);
-    }
-  }
-  for (const event of ordered) {
-    if (event.kind !== 'reduce-policy') {
-      continue;
-    }
-    for (const target of event.targetEventIds || []) {
-      if (observations.has(target)) {
-        reduced.add(target);
-      }
-    }
-  }
-  const active = [...observations.values()]
-    .filter((event) => !reduced.has(event.eventId));
+function policySnapshot(
+  latestBySource,
+  reduced,
+  reductionIds,
+  errors,
+  identity = null,
+) {
+  const latest = [...latestBySource.values()]
+    .sort((left, right) => left.sourceKey.localeCompare(right.sourceKey));
+  const active = latest.filter((event) => !reduced.has(event.eventId));
   const associations = [...new Set(active
     .filter((event) => event.kind === 'bind-issue')
     .map((event) => Number(event.issueNumber))
@@ -289,26 +330,124 @@ function foldPolicyEvents(events, errors = []) {
     event.eventId,
   ]));
   const observationIds = active.map((event) => event.eventId).sort();
-  const reductionIds = ordered
-    .filter((event) => event.kind === 'reduce-policy')
-    .map((event) => event.eventId)
-    .sort();
+  const latestSources = Object.fromEntries(latest.map((event) => [
+    event.sourceKey,
+    {
+      eventId: event.eventId,
+      kind: event.kind,
+      issueNumber: Number(event.issueNumber || 0),
+      domain: event.domain || null,
+      observationEpoch: event.observationEpoch,
+      reduced: reduced.has(event.eventId),
+    },
+  ]));
+  const normalizedIdentity = identity ? validatePullIdentity(identity) : null;
+  const currentEpochComplete = !normalizedIdentity || active.every((event) =>
+    samePullIdentity(event.observationEpoch?.identity, normalizedIdentity));
   const snapshot = {
     initialized: associations.length > 0,
     associations,
     domains,
     activeSources,
+    latestSources,
     observationIds,
-    reductionIds,
+    reductionIds: [...reductionIds].sort(),
+    currentIdentity: normalizedIdentity,
+    currentEpochComplete,
     errors: [...errors],
   };
   snapshot.digest = securityDigest({
+    identity: normalizedIdentity,
     associations,
     domains,
     observationIds,
-    reductionIds,
+    reductionIds: snapshot.reductionIds,
   });
   return snapshot;
+}
+
+function foldPolicyEvents(events, errors = [], { identity = null } = {}) {
+  const ordered = [...events].sort((left, right) =>
+    Date.parse(left.createdAt) - Date.parse(right.createdAt) ||
+    left.eventId.localeCompare(right.eventId));
+  const foldErrors = [...errors];
+  const latestBySource = new Map();
+  const reduced = new Set();
+  const reductionIds = [];
+  for (const event of ordered) {
+    if (event.kind === 'bind-issue' || event.kind === 'require-domain') {
+      const validKindData = event.kind === 'bind-issue'
+        ? Number.isInteger(Number(event.issueNumber)) &&
+          Number(event.issueNumber) > 0 &&
+          samePullIdentity(event.identity, event.observationEpoch?.identity) &&
+          String(event.reason || '').trim().length >= 20 &&
+          String(event.reason || '').length <= 2000 &&
+          Boolean(repositoryUrl(event.auditUrl, event.repository))
+        : REVIEW_DOMAINS.includes(event.domain) &&
+          Number.isInteger(Number(event.sourceNumber)) &&
+          Number(event.sourceNumber) > 0 &&
+          new Set(['pull-label', 'issue-label']).has(event.sourceKind);
+      if (!event.sourceKey ||
+          !validKindData ||
+          !validObservationEpoch(event.observationEpoch) ||
+          Number(event.observationEpoch.identity.pullNumber) !==
+            Number(event.pullNumber)) {
+        foldErrors.push(
+          'An authenticated policy observation has an invalid exact-diff epoch.');
+        continue;
+      }
+      latestBySource.set(event.sourceKey, event);
+      continue;
+    }
+    if (event.kind !== 'reduce-policy') {
+      continue;
+    }
+    let reductionIdentity;
+    try {
+      reductionIdentity = validatePullIdentity(event.identity);
+    } catch {
+      foldErrors.push('A policy reduction has an invalid exact-diff identity.');
+      continue;
+    }
+    const before = policySnapshot(
+      latestBySource,
+      reduced,
+      reductionIds,
+      foldErrors,
+      reductionIdentity);
+    const targets = Array.isArray(event.targets) ? event.targets : [];
+    const validTargets = targets.length > 0 && targets.every((target) => {
+      const observation = [...latestBySource.values()].find((candidate) =>
+        candidate.eventId === target?.eventId);
+      return observation &&
+        !reduced.has(observation.eventId) &&
+        target.epochId === observation.observationEpoch?.id &&
+        samePullIdentity(
+          observation.observationEpoch?.identity,
+          reductionIdentity);
+    });
+    if (event.expectedPolicyDigest !== before.digest ||
+        !validTargets ||
+        new Set(targets.map((target) => target.eventId)).size !== targets.length ||
+        String(event.reason || '').trim().length < 20 ||
+        String(event.reason || '').length > 2000 ||
+        !repositoryUrl(event.auditUrl, event.repository) ||
+        String(event.actor || '').endsWith('[bot]')) {
+      foldErrors.push(
+        'A policy reduction failed historical digest or observation-epoch validation.');
+      continue;
+    }
+    for (const target of targets) {
+      reduced.add(target.eventId);
+    }
+    reductionIds.push(event.eventId);
+  }
+  return policySnapshot(
+    latestBySource,
+    reduced,
+    reductionIds,
+    foldErrors,
+    identity);
 }
 
 function reviewMarker(domain, binding) {
@@ -405,7 +544,9 @@ function currentBreakGlass(events, identity, policyDigest, repository) {
   }
   if (!repositoryUrl(candidate.auditUrl, repository) ||
       String(candidate.reason || '').trim().length < 20 ||
-      String(candidate.reason || '').length > 2000) {
+      String(candidate.reason || '').length > 2000 ||
+      !candidate.actor ||
+      String(candidate.actor).endsWith('[bot]')) {
     return { outcome: 'failure', reason: 'The current break-glass record is invalid.' };
   }
   return { outcome: 'success', actor: candidate.actor, eventId: candidate.eventId };
@@ -453,6 +594,15 @@ function domainAttestationEvidence(
       !candidate.attester?.slug ||
       !Number.isInteger(Number(candidate.attester?.runId)) ||
       Number(candidate.attester.runId) <= 0 ||
+      !Number.isInteger(Number(candidate.attester?.runAttempt)) ||
+      Number(candidate.attester.runAttempt) <= 0 ||
+      !/^[0-9a-f]{40}$/.test(String(candidate.attester?.workflowRevision || '')) ||
+      !Number.isInteger(Number(candidate.artifact?.id)) ||
+      Number(candidate.artifact.id) <= 0 ||
+      !candidate.artifact?.name ||
+      !/^[0-9a-f]{64}$/.test(String(candidate.artifact?.sha256 || '')) ||
+      !/^[0-9a-f]{64}$/.test(String(candidate.artifact?.manifestDigest || '')) ||
+      !Number.isFinite(Date.parse(candidate.artifact?.downloadedAt || '')) ||
       !String(candidate.summary || '').trim() ||
       String(candidate.summary).length > 2000) {
     return {
@@ -491,9 +641,9 @@ function evaluateReviewCompletion({
 }) {
   if (path !== 'pull_request') {
     return {
-      state: 'not_applicable',
+      state: 'rejected',
       reasons: [
-        `${path}: the App gate is enforced on each PR head before this path.`,
+        `${path}: policy must be revalidated by its explicit external-worker handler.`,
       ],
     };
   }
@@ -526,6 +676,15 @@ function evaluateReviewCompletion({
       state: 'rejected',
       reasons: [
         'The authenticated policy ledger is malformed; manual repair is required.',
+        policyContext,
+      ],
+    };
+  }
+  if (policy.currentEpochComplete === false) {
+    return {
+      state: 'pending',
+      reasons: [
+        'Authenticated policy observations have not been carried to this exact diff epoch.',
         policyContext,
       ],
     };
@@ -631,6 +790,7 @@ function summarizeResult(result) {
 module.exports = {
   CHECK_EXTERNAL_PREFIX,
   CHECK_NAME,
+  CONTRACT_REVISION,
   COPILOT_REVIEWER,
   POLICY_EVENT_MARKER_PREFIX,
   POLICY_EVENT_SCHEMA_VERSION,
@@ -647,7 +807,9 @@ module.exports = {
   latestDomainReview,
   latestReview,
   makePolicyEvent,
+  makeObservationEpoch,
   parsePolicyEventComment,
+  policySnapshot,
   policyEventDigest,
   policyEventComment,
   pullIdentity,
@@ -660,5 +822,7 @@ module.exports = {
   stableValue,
   summarizeResult,
   trustedPolicyEvents,
+  validObservationEpoch,
+  validatePullIdentity,
   validateEvidenceBinding,
 };

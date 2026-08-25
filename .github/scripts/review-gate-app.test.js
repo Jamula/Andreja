@@ -1,6 +1,8 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const { spawnSync } = require('node:child_process');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
@@ -8,9 +10,11 @@ const test = require('node:test');
 const {
   CHECK_EXTERNAL_PREFIX,
   CHECK_NAME,
+  CONTRACT_REVISION,
   COPILOT_REVIEWER,
   evaluateReviewCompletion,
   foldPolicyEvents,
+  makeObservationEpoch,
   makePolicyEvent,
   policyEventComment,
   pullIdentity,
@@ -18,18 +22,17 @@ const {
   trustedPolicyEvents,
 } = require('./review-gate-policy');
 const {
-  assertTrustedDispatchRef,
   completeGeneration,
   createGeneration,
   evaluateHeadSnapshot,
   evaluateHeadUntilStable,
+  externalIdForProvenance,
+  handleEvent,
   listReviewThreads,
-  run,
-  runHead,
   sanitizedApiFailure,
 } = require('./review-gate-app');
 const {
-  applyPlanWithClient,
+  ROLLOUT_BLOCKER_CODE,
   main: rulesetMain,
   planRollback,
   planRollout,
@@ -45,10 +48,13 @@ const REPOSITORY_ID = 1342901808;
 const HEAD = 'a'.repeat(40);
 const NEXT_HEAD = 'b'.repeat(40);
 const BASE = 'c'.repeat(40);
-const OTHER_BASE = 'd'.repeat(40);
+const NEXT_BASE = 'd'.repeat(40);
+const MERGE_HEAD = 'f'.repeat(40);
+const WORKER_REVISION = 'e'.repeat(64);
 const fixtures = JSON.parse(fs.readFileSync(
   path.join(__dirname, 'fixtures', 'review-gate-app-scenarios.json'),
   'utf8'));
+let sequence = 0;
 
 function endpoint(kind) {
   const marker = function endpointMarker() {};
@@ -62,7 +68,7 @@ function pull(number = 115, overrides = {}) {
     state: 'open',
     draft: false,
     body: 'Closes #104',
-    user: { login: 'pr-author', id: 10, type: 'User' },
+    user: { login: `pr-author-${number}`, id: number, type: 'User' },
     labels: [],
     head: {
       sha: HEAD,
@@ -81,24 +87,67 @@ function pull(number = 115, overrides = {}) {
   };
 }
 
-function context(eventName = 'pull_request_target', pullRequest = pull()) {
+function envelope(eventPath, payload = {}, overrides = {}) {
+  sequence += 1;
+  const source = eventPath === 'reconciliation'
+    ? 'trusted-scheduler'
+    : eventPath === 'trusted_dispatch'
+      ? 'trusted-admin'
+      : eventPath === 'specialist_attestation'
+        ? 'trusted-specialist-broker'
+      : 'github-app-webhook';
   return {
     actor: 'maintainer',
-    eventName,
-    runId: 9001,
-    runAttempt: 1,
-    sha: pullRequest.head.sha,
-    repo: { owner: 'Jamula', repo: 'Andreja' },
-    payload: {
-      repository: {
-        id: REPOSITORY_ID,
-        default_branch: 'main',
-        full_name: 'Jamula/Andreja',
-        name: 'Andreja',
-      },
-      pull_request: pullRequest,
+    repository: {
+      id: REPOSITORY_ID,
+      fullName: 'Jamula/Andreja',
+      owner: 'Jamula',
+      name: 'Andreja',
+      defaultBranch: 'main',
     },
+    delivery: {
+      id: `delivery-${sequence}`,
+      runId: `worker-run-${sequence}`,
+      eventPath,
+      source,
+      authenticated: true,
+    },
+    worker: {
+      hostKind: 'independent-app-worker',
+      revision: WORKER_REVISION,
+      instanceId: 'worker-a',
+    },
+    payload,
+    ...overrides,
   };
+}
+
+function eventTimestamp() {
+  sequence += 1;
+  return new Date(Date.UTC(2026, 7, 25, 17, 0, sequence)).toISOString();
+}
+
+function observation(pullRequest, kind, data, sourceKey, suffix = kind) {
+  const identity = pullIdentity(pullRequest);
+  const deliveryId = `fixture:${pullRequest.number}:${suffix}:${sequence + 1}`;
+  return makePolicyEvent({
+    kind,
+    repositoryId: REPOSITORY_ID,
+    repository: 'Jamula/Andreja',
+    pullNumber: pullRequest.number,
+    deliveryId,
+    createdAt: eventTimestamp(),
+    actor: 'maintainer',
+    data: {
+      sourceKey,
+      observationEpoch: makeObservationEpoch(identity, {
+        deliveryId,
+        eventPath: 'trusted_dispatch',
+        workerRevision: WORKER_REVISION,
+      }),
+      ...data,
+    },
+  });
 }
 
 function policyEvent(pullRequest, kind, data, suffix = kind) {
@@ -107,45 +156,53 @@ function policyEvent(pullRequest, kind, data, suffix = kind) {
     repositoryId: REPOSITORY_ID,
     repository: 'Jamula/Andreja',
     pullNumber: pullRequest.number,
-    deliveryId: `fixture:${pullRequest.number}:${suffix}`,
-    createdAt: `2026-08-25T10:00:0${suffix.length % 10}Z`,
+    deliveryId: `fixture:${pullRequest.number}:${suffix}:${sequence + 1}`,
+    createdAt: eventTimestamp(),
     actor: 'maintainer',
     data,
   });
 }
 
-function trustedComment(event, appId = APP_ID, id = null) {
+function bindEvent(pullRequest, issueNumber = 104, suffix = 'bind') {
+  return observation(
+    pullRequest,
+    'bind-issue',
+    {
+      issueNumber,
+      identity: pullIdentity(pullRequest),
+      reason: 'Bind the implementation PR to its approved issue policy.',
+      auditUrl: `https://github.com/Jamula/Andreja/issues/${issueNumber}`,
+    },
+    `trusted-issue:${issueNumber}`,
+    `${suffix}-${issueNumber}`);
+}
+
+function requirementEvent(pullRequest, domain, issueNumber = 104, suffix = '') {
+  return observation(
+    pullRequest,
+    'require-domain',
+    {
+      domain,
+      sourceKind: 'issue-label',
+      sourceNumber: issueNumber,
+    },
+    `issue:${issueNumber}:domain:${domain}`,
+    `require-${domain}-${suffix}`);
+}
+
+function copilotReview(headSha = HEAD, overrides = {}) {
   return {
-    id: id || Number.parseInt(event.eventId.slice(0, 10), 16),
-    body: policyEventComment(event),
-    html_url: `https://github.com/Jamula/Andreja/pull/${event.pullNumber}` +
-      `#issuecomment-${id || 1}`,
-    performed_via_github_app: { id: appId, slug: 'andreja-review-gate' },
-    user: { login: 'andreja-review-gate[bot]', type: 'Bot' },
+    id: 100 + sequence,
+    state: 'COMMENTED',
+    commit_id: headSha,
+    submitted_at: eventTimestamp(),
+    body: 'Authenticated Copilot review completed.',
+    user: { ...COPILOT_REVIEWER },
+    ...overrides,
   };
 }
 
-function bindEvent(pullRequest, issueNumber = 104) {
-  return policyEvent(pullRequest, 'bind-issue', {
-    sourceKey: `trusted-issue:${issueNumber}`,
-    issueNumber,
-    identity: pullIdentity(pullRequest),
-    reason: 'Bind the implementation PR to its approved issue policy.',
-    auditUrl: `https://github.com/Jamula/Andreja/issues/${issueNumber}`,
-  }, `bind-${issueNumber}`);
-}
-
-function requirementEvent(pullRequest, domain, issueNumber = 104) {
-  return policyEvent(pullRequest, 'require-domain', {
-    sourceKey: `issue:${issueNumber}:domain:${domain}`,
-    domain,
-    sourceKind: 'issue-label',
-    sourceNumber: issueNumber,
-  }, `require-${domain}`);
-}
-
-function copilotAttestationEvent(pullRequest, review = copilotReview(
-  pullRequest.head.sha)) {
+function copilotAttestationEvent(pullRequest, review) {
   return policyEvent(pullRequest, 'copilot-attestation', {
     identity: pullIdentity(pullRequest),
     reviewId: Number(review.id),
@@ -153,6 +210,28 @@ function copilotAttestationEvent(pullRequest, review = copilotReview(
     reviewerLogin: COPILOT_REVIEWER.login,
     reviewSubmittedAt: review.submitted_at,
   }, `copilot-${review.id}`);
+}
+
+function domainReview(pullRequest, domain, policyDigest, overrides = {}) {
+  const binding = {
+    schemaVersion: 4,
+    kind: 'independent-review',
+    domain,
+    ...pullIdentity(pullRequest),
+    policyDigest,
+    evidenceUrl: `https://github.com/Jamula/Andreja/pull/${pullRequest.number}` +
+      '#pullrequestreview-1',
+    summary: `Independent ${domain} review completed for this exact policy.`,
+  };
+  return {
+    id: 500 + sequence,
+    state: 'APPROVED',
+    commit_id: pullRequest.head.sha,
+    submitted_at: eventTimestamp(),
+    body: reviewMarker(domain, binding),
+    user: { id: 22, login: 'reviewer', type: 'User' },
+    ...overrides,
+  };
 }
 
 function domainAttestationEvent(
@@ -168,8 +247,17 @@ function domainAttestationEvent(
     outcome: 'approved',
     attester: {
       appId: 424242,
-      slug: 'seven-reviewer',
+      slug: 'independent-specialist',
       runId: 12345,
+      runAttempt: 1,
+      workflowRevision: '1'.repeat(40),
+    },
+    artifact: {
+      id: 99,
+      name: 'review-evidence.json',
+      sha256: '2'.repeat(64),
+      manifestDigest: '3'.repeat(64),
+      downloadedAt: '2026-08-25T17:00:00Z',
     },
     evidenceUrl: `https://github.com/Jamula/Andreja/pull/` +
       `${pullRequest.number}#issuecomment-automation`,
@@ -178,51 +266,163 @@ function domainAttestationEvent(
   }, `domain-attestation-${domain}`);
 }
 
-function snapshotForComments(comments, pullRequest = pull()) {
-  const trusted = trustedPolicyEvents(comments, {
-    appId: APP_ID,
+function trustedComment(event, appId = APP_ID, id = null) {
+  return {
+    id: id || Number.parseInt(event.eventId.slice(0, 10), 16),
+    body: policyEventComment(event),
+    html_url: `https://github.com/Jamula/Andreja/pull/${event.pullNumber}` +
+      `#issuecomment-${id || 1}`,
+    performed_via_github_app: { id: appId, slug: 'andreja-review-gate' },
+    user: { login: 'andreja-review-gate[bot]', type: 'Bot' },
+  };
+}
+
+function snapshotForEvents(events, pullRequest) {
+  return foldPolicyEvents(events, [], { identity: pullIdentity(pullRequest) });
+}
+
+function mapping(pullRequest, {
+  issues = [104],
+  reviewers = [],
+} = {}) {
+  const identity = pullIdentity(pullRequest);
+  return {
     repositoryId: REPOSITORY_ID,
     repository: 'Jamula/Andreja',
-    pullNumber: pullRequest.number,
-  });
-  return foldPolicyEvents(trusted.events, trusted.errors);
-}
-
-function copilotReview(headSha = HEAD, overrides = {}) {
-  return {
-    id: 100,
-    state: 'COMMENTED',
-    commit_id: headSha,
-    submitted_at: '2026-08-25T10:05:00Z',
-    body: 'Authenticated Copilot review completed.',
-    user: { ...COPILOT_REVIEWER },
-    ...overrides,
+    pullNumber: identity.pullNumber,
+    headSha: identity.headSha,
+    baseRepositoryId: identity.baseRepositoryId,
+    baseRepository: identity.baseRepository,
+    baseRef: identity.baseRef,
+    baseSha: identity.baseSha,
+    issueNumbers: issues,
+    reviewerLogins: reviewers,
+    open: true,
   };
 }
 
-function domainReview(pullRequest, domain, policyDigest, overrides = {}) {
-  const binding = {
-    schemaVersion: 3,
-    kind: 'independent-review',
-    domain,
-    ...pullIdentity(pullRequest),
-    policyDigest,
-    evidenceUrl: `https://github.com/Jamula/Andreja/pull/${pullRequest.number}` +
-      '#pullrequestreview-1',
-    summary: `Independent ${domain} review completed for this exact policy.`,
-  };
-  return {
-    id: 200,
-    state: 'APPROVED',
-    commit_id: pullRequest.head.sha,
-    submitted_at: '2026-08-25T10:06:00Z',
-    body: reviewMarker(domain, binding),
-    user: { id: 22, login: 'reviewer', type: 'User' },
-    ...overrides,
-  };
+class FakeStore {
+  constructor({ mappings = [], mergeGroups = {} } = {}) {
+    this.mappings = new Map(mappings.map((item) =>
+      [item.pullNumber, structuredClone(item)]));
+    this.mergeGroups = structuredClone(mergeGroups);
+    this.generations = [];
+    this.sequences = new Map();
+    this.deliveries = new Map();
+  }
+
+  async upsertPullMapping(value) {
+    this.mappings.set(value.pullNumber, structuredClone(value));
+  }
+
+  async closePullMapping(pullNumber) {
+    const current = this.mappings.get(pullNumber);
+    if (current) {
+      current.open = false;
+    }
+  }
+
+  async getPullMapping(pullNumber) {
+    const value = this.mappings.get(Number(pullNumber));
+    return value ? structuredClone(value) : null;
+  }
+
+  async listPullMappingsByIssue(issueNumber) {
+    return [...this.mappings.values()]
+      .filter((value) => value.open &&
+        value.issueNumbers.includes(Number(issueNumber)))
+      .map((value) => structuredClone(value));
+  }
+
+  async listPullMappingsByReviewer(login) {
+    return [...this.mappings.values()]
+      .filter((value) => value.open &&
+        value.reviewerLogins.some((candidate) =>
+          candidate.toLowerCase() === String(login).toLowerCase()))
+      .map((value) => structuredClone(value));
+  }
+
+  async listPullMappingsByBase({ repositoryId, ref }) {
+    return [...this.mappings.values()]
+      .filter((value) => value.open &&
+        Number(value.baseRepositoryId) === Number(repositoryId) &&
+        value.baseRef === ref)
+      .map((value) => structuredClone(value));
+  }
+
+  async listOpenPullMappings() {
+    return [...this.mappings.values()]
+      .filter((value) => value.open)
+      .map((value) => structuredClone(value));
+  }
+
+  async reserveGeneration({ repositoryId, headSha }) {
+    const key = `${repositoryId}:${headSha}`;
+    const next = (this.sequences.get(key) || 0) + 1;
+    this.sequences.set(key, next);
+    const generation = {
+      repositoryId,
+      headSha,
+      sequence: next,
+      generationId: `${key}:${next}`,
+      active: false,
+    };
+    this.generations.push(generation);
+    return structuredClone(generation);
+  }
+
+  async activateGeneration({ generationId, checkRunId, externalId, provenance }) {
+    const generation = this.generations.find((candidate) =>
+      candidate.generationId === generationId);
+    Object.assign(generation, {
+      active: true,
+      checkRunId,
+      externalId,
+      provenance: structuredClone(provenance),
+    });
+  }
+
+  async getNewestGeneration({ repositoryId, headSha }) {
+    const values = this.generations.filter((candidate) =>
+      Number(candidate.repositoryId) === Number(repositoryId) &&
+      candidate.headSha === headSha &&
+      candidate.active);
+    return values.length > 0 ? structuredClone(values.at(-1)) : null;
+  }
+
+  async claimDelivery({ repositoryId, deliveryId, eventPath, workerRevision }) {
+    const key = `${repositoryId}:${deliveryId}:${eventPath}:${workerRevision}`;
+    if (this.deliveries.has(key)) {
+      return false;
+    }
+    this.deliveries.set(key, { state: 'claimed' });
+    return true;
+  }
+
+  async completeDelivery({ repositoryId, deliveryId, eventPath, workerRevision }) {
+    const key = `${repositoryId}:${deliveryId}:${eventPath}:${workerRevision}`;
+    this.deliveries.set(key, { state: 'completed' });
+  }
+
+  async failDelivery({
+    repositoryId,
+    deliveryId,
+    eventPath,
+    workerRevision,
+    reason,
+  }) {
+    const key = `${repositoryId}:${deliveryId}:${eventPath}:${workerRevision}`;
+    this.deliveries.set(key, { state: 'failed', reason });
+  }
+
+  async resolveMergeGroupConstituents(group) {
+    const numbers = this.mergeGroups[group.id] || [];
+    return numbers.map((number) => structuredClone(this.mappings.get(number)))
+      .filter(Boolean);
+  }
 }
 
-class FakeGitHub {
+class FakeClient {
   constructor({
     pulls = [pull()],
     comments = {},
@@ -231,6 +431,10 @@ class FakeGitHub {
     threads = {},
     permissions = { reviewer: 'write', maintainer: 'admin' },
     appId = APP_ID,
+    branches = { main: BASE },
+    mergeGroups = {},
+    specialistRuns = {},
+    specialistArtifacts = {},
   } = {}) {
     this.state = {
       pulls: structuredClone(pulls),
@@ -244,9 +448,13 @@ class FakeGitHub {
       nextCommentId: 5000,
       appId,
       issues: {},
+      branches: structuredClone(branches),
+      mergeGroups: structuredClone(mergeGroups),
+      specialistRuns: structuredClone(specialistRuns),
+      specialistArtifacts: structuredClone(specialistArtifacts),
     };
     this.callLog = [];
-    this.failOn = null;
+    this.failure = null;
     this.rest = {
       checks: {
         create: async (parameters) => {
@@ -312,17 +520,30 @@ class FakeGitHub {
         listReviews: endpoint('reviews'),
       },
       repos: {
-        getCollaboratorPermissionLevel: async ({ username }) => ({
-          data: { permission: this.state.permissions[username] || 'read' },
-        }),
+        getCollaboratorPermissionLevel: async ({ username }) => {
+          this.#maybeFail('repos.permission');
+          this.callLog.push(`repos.permission:${username}`);
+          return {
+            data: { permission: this.state.permissions[username] || 'read' },
+          };
+        },
+        getBranch: async ({ branch }) => {
+          this.#maybeFail('repos.getBranch');
+          this.callLog.push(`repos.getBranch:${branch}`);
+          return { data: { commit: { sha: this.state.branches[branch] } } };
+        },
       },
     };
   }
 
+  failNext(name, error) {
+    this.failure = { name, error };
+  }
+
   #maybeFail(name) {
-    if (this.failOn?.name === name) {
-      const error = this.failOn.error;
-      this.failOn = null;
+    if (this.failure?.name === name) {
+      const error = this.failure.error;
+      this.failure = null;
       throw error;
     }
   }
@@ -364,55 +585,90 @@ class FakeGitHub {
       },
     };
   }
+
+  async resolveMergeGroupConstituents({ mergeGroupId }) {
+    this.#maybeFail('mergeGroup.resolve');
+    this.callLog.push(`mergeGroup.resolve:${mergeGroupId}`);
+    return structuredClone(this.state.mergeGroups[mergeGroupId] || []);
+  }
+
+  async getSpecialistRun({ runId }) {
+    this.#maybeFail('specialist.run');
+    this.callLog.push(`specialist.run:${runId}`);
+    return structuredClone(this.state.specialistRuns[runId]);
+  }
+
+  async downloadSpecialistArtifact({ artifactId }) {
+    this.#maybeFail('specialist.artifact');
+    this.callLog.push(`specialist.artifact:${artifactId}`);
+    const artifact = this.state.specialistArtifacts[artifactId];
+    return {
+      ...structuredClone(artifact),
+      bytes: Buffer.from(artifact?.bytes || ''),
+    };
+  }
 }
 
-function seededFake({
+function seededState({
   pullRequest = pull(),
   issueNumber = 104,
   domains = [],
   labels = {},
-  reviews = null,
-  extraPulls = [],
+  includeCopilot = true,
+  permissions,
 } = {}) {
-  const reviewList = reviews || [copilotReview(pullRequest.head.sha)];
-  const events = [
-    bindEvent(pullRequest, issueNumber),
-    ...domains.map((domain) =>
-      requirementEvent(pullRequest, domain, issueNumber)),
-    ...reviewList
-      .filter((review) => Number(review.user?.id) === COPILOT_REVIEWER.id)
-      .map((review) => copilotAttestationEvent(pullRequest, review)),
-  ];
-  return new FakeGitHub({
-    pulls: [pullRequest, ...extraPulls],
+  const bind = bindEvent(pullRequest, issueNumber);
+  const requirements = domains.map((domain) =>
+    requirementEvent(pullRequest, domain, issueNumber));
+  const events = [bind, ...requirements];
+  const policy = snapshotForEvents(events, pullRequest);
+  const reviews = [];
+  if (includeCopilot) {
+    const review = copilotReview(pullRequest.head.sha);
+    reviews.push(review);
+    events.push(copilotAttestationEvent(pullRequest, review));
+  }
+  for (const domain of domains) {
+    reviews.push(domainReview(pullRequest, domain, policy.digest));
+  }
+  const client = new FakeClient({
+    pulls: [pullRequest],
     comments: {
       [pullRequest.number]: events.map((event, index) =>
         trustedComment(event, APP_ID, index + 1)),
     },
     labels,
-    reviews: {
-      [pullRequest.number]: reviewList,
-    },
+    reviews: { [pullRequest.number]: reviews },
+    permissions,
+  });
+  const store = new FakeStore({ mappings: [mapping(pullRequest)] });
+  return { client, store, policy, events, reviews };
+}
+
+async function runPullEvent(state, pullRequest = state.client.state.pulls[0]) {
+  return handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('pull_request', {
+      action: 'synchronize',
+      pull_request: structuredClone(pullRequest),
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
   });
 }
 
-function addCopilotCompletion(fake, pullRequest = fake.state.pulls[0]) {
-  const review = copilotReview(pullRequest.head.sha);
-  fake.state.reviews[pullRequest.number] ||= [];
-  fake.state.reviews[pullRequest.number].push(review);
-  fake.state.comments[pullRequest.number] ||= [];
-  fake.state.comments[pullRequest.number].push(
-    trustedComment(copilotAttestationEvent(pullRequest, review), APP_ID));
+function latestCheck(client, headSha = null) {
+  const values = headSha
+    ? client.state.checkRuns.filter((run) => run.head_sha === headSha)
+    : client.state.checkRuns;
+  return values.at(-1);
 }
 
-const quietCore = {
-  info() {},
-  setFailed() {},
-};
-
-test('draft, unresolved thread, missing policy, and stale Copilot fail closed', () => {
+test('drafts, unresolved threads, missing policy, and stale Copilot fail closed', () => {
   const current = pull();
-  const policy = snapshotForComments([trustedComment(bindEvent(current))], current);
+  const bind = bindEvent(current);
+  const policy = snapshotForEvents([bind], current);
   assert.equal(evaluateReviewCompletion({
     pullRequest: { ...current, draft: true },
     policy,
@@ -424,549 +680,851 @@ test('draft, unresolved thread, missing policy, and stale Copilot fail closed', 
   }).state, 'rejected');
   assert.equal(evaluateReviewCompletion({
     pullRequest: current,
-    policy: foldPolicyEvents([]),
+    policy: foldPolicyEvents([], [], { identity: pullIdentity(current) }),
   }).state, 'rejected');
   assert.equal(evaluateReviewCompletion({
     pullRequest: current,
     policy,
     reviews: [copilotReview(NEXT_HEAD)],
   }).state, 'pending');
+  assert.equal(evaluateReviewCompletion({
+    path: 'merge_group',
+    pullRequest: current,
+    policy,
+  }).state, 'rejected');
 });
 
 test('copied policy marker from the wrong App identity is ignored', () => {
   const current = pull();
   const copied = trustedComment(bindEvent(current), OTHER_APP_ID);
-  const snapshot = snapshotForComments([copied], current);
-  assert.equal(snapshot.initialized, false);
-  assert.equal(snapshot.errors.length, 0);
+  const trusted = trustedPolicyEvents([copied], {
+    appId: APP_ID,
+    repositoryId: REPOSITORY_ID,
+    repository: 'Jamula/Andreja',
+    pullNumber: current.number,
+  });
+  assert.equal(foldPolicyEvents(
+    trusted.events,
+    trusted.errors,
+    { identity: pullIdentity(current) }).initialized, false);
 });
 
-test('same-head metadata revocation publishes pending before failure', async () => {
-  const fake = seededFake();
-  await runHead({
-    github: fake,
-    context: context(),
-    core: quietCore,
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-    trigger: 'initial',
-    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
-  });
-  assert.equal(fake.state.checkRuns.at(-1).conclusion, 'success');
-
-  fake.state.threads[115] = [{
-    id: 'thread-1',
-    isResolved: false,
-    comments: { nodes: [{ id: 'comment-1', updatedAt: '2026-08-25T10:07:00Z' }] },
-  }];
-  const before = fake.callLog.length;
-  await runHead({
-    github: fake,
-    context: context('pull_request_review_thread'),
-    core: quietCore,
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-    trigger: 'thread-unresolved',
-    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
-  });
-  assert.equal(fake.callLog[before], 'checks.create');
-  assert.equal(fake.state.checkRuns.at(-1).conclusion, 'failure');
-  assert.match(fake.state.checkRuns.at(-1).output.summary, /unresolved/);
-});
-
-test('late metadata recovery creates a newer successful App generation', async () => {
-  const fake = seededFake();
-  fake.state.threads[115] = [{
-    id: 'thread-1',
-    isResolved: false,
-    comments: { nodes: [] },
-  }];
-  await runHead({
-    github: fake,
-    context: context('pull_request_review_thread'),
-    core: quietCore,
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-    trigger: 'unresolved',
-    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
-  });
-  assert.equal(fake.state.checkRuns.at(-1).conclusion, 'failure');
-  fake.state.threads[115][0].isResolved = true;
-  await runHead({
-    github: fake,
-    context: context('pull_request_review_thread'),
-    core: quietCore,
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-    trigger: 'resolved',
-    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
-  });
-  assert.equal(fake.state.checkRuns.at(-1).conclusion, 'success');
-});
-
-test('Copilot review webhook is attested by the App before approval', async () => {
+test('policy reductions validate historical digest and exact observation epoch', () => {
   const current = pull();
+  const bind = bindEvent(current);
+  const requirement = requirementEvent(current, 'architecture');
+  const before = snapshotForEvents([bind, requirement], current);
+  const reduction = policyEvent(current, 'reduce-policy', {
+    identity: pullIdentity(current),
+    expectedPolicyDigest: before.digest,
+    targets: [{
+      eventId: requirement.eventId,
+      epochId: requirement.observationEpoch.id,
+    }],
+    reason: 'Authorized removal for the exact current observation epoch.',
+    auditUrl: 'https://github.com/Jamula/Andreja/issues/104',
+  });
+  const reduced = snapshotForEvents([bind, requirement, reduction], current);
+  assert.deepEqual(reduced.domains, []);
+  assert.equal(reduced.errors.length, 0);
+
+  const reobserved = requirementEvent(
+    current,
+    'architecture',
+    104,
+    'new-observation');
+  const restored = snapshotForEvents(
+    [bind, requirement, reduction, reobserved],
+    current);
+  assert.deepEqual(restored.domains, ['architecture']);
+  assert.equal(restored.activeSources[
+    'issue:104:domain:architecture'], reobserved.eventId);
+
+  const staleReduction = policyEvent(current, 'reduce-policy', {
+    identity: pullIdentity(current),
+    expectedPolicyDigest: before.digest,
+    targets: [{
+      eventId: requirement.eventId,
+      epochId: requirement.observationEpoch.id,
+    }],
+    reason: 'This stale historical reduction must not affect re-observation.',
+    auditUrl: 'https://github.com/Jamula/Andreja/issues/104',
+  }, 'stale-reduction');
+  const stale = snapshotForEvents(
+    [bind, requirement, reduction, reobserved, staleReduction],
+    current);
+  assert.deepEqual(stale.domains, ['architecture']);
+  assert.match(stale.errors.join(' '), /historical digest|observation-epoch/);
+});
+
+test('a policy reduction never carries across push and re-observation', () => {
+  const current = pull();
+  const bind = bindEvent(current);
+  const requirement = requirementEvent(current, 'security');
+  const before = snapshotForEvents([bind, requirement], current);
+  const reduction = policyEvent(current, 'reduce-policy', {
+    identity: pullIdentity(current),
+    expectedPolicyDigest: before.digest,
+    targets: [{
+      eventId: requirement.eventId,
+      epochId: requirement.observationEpoch.id,
+    }],
+    reason: 'Exact-diff security requirement reduction for recorded reasons.',
+    auditUrl: 'https://github.com/Jamula/Andreja/issues/104',
+  });
+  const next = pull(115, {
+    head: { ...current.head, sha: NEXT_HEAD },
+  });
+  const carriedBind = bindEvent(next, 104, 'carry');
+  const nextRequirement = requirementEvent(next, 'security', 104, 'next-head');
+  const snapshot = foldPolicyEvents(
+    [bind, requirement, reduction, carriedBind, nextRequirement],
+    [],
+    { identity: pullIdentity(next) });
+  assert.deepEqual(snapshot.domains, ['security']);
+  assert.equal(snapshot.currentEpochComplete, true);
+});
+
+test('reduction tooling emits exact event and epoch targets only', () => {
+  const current = pull();
+  const bind = bindEvent(current);
+  const requirement = requirementEvent(current, 'privacy');
+  const snapshot = snapshotForEvents([bind, requirement], current);
+  const targets = reductionTargets(
+    JSON.stringify([requirement.eventId]),
+    { snapshot },
+    pullIdentity(current));
+  assert.deepEqual(targets, [{
+    eventId: requirement.eventId,
+    epochId: requirement.observationEpoch.id,
+  }]);
+  assert.throws(() => reductionTargets(
+    JSON.stringify(['f'.repeat(64)]),
+    { snapshot },
+    pullIdentity(current)), /stale|epoch/);
+});
+
+test('repository Actions cannot authenticate or host the publisher contract', async () => {
+  const state = seededState();
+  const unsafe = envelope('pull_request', {
+    action: 'synchronize',
+    pull_request: pull(),
+  });
+  unsafe.delivery.source = 'github-actions';
+  unsafe.worker.hostKind = 'github-actions';
+  await assert.rejects(() => handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: unsafe,
+    publisherAppId: APP_ID,
+  }), /independent-worker|App-webhook|Actions/);
+  assert.equal(state.client.state.checkRuns.length, 0);
+});
+
+test('direct PR handling creates pending before mutable metadata reads', async () => {
+  const state = seededState();
+  const result = await runPullEvent(state);
+  assert.equal(state.client.callLog[0], 'checks.create');
+  assert.equal(result[0].result.state, 'approved');
+  assert.equal(latestCheck(state.client).conclusion, 'success');
+  assert.equal(latestCheck(state.client).app.id, APP_ID);
+});
+
+test('authenticated webhook redelivery cannot create a second writer', async () => {
+  const state = seededState();
+  const delivered = envelope('pull_request', {
+    action: 'synchronize',
+    pull_request: structuredClone(state.client.state.pulls[0]),
+  });
+  const options = {
+    client: state.client,
+    store: state.store,
+    envelope: delivered,
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  };
+  await handleEvent(options);
+  const count = state.client.state.checkRuns.length;
+  const duplicate = await handleEvent(options);
+  assert.equal(duplicate.duplicate, true);
+  assert.equal(state.client.state.checkRuns.length, count);
+});
+
+test('Copilot webhook attestation binds exact PR, head, and base', async () => {
+  const current = pull();
+  const bind = bindEvent(current);
   const review = copilotReview();
-  const fake = new FakeGitHub({
+  const client = new FakeClient({
     pulls: [current],
-    comments: { 115: [trustedComment(bindEvent(current), APP_ID, 1)] },
+    comments: { 115: [trustedComment(bind, APP_ID, 1)] },
     reviews: { 115: [review] },
   });
-  const reviewContext = context('pull_request_review', current);
-  reviewContext.payload.action = 'submitted';
-  reviewContext.payload.review = review;
-  await runHead({
-    github: fake,
-    context: reviewContext,
-    core: quietCore,
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-    trigger: 'copilot-submitted',
+  const store = new FakeStore({ mappings: [mapping(current)] });
+  await handleEvent({
+    client,
+    store,
+    envelope: envelope('pull_request_review', {
+      action: 'submitted',
+      pull_request: current,
+      review,
+    }),
+    publisherAppId: APP_ID,
     evaluatorOptions: { poll: false, stabilitySeconds: 0 },
   });
-  assert.equal(fake.state.checkRuns.at(-1).conclusion, 'success');
-  assert.ok(fake.state.comments[115].some((comment) =>
+  assert.equal(client.callLog[0], 'checks.create');
+  assert.ok(client.state.comments[115].some((comment) =>
     comment.body.includes('Exact-diff Copilot review attested')));
+  assert.equal(latestCheck(client).conclusion, 'success');
 });
 
-test('bound-issue label event revokes same-head success through a new generation', async () => {
-  const fake = seededFake();
-  await runHead({
-    github: fake,
-    context: context(),
-    core: quietCore,
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-    trigger: 'initial',
+test('issue policy increases are monotonic despite label and reference removal', async () => {
+  const state = seededState();
+  await runPullEvent(state);
+  state.client.state.labels[104] = ['area:architecture'];
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('issues', {
+      action: 'labeled',
+      issue: { number: 104 },
+    }),
+    publisherAppId: APP_ID,
     evaluatorOptions: { poll: false, stabilitySeconds: 0 },
   });
-  assert.equal(fake.state.checkRuns.at(-1).conclusion, 'success');
-  fake.state.labels[104] = ['area:architecture'];
-  const issueContext = context('issues');
-  delete issueContext.payload.pull_request;
-  issueContext.payload.issue = { number: 104 };
-  await run({
-    github: fake,
-    context: issueContext,
-    core: quietCore,
-    expectedAppId: APP_ID,
+  assert.equal(latestCheck(state.client).conclusion, 'failure');
+  assert.match(latestCheck(state.client).output.summary, /architecture/);
+
+  state.client.state.labels[104] = [];
+  state.client.state.pulls[0].body = 'No closing reference remains.';
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('issues', {
+      action: 'unlabeled',
+      issue: { number: 104 },
+    }),
+    publisherAppId: APP_ID,
     evaluatorOptions: { poll: false, stabilitySeconds: 0 },
   });
-  assert.equal(fake.state.checkRuns.at(-1).conclusion, 'failure');
-  assert.match(fake.state.checkRuns.at(-1).output.summary, /architecture/);
+  assert.equal(latestCheck(state.client).conclusion, 'failure');
+  assert.match(latestCheck(state.client).output.summary, /architecture/);
 });
 
-test('retarget or base advance invalidates exact-diff evidence', async () => {
-  const current = pull();
-  const fake = seededFake({ pullRequest: current });
-  assert.equal(
-    (await evaluateHeadSnapshot({
-      github: fake,
-      context: context(),
-      headSha: HEAD,
-      expectedAppId: APP_ID,
-    })).result.state,
-    'approved');
-
-  fake.state.pulls[0].base = {
-    ...fake.state.pulls[0].base,
-    ref: 'release',
-    sha: OTHER_BASE,
-  };
-  const changed = await evaluateHeadSnapshot({
-    github: fake,
-    context: context(),
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-  });
-  assert.equal(changed.result.state, 'pending');
-  assert.match(changed.result.reasons.join(' '), /exact PR\/head\/base/);
-});
-
-test('push invalidates Copilot App attestation until the new diff is reviewed', async () => {
-  const fake = seededFake();
-  fake.state.pulls[0].head.sha = NEXT_HEAD;
-  const result = await evaluateHeadSnapshot({
-    github: fake,
-    context: context(),
-    headSha: NEXT_HEAD,
-    expectedAppId: APP_ID,
-  });
-  assert.equal(result.result.state, 'pending');
-  assert.match(result.result.reasons.join(' '), /newest Copilot review/);
-});
-
-test('author removing closing references cannot reduce authenticated policy', async () => {
-  const current = pull();
-  const fake = seededFake({
-    pullRequest: current,
-    labels: { 104: ['area:architecture'] },
-  });
-  fake.state.pulls[0].body = 'No closing references remain.';
-  const first = await evaluateHeadSnapshot({
-    github: fake,
-    context: context(),
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-  });
-  assert.equal(first.snapshots[0].policy.associations[0], 104);
-  assert.deepEqual(first.snapshots[0].policy.domains, ['architecture']);
-  assert.equal(first.result.state, 'pending');
-
-  fake.state.reviews[115].push(domainReview(
-    fake.state.pulls[0],
-    'architecture',
-    first.snapshots[0].policy.digest));
-  const recovered = await evaluateHeadSnapshot({
-    github: fake,
-    context: context(),
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-  });
-  assert.equal(recovered.result.state, 'approved');
-});
-
-test('deleting an App policy comment restores it before evaluation', async () => {
-  const current = pull();
-  const fake = seededFake({
-    pullRequest: current,
-    domains: ['architecture'],
-  });
-  const policy = snapshotForComments(fake.state.comments[115], current);
-  fake.state.reviews[115].push(
-    domainReview(current, 'architecture', policy.digest));
-  const requirementComment = fake.state.comments[115].find((comment) =>
-    comment.body.includes('architecture review requirement'));
-  fake.state.comments[115] = fake.state.comments[115].filter((comment) =>
-    comment.id !== requirementComment.id);
-  const deletedContext = context('issue_comment');
-  delete deletedContext.payload.pull_request;
-  deletedContext.payload.action = 'deleted';
-  deletedContext.payload.issue = {
-    number: 115,
-    pull_request: { url: 'https://api.github.com/repos/Jamula/Andreja/pulls/115' },
-  };
-  deletedContext.payload.comment = requirementComment;
-  await run({
-    github: fake,
-    context: deletedContext,
-    core: quietCore,
-    expectedAppId: APP_ID,
+test('deleted App policy event is restored after pending publication', async () => {
+  const state = seededState();
+  await runPullEvent(state);
+  const removed = state.client.state.comments[115].find((comment) =>
+    comment.body.includes('Trusted issue'));
+  state.client.state.comments[115] = state.client.state.comments[115]
+    .filter((comment) => comment.id !== removed.id);
+  const before = state.client.callLog.length;
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('issue_comment', {
+      action: 'deleted',
+      issue: { number: 115, pull_request: { url: 'pull' } },
+      comment: removed,
+    }),
+    publisherAppId: APP_ID,
     evaluatorOptions: { poll: false, stabilitySeconds: 0 },
   });
-  assert.equal(fake.state.checkRuns.at(-1).conclusion, 'success');
-  assert.equal(fake.state.comments[115].filter((comment) =>
-    comment.body.includes('architecture review requirement')).length, 1);
+  assert.equal(state.client.callLog[before], 'checks.create');
+  assert.equal(latestCheck(state.client).conclusion, 'success');
+  assert.ok(state.client.state.comments[115].some((comment) =>
+    comment.body.includes('Trusted issue')));
 });
 
-test('newest independent rejection masks an older approval', async () => {
-  const current = pull();
-  const fake = seededFake({
-    pullRequest: current,
-    domains: ['architecture'],
-  });
-  const policy = snapshotForComments(fake.state.comments[115], current);
-  const approved = domainReview(current, 'architecture', policy.digest);
-  fake.state.reviews[115].push(approved);
-  assert.equal((await evaluateHeadSnapshot({
-    github: fake,
-    context: context(),
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-  })).result.state, 'approved');
-  fake.state.reviews[115].push({
-    ...approved,
-    id: 201,
-    state: 'CHANGES_REQUESTED',
-    submitted_at: '2026-08-25T10:08:00Z',
-  });
-  assert.equal((await evaluateHeadSnapshot({
-    github: fake,
-    context: context(),
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-  })).result.state, 'rejected');
-});
-
-test('PR author self-approval never counts as independent evidence', async () => {
-  const current = pull();
-  const fake = seededFake({
-    pullRequest: current,
-    domains: ['quality'],
-  });
-  const policy = snapshotForComments(fake.state.comments[115], current);
-  fake.state.reviews[115].push(domainReview(
-    current,
-    'quality',
-    policy.digest,
-    { user: { id: 10, login: 'pr-author', type: 'User' } }));
-  const result = await evaluateHeadSnapshot({
-    github: fake,
-    context: context(),
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-  });
-  assert.equal(result.result.state, 'rejected');
-  assert.match(result.result.reasons.join(' '), /author cannot/);
-});
-
-test('current-diff App automation evidence supports the one-human model', async () => {
-  const current = pull();
-  const fake = seededFake({
-    pullRequest: current,
-    domains: ['architecture'],
-  });
-  const policy = snapshotForComments(fake.state.comments[115], current);
-  fake.state.comments[115].push(trustedComment(
-    domainAttestationEvent(current, 'architecture', policy.digest),
-    APP_ID,
-    99));
-  const result = await evaluateHeadSnapshot({
-    github: fake,
-    context: context(),
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-  });
-  assert.equal(result.result.state, 'approved');
-
-  fake.state.pulls[0].base.sha = OTHER_BASE;
-  const stale = await evaluateHeadSnapshot({
-    github: fake,
-    context: context(),
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-  });
-  assert.notEqual(stale.result.state, 'approved');
-});
-
-test('a changed second full snapshot cannot publish success', async () => {
-  const fake = seededFake();
-  let sleepCount = 0;
+test('full second snapshot prevents a late thread from publishing success', async () => {
+  const state = seededState();
+  let slept = false;
   const result = await evaluateHeadUntilStable({
-    github: fake,
-    context: context(),
+    client: state.client,
+    store: state.store,
+    envelope: envelope('reconciliation', {}),
     headSha: HEAD,
-    expectedAppId: APP_ID,
+    publisherAppId: APP_ID,
     poll: false,
     stabilitySeconds: 0,
     sleepFunction: async () => {
-      sleepCount += 1;
-      fake.state.threads[115] = [{
+      slept = true;
+      state.client.state.threads[115] = [{
         id: 'late-thread',
         isResolved: false,
         comments: { nodes: [] },
       }];
     },
   });
-  assert.equal(sleepCount, 1);
+  assert.equal(slept, true);
   assert.equal(result.result.state, 'rejected');
 });
 
-test('concurrent stale writer cannot update after a newer generation exists', async () => {
-  const fake = seededFake();
-  const ctx = context();
-  const oldRun = await createGeneration({
-    github: fake,
-    context: ctx,
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-    trigger: 'old',
+test('base push enumerates durable mappings and publishes every head pending first', async () => {
+  const first = pull(115);
+  const second = pull(116, {
+    head: {
+      sha: NEXT_HEAD,
+      ref: 'feature-116',
+      repo: { full_name: 'Jamula/Andreja' },
+    },
+    user: { login: 'other-author', id: 116, type: 'User' },
   });
-  const newRun = await createGeneration({
-    github: fake,
-    context: ctx,
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-    trigger: 'new',
+  const firstReview = copilotReview(first.head.sha);
+  const secondReview = copilotReview(second.head.sha);
+  const client = new FakeClient({
+    pulls: [first, second],
+    comments: {
+      115: [
+        trustedComment(bindEvent(first), APP_ID, 1),
+        trustedComment(copilotAttestationEvent(first, firstReview), APP_ID, 2),
+      ],
+      116: [
+        trustedComment(bindEvent(second), APP_ID, 3),
+        trustedComment(copilotAttestationEvent(second, secondReview), APP_ID, 4),
+      ],
+    },
+    reviews: { 115: [firstReview], 116: [secondReview] },
   });
-  const approved = { state: 'approved', reasons: ['complete'] };
-  assert.equal(await completeGeneration({
-    github: fake,
-    context: ctx,
-    checkRun: oldRun,
-    expectedAppId: APP_ID,
-    result: approved,
-  }), false);
-  assert.equal(fake.state.checkRuns.find((run) => run.id === oldRun.id).status,
-    'in_progress');
-  assert.equal(await completeGeneration({
-    github: fake,
-    context: ctx,
-    checkRun: newRun,
-    expectedAppId: APP_ID,
-    result: approved,
-  }), true);
-  assert.equal(fake.state.checkRuns.at(-1).conclusion, 'success');
-});
-
-test('rate limit after startup leaves the newest App generation failed', async () => {
-  const fake = seededFake();
-  fake.failOn = {
-    name: 'pulls',
-    error: Object.assign(new Error('private rate-limit detail'), { status: 429 }),
-  };
-  await runHead({
-    github: fake,
-    context: context(),
-    core: quietCore,
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-    trigger: 'rate-limit',
+  const store = new FakeStore({
+    mappings: [mapping(first), mapping(second)],
+  });
+  client.state.pulls.forEach((candidate) => {
+    candidate.base.sha = NEXT_BASE;
+  });
+  client.state.branches.main = NEXT_BASE;
+  const start = client.callLog.length;
+  const result = await handleEvent({
+    client,
+    store,
+    envelope: envelope('push', {
+      ref: 'refs/heads/main',
+      before: BASE,
+      after: NEXT_BASE,
+    }),
+    publisherAppId: APP_ID,
     evaluatorOptions: { poll: false, stabilitySeconds: 0 },
   });
-  const latest = fake.state.checkRuns.at(-1);
+  const log = client.callLog.slice(start);
+  assert.deepEqual(log.slice(0, 3), [
+    'checks.create',
+    'checks.create',
+    'checks.create',
+  ]);
+  assert.ok(log.indexOf('paginate:pulls') > 2);
+  assert.equal(latestCheck(client, HEAD).conclusion, 'failure');
+  assert.equal(latestCheck(client, NEXT_HEAD).conclusion, 'failure');
+  assert.equal(latestCheck(client, NEXT_BASE).conclusion, 'success');
+  assert.equal(result.results.length, 2);
+  assert.match(
+    latestCheck(client, NEXT_BASE).output.summary,
+    /not merge-group evidence/i);
+});
+
+test('merge group revalidates all constituent PRs against the current base', async () => {
+  const first = pull(115);
+  const second = pull(116, {
+    head: {
+      sha: NEXT_HEAD,
+      ref: 'feature-116',
+      repo: { full_name: 'Jamula/Andreja' },
+    },
+  });
+  const firstReview = copilotReview(first.head.sha);
+  const secondReview = copilotReview(second.head.sha);
+  const client = new FakeClient({
+    pulls: [first, second],
+    comments: {
+      115: [
+        trustedComment(bindEvent(first), APP_ID, 1),
+        trustedComment(copilotAttestationEvent(first, firstReview), APP_ID, 2),
+      ],
+      116: [
+        trustedComment(bindEvent(second), APP_ID, 3),
+        trustedComment(copilotAttestationEvent(second, secondReview), APP_ID, 4),
+      ],
+    },
+    reviews: { 115: [firstReview], 116: [secondReview] },
+    branches: { main: BASE },
+    mergeGroups: { 'merge-group-1': [115, 116] },
+  });
+  const store = new FakeStore({
+    mappings: [mapping(first), mapping(second)],
+    mergeGroups: { 'merge-group-1': [115, 116] },
+  });
+  const event = envelope('merge_group', {
+    action: 'checks_requested',
+    merge_group: {
+      id: 'merge-group-1',
+      head_sha: MERGE_HEAD,
+      head_ref: 'gh-readonly-queue/main/pr-115',
+      base_sha: BASE,
+      base_ref: 'refs/heads/main',
+    },
+  });
+  const result = await handleEvent({
+    client,
+    store,
+    envelope: event,
+    publisherAppId: APP_ID,
+    evaluatorOptions: { stabilitySeconds: 0 },
+  });
+  assert.equal(result.result.state, 'approved');
+  assert.equal(latestCheck(client, MERGE_HEAD).conclusion, 'success');
+  assert.match(latestCheck(client, MERGE_HEAD).output.summary, /constituent PR/);
+
+  client.state.pulls[1].draft = true;
+  const blocked = await handleEvent({
+    client,
+    store,
+    envelope: envelope('merge_group', event.payload),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { stabilitySeconds: 0 },
+  });
+  assert.equal(blocked.result.state, 'rejected');
+  assert.equal(latestCheck(client, MERGE_HEAD).conclusion, 'failure');
+  assert.match(latestCheck(client, MERGE_HEAD).output.summary, /PR #116/);
+});
+
+test('merge group fails closed on constituent or live-base disagreement', async () => {
+  const current = pull();
+  const review = copilotReview();
+  const client = new FakeClient({
+    pulls: [current],
+    comments: {
+      115: [
+        trustedComment(bindEvent(current), APP_ID, 1),
+        trustedComment(copilotAttestationEvent(current, review), APP_ID, 2),
+      ],
+    },
+    reviews: { 115: [review] },
+    branches: { main: NEXT_BASE },
+    mergeGroups: { group: [115] },
+  });
+  const store = new FakeStore({
+    mappings: [mapping(current)],
+    mergeGroups: { group: [115] },
+  });
+  const result = await handleEvent({
+    client,
+    store,
+    envelope: envelope('merge_group', {
+      merge_group: {
+        id: 'group',
+        head_sha: MERGE_HEAD,
+        base_sha: BASE,
+        base_ref: 'refs/heads/main',
+      },
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { stabilitySeconds: 0 },
+  });
+  assert.equal(result.result.state, 'rejected');
+  assert.match(result.result.reasons.join(' '), /current base/);
+});
+
+test('reviewer authorization revocation supersedes a successful head', async () => {
+  const state = seededState({ domains: ['quality'] });
+  await runPullEvent(state);
+  assert.equal(latestCheck(state.client).conclusion, 'success');
+  const stored = await state.store.getPullMapping(115);
+  assert.deepEqual(stored.reviewerLogins, ['reviewer']);
+
+  state.client.state.permissions.reviewer = 'read';
+  const before = state.client.callLog.length;
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('membership', {
+      action: 'removed',
+      membership: { user: { login: 'reviewer' } },
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+  assert.equal(state.client.callLog[before], 'checks.create');
+  assert.equal(latestCheck(state.client).conclusion, 'failure');
+  assert.match(latestCheck(state.client).output.summary, /not authorized/);
+});
+
+test('periodic reconciliation catches dropped thread and revocation deliveries', async () => {
+  const state = seededState({ domains: ['architecture'] });
+  await runPullEvent(state);
+  state.client.state.permissions.reviewer = 'read';
+  state.client.state.threads[115] = [{
+    id: 'dropped-thread-event',
+    isResolved: false,
+    comments: { nodes: [] },
+  }];
+  const before = state.client.callLog.length;
+  await handleEvent({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('reconciliation', {
+      reason: 'periodic-full-reconciliation',
+    }),
+    publisherAppId: APP_ID,
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  });
+  const log = state.client.callLog.slice(before);
+  assert.equal(log[0], 'checks.create');
+  assert.ok(log.indexOf('paginate:pulls') > 0);
+  assert.equal(latestCheck(state.client).conclusion, 'failure');
+  assert.match(latestCheck(state.client).output.summary, /unresolved|not authorized/);
+});
+
+test('rate limit after pending publication leaves newest generation failed', async () => {
+  const state = seededState();
+  state.client.failNext(
+    'pulls',
+    Object.assign(new Error('private rate-limit detail'), { status: 429 }));
+  await runPullEvent(state);
+  const latest = latestCheck(state.client);
+  assert.equal(state.client.callLog[0], 'checks.create');
   assert.equal(latest.conclusion, 'failure');
   assert.match(latest.output.summary, /failed closed/);
   assert.doesNotMatch(latest.output.summary, /private rate-limit/);
   assert.match(sanitizedApiFailure({ status: 429 }), /failed closed/);
 });
 
-test('check creation rejects an App identity mismatch', async () => {
-  const fake = seededFake();
-  fake.state.appId = OTHER_APP_ID;
+test('check creation rejects a spoofed publisher App identity', async () => {
+  const state = seededState();
+  state.client.state.appId = OTHER_APP_ID;
   await assert.rejects(() => createGeneration({
-    github: fake,
-    context: context(),
+    client: state.client,
+    store: state.store,
+    envelope: envelope('pull_request', {
+      action: 'synchronize',
+      pull_request: pull(),
+    }),
     headSha: HEAD,
-    expectedAppId: APP_ID,
-    trigger: 'mismatch',
+    publisherAppId: APP_ID,
+    mappings: [mapping(pull())],
+    association: { kind: 'pull_request', pullNumbers: [115] },
   }), /publisher/);
+  assert.equal(
+    (await state.store.getNewestGeneration({
+      repositoryId: REPOSITORY_ID,
+      headSha: HEAD,
+    })),
+    null);
 });
 
-test('two PRs sharing a head are aggregated so one approval cannot replay', async () => {
+test('startup and missing durable-state failures do not claim readiness', async () => {
+  const client = new FakeClient();
+  await assert.rejects(() => handleEvent({
+    client,
+    store: {},
+    envelope: envelope('pull_request', {
+      action: 'opened',
+      pull_request: pull(),
+    }),
+    publisherAppId: APP_ID,
+  }), /durable store/);
+  assert.equal(client.state.checkRuns.length, 0);
+  assert.throws(() => rulesetMain(['apply-rollout']), new RegExp(
+    ROLLOUT_BLOCKER_CODE));
+});
+
+test('concurrent stale writer cannot complete after a newer generation', async () => {
+  const state = seededState();
+  const event = envelope('pull_request', {
+    action: 'synchronize',
+    pull_request: pull(),
+  });
+  const map = mapping(pull());
+  const oldRun = await createGeneration({
+    client: state.client,
+    store: state.store,
+    envelope: event,
+    headSha: HEAD,
+    publisherAppId: APP_ID,
+    mappings: [map],
+    association: { kind: 'pull_request', pullNumbers: [115] },
+  });
+  const newRun = await createGeneration({
+    client: state.client,
+    store: state.store,
+    envelope: event,
+    headSha: HEAD,
+    publisherAppId: APP_ID,
+    mappings: [map],
+    association: { kind: 'pull_request', pullNumbers: [115] },
+  });
+  const approved = { state: 'approved', reasons: ['complete'] };
+  assert.equal(await completeGeneration({
+    client: state.client,
+    store: state.store,
+    envelope: event,
+    checkRun: oldRun,
+    publisherAppId: APP_ID,
+    result: approved,
+  }), false);
+  assert.equal(await completeGeneration({
+    client: state.client,
+    store: state.store,
+    envelope: event,
+    checkRun: newRun,
+    publisherAppId: APP_ID,
+    result: approved,
+  }), true);
+  assert.equal(latestCheck(state.client).conclusion, 'success');
+});
+
+test('two PRs sharing a head aggregate every exact PR policy', async () => {
   const first = pull(115);
   const second = pull(205, {
     body: 'Closes #205',
-    user: { login: 'other-author', id: 11, type: 'User' },
+    user: { login: 'other-author', id: 205, type: 'User' },
   });
-  const firstBind = trustedComment(bindEvent(first, 104), APP_ID, 1);
-  const firstCopilot = trustedComment(
-    copilotAttestationEvent(first),
-    APP_ID,
-    4);
-  const secondBind = trustedComment(bindEvent(second, 205), APP_ID, 2);
-  const secondRequirement = trustedComment(
-    requirementEvent(second, 'quality', 205),
-    APP_ID,
-    3);
-  const secondCopilot = trustedComment(
-    copilotAttestationEvent(second),
-    APP_ID,
-    5);
-  const fake = new FakeGitHub({
+  const firstReview = copilotReview();
+  const secondReview = copilotReview();
+  const secondBind = bindEvent(second, 205);
+  const secondRequirement = requirementEvent(second, 'quality', 205);
+  const client = new FakeClient({
     pulls: [first, second],
     comments: {
-      115: [firstBind, firstCopilot],
-      205: [secondBind, secondRequirement, secondCopilot],
+      115: [
+        trustedComment(bindEvent(first), APP_ID, 1),
+        trustedComment(copilotAttestationEvent(first, firstReview), APP_ID, 2),
+      ],
+      205: [
+        trustedComment(secondBind, APP_ID, 3),
+        trustedComment(secondRequirement, APP_ID, 4),
+        trustedComment(copilotAttestationEvent(second, secondReview), APP_ID, 5),
+      ],
     },
-    reviews: {
-      115: [copilotReview()],
-      205: [copilotReview()],
-    },
+    reviews: { 115: [firstReview], 205: [secondReview] },
+  });
+  const store = new FakeStore({
+    mappings: [mapping(first), mapping(second, { issues: [205] })],
   });
   const blocked = await evaluateHeadSnapshot({
-    github: fake,
-    context: context(),
+    client,
+    store,
+    envelope: envelope('reconciliation', {}),
     headSha: HEAD,
-    expectedAppId: APP_ID,
+    publisherAppId: APP_ID,
   });
   assert.equal(blocked.result.state, 'pending');
   assert.match(blocked.result.reasons.join(' '), /PR #205/);
-
-  const secondPolicy = blocked.snapshots.find((snapshot) =>
-    snapshot.pullNumber === 205).policy;
-  fake.state.reviews[205].push(
-    domainReview(second, 'quality', secondPolicy.digest));
-  const approved = await evaluateHeadSnapshot({
-    github: fake,
-    context: context(),
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-  });
-  assert.equal(approved.result.state, 'approved');
-  assert.match(approved.result.reasons.join(' '), /#115, #205/);
 });
 
-test('exact App-authored break-glass is current-policy bound and keeps hard blocks', async () => {
-  const current = pull();
-  const bind = trustedComment(bindEvent(current), APP_ID, 1);
-  const policy = snapshotForComments([bind], current);
-  const breakGlass = policyEvent(current, 'break-glass', {
-    identity: pullIdentity(current),
-    policyDigest: policy.digest,
-    reason: 'Reviewer automation outage with accepted and recorded residual risk.',
-    auditUrl: 'https://github.com/Jamula/Andreja/issues/104',
-  }, 'break-glass');
-  const fake = new FakeGitHub({
-    pulls: [current],
-    comments: { 115: [bind, trustedComment(breakGlass, APP_ID, 2)] },
-    reviews: { 115: [] },
+test('newest domain rejection and author self-review never fall back', async () => {
+  const state = seededState({ domains: ['security'] });
+  const approved = state.client.state.reviews[115]
+    .find((review) => review.user?.login === 'reviewer');
+  state.client.state.reviews[115].push({
+    ...approved,
+    id: approved.id + 1000,
+    state: 'CHANGES_REQUESTED',
+    submitted_at: eventTimestamp(),
   });
-  assert.equal((await evaluateHeadSnapshot({
-    github: fake,
-    context: context(),
+  let result = await evaluateHeadSnapshot({
+    client: state.client,
+    store: state.store,
+    envelope: envelope('reconciliation', {}),
     headSha: HEAD,
-    expectedAppId: APP_ID,
-  })).result.state, 'approved');
-  fake.state.pulls[0].draft = true;
-  assert.equal((await evaluateHeadSnapshot({
-    github: fake,
-    context: context(),
+    publisherAppId: APP_ID,
+  });
+  assert.equal(result.result.state, 'rejected');
+
+  const self = seededState({ domains: ['security'] });
+  const policy = self.policy;
+  self.client.state.reviews[115] = self.client.state.reviews[115]
+    .filter((review) => review.user?.login !== 'reviewer');
+  self.client.state.reviews[115].push(domainReview(
+    self.client.state.pulls[0],
+    'security',
+    policy.digest,
+    { user: { login: 'pr-author-115', id: 115, type: 'User' } }));
+  result = await evaluateHeadSnapshot({
+    client: self.client,
+    store: self.store,
+    envelope: envelope('reconciliation', {}),
     headSha: HEAD,
-    expectedAppId: APP_ID,
-  })).result.state, 'rejected');
+    publisherAppId: APP_ID,
+  });
+  assert.equal(result.result.state, 'rejected');
+  assert.match(result.result.reasons.join(' '), /author cannot/);
 });
 
-test('wrong-App break-glass cannot substitute for missing Copilot evidence', async () => {
+test('authenticated current-diff specialist App evidence supports one-human model', async () => {
   const current = pull();
-  const bind = trustedComment(bindEvent(current), APP_ID, 1);
-  const policy = snapshotForComments([bind], current);
-  const breakGlass = policyEvent(current, 'break-glass', {
-    identity: pullIdentity(current),
-    policyDigest: policy.digest,
-    reason: 'Reviewer automation outage with accepted and recorded residual risk.',
-    auditUrl: 'https://github.com/Jamula/Andreja/issues/104',
-  }, 'wrong-break-glass');
-  const fake = new FakeGitHub({
+  const bind = bindEvent(current);
+  const requirement = requirementEvent(current, 'privacy');
+  const policy = snapshotForEvents([bind, requirement], current);
+  const review = copilotReview();
+  const events = [
+    bind,
+    requirement,
+    copilotAttestationEvent(current, review),
+    domainAttestationEvent(current, 'privacy', policy.digest),
+  ];
+  const client = new FakeClient({
     pulls: [current],
     comments: {
-      115: [bind, trustedComment(breakGlass, OTHER_APP_ID, 2)],
+      115: events.map((event, index) =>
+        trustedComment(event, APP_ID, index + 1)),
     },
-    reviews: { 115: [] },
+    reviews: { 115: [review] },
   });
-  assert.equal((await evaluateHeadSnapshot({
-    github: fake,
-    context: context(),
+  const store = new FakeStore({ mappings: [mapping(current)] });
+  const result = await evaluateHeadSnapshot({
+    client,
+    store,
+    envelope: envelope('reconciliation', {}),
     headSha: HEAD,
-    expectedAppId: APP_ID,
-  })).result.state, 'pending');
+    publisherAppId: APP_ID,
+  });
+  assert.equal(result.result.state, 'approved');
+  client.state.pulls[0].base.sha = NEXT_BASE;
+  const stale = await evaluateHeadSnapshot({
+    client,
+    store,
+    envelope: envelope('reconciliation', {}),
+    headSha: HEAD,
+    publisherAppId: APP_ID,
+  });
+  assert.notEqual(stale.result.state, 'approved');
 });
 
-test('stateful #100, #101, and #105 fixtures have no merge-ready interval', async () => {
-  for (const fixture of fixtures) {
-    const fake = seededFake({ reviews: [] });
-    for (const event of fixture.events) {
-      if (event.kind === 'copilot-review') {
-        addCopilotCompletion(fake);
-      }
-      const state = (await evaluateHeadSnapshot({
-        github: fake,
-        context: context(),
+test('specialist automation downloads and validates an exact artifact before evidence', async () => {
+  const current = pull();
+  const bind = bindEvent(current);
+  const requirement = requirementEvent(current, 'architecture');
+  const policy = snapshotForEvents([bind, requirement], current);
+  const review = copilotReview();
+  const manifest = {
+    schemaVersion: 1,
+    kind: 'andreja-review-evidence',
+    domain: 'architecture',
+    outcome: 'approved',
+    identity: pullIdentity(current),
+    policyDigest: policy.digest,
+    evidenceUrl: 'https://github.com/Jamula/Andreja/pull/115#issuecomment-7000',
+    summary: 'Downloaded architecture evidence validates the current diff.',
+  };
+  const bytes = Buffer.from(JSON.stringify(manifest));
+  const artifactSha = crypto.createHash('sha256').update(bytes).digest('hex');
+  const attestation = {
+    domain: manifest.domain,
+    outcome: manifest.outcome,
+    identity: manifest.identity,
+    policyDigest: manifest.policyDigest,
+    evidenceUrl: manifest.evidenceUrl,
+    summary: manifest.summary,
+    attester: {
+      appId: 424242,
+      slug: 'independent-specialist',
+      runId: 12345,
+      runAttempt: 2,
+      workflowRevision: '1'.repeat(40),
+    },
+    artifact: {
+      id: 99,
+      name: 'review-evidence.json',
+      sha256: artifactSha,
+    },
+  };
+  const client = new FakeClient({
+    pulls: [current],
+    comments: {
+      115: [
+        trustedComment(bind, APP_ID, 1),
+        trustedComment(requirement, APP_ID, 2),
+        trustedComment(copilotAttestationEvent(current, review), APP_ID, 3),
+      ],
+    },
+    reviews: { 115: [review] },
+    specialistRuns: {
+      12345: {
+        appId: 424242,
+        slug: 'independent-specialist',
+        runId: 12345,
+        runAttempt: 2,
+        workflowRevision: '1'.repeat(40),
+        repository: 'Jamula/Andreja',
         headSha: HEAD,
-        expectedAppId: APP_ID,
-      })).result.state;
-      assert.equal(state, event.expected, `${fixture.incident} at ${event.atSeconds}s`);
-      if (event.atSeconds < fixture.firstReviewAtSeconds) {
-        assert.notEqual(state, 'approved', fixture.incident);
-      }
-    }
-    assert.ok(fixture.mergedAtSeconds < fixture.firstReviewAtSeconds);
-  }
+        status: 'completed',
+        conclusion: 'success',
+        artifactIds: [99],
+      },
+    },
+    specialistArtifacts: {
+      99: {
+        id: 99,
+        name: 'review-evidence.json',
+        expired: false,
+        bytes,
+      },
+    },
+  });
+  const store = new FakeStore({ mappings: [mapping(current)] });
+  const options = {
+    client,
+    store,
+    envelope: envelope('specialist_attestation', {
+      pull_number: 115,
+      attestation,
+    }),
+    publisherAppId: APP_ID,
+    specialistAllowlist: [{
+      appId: 424242,
+      slug: 'independent-specialist',
+      workflowRevision: '1'.repeat(40),
+    }],
+    evaluatorOptions: { poll: false, stabilitySeconds: 0 },
+  };
+  const accepted = await handleEvent(options);
+  assert.equal(client.callLog[0], 'checks.create');
+  assert.ok(client.callLog.includes('specialist.artifact:99'));
+  assert.equal(accepted[0].result.state, 'approved');
+  assert.equal(latestCheck(client).conclusion, 'success');
+
+  client.state.specialistArtifacts[99].bytes = Buffer.from('tampered');
+  const rejected = await handleEvent({
+    ...options,
+    envelope: envelope('specialist_attestation', {
+      pull_number: 115,
+      attestation,
+    }),
+  });
+  assert.equal(rejected[0].result.state, 'rejected');
+  assert.equal(latestCheck(client).conclusion, 'failure');
+  assert.match(latestCheck(client).output.summary, /failed closed validation/);
+});
+
+test('break-glass is exact-policy audited evidence, never a draft/thread bypass', () => {
+  const current = pull();
+  const bind = bindEvent(current);
+  const policy = snapshotForEvents([bind], current);
+  const emergency = policyEvent(current, 'break-glass', {
+    identity: pullIdentity(current),
+    policyDigest: policy.digest,
+    reason: 'Reviewer outage accepted by a human with recorded residual risk.',
+    auditUrl: 'https://github.com/Jamula/Andreja/issues/104',
+  });
+  assert.equal(evaluateReviewCompletion({
+    pullRequest: current,
+    policy,
+    policyEvents: [bind, emergency],
+  }).state, 'approved');
+  assert.equal(evaluateReviewCompletion({
+    pullRequest: { ...current, draft: true },
+    policy,
+    policyEvents: [bind, emergency],
+  }).state, 'rejected');
+  assert.equal(evaluateReviewCompletion({
+    pullRequest: current,
+    policy,
+    policyEvents: [bind, emergency],
+    unresolvedThreads: 1,
+  }).state, 'rejected');
 });
 
 test('review-thread GraphQL pagination reads every page', async () => {
   const cursors = [];
-  const github = {
+  const client = {
     graphql: async (_query, variables) => {
       cursors.push(variables.cursor);
       return {
@@ -987,30 +1545,58 @@ test('review-thread GraphQL pagination reads every page', async () => {
     },
   };
   const threads = await listReviewThreads({
-    github,
-    context: context(),
+    client,
+    envelope: envelope('reconciliation', {}),
     pullNumber: 115,
   });
   assert.deepEqual(cursors, [null, 'next']);
   assert.deepEqual(threads.map((thread) => thread.isResolved), [true, false]);
 });
 
-test('audited policy reductions target active event IDs and reject stale IDs', () => {
-  const current = pull();
-  const bind = bindEvent(current);
-  const requirement = requirementEvent(current, 'architecture');
-  const ledger = {
-    snapshot: snapshotForComments([
-      trustedComment(bind, APP_ID, 1),
-      trustedComment(requirement, APP_ID, 2),
-    ], current),
-  };
-  assert.deepEqual(
-    reductionTargets(JSON.stringify([requirement.eventId]), ledger),
-    [requirement.eventId]);
-  assert.throws(
-    () => reductionTargets(JSON.stringify(['f'.repeat(64)]), ledger),
-    /stale/);
+test('stateful #100, #101, and #105 fixtures have no ready interval', async () => {
+  for (const fixture of fixtures.filter((item) => item.incident)) {
+    const current = pull();
+    const bind = bindEvent(current);
+    const client = new FakeClient({
+      pulls: [current],
+      comments: { 115: [trustedComment(bind, APP_ID, 1)] },
+      reviews: { 115: [] },
+    });
+    const store = new FakeStore({ mappings: [mapping(current)] });
+    for (const event of fixture.events) {
+      if (event.kind === 'copilot-review') {
+        const review = copilotReview();
+        client.state.reviews[115].push(review);
+        client.state.comments[115].push(trustedComment(
+          copilotAttestationEvent(current, review),
+          APP_ID,
+          2));
+      }
+      const state = (await evaluateHeadSnapshot({
+        client,
+        store,
+        envelope: envelope('reconciliation', {}),
+        headSha: HEAD,
+        publisherAppId: APP_ID,
+      })).result.state;
+      assert.equal(state, event.expected, `${fixture.incident} at ${event.atSeconds}s`);
+      if (event.atSeconds < fixture.firstReviewAtSeconds) {
+        assert.notEqual(state, 'approved', fixture.incident);
+      }
+    }
+    assert.ok(fixture.mergedAtSeconds < fixture.firstReviewAtSeconds);
+  }
+});
+
+test('fixture catalog includes every external-worker regression class', () => {
+  const scenarios = new Set(fixtures.map((item) => item.scenario).filter(Boolean));
+  assert.deepEqual(scenarios, new Set([
+    'base-advance-enumeration',
+    'merge-group-constituents',
+    'reviewer-revocation',
+    'dropped-delivery-reconciliation',
+    'event-specific-canary',
+  ]));
 });
 
 function liveRuleset(extraChecks = []) {
@@ -1052,149 +1638,150 @@ function liveRuleset(extraChecks = []) {
   };
 }
 
-test('ruleset rollout preserves every existing check and binds exact App ID', () => {
+test('ruleset rollout is plan-only with exact blocker and rollback snapshot', () => {
   const extra = { context: 'Future protected check', integration_id: 999 };
   const rollout = planRollout(liveRuleset([extra]), { appId: APP_ID });
-  const checks = rollout.payload.rules.find((rule) =>
+  const checks = rollout.proposedPayload.rules.find((rule) =>
     rule.type === 'required_status_checks').parameters.required_status_checks;
+  assert.equal(rollout.activation.state, 'BLOCKED');
+  assert.equal(rollout.activation.code, ROLLOUT_BLOCKER_CODE);
+  assert.ok(rollout.activation.prerequisites.some((item) =>
+    item.includes('real merge-queue')));
   assert.equal(checks.length, 7);
-  assert.ok(checks.some((check) =>
-    check.context === extra.context && check.integration_id === extra.integration_id));
+  assert.ok(checks.some((check) => check.context === extra.context));
   assert.deepEqual(checks.at(-1), {
     context: CHECK_NAME,
     integration_id: APP_ID,
   });
+  assert.equal(
+    rollout.rollbackSnapshot.payload.rules.length,
+    liveRuleset([extra]).rules.length);
+
   const rollback = planRollback({
     ...liveRuleset([extra]),
-    rules: rollout.payload.rules,
+    rules: rollout.proposedPayload.rules,
   }, { appId: APP_ID });
-  const remaining = rollback.payload.rules.find((rule) =>
-    rule.type === 'required_status_checks').parameters.required_status_checks;
-  assert.equal(remaining.length, 6);
-  assert.ok(remaining.some((check) => check.context === extra.context));
+  assert.equal(rollback.activation.state, 'BLOCKED');
+  assert.equal(rollback.proposedRemoval.integration_id, APP_ID);
 });
 
-test('ruleset stale concurrent writer is rejected by ETag without overwrite', () => {
-  const beforeRuleset = liveRuleset();
-  const plan = planRollout(beforeRuleset, { appId: APP_ID });
-  const client = {
-    update(_payload, etag) {
-      assert.equal(etag, 'W/"old"');
-      const error = Object.assign(new Error('Precondition Failed'), { status: 412 });
-      throw error;
+test('ruleset script has no apply or mutation path and exits nonzero on apply', () => {
+  assert.throws(
+    () => rulesetMain(['apply-rollout']),
+    new RegExp(ROLLOUT_BLOCKER_CODE));
+  const scriptPath = path.join(__dirname, 'review-gate-ruleset.js');
+  const source = fs.readFileSync(scriptPath, 'utf8');
+  assert.doesNotMatch(source, /--method['"]?\s*,?\s*['"]PUT/i);
+  assert.doesNotMatch(source, /client\.update|rulesets\.update|rest\.rulesets/);
+  const result = spawnSync(process.execPath, [scriptPath, 'apply-rollout'], {
+    encoding: 'utf8',
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, new RegExp(ROLLOUT_BLOCKER_CODE));
+});
+
+function canaryProvenance({
+  eventPath,
+  association,
+  headSha = HEAD,
+  targets = [pullIdentity(pull())],
+  baseSha = BASE,
+}) {
+  return {
+    schemaVersion: 4,
+    contractRevision: CONTRACT_REVISION,
+    eventPath,
+    workerRevision: WORKER_REVISION,
+    workerInstanceId: 'worker-a',
+    deliveryId: `canary-${eventPath}`,
+    runId: `run-${eventPath}`,
+    association,
+    targets,
+    headSha,
+    base: {
+      repositoryId: REPOSITORY_ID,
+      repository: 'Jamula/Andreja',
+      ref: 'main',
+      sha: baseSha,
     },
-    load() {
-      throw new Error('load must not follow a rejected conditional update');
-    },
+    sequence: 1,
+    generationId: `generation-${eventPath}`,
   };
-  assert.throws(() => applyPlanWithClient({
-    etag: 'W/"old"',
-    plan,
-    client,
-  }), /Precondition Failed/);
-});
+}
 
-test('ruleset apply rejects a file snapshot before any GitHub mutation', () => {
-  assert.throws(() => rulesetMain([
-    'apply-rollout',
-    '--input',
-    'stale-ruleset.json',
-  ]), /forbidden/);
-});
-
-test('ruleset canaries bind PR, merge-group, and main outputs to exact App ID', () => {
-  const baseRun = {
+test('canary provenance distinguishes PR, base push, and real merge group', () => {
+  const merge = canaryProvenance({
+    eventPath: 'merge_group',
+    headSha: MERGE_HEAD,
+    association: {
+      kind: 'merge_group',
+      mergeGroupId: 'group',
+      pullNumbers: [115],
+    },
+  });
+  const run = {
     id: 700,
     name: CHECK_NAME,
-    head_sha: HEAD,
+    head_sha: MERGE_HEAD,
     app: { id: APP_ID },
     status: 'completed',
     conclusion: 'success',
-    external_id: `${CHECK_EXTERNAL_PREFIX}:sha=${HEAD}:delivery=canary`,
+    external_id: externalIdForProvenance(merge),
     output: { title: 'Approved — exact policy complete' },
   };
-  assert.equal(verifyCanaryRun(baseRun, {
+  const verified = verifyCanaryRun(run, {
     checkRunId: 700,
-    headSha: HEAD,
+    headSha: MERGE_HEAD,
     appId: APP_ID,
-    checkName: CHECK_NAME,
+    expectedProvenance: merge,
+    expectedEventPath: 'merge_group',
+    expectedAssociationKind: 'merge_group',
     titlePrefix: 'Approved',
-  }).appId, APP_ID);
-  assert.equal(verifyCanaryRun({
-    ...baseRun,
-    output: { title: 'Not applicable — PR heads enforce review' },
-  }, {
-    checkRunId: 700,
-    headSha: HEAD,
-    appId: APP_ID,
-    checkName: CHECK_NAME,
-    titlePrefix: 'Not applicable',
-  }).headSha, HEAD);
-  assert.throws(() => verifyCanaryRun({
-    ...baseRun,
-    app: { id: OTHER_APP_ID },
-  }, {
-    checkRunId: 700,
-    headSha: HEAD,
-    appId: APP_ID,
-    checkName: CHECK_NAME,
-    titlePrefix: 'Approved',
-  }), /provenance/);
-});
-
-test('privileged dispatch rejects a non-default-branch workflow ref', () => {
-  const dispatch = context('workflow_dispatch');
-  dispatch.ref = 'refs/heads/untrusted-branch';
-  assert.throws(
-    () => assertTrustedDispatchRef(dispatch),
-    /default branch/);
-  dispatch.ref = 'refs/heads/main';
-  assert.doesNotThrow(() => assertTrustedDispatchRef(dispatch));
-});
-
-test('workflows use exact App identity, trusted code, no cancellation, and pinned actions', () => {
-  const workflowDirectory = path.join(__dirname, '..', 'workflows');
-  const gate = fs.readFileSync(
-    path.join(workflowDirectory, 'review-gate-app.yml'),
-    'utf8');
-  const admin = fs.readFileSync(
-    path.join(workflowDirectory, 'review-gate-app-admin.yml'),
-    'utf8');
-  for (const source of [gate, admin]) {
-    assert.match(source, /REVIEW_GATE_APP_CLIENT_ID/);
-    assert.match(source, /REVIEW_GATE_APP_PRIVATE_KEY/);
-    assert.match(source, /REVIEW_GATE_APP_ID/);
-    assert.match(source, /ref: \$\{\{ github\.workflow_sha \}\}/);
-    assert.match(source, /refs\/heads\/\{0\}/);
-    assert.doesNotMatch(source, /cancel-in-progress/);
-    for (const match of source.matchAll(/uses:\s*[^@\s]+@([^\s]+)/g)) {
-      assert.match(match[1], /^[0-9a-f]{40}$/);
-    }
-  }
-  assert.match(gate, /^\s{2}pull_request_review:\s*$/m);
-  assert.match(gate, /^\s{2}pull_request_review_thread:\s*$/m);
-  assert.match(gate, /^\s{2}issues:\s*$/m);
-  assert.match(gate, /^\s{2}merge_group:\s*$/m);
-  assert.doesNotMatch(gate, /github\.event\.pull_request\.head\.ref/);
-  assert.equal(
-    fs.existsSync(path.join(workflowDirectory, 'review-completion.yml')),
-    false);
-  assert.equal(
-    fs.existsSync(path.join(workflowDirectory, 'record-review-break-glass.yml')),
-    false);
-});
-
-test('App check external identity is generation scoped', async () => {
-  const fake = seededFake();
-  const generation = await createGeneration({
-    github: fake,
-    context: context(),
-    headSha: HEAD,
-    expectedAppId: APP_ID,
-    trigger: 'fixture',
   });
-  assert.equal(generation.name, CHECK_NAME);
-  assert.equal(generation.app.id, APP_ID);
-  assert.match(generation.external_id, new RegExp(`^${CHECK_EXTERNAL_PREFIX}:`));
-  assert.equal(generation.status, 'in_progress');
+  assert.equal(verified.eventPath, 'merge_group');
+  assert.equal(verified.workerRevision, WORKER_REVISION);
+
+  const push = canaryProvenance({
+    eventPath: 'push',
+    association: { kind: 'default_branch', ref: 'main' },
+    targets: [],
+  });
+  const pushRun = {
+    ...run,
+    head_sha: HEAD,
+    external_id: externalIdForProvenance(push),
+    output: { title: 'Not applicable — base path reconciled' },
+  };
+  assert.throws(() => verifyCanaryRun(pushRun, {
+    checkRunId: 700,
+    headSha: HEAD,
+    appId: APP_ID,
+    expectedProvenance: push,
+    expectedEventPath: 'merge_group',
+    expectedAssociationKind: 'merge_group',
+    titlePrefix: 'Approved',
+  }), /event-path|merge group/);
+});
+
+test('publisher credentials and unsupported Actions trigger are absent', () => {
+  const workflowDirectory = path.join(__dirname, '..', 'workflows');
+  assert.equal(
+    fs.existsSync(path.join(workflowDirectory, 'review-gate-app.yml')),
+    false);
+  assert.equal(
+    fs.existsSync(path.join(workflowDirectory, 'review-gate-app-admin.yml')),
+    false);
+  const workflowSources = fs.readdirSync(workflowDirectory)
+    .filter((name) => /\.ya?ml$/i.test(name))
+    .map((name) => fs.readFileSync(path.join(workflowDirectory, name), 'utf8'))
+    .join('\n');
+  assert.doesNotMatch(workflowSources, /REVIEW_GATE_APP_PRIVATE_KEY/);
+  assert.doesNotMatch(workflowSources, /create-github-app-token/);
+  assert.doesNotMatch(
+    workflowSources,
+    /^\s{2}pull_request_review_thread:\s*$/m);
+  const workerSource = fs.readFileSync(
+    path.join(__dirname, 'review-gate-app.js'),
+    'utf8');
+  assert.doesNotMatch(workerSource, /process\.env|actions\/checkout|child_process/);
 });

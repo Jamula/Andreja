@@ -117,13 +117,6 @@ jobs:
               { name: 'blocks:human', color: 'FBCA04', description: 'Classifies this issue as a human decision dependency for blocked issues' }
             ];
 
-            const REVIEW_LABELS = [
-              { name: 'review:architecture-required', color: '1D76DB', description: 'Requires authenticated exact-diff architecture review under App policy' },
-              { name: 'review:security-required', color: 'B60205', description: 'Requires authenticated exact-diff security review under App policy' },
-              { name: 'review:privacy-required', color: '5319E7', description: 'Requires authenticated exact-diff privacy review under App policy' },
-              { name: 'review:quality-required', color: 'FBCA04', description: 'Requires authenticated exact-diff quality review under App policy' }
-            ];
-
             function slugify(t) { return t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
 
             // Ensure the base "squad" triage label exists
@@ -155,7 +148,6 @@ jobs:
             labels.push(...PRIORITY_LABELS);
             labels.push(...STATUS_LABELS);
             labels.push(...DEPENDENCY_LABELS);
-            labels.push(...REVIEW_LABELS);
             labels.push(...SIGNAL_LABELS);
 
             // Sync labels (create or update)

@@ -30,5 +30,49 @@
       { "atSeconds": 0, "kind": "opened-with-ci-complete", "expected": "pending" },
       { "atSeconds": 267, "kind": "copilot-review", "expected": "approved" }
     ]
+  },
+  {
+    "name": "Base advance supersedes every durably mapped PR head",
+    "scenario": "base-advance-enumeration",
+    "events": [
+      { "kind": "prior-head-success", "expected": "approved" },
+      { "kind": "base-push", "expected": "pending-on-every-head-before-read" },
+      { "kind": "current-base-reevaluation", "expected": "rejected-with-stale-evidence" }
+    ]
+  },
+  {
+    "name": "Merge group revalidates constituent policies",
+    "scenario": "merge-group-constituents",
+    "events": [
+      { "kind": "merge-group-checks-requested", "expected": "pending" },
+      { "kind": "one-constituent-draft", "expected": "rejected" },
+      { "kind": "all-current-constituents-complete", "expected": "approved" }
+    ]
+  },
+  {
+    "name": "Reviewer authorization is revoked after success",
+    "scenario": "reviewer-revocation",
+    "events": [
+      { "kind": "authorized-reviewer-success", "expected": "approved" },
+      { "kind": "membership-revoked", "expected": "pending-before-read" },
+      { "kind": "permission-recheck", "expected": "rejected" }
+    ]
+  },
+  {
+    "name": "Dropped delivery is recovered by periodic reconciliation",
+    "scenario": "dropped-delivery-reconciliation",
+    "events": [
+      { "kind": "prior-head-success", "expected": "approved" },
+      { "kind": "thread-reopened-with-delivery-dropped", "expected": "unknown-until-reconciliation" },
+      { "kind": "periodic-full-reconciliation", "expected": "pending-then-rejected" }
+    ]
+  },
+  {
+    "name": "Canary identity is event-path specific",
+    "scenario": "event-specific-canary",
+    "events": [
+      { "kind": "default-base-push", "expected": "not-merge-group-evidence" },
+      { "kind": "real-merge-group", "expected": "constituent-bound-evidence" }
+    ]
   }
 ]
