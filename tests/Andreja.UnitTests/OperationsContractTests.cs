@@ -174,6 +174,65 @@ public sealed class OperationsContractTests
     }
 
     [Fact]
+    public void PortabilityZipWriterRejectsReaderExpansionLimits()
+    {
+        Assert.Throws<InvalidDataException>(() =>
+            PostgreSqlApplicationPortability.ValidateExpandedArchiveLengths(
+                [PostgreSqlApplicationPortability.MaximumArtifactBytes + 1]));
+        Assert.Throws<InvalidDataException>(() =>
+            PostgreSqlApplicationPortability.ValidateExpandedArchiveLengths(
+                Enumerable.Repeat(
+                    PostgreSqlApplicationPortability.MaximumArtifactBytes,
+                    5)));
+    }
+
+    [Theory]
+    [InlineData("artifacts", "null")]
+    [InlineData("artifacts", "[null]")]
+    [InlineData("exclusions", "[null]")]
+    [InlineData("reauthorization", "[null]")]
+    public void PortabilityManifestRejectsNullRequiredValues(
+        string property,
+        string value)
+    {
+        var manifest = $$"""
+            {"applicationVersion":"1","archiveVersion":"1","artifacts":[],"createdAtUtc":"2026-08-25T00:00:00+00:00","exclusions":[],"exportId":"11111111-1111-1111-1111-111111111111","reauthorization":[],"schemaVersion":"1.0.0","tenantReference":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+            """.Trim();
+        manifest = manifest.Replace(
+            $"\"{property}\":[]",
+            $"\"{property}\":{value}",
+            StringComparison.Ordinal);
+
+        var exception = Assert.Throws<InvalidDataException>(() =>
+            PostgreSqlApplicationPortability.ParseManifest(
+                PostgreSqlApplicationPortability.Canonicalize(
+                    Encoding.UTF8.GetBytes(manifest))));
+
+        Assert.Contains("null required value", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task PortabilityArchiveReaderEnforcesBoundOnOpenedHandle()
+    {
+        var path = Path.Join(
+            AppContext.BaseDirectory,
+            $"bounded-archive-{Guid.NewGuid():N}.bin");
+        await File.WriteAllBytesAsync(path, new byte[1025]);
+        try
+        {
+            await Assert.ThrowsAsync<InvalidDataException>(() =>
+                PostgreSqlApplicationPortability.ReadBoundedFileAsync(
+                    path,
+                    1024,
+                    CancellationToken.None));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task ProductionWebApplicationFactoryDoesNotExposePortabilityMutation()
     {
         using var factory = new ProductionWebApplicationFactory();
@@ -280,6 +339,12 @@ public sealed class OperationsContractTests
             document.RootElement.GetProperty("properties")
                 .GetProperty("artifacts")
                 .GetProperty("minItems")
+                .GetInt32());
+        Assert.Equal(
+            Enum.GetValues<PortableDataArea>().Length,
+            document.RootElement.GetProperty("properties")
+                .GetProperty("artifacts")
+                .GetProperty("maxItems")
                 .GetInt32());
         Assert.Equal(
             ApplicationExportContract.RequiredExclusions.Count,

@@ -25,6 +25,7 @@
     "artifacts": {
       "type": "array",
       "minItems": 7,
+      "maxItems": 7,
       "items": { "$ref": "#/$defs/artifact" },
       "allOf": [
         { "contains": { "properties": { "dataArea": { "const": "Records" } } } },

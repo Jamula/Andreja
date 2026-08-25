@@ -438,6 +438,7 @@ public static class PostgreSqlApplicationPortability
 
     internal static byte[] CreateZip(IReadOnlyDictionary<string, byte[]> files)
     {
+        ValidateExpandedArchiveLengths(files.Values.Select(content => content.LongLength));
         var compressed = CreateZip(files, new HashSet<string>(StringComparer.Ordinal));
         var storedEntries = EntriesExceedingCompressionRatio(compressed);
         if (storedEntries.Count == 0)
@@ -486,6 +487,23 @@ public static class PostgreSqlApplicationPortability
                 && entry.Length > entry.CompressedLength * MaximumCompressionRatio)
             .Select(entry => entry.FullName)
             .ToHashSet(StringComparer.Ordinal);
+    }
+
+    internal static void ValidateExpandedArchiveLengths(IEnumerable<long> lengths)
+    {
+        long expanded = 0;
+        foreach (var length in lengths)
+        {
+            if (length < 0 || length > MaximumArtifactBytes)
+            {
+                throw new InvalidDataException("An archive entry exceeds its expanded-size limit.");
+            }
+            expanded = checked(expanded + length);
+            if (expanded > MaximumExpandedArchiveBytes)
+            {
+                throw new InvalidDataException("The expanded archive exceeds its limit.");
+            }
+        }
     }
 
     private static byte[] Encrypt(ReadOnlySpan<byte> plaintext, ReadOnlySpan<byte> key)
@@ -572,7 +590,7 @@ public static class PostgreSqlApplicationPortability
         return new(manifest, files);
     }
 
-    private static ApplicationExportManifest ParseManifest(byte[] content)
+    internal static ApplicationExportManifest ParseManifest(byte[] content)
     {
         RejectDuplicateJsonProperties(content);
         if (!Canonicalize(content).AsSpan().SequenceEqual(content))
@@ -581,6 +599,29 @@ public static class PostgreSqlApplicationPortability
         }
         var manifest = JsonSerializer.Deserialize<ApplicationExportManifest>(content, JsonOptions)
             ?? throw new InvalidDataException("The manifest is empty.");
+        if (manifest.ArchiveVersion is null
+            || manifest.SchemaVersion is null
+            || manifest.ApplicationVersion is null
+            || manifest.TenantReference is null
+            || manifest.Artifacts is null
+            || manifest.Exclusions is null
+            || manifest.Reauthorization is null
+            || manifest.Artifacts.Cast<PortableArtifactDescriptor?>().Any(item =>
+                item is null
+                || item.ContractVersion is null
+                || item.Path is null
+                || item.Sha256 is null)
+            || manifest.Exclusions.Cast<ExportExclusion?>().Any(item =>
+                item is null
+                || item.Code is null
+                || item.Reason is null)
+            || manifest.Reauthorization.Cast<ReauthorizationRequirement?>().Any(item =>
+                item is null
+                || item.ProviderReference is null
+                || item.Action is null))
+        {
+            throw new InvalidDataException("The manifest contains a null required value.");
+        }
         return manifest;
     }
 
@@ -1228,7 +1269,7 @@ public static class PostgreSqlApplicationPortability
     private static string TenantReference(Guid tenantId) =>
         Sha256(Encoding.UTF8.GetBytes($"andreja-tenant-v1:{tenantId:D}"));
 
-    private static byte[] Canonicalize(ReadOnlySpan<byte> json)
+    internal static byte[] Canonicalize(ReadOnlySpan<byte> json)
     {
         using var document = JsonDocument.Parse(json.ToArray());
         using var output = new MemoryStream();
@@ -1361,17 +1402,48 @@ public static class PostgreSqlApplicationPortability
         return output.ToArray();
     }
 
-    private static async Task<byte[]> ReadBoundedFileAsync(
+    internal static async Task<byte[]> ReadBoundedFileAsync(
         string path,
         long maximum,
         CancellationToken cancellationToken)
     {
-        var info = new FileInfo(path);
-        if (!info.Exists || info.Length > maximum)
+        ArgumentOutOfRangeException.ThrowIfNegative(maximum);
+
+        await using var input = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            64 * 1024,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        if (!input.CanSeek || input.Length > maximum)
         {
             throw new InvalidDataException("The archive is missing or exceeds its limit.");
         }
-        return await File.ReadAllBytesAsync(path, cancellationToken);
+
+        using var output = new MemoryStream(
+            input.Length <= int.MaxValue ? (int)input.Length : 0);
+        var buffer = new byte[64 * 1024];
+        try
+        {
+            int read;
+            while ((read = await input.ReadAsync(buffer, cancellationToken)) > 0)
+            {
+                if (output.Length + read > maximum)
+                {
+                    throw new InvalidDataException("The archive is missing or exceeds its limit.");
+                }
+                await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+            }
+            var content = output.ToArray();
+            CryptographicOperations.ZeroMemory(
+                output.GetBuffer().AsSpan(0, checked((int)output.Length)));
+            return content;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(buffer);
+        }
     }
 
     private static void ValidateInputs(
