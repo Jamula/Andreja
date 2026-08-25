@@ -4,7 +4,7 @@
 - **Date:** 2026-08-23
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
-- **Plan SHA-256:** `d0d2400b0f617b8a752bf155b7698cd645fc1263b99cce9813dc5d42977d5afc`
+- **Plan SHA-256:** `82561ec20433db7a5ebb4621fee5483759d0ab8ad20c0dbc813e71177d9f8ade`
 
 ## Decision
 
@@ -99,3 +99,20 @@ not match the merged `docs/plan.md`.
 - **Scope:** Record the operating-model issue-lifecycle reconciliation wording
   and its matching current status-artifact hash. No architecture, provider,
   publication, or exit-gate change.
+
+### 2026-08-25 — canonical privacy and threat-model status
+
+- **Tracking issue:** [#116](https://github.com/Jamula/Andreja/issues/116)
+- **Pull request:** [#117](https://github.com/Jamula/Andreja/pull/117)
+- **Plan SHA-256:** `82561ec20433db7a5ebb4621fee5483759d0ab8ad20c0dbc813e71177d9f8ade`
+- **Approver:** Cyrus Jamula
+- **Approver status:** Cyrus directed creation and review of the canonical
+  artifacts on 2026-08-25 and kept merge through the protected pull request as
+  final acceptance. This entry does not claim a separate pre-merge decision.
+- **Classification:** Logged documentation/status amendment; no re-ratification.
+- **Scope:** Record that `docs/privacy.md` and `docs/threat-model.md` now provide
+  canonical descriptive baselines while final residual-risk acceptance, numeric
+  retention, residency, production export/purge, model-provider choices, and
+  evidence exits remain open. No Proposed ADR is accepted and no production,
+  provider, connector, federation, managed-hosting, public-site, or support-intake
+  activation is authorized.
