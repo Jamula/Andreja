@@ -80,7 +80,10 @@ envelope, or isolation/recovery/content-suppression fails.
 
 De-scope in this order:
 
-1. optional GitHub Copilot or second provider;
+1. any optional second external provider beyond required BYOK; real GitHub
+   Copilot is excluded from Phase 1A under the conservative provisional scope
+   pending the explicit [#74](https://github.com/Jamula/Andreja/issues/74)
+   decision and cannot be treated as optional Phase 1A exit evidence;
 2. inactive channel/federation contract persistence beyond conformance fixtures
    (the required contracts and in-memory signed-envelope tests remain);
 3. noncritical UI polish;

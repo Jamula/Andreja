@@ -1,8 +1,10 @@
-# ADR 0007: Retain xUnit 2 while evaluating the long-term test platform
+# ADR 0007: Test framework investigation and deferred MSTest direction
 
-- **Status:** Proposed
+- **Status:** Proposed (amended; not accepted)
 - **Date:** 2026-08-24
+- **Amended:** 2026-08-25
 - **Issue:** [#96](https://github.com/Jamula/Andreja/issues/96)
+- **Migration issue:** [#112](https://github.com/Jamula/Andreja/issues/112)
 - **Governing:** [Platform plan](../plan.md#phase-1a---self-hosted-assistant-walking-skeleton),
   [company charter](../charter.md#commitments), and
   [ADR 0000](0000-plan-ratification.md)
@@ -11,7 +13,27 @@
 - **Scope:** .NET 10 unit, architecture, WebApplicationFactory, EF Core, and
   PostgreSQL integration tests
 
-## Recommendation
+## 2026-08-25 amendment
+
+Cyrus selected MSTest with Microsoft Testing Platform as Andreja's long-term
+test direction after the investigation below. This supersedes this ADR's
+original recommendation to retain xUnit as the future direction. It does not
+accept this Proposed ADR and does not authorize a migration now.
+
+The current xUnit suite remains unchanged as a proven holding state. Migration
+is deferred without urgency to [#112](https://github.com/Jamula/Andreja/issues/112),
+which owns atomic conversion, exact per-assembly Debug/Release and live
+PostgreSQL inventory parity, CI/TRX/IDE evidence, package/provenance review,
+performance evidence, independent quality/architecture review, and rollback.
+No production or test source, package, runner, or workflow migration is in scope
+for this amendment.
+
+The original recommendation, measurements, risks, and stop conditions below are
+retained as historical investigation evidence for #112. Where they recommend
+xUnit retention or a new xUnit-v3-versus-MSTest decision, this amendment and
+#112 govern.
+
+## Original 2026-08-24 recommendation (superseded)
 
 Retain xUnit 2.9.3 for the current suite and do not migrate it to MSTest now.
 Modern MSTest 4.3.3 with `MSTest.Sdk` and Microsoft.Testing.Platform (MTP) 2.3.3
@@ -289,7 +311,7 @@ runner, filter, analyzer, and contributor complexity and is rejected.
 - the SDK profile adds extensions, telemetry configuration, and mixed license
   obligations that still require governance.
 
-## Decision and consequences
+## Original proposed consequences (superseded where inconsistent)
 
 1. Keep the three current test projects on xUnit 2.9.3. This ADR does not approve
    a framework, runner, Test SDK, CI, or suite migration.
@@ -329,6 +351,10 @@ are changed by this decision. A future migration must keep an inventory-parity
 checkpoint before removing any xUnit package or source.
 
 ## Follow-up
+
+The governing follow-up is [issue #112](https://github.com/Jamula/Andreja/issues/112).
+The earlier issues below remain useful evidence inputs but do not override
+Cyrus's MSTest direction or start a migration independently.
 
 1. [Issue #108](https://github.com/Jamula/Andreja/issues/108), owned by Cyrus
    Jamula, tracks the bounded xUnit v3-native-MTP versus MSTest/MTP decision due

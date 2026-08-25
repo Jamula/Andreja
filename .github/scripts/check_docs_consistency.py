@@ -10,6 +10,8 @@ Fails the build when:
   3. The seed connector categories in docs/plan.md's "Connector catalog and
      release bands" table drift from the authoritative
      docs/roadmap/channel-connectors.md catalog.
+  4. A status-artifact row in docs/plan.md is missing, unexpected, malformed,
+       or has a SHA-256 value that does not match the referenced file.
 
 Per docs/plan.md and docs/frameworks/prioritization-launch.md, the roadmap
 catalogs are authoritative and the plan's seed tables must stay in sync.
@@ -26,6 +28,15 @@ PLAN_PATH = REPO_ROOT / "docs" / "plan.md"
 ADR_PATH = REPO_ROOT / "docs" / "adr" / "0000-plan-ratification.md"
 SKILLS_PATH = REPO_ROOT / "docs" / "roadmap" / "first-party-skills.md"
 CONNECTORS_PATH = REPO_ROOT / "docs" / "roadmap" / "channel-connectors.md"
+EXPECTED_STATUS_ARTIFACTS = {
+    "docs/operating-model.md",
+    "docs/cost-model.md",
+    "docs/frameworks/feedback-support.md",
+    "docs/frameworks/prioritization-launch.md",
+    "docs/charter.md",
+    "docs/legal/license-evaluation.md",
+    "docs/legal/regulatory-applicability.md",
+}
 
 
 def fail(message: str) -> None:
@@ -100,6 +111,62 @@ def first_segment(cell: str) -> str:
     return cell
 
 
+def extract_status_artifact_hashes(plan_text: str) -> dict[str, str]:
+    rows = extract_table_rows(
+        plan_text,
+        "#### Phase 0 policy and governance artifact classification",
+        "| Artifact | Source and current SHA-256 | Current authority |",
+    )
+    artifacts: dict[str, str] = {}
+    for row in rows:
+        if len(row) < 2:
+            raise ValueError("A status-artifact row has fewer than two columns.")
+        path_match = re.search(r"\[`([^`]+)`\]\([^)]+\)", row[0])
+        hash_match = re.search(r"`([0-9a-fA-F]{64})`", row[1])
+        if not path_match or not hash_match:
+            raise ValueError(f"Malformed status-artifact row: {' | '.join(row)}")
+        path = path_match.group(1)
+        if path in artifacts:
+            raise ValueError(f"Duplicate status-artifact row: {path}")
+        artifacts[path] = hash_match.group(1).lower()
+    return artifacts
+
+
+def validate_status_artifact_hashes(
+    artifacts: dict[str, str],
+    expected_paths: set[str],
+    digest_for_path,
+) -> None:
+    actual_paths = set(artifacts)
+    if actual_paths != expected_paths:
+        raise ValueError(
+            "Status-artifact inventory drifted.\n"
+            f"  Missing:    {sorted(expected_paths - actual_paths)}\n"
+            f"  Unexpected: {sorted(actual_paths - expected_paths)}"
+        )
+    for path, recorded_hash in sorted(artifacts.items()):
+        actual_hash = digest_for_path(path)
+        if recorded_hash != actual_hash:
+            raise ValueError(
+                f"Status-artifact hash mismatch for {path}.\n"
+                f"  Recorded hash: {recorded_hash}\n"
+                f"  Actual hash:   {actual_hash}"
+            )
+
+
+def check_status_artifact_hashes() -> None:
+    try:
+        artifacts = extract_status_artifact_hashes(read(PLAN_PATH))
+        validate_status_artifact_hashes(
+            artifacts,
+            EXPECTED_STATUS_ARTIFACTS,
+            lambda path: hashlib.sha256((REPO_ROOT / path).read_bytes()).hexdigest(),
+        )
+    except (OSError, ValueError) as error:
+        fail(str(error))
+    print(f"OK: {len(artifacts)} status-artifact hashes match.")
+
+
 def check_skill_catalog() -> None:
     plan_text = read(PLAN_PATH)
     skills_text = read(SKILLS_PATH)
@@ -156,6 +223,7 @@ def check_connector_catalog() -> None:
 
 def main() -> None:
     check_plan_hash()
+    check_status_artifact_hashes()
     check_skill_catalog()
     check_connector_catalog()
     print("All documentation consistency checks passed.")

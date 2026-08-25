@@ -2,10 +2,14 @@
 
 ## Owner and status
 
+- **Status:** Review-ready draft; explicit Cyrus ratification is not recorded
+- **Issue:** [#5](https://github.com/Jamula/Andreja/issues/5)
+- **Source PR:** [#19](https://github.com/Jamula/Andreja/pull/19)
+
 Picard and Quark co-own the Prioritization and Launch Framework, per
 [plan §Phase 0 deliverables](../plan.md#phase-0---govern-and-decide) ("Assign
 ... Picard/Quark as Prioritization/Launch Framework owners"). This document
-is the ratified **operational expansion** of
+is a review-ready **operational expansion** of
 [plan §Roadmap prioritization and launch framework](../plan.md#roadmap-prioritization-and-launch-framework):
 it operationalizes how issues are scored, sequenced into launch stages, and
 gated for evidence. **`docs/plan.md` remains authoritative for phased scope,
@@ -35,8 +39,9 @@ not restate or own it. It does not redefine:
   contains and when it exits; this framework only adds scoring/sequencing/
   evidence-gate mechanics on top.
 - Workstream charters, accountable leads, RACI, artifact gates, handoff
-  format, WIP limits, and worktree/stacked-PR mechanics — those are owned
-  and ratified in `docs/operating-model.md` (issue #14). This framework
+  format, WIP limits, and worktree/stacked-PR mechanics — those are proposed
+  in `docs/operating-model.md` (issue #14), which remains a draft pending
+  explicit ratification. This framework
   references workstreams by name for scoring/lane purposes only; see
   [Workstream and issue scorecard](#workstream-and-issue-scorecard) for the
   authority split.
@@ -134,16 +139,18 @@ secondary lane may be noted for cross-cutting work):
 
 ### Workstream ownership authority
 
-Portfolio lanes describe *what* is being built; **workstream charters,
-accountable leads, boundaries, RACI, and handoff mechanics are ratified in
+Portfolio lanes describe *what* is being built. Proposed workstream charters,
+accountable leads, boundaries, RACI, and handoff mechanics are recorded in
 [`docs/operating-model.md`](../operating-model.md#workstream-charters-owners-and-boundaries)
-(issue #14)** — they are not restated here to avoid two owning documents for
-the same fact. The authority split, as operating-model.md itself records:
+(issue #14), but neither framework has an explicit Cyrus ratification record.
+They are not restated here to avoid two competing documents for the same fact.
+Until ratification, `docs/plan.md` is authoritative. After explicit
+ratification, the intended authority split is:
 
-- **This framework (issue #5) is authoritative for scoring, sequencing, and
+- **This framework (issue #5) will be authoritative for scoring, sequencing, and
   launch-stage evidence gates** — the issue scorecard, portfolio lanes, and
   Must/Should/Could/Won't stage scope below.
-- **`docs/operating-model.md` (issue #14) is authoritative for who does the
+- **`docs/operating-model.md` (issue #14) will be authoritative for who does the
   work, how they hand it off, and what authority they hold** — the
   workstream table, RACI, artifact gates, and WIP/integration rules.
 
@@ -320,8 +327,9 @@ request.
 
 ## Cross-references
 
-- Workstream charters, owners, RACI, and handoff mechanics (authoritative,
-  not duplicated here): [`docs/operating-model.md`](../operating-model.md)
+- Proposed workstream charters, owners, RACI, and handoff mechanics (advisory
+  until explicitly ratified; not duplicated here):
+  [`docs/operating-model.md`](../operating-model.md)
   (issue #14)
 - Skill lifecycle: [`docs/frameworks/skill-development.md`](skill-development.md)
 - Channel lifecycle: [`docs/frameworks/channel-development.md`](channel-development.md)
