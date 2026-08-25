@@ -147,4 +147,3 @@ Do not build, preview, or publish when any of these is true:
 Cyrus must accept, reject, or amend this proposal. Acceptance does not select a
 vendor, authorize spend/provisioning/publication, clear public wording, or
 activate any deferred integration.
-

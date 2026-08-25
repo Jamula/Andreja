@@ -39,4 +39,3 @@ dependencies, form submission, authentication, cookies, storage, telemetry, or
 product-data path. Open it locally as described in the prototype README. Do not
 publish it: its wording is deliberately labeled as planning content and its
 routes, contacts, legal text, and claims are incomplete.
-

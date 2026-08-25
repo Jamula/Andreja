@@ -33,4 +33,3 @@ browser profile are removed when the check exits.
 Automated checks do not establish WCAG conformance. Manual screen-reader,
 keyboard, zoom/reflow, forced-colors, reduced-motion, cognitive, and
 localization review remains a publication gate.
-

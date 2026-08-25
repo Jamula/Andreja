@@ -69,4 +69,3 @@ withdrawalOwnerAndProcedure:
 The public build rejects a claim when any required field is missing, evidence
 cannot be resolved, the approval is absent, or `expiresAt` has passed. Emergency
 withdrawal does not extend the claim or substitute weaker unsupported wording.
-
