@@ -1,0 +1,1023 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="description" content="Private local planning prototype for Andreja's proposed public and help site.">
+  <title>Andreja public-site planning prototype</title>
+  <script>
+  (() => {
+    const param = new URLSearchParams(window.location.search).get("scoutTheme");
+    const theme =
+      param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
+      --cp-card-shadow: 0 0 2px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.14);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.88);
+      --cp-panel: rgba(41, 41, 41, 0.72);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
+      --cp-card-shadow: 0 0 2px rgba(0, 0, 0, 0.28), 0 1px 2px rgba(0, 0, 0, 0.34);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--cp-bg);
+      color: var(--cp-text);
+      font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    a {
+      color: var(--cp-link);
+      text-underline-offset: 0.2em;
+    }
+
+    a:hover {
+      text-decoration-thickness: 0.16em;
+    }
+
+    :focus-visible {
+      border-radius: 0.25rem;
+      box-shadow: 0 0 0 2px var(--cp-bg), 0 0 0 5px var(--cp-accent);
+      outline: 0;
+    }
+
+    .skip-link {
+      background: var(--cp-accent);
+      color: var(--cp-accent-fg);
+      font-weight: 700;
+      left: 1rem;
+      padding: 0.75rem 1rem;
+      position: fixed;
+      top: 1rem;
+      transform: translateY(-220%);
+      z-index: 100;
+    }
+
+    .skip-link:focus {
+      transform: translateY(0);
+    }
+
+    .prototype-banner {
+      background: var(--cp-accent);
+      color: var(--cp-accent-fg);
+      font-size: 0.875rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      padding: 0.55rem max(1rem, calc((100% - 76rem) / 2));
+      text-align: center;
+    }
+
+    .site-header {
+      background: var(--cp-bg-elevated);
+      border-bottom: 1px solid var(--cp-border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .header-inner {
+      align-items: center;
+      display: flex;
+      gap: 1.5rem;
+      justify-content: space-between;
+      margin: 0 auto;
+      max-width: 76rem;
+      min-height: 4.5rem;
+      padding: 0 1.5rem;
+    }
+
+    .wordmark {
+      align-items: center;
+      color: var(--cp-text);
+      display: inline-flex;
+      font-size: 1.25rem;
+      font-weight: 800;
+      gap: 0.7rem;
+      text-decoration: none;
+    }
+
+    .wordmark-mark {
+      align-items: center;
+      background: var(--cp-accent);
+      border-radius: 0.625rem;
+      color: var(--cp-accent-fg);
+      display: inline-flex;
+      font-size: 0.82rem;
+      height: 2rem;
+      justify-content: center;
+      letter-spacing: -0.02em;
+      width: 2rem;
+    }
+
+    .site-nav {
+      align-items: center;
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .site-nav a {
+      border-radius: 0.625rem;
+      color: var(--cp-text);
+      font-size: 0.94rem;
+      font-weight: 650;
+      padding: 0.65rem 0.75rem;
+      text-decoration: none;
+    }
+
+    .site-nav a:hover {
+      background: var(--cp-accent-soft);
+      color: var(--cp-accent);
+    }
+
+    .menu-button {
+      align-items: center;
+      background: var(--cp-surface);
+      border: 1px solid var(--cp-border-strong);
+      border-radius: 0.625rem;
+      color: var(--cp-text);
+      display: none;
+      height: 2.75rem;
+      justify-content: center;
+      padding: 0;
+      width: 2.75rem;
+    }
+
+    .menu-button svg {
+      height: 1.25rem;
+      width: 1.25rem;
+    }
+
+    main {
+      margin: 0 auto;
+      max-width: 76rem;
+      padding: 0 1.5rem 6rem;
+    }
+
+    .first-view {
+      display: grid;
+      gap: 0;
+      grid-template-columns: minmax(0, 1.55fr) minmax(18rem, 0.75fr);
+      min-height: calc(100vh - 7rem);
+    }
+
+    .opening {
+      align-content: center;
+      border-right: 1px solid var(--cp-border-strong);
+      display: grid;
+      padding: clamp(4rem, 9vw, 8rem) clamp(2rem, 7vw, 6rem) clamp(4rem, 8vw, 7rem) 0;
+    }
+
+    .status-line {
+      align-items: center;
+      color: var(--cp-text-soft);
+      display: flex;
+      flex-wrap: wrap;
+      font-size: 0.9rem;
+      font-weight: 650;
+      gap: 0.65rem;
+      margin: 0 0 1.5rem;
+    }
+
+    .status-tag {
+      background: var(--cp-accent-soft);
+      border: 1px solid var(--cp-accent);
+      border-radius: 999px;
+      color: var(--cp-accent);
+      padding: 0.2rem 0.7rem;
+    }
+
+    h1,
+    h2,
+    h3 {
+      line-height: 1.12;
+      text-wrap: balance;
+    }
+
+    h1 {
+      font-size: clamp(3rem, 8vw, 6rem);
+      letter-spacing: -0.04em;
+      margin: 0;
+      max-width: 10ch;
+    }
+
+    .opening p {
+      color: var(--cp-text-soft);
+      font-size: clamp(1.05rem, 2vw, 1.3rem);
+      margin: 2rem 0 0;
+      max-width: 60ch;
+    }
+
+    .opening-actions {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.9rem 1.25rem;
+      margin-top: 2rem;
+    }
+
+    .primary-link {
+      background: var(--cp-accent);
+      border: 1px solid var(--cp-accent);
+      border-radius: 0.625rem;
+      color: var(--cp-accent-fg);
+      display: inline-flex;
+      font-weight: 750;
+      min-height: 2.75rem;
+      padding: 0.65rem 1rem;
+      text-decoration: none;
+    }
+
+    .primary-link:hover {
+      background: var(--cp-accent-hover);
+      color: var(--cp-accent-fg);
+    }
+
+    .index-rail {
+      align-content: center;
+      display: grid;
+      padding: clamp(2.5rem, 6vw, 5rem) 0 clamp(2.5rem, 6vw, 5rem) clamp(1.5rem, 4vw, 3rem);
+    }
+
+    .index-rail h2 {
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      margin: 0 0 1rem;
+      text-transform: uppercase;
+    }
+
+    .index-list {
+      border-top: 1px solid var(--cp-border-strong);
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .index-list li {
+      border-bottom: 1px solid var(--cp-border);
+    }
+
+    .index-list a {
+      align-items: baseline;
+      color: var(--cp-text);
+      display: grid;
+      font-weight: 700;
+      gap: 1rem;
+      grid-template-columns: 2.25rem 1fr;
+      min-height: 3.25rem;
+      padding: 0.7rem 0;
+      text-decoration: none;
+    }
+
+    .index-list a:hover {
+      color: var(--cp-accent);
+    }
+
+    .index-number {
+      color: var(--cp-text-soft);
+      font-family: Consolas, "Courier New", Courier, monospace;
+      font-size: 0.8rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .search-sheet {
+      background: var(--cp-surface);
+      border: 1px solid var(--cp-border-strong);
+      border-radius: 1rem;
+      box-shadow: var(--cp-card-shadow);
+      margin: 0 0 clamp(5rem, 10vw, 8rem);
+      padding: clamp(1.25rem, 4vw, 2.5rem);
+    }
+
+    .search-heading {
+      align-items: end;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 2rem;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .search-heading h2 {
+      font-size: clamp(1.75rem, 4vw, 2.75rem);
+      letter-spacing: -0.03em;
+      margin: 0;
+    }
+
+    .search-heading p {
+      color: var(--cp-text-soft);
+      margin: 0;
+      max-width: 42ch;
+    }
+
+    .search-control {
+      position: relative;
+    }
+
+    .search-control svg {
+      color: var(--cp-text-soft);
+      height: 1.2rem;
+      left: 1rem;
+      pointer-events: none;
+      position: absolute;
+      top: 0.95rem;
+      width: 1.2rem;
+    }
+
+    #site-search {
+      background: var(--cp-bg-elevated);
+      border: 2px solid var(--cp-border-strong);
+      border-radius: 0.625rem;
+      color: var(--cp-text);
+      min-height: 3.2rem;
+      padding: 0.7rem 1rem 0.7rem 3rem;
+      width: 100%;
+    }
+
+    #site-search::placeholder {
+      color: var(--cp-text-soft);
+      opacity: 1;
+    }
+
+    .search-status {
+      color: var(--cp-text-soft);
+      font-size: 0.9rem;
+      min-height: 1.5rem;
+      padding-top: 0.6rem;
+    }
+
+    .search-results {
+      border-top: 1px solid var(--cp-border);
+      list-style: none;
+      margin: 0.5rem 0 0;
+      padding: 0;
+    }
+
+    .search-results:empty {
+      display: none;
+    }
+
+    .search-results li {
+      border-bottom: 1px solid var(--cp-border);
+      padding: 0.9rem 0;
+    }
+
+    .search-results a {
+      color: var(--cp-text);
+      font-weight: 750;
+    }
+
+    .result-meta {
+      color: var(--cp-text-soft);
+      display: block;
+      font-size: 0.85rem;
+      margin-top: 0.15rem;
+    }
+
+    .chapter {
+      border-top: 1px solid var(--cp-border-strong);
+      display: grid;
+      gap: clamp(1.5rem, 5vw, 5rem);
+      grid-template-columns: minmax(12rem, 0.55fr) minmax(0, 1.45fr);
+      padding: clamp(4rem, 9vw, 8rem) 0;
+      scroll-margin-top: 6rem;
+    }
+
+    .chapter-heading {
+      align-self: start;
+      position: sticky;
+      top: 6rem;
+    }
+
+    .chapter-code {
+      color: var(--cp-accent);
+      font-family: Consolas, "Courier New", Courier, monospace;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin: 0 0 0.75rem;
+    }
+
+    .chapter h2 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      letter-spacing: -0.035em;
+      margin: 0;
+    }
+
+    .chapter-body {
+      max-width: 72ch;
+    }
+
+    .chapter-body > p:first-child {
+      font-size: 1.2rem;
+      margin-top: 0;
+    }
+
+    .boundary-list,
+    .release-list {
+      list-style: none;
+      margin: 2rem 0;
+      padding: 0;
+    }
+
+    .boundary-list li,
+    .release-list li {
+      border-top: 1px solid var(--cp-border);
+      display: grid;
+      gap: 0.75rem;
+      grid-template-columns: minmax(8rem, 0.45fr) minmax(0, 1fr);
+      padding: 1rem 0;
+    }
+
+    .boundary-list strong,
+    .release-list strong {
+      color: var(--cp-accent);
+    }
+
+    .planning-note {
+      background: var(--cp-accent-soft);
+      border: 1px solid var(--cp-accent);
+      border-radius: 1rem;
+      margin: 2rem 0;
+      padding: 1.25rem;
+    }
+
+    .planning-note strong {
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .route-strip {
+      display: grid;
+      gap: 1px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin: 2rem 0;
+    }
+
+    .route-strip div {
+      background: var(--cp-surface);
+      border: 1px solid var(--cp-border);
+      margin: 0 -1px -1px 0;
+      min-height: 7rem;
+      padding: 1rem;
+    }
+
+    .route-strip strong {
+      display: block;
+      margin-bottom: 0.4rem;
+    }
+
+    .route-strip span {
+      color: var(--cp-text-soft);
+      font-size: 0.9rem;
+    }
+
+    .checklist {
+      list-style: none;
+      margin: 1.5rem 0;
+      padding: 0;
+    }
+
+    .checklist li {
+      border-bottom: 1px solid var(--cp-border);
+      padding: 0.75rem 0 0.75rem 2rem;
+      position: relative;
+    }
+
+    .checklist li::before {
+      border: 2px solid var(--cp-border-strong);
+      border-radius: 0.25rem;
+      content: "";
+      height: 0.9rem;
+      left: 0;
+      position: absolute;
+      top: 1rem;
+      width: 0.9rem;
+    }
+
+    footer {
+      border-top: 1px solid var(--cp-border-strong);
+      margin: 0 auto;
+      max-width: 76rem;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    .footer-grid {
+      display: grid;
+      gap: 2rem;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    footer p {
+      color: var(--cp-text-soft);
+      margin: 0;
+      max-width: 60ch;
+    }
+
+    footer a {
+      color: var(--cp-text);
+      font-weight: 700;
+    }
+
+    @media (max-width: 62rem) {
+      .menu-button {
+        display: inline-flex;
+      }
+
+      .site-nav {
+        background: var(--cp-bg-elevated);
+        border-bottom: 1px solid var(--cp-border);
+        display: none;
+        left: 0;
+        padding: 0.75rem 1.5rem 1rem;
+        position: absolute;
+        right: 0;
+        top: 4.5rem;
+      }
+
+      .site-nav[data-open="true"] {
+        display: grid;
+      }
+
+      .site-nav a {
+        min-height: 2.75rem;
+      }
+
+      .first-view {
+        grid-template-columns: 1fr;
+      }
+
+      .opening {
+        border-bottom: 1px solid var(--cp-border-strong);
+        border-right: 0;
+        min-height: 70vh;
+        padding-right: 0;
+      }
+
+      .index-rail {
+        padding-left: 0;
+      }
+
+      .chapter {
+        grid-template-columns: 1fr;
+      }
+
+      .chapter-heading {
+        position: static;
+      }
+    }
+
+    @media (max-width: 42rem) {
+      .header-inner,
+      main,
+      footer {
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+
+      .prototype-banner {
+        text-align: left;
+      }
+
+      h1 {
+        font-size: clamp(2.75rem, 16vw, 4.5rem);
+      }
+
+      .route-strip,
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .boundary-list li,
+      .release-list li {
+        gap: 0.25rem;
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    @media (forced-colors: active) {
+      .status-tag,
+      .planning-note,
+      .primary-link,
+      .wordmark-mark {
+        border: 2px solid currentColor;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!--
+  THESIS: A public-site planning field guide makes boundaries inspectable and refuses the familiar promise-first product landing page.
+  OWN-WORLD: Warm evidence sheets, ruled specimen rows, rose status marks, and numbered route codes form one restrained field-guide system.
+  STORY: Visitors see the non-public status, understand what the future site may explain, search the proposed map locally, and reach governance sources.
+  FIRST VIEWPORT: A large boundary statement occupies the left sheet; a numbered contents rail on the right exposes every proposed destination and the planning status.
+  FORM: Fourth grounded direction, a standards field guide staged as measurable content sheets; direction seed ebbc9bee.
+  -->
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <div class="prototype-banner" role="status">
+    Private planning prototype · no product availability is represented · do not publish
+  </div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="wordmark" href="#top" aria-label="Andreja prototype home">
+        <span class="wordmark-mark" aria-hidden="true">A</span>
+        Andreja
+      </a>
+      <button class="menu-button" type="button" aria-expanded="false" aria-controls="site-navigation" aria-label="Open navigation">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 7h16M4 12h16M4 17h16"></path>
+        </svg>
+      </button>
+      <nav class="site-nav" id="site-navigation" aria-label="Primary">
+        <a href="#product">Product</a>
+        <a href="#get-started">Get started</a>
+        <a href="#docs">Docs</a>
+        <a href="#trust">Security &amp; privacy</a>
+        <a href="#support">Support</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content" aria-labelledby="page-title">
+    <div class="first-view" id="top">
+      <section class="opening" aria-labelledby="page-title">
+        <div>
+          <p class="status-line">
+            <span class="status-tag">Planning only</span>
+            <span>Phase 0 · local artifact</span>
+          </p>
+          <h1 id="page-title">Understand the boundary before the promise.</h1>
+          <p>
+            This local prototype explores how a future Andreja site could explain
+            product intent, evidence, documentation, support, and trust without
+            sign-in or access to anyone's product data.
+          </p>
+          <div class="opening-actions">
+            <a class="primary-link" href="#search">Search the content map</a>
+            <a href="#trust">Review the proposed separation</a>
+          </div>
+        </div>
+      </section>
+
+      <aside class="index-rail" aria-labelledby="guide-index">
+        <h2 id="guide-index">Proposed guide</h2>
+        <ol class="index-list">
+          <li><a href="#product"><span class="index-number">A-01</span><span>Product &amp; status</span></a></li>
+          <li><a href="#get-started"><span class="index-number">A-02</span><span>Get started paths</span></a></li>
+          <li><a href="#docs"><span class="index-number">A-03</span><span>Versioned documentation</span></a></li>
+          <li><a href="#help"><span class="index-number">A-04</span><span>Help &amp; release notes</span></a></li>
+          <li><a href="#trust"><span class="index-number">A-05</span><span>Security &amp; privacy</span></a></li>
+          <li><a href="#accessibility"><span class="index-number">A-06</span><span>Accessibility</span></a></li>
+          <li><a href="#support"><span class="index-number">A-07</span><span>Support &amp; legal</span></a></li>
+        </ol>
+      </aside>
+    </div>
+
+    <section class="search-sheet" id="search" aria-labelledby="search-title">
+      <div class="search-heading">
+        <h2 id="search-title">Search this artifact</h2>
+        <p>Results come from an index inside this file. The query is not sent or saved.</p>
+      </div>
+      <label for="site-search">Search proposed pages and topics</label>
+      <div class="search-control">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="m16 16 4 4"></path>
+        </svg>
+        <input id="site-search" type="search" autocomplete="off" spellcheck="false" placeholder="Try “privacy”, “versioned docs”, or “support”">
+      </div>
+      <div class="search-status" id="search-status" role="status" aria-live="polite">Enter two or more characters.</div>
+      <ul class="search-results" id="search-results"></ul>
+    </section>
+
+    <section class="chapter" id="product" aria-labelledby="product-title">
+      <div class="chapter-heading">
+        <p class="chapter-code">A-01 / Product</p>
+        <h2 id="product-title">State first. Scope second.</h2>
+      </div>
+      <div class="chapter-body">
+        <p>
+          A future product page should distinguish purpose, available behavior,
+          limited behavior, planned work, and research. It should never turn a
+          roadmap into a release claim.
+        </p>
+        <div class="planning-note">
+          <strong>Prototype statement</strong>
+          Andreja is described in repository planning as a user-owned personal
+          assistant and skill platform. This prototype does not claim that a
+          public product or managed service is available.
+        </div>
+        <ul class="boundary-list">
+          <li><strong>Explain</strong><span>Human agency, data ownership, capability boundaries, and how evidence is reviewed.</span></li>
+          <li><strong>Label</strong><span>Availability and version on every capability; limitations sit beside the relevant statement.</span></li>
+          <li><strong>Withhold</strong><span>Security, privacy, accessibility, performance, customer, pricing, and compatibility claims until current evidence exists.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="chapter" id="get-started" aria-labelledby="start-title">
+      <div class="chapter-heading">
+        <p class="chapter-code">A-02 / Get started</p>
+        <h2 id="start-title">Separate paths, honest entry.</h2>
+      </div>
+      <div class="chapter-body">
+        <p>
+          Getting-started guidance should branch by a supported deployment mode
+          and version. A path is published only after its prerequisites,
+          recovery, update, and troubleshooting journey have been exercised.
+        </p>
+        <div class="route-strip" aria-label="Proposed getting started paths">
+          <div><strong>Self-host operator</strong><span>Requirements, verified artifacts, setup, keys, backup, updates, recovery.</span></div>
+          <div><strong>Managed user</strong><span>Shown only after managed availability, terms, support, privacy, and recovery are approved.</span></div>
+          <div><strong>Developer</strong><span>Versioned contracts, examples, conformance, compatibility, and security boundaries.</span></div>
+        </div>
+        <p>
+          No sign-in or launch button belongs on the public/help site itself.
+          Product entry points, if later approved, remain ordinary external links
+          to a separately operated application boundary.
+        </p>
+      </div>
+    </section>
+
+    <section class="chapter" id="docs" aria-labelledby="docs-title">
+      <div class="chapter-heading">
+        <p class="chapter-code">A-03 / Documentation</p>
+        <h2 id="docs-title">A version is part of every answer.</h2>
+      </div>
+      <div class="chapter-body">
+        <p>
+          Canonical documentation is reviewed source that builds with the site.
+          Search results, route metadata, release notes, and help pages show the
+          product or contract version they apply to.
+        </p>
+        <ul class="checklist">
+          <li>User and operator journeys for identity, assistant, skills, channels, sharing, backup/export, and recovery</li>
+          <li>Versioned API, skill, channel, and federation documentation with compatibility boundaries</li>
+          <li>Tested links, owned pages, review dates, expiry triggers, and known limitations</li>
+          <li>Locale-ready templates, metadata, navigation, search partitions, text expansion, and reading order</li>
+        </ul>
+        <p>
+          A convenience “latest” route can help navigation, but immutable
+          version routes remain addressable and canonical for historical
+          releases.
+        </p>
+      </div>
+    </section>
+
+    <section class="chapter" id="help" aria-labelledby="help-title">
+      <div class="chapter-heading">
+        <p class="chapter-code">A-04 / Help</p>
+        <h2 id="help-title">Help without hidden intake.</h2>
+      </div>
+      <div class="chapter-body">
+        <p>
+          Searchable help, known issues, release notes, safe diagnostics, and
+          escalation guidance can remain static. Collecting feedback cannot.
+        </p>
+        <ul class="release-list">
+          <li><strong>Release notes</strong><span>Version, date, behavior changes, migration, compatibility, security relevance, and rollback guidance.</span></li>
+          <li><strong>Known issues</strong><span>Impact, affected version, safe workaround, owner, and next review without unsupported resolution dates.</span></li>
+          <li><strong>Diagnostics</strong><span>Explain what may be shared, what must never be submitted, and how preview/consent works.</span></li>
+          <li><strong>Feedback</strong><span>Absent until a separately deployed tenant-less intake service, privacy notice, retention, abuse controls, and status flow are approved.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="chapter" id="trust" aria-labelledby="trust-title">
+      <div class="chapter-heading">
+        <p class="chapter-code">A-05 / Trust boundary</p>
+        <h2 id="trust-title">Public content, isolated delivery.</h2>
+      </div>
+      <div class="chapter-body">
+        <p>
+          The recommended artifact is generated ahead of time and deployed
+          independently. Search runs over public content in the browser. The
+          site does not query the authenticated app.
+        </p>
+        <ul class="boundary-list">
+          <li><strong>Inside</strong><span>Reviewed public pages, static assets, version metadata, and a pre-generated public-content search index.</span></li>
+          <li><strong>Outside</strong><span>Sign-in, app cookies, user tokens, tenant data, tasks, prompts, connector content, feedback records, analytics, and sponsorship.</span></li>
+          <li><strong>Separate</strong><span>Deployment identity, origin, hostname, request logs, cache, previews, budget, incidents, and rollback.</span></li>
+        </ul>
+        <div class="planning-note">
+          <strong>Security reporting is a launch gate</strong>
+          The future site needs an approved private reporting route and a tested
+          <code>/.well-known/security.txt</code>. This prototype intentionally
+          invents neither a contact address nor a response promise.
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="accessibility" aria-labelledby="accessibility-title">
+      <div class="chapter-heading">
+        <p class="chapter-code">A-06 / Accessibility</p>
+        <h2 id="accessibility-title">A target is not a conformance claim.</h2>
+      </div>
+      <div class="chapter-body">
+        <p>
+          WCAG 2.2 Level AA is the intended engineering target. Public
+          conformance wording waits for version-scoped automated and manual
+          evidence across real pages, content, themes, devices, and assistive
+          technology.
+        </p>
+        <ul class="checklist">
+          <li>Semantic landmarks and headings, labeled controls, skip navigation, and logical focus order</li>
+          <li>Keyboard operation, visible focus, announced search status, and non-search navigation</li>
+          <li>Contrast, 320 CSS-pixel reflow, 200% text resize, target size, forced colors, and reduced motion</li>
+          <li>Manual screen-reader, 400% zoom, cognitive, locale expansion, and bidirectional-content review</li>
+        </ul>
+        <p>
+          Automated prototype checks are useful regression evidence. They do not
+          replace review by people using the relevant interaction modes.
+        </p>
+      </div>
+    </section>
+
+    <section class="chapter" id="support" aria-labelledby="support-title">
+      <div class="chapter-heading">
+        <p class="chapter-code">A-07 / Support &amp; legal</p>
+        <h2 id="support-title">Do not invent the last mile.</h2>
+      </div>
+      <div class="chapter-body">
+        <p>
+          Contact, legal, license, privacy, domain, sponsorship, and support
+          details look small on a page but carry real obligations. Placeholder
+          prose must never escape a private prototype.
+        </p>
+        <ul class="boundary-list">
+          <li><strong>Support</strong><span>Publish only tested safe routes, prohibited-content guidance, tracking expectations, and capacity-backed response language.</span></li>
+          <li><strong>Legal</strong><span>Wait for approved ownership, license, terms, privacy notice, mark, and domain decisions.</span></li>
+          <li><strong>Sponsorship</strong><span>Remain absent until policy, legal/tax/payment, disclosure, and relationship gates are satisfied.</span></li>
+        </ul>
+        <p>
+          For now, repository documentation and issue #94 are the source of this
+          planning work. They are not public support endpoints.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-grid">
+      <p>
+        Local Phase 0 artifact. No product data, sign-in, feedback, analytics,
+        sponsorship, remote fonts, or third-party scripts are included.
+      </p>
+      <p>
+        Review the <a href="../design-hosting-matrix.md">decision matrix</a> and
+        <a href="../claims-inventory.md">claims inventory</a>. These relative
+        links are intended for the local repository only.
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    (() => {
+      const menuButton = document.querySelector(".menu-button");
+      const navigation = document.querySelector(".site-nav");
+      const setMenu = open => {
+        menuButton.setAttribute("aria-expanded", String(open));
+        menuButton.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
+        navigation.dataset.open = String(open);
+      };
+
+      menuButton.addEventListener("click", () => {
+        setMenu(menuButton.getAttribute("aria-expanded") !== "true");
+      });
+
+      navigation.addEventListener("click", event => {
+        if (event.target.closest("a")) setMenu(false);
+      });
+
+      const searchIndex = [
+        { title: "Product and status", href: "#product", type: "Product", text: "purpose availability planned research evidence claims roadmap user-owned assistant skill platform" },
+        { title: "Get started paths", href: "#get-started", type: "Guide", text: "self-host managed developer setup requirements keys backup recovery contracts" },
+        { title: "Versioned documentation", href: "#docs", type: "Documentation", text: "version help API skills channels federation compatibility localization search owners expiry" },
+        { title: "Help and release notes", href: "#help", type: "Help", text: "known issues diagnostics release notes migration rollback feedback intake support" },
+        { title: "Security and privacy boundary", href: "#trust", type: "Trust", text: "security privacy static artifact browser search no cookies tokens product data analytics security.txt" },
+        { title: "Accessibility evidence", href: "#accessibility", type: "Accessibility", text: "WCAG 2.2 AA keyboard screen reader contrast reflow zoom forced colors reduced motion" },
+        { title: "Support and legal", href: "#support", type: "Governance", text: "support legal license trademark domain sponsorship contact privacy notice response" }
+      ];
+
+      const input = document.querySelector("#site-search");
+      const results = document.querySelector("#search-results");
+      const status = document.querySelector("#search-status");
+
+      const render = () => {
+        const query = input.value.trim().toLocaleLowerCase();
+        results.replaceChildren();
+        if (query.length < 2) {
+          status.textContent = "Enter two or more characters.";
+          return;
+        }
+
+        const terms = query.split(/\s+/).filter(Boolean);
+        const matches = searchIndex.filter(item => {
+          const haystack = `${item.title} ${item.type} ${item.text}`.toLocaleLowerCase();
+          return terms.every(term => haystack.includes(term));
+        });
+
+        for (const item of matches) {
+          const link = document.createElement("a");
+          link.href = item.href;
+          link.textContent = item.title;
+
+          const meta = document.createElement("span");
+          meta.className = "result-meta";
+          meta.textContent = `${item.type} · planning content`;
+
+          const row = document.createElement("li");
+          row.append(link, meta);
+          results.append(row);
+        }
+
+        status.textContent = matches.length === 0
+          ? "No results. Try a broader term or use the proposed guide."
+          : `${matches.length} ${matches.length === 1 ? "result" : "results"}.`;
+      };
+
+      input.addEventListener("input", render);
+    })();
+  </script>
+</body>
+</html>
+
