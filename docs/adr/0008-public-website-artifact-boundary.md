@@ -1,4 +1,4 @@
-# ADR 0006: Public website static artifact and deployment boundary
+# ADR 0008: Public website static artifact and deployment boundary
 
 - **Status:** Proposed
 - **Date:** 2026-08-24

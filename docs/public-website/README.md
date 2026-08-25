@@ -15,7 +15,7 @@ sponsorship, or any connection to the authenticated application.
 
 - [Design, hosting, and review matrix](design-hosting-matrix.md)
 - [Claims inventory](claims-inventory.md)
-- [Proposed ADR 0006](../adr/0006-public-website-artifact-boundary.md)
+- [Proposed ADR 0008](../adr/0008-public-website-artifact-boundary.md)
 - [Local prototype](prototype/README.md)
 
 ## Recommendation in one sentence
@@ -31,6 +31,21 @@ The production source-repository location remains governed by
 this repository. A future separate-repository proposal must resolve source,
 license, content, and release ownership through the plan's amendment policy.
 The artifact and deployment boundary in this packet remains portable either way.
+
+## Product context retained by this packet
+
+The intended readers are prospective users, self-host operators, developers,
+support seekers, and trust reviewers evaluating Andreja without signing in or
+exposing product data. This audience is inferred from the ratified plan and must
+be validated before public launch.
+
+Andreja's approved direction centers human agency, user-owned data,
+independently operable self-hosting, and purpose-scoped capabilities. Broad
+market demand, production readiness, managed availability, pricing, public
+brand assets, testimonials, benchmarks, and public-site conformance are not
+established. The working product name is not trademark or domain clearance.
+Future content must state what is planned, proven, limited, and unavailable
+without ambiguity.
 
 ## Phase boundary
 
