@@ -118,9 +118,10 @@ author must complete this checklist:
 The generator derives the editable source and SVG from one model, embeds the
 source SHA-256 in the SVG, and writes source, SVG, raster, and combined binding
 SHA-256 values into validated PNG chunks. `--check` validates PNG structure and
-CRC values, verifies the cryptographic binding, embeds identical provenance in
-a fresh deterministic Edge render, and compares the complete PNG bytes and
-SHA-256. Extra metadata, EXIF, animation, or other chunks therefore fail. The
-hosted Docs Consistency workflow enforces this check on Windows with Edge. A
-manual Microsoft-internal Excalidraw review remains required because byte-level
-checks cannot detect visual clipping or misleading layout.
+CRC values, verifies the cryptographic binding, and compares the complete PNG
+bytes against the committed SHA-256 manifest. Extra metadata, EXIF, animation,
+or other chunks therefore fail. The hosted Docs Consistency workflow enforces
+this portable check; `--render-png` atomically regenerates both the image and
+manifest with Edge. A manual Microsoft-internal Excalidraw review remains
+required because byte-level checks cannot detect visual clipping or misleading
+layout.

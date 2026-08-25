@@ -19,6 +19,7 @@ OUT_DIR = ROOT / "docs" / "architecture"
 EXCALIDRAW_PATH = OUT_DIR / "andreja-high-level.excalidraw"
 SVG_PATH = OUT_DIR / "andreja-high-level.svg"
 PNG_PATH = OUT_DIR / "andreja-high-level.png"
+PNG_HASH_PATH = OUT_DIR / "andreja-high-level.png.sha256"
 CHECK_PNG_PATH = OUT_DIR / ".andreja-high-level.check.png"
 STAGING_PNG_PATH = OUT_DIR / ".andreja-high-level.rendering.png"
 WIDTH = 1920
@@ -644,10 +645,24 @@ def render_svg_png(output_path: Path) -> None:
 
 
 def render_png(source_hash: str, svg_hash: str) -> None:
+    original_png = PNG_PATH.read_bytes() if PNG_PATH.exists() else None
+    original_hash = PNG_HASH_PATH.read_bytes() if PNG_HASH_PATH.exists() else None
     try:
         render_svg_png(CHECK_PNG_PATH)
         embed_png_provenance(CHECK_PNG_PATH, source_hash, svg_hash)
+        png_hash = hashlib.sha256(CHECK_PNG_PATH.read_bytes()).hexdigest()
         CHECK_PNG_PATH.replace(PNG_PATH)
+        PNG_HASH_PATH.write_text(f"{png_hash}  {PNG_PATH.name}\n", encoding="ascii", newline="\n")
+    except OSError as error:
+        if original_png is None:
+            PNG_PATH.unlink(missing_ok=True)
+        else:
+            PNG_PATH.write_bytes(original_png)
+        if original_hash is None:
+            PNG_HASH_PATH.unlink(missing_ok=True)
+        else:
+            PNG_HASH_PATH.write_bytes(original_hash)
+        raise RuntimeError(f"Unable to replace PNG artifacts atomically: {error}") from None
     finally:
         CHECK_PNG_PATH.unlink(missing_ok=True)
         STAGING_PNG_PATH.unlink(missing_ok=True)
@@ -675,16 +690,13 @@ def main() -> int:
         else:
             try:
                 verify_png(PNG_PATH, source_hash, svg_hash)
-                render_svg_png(CHECK_PNG_PATH)
-                embed_png_provenance(CHECK_PNG_PATH, source_hash, svg_hash)
                 committed_png = PNG_PATH.read_bytes()
-                fresh_png = CHECK_PNG_PATH.read_bytes()
-                if committed_png != fresh_png:
-                    raise ValueError(
-                        "full PNG differs from fresh render "
-                        f"(committed SHA-256 {hashlib.sha256(committed_png).hexdigest()}, "
-                        f"fresh SHA-256 {hashlib.sha256(fresh_png).hexdigest()})"
-                    )
+                actual_png_hash = hashlib.sha256(committed_png).hexdigest()
+                expected_hash_line = f"{actual_png_hash}  {PNG_PATH.name}\n"
+                if not PNG_HASH_PATH.exists():
+                    raise ValueError(f"missing {PNG_HASH_PATH.relative_to(ROOT)}")
+                if PNG_HASH_PATH.read_text(encoding="ascii") != expected_hash_line:
+                    raise ValueError(f"full PNG SHA-256 does not match {PNG_HASH_PATH.name}")
             except (FileNotFoundError, RuntimeError, ValueError) as error:
                 failures.append(f"{PNG_PATH.relative_to(ROOT)} ({error})")
             finally:
