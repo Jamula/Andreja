@@ -6,99 +6,285 @@ const path = require('node:path');
 const test = require('node:test');
 
 const {
-  BREAK_GLASS_PREFIX,
-  CHECK_NAMES,
-  EVIDENCE_PREFIX,
-  currentCopilotReview,
+  COPILOT_LOGIN,
+  breakGlassArtifactName,
+  breakGlassRunTitle,
   evaluateReviewCompletion,
-  evidenceCheckName,
-  mergeReady,
-  replayTimingWindow,
+  latestCopilotReview,
+  pullIdentity,
   requiredDomains,
+  reviewMarker,
+  reviewMarkers,
 } = require('./review-completion');
 const {
+  crc32,
+  domainEvidence,
+  evaluatePullRequest,
+  evaluateSnapshot,
   listReviewThreads,
-  isTrustedWorkflowCheck,
-  dispatchLinkedIssue,
-  ensureGateCheck,
+  readZipJson,
   sanitizedApiFailure,
-  shouldPoll,
-  workflowRunId,
 } = require('./run-review-completion');
 const {
   BREAK_GLASS_CONFIRMATION,
   recordBreakGlass,
-  recordReviewEvidence,
-  repositoryEvidenceUrl,
 } = require('./record-review-evidence');
+const {
+  REQUIRED_WORKFLOW_PATH,
+  planRollback,
+  planRollout,
+} = require('./review-gate-ruleset');
 
 const fixtures = JSON.parse(fs.readFileSync(
   path.join(__dirname, 'fixtures', 'review-completion-scenarios.json'),
   'utf8'));
 const HEAD = 'a'.repeat(40);
 const OLD_HEAD = 'b'.repeat(40);
-const successCheck = {
-  id: 10,
-  status: 'completed',
-  conclusion: 'success',
-  app: { slug: 'github-actions' },
-};
-const currentReview = {
-  state: 'COMMENTED',
-  commit_id: HEAD,
-  submitted_at: '2026-08-25T05:00:00Z',
-  user: { login: 'copilot-pull-request-reviewer[bot]' },
-};
+const BASE = 'c'.repeat(40);
+const OTHER_BASE = 'd'.repeat(40);
+const REPOSITORY_ID = 1342901808;
 
-function approved(overrides = {}) {
-  return evaluateReviewCompletion({
-    headSha: HEAD,
-    copilotCheck: successCheck,
-    copilotReview: currentReview,
-    unresolvedThreads: 0,
-    ...overrides,
-  });
+function context(eventName = 'pull_request_target') {
+  return {
+    actor: 'reviewer',
+    eventName,
+    payload: {
+      repository: {
+        default_branch: 'main',
+        full_name: 'Jamula/Andreja',
+      },
+    },
+    repo: { owner: 'Jamula', repo: 'Andreja' },
+    runId: 9001,
+  };
 }
 
-test('draft pull requests fail closed', () => {
-  assert.deepEqual(approved({ draft: true }), {
-    state: 'rejected',
-    reasons: ['Draft pull requests are not ready for merge.'],
-  });
-});
+function pull(number = 104, overrides = {}) {
+  return {
+    number,
+    state: 'open',
+    draft: false,
+    body: 'Closes #104',
+    user: { login: 'pr-author' },
+    head: { sha: HEAD },
+    base: {
+      sha: BASE,
+      ref: 'main',
+      repo: {
+        id: REPOSITORY_ID,
+        full_name: 'Jamula/Andreja',
+      },
+    },
+    ...overrides,
+  };
+}
 
-test('current-head Copilot check and review are both required', () => {
-  assert.equal(approved({ copilotCheck: null }).state, 'pending');
-  assert.equal(approved({ copilotReview: null }).state, 'pending');
-  assert.equal(approved({
-    copilotCheck: { status: 'completed', conclusion: 'failure' },
-  }).state, 'rejected');
-});
+function identity(number = 104, overrides = {}) {
+  return {
+    pullNumber: number,
+    headSha: HEAD,
+    baseRepositoryId: REPOSITORY_ID,
+    baseRepository: 'Jamula/Andreja',
+    baseRef: 'main',
+    baseSha: BASE,
+    ...overrides,
+  };
+}
 
-test('historical Copilot review does not satisfy a new head', () => {
-  const review = currentCopilotReview([{
-    ...currentReview,
-    commit_id: OLD_HEAD,
-  }], HEAD);
-  assert.equal(review, null);
-  assert.equal(approved({ copilotReview: review }).state, 'pending');
-});
-
-test('author self-approval is never treated as Copilot completion', () => {
-  const review = currentCopilotReview([{
-    state: 'APPROVED',
-    commit_id: HEAD,
+function copilotReview(commitId = HEAD, overrides = {}) {
+  return {
+    id: 100,
+    body: 'Copilot review complete.',
+    state: 'COMMENTED',
+    commit_id: commitId,
     submitted_at: '2026-08-25T05:00:00Z',
-    user: { login: 'cyrusjamula' },
-  }], HEAD);
-  assert.equal(review, null);
-  assert.equal(approved({ copilotReview: review }).state, 'pending');
-});
+    user: { login: COPILOT_LOGIN },
+    ...overrides,
+  };
+}
 
-test('zero unresolved review threads is mandatory', () => {
-  const result = approved({ unresolvedThreads: 1 });
-  assert.equal(result.state, 'rejected');
-  assert.match(result.reasons[0], /1 unresolved/);
+function reviewBinding(domain, number = 104, overrides = {}) {
+  return {
+    schemaVersion: 2,
+    kind: 'independent-review',
+    domain,
+    ...identity(number),
+    evidenceUrl: `https://github.com/Jamula/Andreja/pull/${number}#pullrequestreview-1`,
+    summary: `Independent ${domain} review completed.`,
+    ...overrides,
+  };
+}
+
+function domainReview(domain, {
+  number = 104,
+  state = 'APPROVED',
+  login = 'reviewer',
+  submittedAt = '2026-08-25T05:01:00Z',
+  id = 200,
+  binding = reviewBinding(domain, number),
+  commitId = HEAD,
+} = {}) {
+  return {
+    id,
+    body: reviewMarker(domain, binding),
+    state,
+    commit_id: commitId,
+    submitted_at: submittedAt,
+    user: { login },
+  };
+}
+
+function endpoint(kind) {
+  const callable = function endpointMarker() {};
+  callable.kind = kind;
+  return callable;
+}
+
+class FakeGitHub {
+  constructor({
+    pullRequest = pull(),
+    reviews = [],
+    threads = [],
+    labels = { 104: ['area:architecture'] },
+    permissions = { reviewer: 'write' },
+    workflowRuns = [],
+    artifacts = {},
+    downloads = {},
+  } = {}) {
+    this.state = {
+      pullRequest,
+      reviews,
+      threads,
+      labels,
+      permissions,
+      workflowRuns,
+      artifacts,
+      downloads,
+    };
+    this.failNext = null;
+    this.rest = {
+      actions: {
+        listWorkflowRuns: endpoint('workflowRuns'),
+        listWorkflowRunArtifacts: endpoint('artifacts'),
+        downloadArtifact: async ({ artifact_id }) => {
+          if (this.failNext) {
+            const error = this.failNext;
+            this.failNext = null;
+            throw error;
+          }
+          return { data: this.state.downloads[artifact_id] };
+        },
+        createWorkflowDispatch: async () => {},
+      },
+      issues: {
+        listLabelsOnIssue: endpoint('labels'),
+      },
+      pulls: {
+        get: async () => {
+          if (this.failNext) {
+            const error = this.failNext;
+            this.failNext = null;
+            throw error;
+          }
+          return { data: structuredClone(this.state.pullRequest) };
+        },
+        list: endpoint('pulls'),
+        listReviews: endpoint('reviews'),
+      },
+      repos: {
+        getCollaboratorPermissionLevel: async ({ username }) => ({
+          data: { permission: this.state.permissions[username] || 'read' },
+        }),
+      },
+    };
+  }
+
+  async paginate(operation, parameters) {
+    switch (operation.kind) {
+      case 'reviews':
+        return structuredClone(this.state.reviews);
+      case 'labels':
+        return (this.state.labels[parameters.issue_number] || [])
+          .map((name) => ({ name }));
+      case 'workflowRuns':
+        return structuredClone(this.state.workflowRuns);
+      case 'artifacts':
+        return structuredClone(this.state.artifacts[parameters.run_id] || []);
+      case 'pulls':
+        return [structuredClone(this.state.pullRequest)];
+      default:
+        throw new Error('Unexpected pagination endpoint.');
+    }
+  }
+
+  async graphql(query) {
+    if (query.includes('reviewThreads')) {
+      return {
+        repository: {
+          pullRequest: {
+            reviewThreads: {
+              nodes: structuredClone(this.state.threads),
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
+        },
+      };
+    }
+    if (query.includes('closingIssuesReferences')) {
+      return {
+        repository: {
+          pullRequest: {
+            closingIssuesReferences: {
+              nodes: [],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
+        },
+      };
+    }
+    throw new Error('Unexpected GraphQL query.');
+  }
+}
+
+function lifecycleState(result) {
+  return {
+    approved: 'success',
+    pending: 'in_progress',
+    rejected: 'failure',
+  }[result.state];
+}
+
+async function snapshotState(fake, number = 104) {
+  const snapshot = await evaluateSnapshot({
+    github: fake,
+    context: context(),
+    pullNumber: number,
+    expectedIdentity: identity(number),
+  });
+  return lifecycleState(snapshot.result);
+}
+
+test('drafts, unresolved threads, and stale Copilot reviews fail closed', () => {
+  const exactIdentity = identity();
+  assert.equal(evaluateReviewCompletion({
+    identity: exactIdentity,
+    draft: true,
+  }).state, 'rejected');
+  assert.equal(evaluateReviewCompletion({
+    identity: exactIdentity,
+    unresolvedThreads: 1,
+  }).state, 'rejected');
+  assert.equal(evaluateReviewCompletion({
+    identity: exactIdentity,
+    copilotReview: copilotReview(OLD_HEAD),
+  }).state, 'pending');
+  assert.equal(latestCopilotReview([
+    copilotReview(HEAD, { id: 1 }),
+    copilotReview(OLD_HEAD, {
+      id: 2,
+      submitted_at: '2026-08-25T05:02:00Z',
+    }),
+  ]).commit_id, OLD_HEAD);
 });
 
 test('issue and PR labels select independent review domains', () => {
@@ -108,82 +294,303 @@ test('issue and PR labels select independent review domains', () => {
   ]), ['architecture', 'security', 'privacy', 'quality']);
 });
 
-test('each selected independent domain needs trusted current-head evidence', () => {
-  const missing = approved({
-    domains: ['architecture'],
-    evidence: {},
-  });
-  assert.equal(missing.state, 'pending');
+test('review evidence marker round trips an exact PR and base identity', () => {
+  const binding = reviewBinding('architecture');
+  assert.deepEqual(
+    reviewMarkers(reviewMarker('architecture', binding)),
+    [{ domain: 'architecture', binding, error: null }]);
+});
 
-  const rejected = approved({
-    domains: ['architecture'],
-    evidence: {
-      architecture: { status: 'completed', conclusion: 'failure' },
+test('authenticated reviewer identity is bound to the native GitHub review actor', async () => {
+  const fake = new FakeGitHub();
+  const approved = await domainEvidence({
+    github: fake,
+    context: context(),
+    reviews: [domainReview('architecture')],
+    domain: 'architecture',
+    identity: identity(),
+    author: 'pr-author',
+    permissionCache: new Map(),
+  });
+  assert.equal(approved.outcome, 'success');
+  assert.equal(approved.reviewer, 'reviewer');
+
+  const self = await domainEvidence({
+    github: fake,
+    context: context(),
+    reviews: [domainReview('architecture', { login: 'pr-author' })],
+    domain: 'architecture',
+    identity: identity(),
+    author: 'pr-author',
+    permissionCache: new Map(),
+  });
+  assert.equal(self.outcome, 'failure');
+  assert.match(self.reason, /author cannot/);
+
+  fake.state.permissions.reviewer = 'read';
+  const unauthorized = await domainEvidence({
+    github: fake,
+    context: context(),
+    reviews: [domainReview('architecture')],
+    domain: 'architecture',
+    identity: identity(),
+    author: 'pr-author',
+    permissionCache: new Map(),
+  });
+  assert.equal(unauthorized.outcome, 'failure');
+  assert.match(unauthorized.reason, /not authorized/);
+});
+
+test('newest expected-identity evidence candidate never falls back', async () => {
+  const fake = new FakeGitHub();
+  const oldApproval = domainReview('architecture', {
+    id: 1,
+    submittedAt: '2026-08-25T05:00:00Z',
+  });
+  const newestRejection = domainReview('architecture', {
+    id: 2,
+    state: 'CHANGES_REQUESTED',
+    submittedAt: '2026-08-25T05:02:00Z',
+  });
+  const rejected = await domainEvidence({
+    github: fake,
+    context: context(),
+    reviews: [oldApproval, newestRejection],
+    domain: 'architecture',
+    identity: identity(),
+    author: 'pr-author',
+    permissionCache: new Map(),
+  });
+  assert.equal(rejected.outcome, 'failure');
+  assert.equal(rejected.candidateId, 2);
+
+  const newestStale = domainReview('architecture', {
+    id: 3,
+    submittedAt: '2026-08-25T05:03:00Z',
+    binding: reviewBinding('architecture', 104, { baseSha: OTHER_BASE }),
+  });
+  const stale = await domainEvidence({
+    github: fake,
+    context: context(),
+    reviews: [oldApproval, newestStale],
+    domain: 'architecture',
+    identity: identity(),
+    author: 'pr-author',
+    permissionCache: new Map(),
+  });
+  assert.equal(stale.outcome, 'failure');
+  assert.equal(stale.candidateId, 3);
+
+  const newestIncomplete = {
+    ...domainReview('architecture', {
+      id: 4,
+      submittedAt: '2026-08-25T05:04:00Z',
+    }),
+    body: '<!-- andreja-review-evidence:v2:architecture {"schemaVersion":2',
+  };
+  const incomplete = await domainEvidence({
+    github: fake,
+    context: context(),
+    reviews: [oldApproval, newestIncomplete],
+    domain: 'architecture',
+    identity: identity(),
+    author: 'pr-author',
+    permissionCache: new Map(),
+  });
+  assert.equal(incomplete.outcome, 'failure');
+  assert.equal(incomplete.candidateId, 4);
+});
+
+test('same head SHA cannot replay evidence across two PRs', async () => {
+  const evidenceForFirst = domainReview('architecture', { number: 104 });
+  const secondFake = new FakeGitHub({
+    pullRequest: pull(205, { body: 'Closes #205' }),
+    reviews: [copilotReview(), evidenceForFirst],
+    labels: { 205: ['area:architecture'] },
+  });
+  const second = await domainEvidence({
+    github: secondFake,
+    context: context(),
+    reviews: secondFake.state.reviews,
+    domain: 'architecture',
+    identity: identity(205),
+    author: 'pr-author',
+    permissionCache: new Map(),
+  });
+  assert.equal(second.outcome, 'failure');
+  assert.match(second.reason, /exact pull-request diff/);
+  assert.equal(await snapshotState(secondFake, 205), 'failure');
+});
+
+test('same PR and head cannot replay evidence after base identity changes', async () => {
+  const fake = new FakeGitHub();
+  const stale = await domainEvidence({
+    github: fake,
+    context: context(),
+    reviews: [domainReview('architecture')],
+    domain: 'architecture',
+    identity: identity(104, { baseSha: OTHER_BASE }),
+    author: 'pr-author',
+    permissionCache: new Map(),
+  });
+  assert.equal(stale.outcome, 'failure');
+});
+
+test('stateful #100, #101, and #105 fixtures execute the real evaluator', async () => {
+  for (const fixture of fixtures) {
+    const fake = new FakeGitHub({
+      reviews: [],
+      labels: { 104: [] },
+    });
+    for (const event of fixture.events) {
+      if (event.kind === 'copilot-review') {
+        fake.state.reviews.push(copilotReview());
+      }
+      const actual = await snapshotState(fake);
+      assert.equal(actual, event.expected, `${fixture.incident} at ${event.atSeconds}s`);
+      if (event.atSeconds < fixture.firstReadyAtSeconds) {
+        assert.notEqual(actual, 'success', fixture.incident);
+      }
+    }
+    assert.ok(fixture.mergedAtSeconds < fixture.firstReadyAtSeconds);
+  }
+});
+
+test('metadata changes invalidate same-head success through the real evaluator', async () => {
+  const fake = new FakeGitHub({
+    reviews: [copilotReview()],
+    labels: { 104: [] },
+  });
+  assert.equal(await snapshotState(fake), 'success');
+
+  fake.state.threads.push({
+    id: 'thread-1',
+    isResolved: false,
+    comments: { nodes: [{ id: 'comment-1', updatedAt: '2026-08-25T05:03:00Z' }] },
+  });
+  assert.equal(await snapshotState(fake), 'failure');
+
+  fake.state.threads[0].isResolved = true;
+  fake.state.labels[104] = ['area:architecture'];
+  assert.equal(await snapshotState(fake), 'in_progress');
+
+  fake.state.reviews.push(domainReview('architecture'));
+  assert.equal(await snapshotState(fake), 'success');
+
+  fake.state.reviews.push(domainReview('architecture', {
+    id: 201,
+    state: 'CHANGES_REQUESTED',
+    submittedAt: '2026-08-25T05:04:00Z',
+  }));
+  assert.equal(await snapshotState(fake), 'failure');
+});
+
+test('a new push immediately starts a non-success generation with no stale review', async () => {
+  const fake = new FakeGitHub({
+    reviews: [copilotReview()],
+    labels: { 104: [] },
+  });
+  assert.equal(await snapshotState(fake), 'success');
+
+  const nextHead = 'e'.repeat(40);
+  fake.state.pullRequest.head.sha = nextHead;
+  const nextIdentity = identity(104, { headSha: nextHead });
+  const snapshot = await evaluateSnapshot({
+    github: fake,
+    context: context(),
+    pullNumber: 104,
+    expectedIdentity: nextIdentity,
+  });
+  assert.equal(lifecycleState(snapshot.result), 'in_progress');
+  assert.match(snapshot.result.reasons.join(' '), /newest Copilot review/);
+});
+
+test('a stable second full snapshot is required before success', async () => {
+  const fake = new FakeGitHub({
+    reviews: [copilotReview()],
+    labels: { 104: [] },
+  });
+  let sleeps = 0;
+  const result = await evaluatePullRequest({
+    github: fake,
+    context: context(),
+    pullNumber: 104,
+    pollSeconds: 0,
+    maxWaitSeconds: 10,
+    stabilitySeconds: 0,
+    sleepFunction: async () => {
+      sleeps += 1;
+      if (sleeps === 1) {
+        fake.state.labels[104] = ['area:architecture'];
+      } else if (sleeps === 2) {
+        fake.state.reviews.push(domainReview('architecture'));
+      }
     },
+    now: (() => {
+      let value = 0;
+      return () => value++;
+    })(),
   });
-  assert.equal(rejected.state, 'rejected');
+  assert.equal(result.state, 'approved');
+  assert.ok(sleeps >= 3);
+});
 
-  const complete = approved({
-    domains: ['architecture'],
-    evidence: { architecture: successCheck },
+test('GitHub-managed generations reject stale completion writers', async () => {
+  const fake = new FakeGitHub({
+    reviews: [copilotReview()],
+    labels: { 104: [] },
   });
-  assert.equal(complete.state, 'approved');
-});
+  let generation = 1;
+  let latest = { generation, state: 'in_progress' };
+  const oldSnapshot = await evaluateSnapshot({
+    github: fake,
+    context: context(),
+    pullNumber: 104,
+    expectedIdentity: identity(),
+  });
 
-test('break-glass can replace unavailable automation but not hard protections', () => {
-  const breakGlass = { status: 'completed', conclusion: 'success' };
-  assert.equal(evaluateReviewCompletion({
-    headSha: HEAD,
-    breakGlass,
-  }).state, 'approved');
-  assert.equal(evaluateReviewCompletion({
-    headSha: HEAD,
-    breakGlass,
-    draft: true,
-  }).state, 'rejected');
-  assert.equal(evaluateReviewCompletion({
-    headSha: HEAD,
-    breakGlass,
-    unresolvedThreads: 1,
-  }).state, 'rejected');
-});
+  generation += 1;
+  latest = { generation, state: 'in_progress' };
+  fake.state.labels[104] = ['area:architecture'];
+  const newSnapshot = await evaluateSnapshot({
+    github: fake,
+    context: context(),
+    pullNumber: 104,
+    expectedIdentity: identity(),
+  });
+  latest = { generation, state: lifecycleState(newSnapshot.result) };
 
-test('merge-group and default-branch paths report explicit not-applicable success', () => {
-  for (const pathName of ['merge_group', 'default_branch']) {
-    const result = evaluateReviewCompletion({ path: pathName });
-    assert.equal(result.state, 'not_applicable');
-    assert.match(result.reasons[0], new RegExp(pathName));
+  const staleGeneration = generation - 1;
+  if (staleGeneration === latest.generation) {
+    latest.state = lifecycleState(oldSnapshot.result);
   }
+  assert.equal(oldSnapshot.result.state, 'approved');
+  assert.equal(latest.state, 'in_progress');
 });
 
-test('historical PR 100, 101, and 105 windows cannot become merge-ready early', () => {
-  for (const fixture of fixtures.filter((candidate) => candidate.incident)) {
-    const timeline = replayTimingWindow(fixture.events);
-    const firstReady = timeline.find((event) => event.mergeReady);
-    assert.equal(
-      firstReady.atSeconds,
-      fixture.firstReadyAtSeconds,
-      fixture.incident);
-    assert.ok(timeline
-      .filter((event) => event.atSeconds < fixture.firstReadyAtSeconds)
-      .every((event) => !event.mergeReady), fixture.incident);
-    assert.ok(
-      fixture.mergedAtSeconds < fixture.firstReadyAtSeconds,
-      fixture.incident);
+test('403 and 429 startup failures replace old success with a failed generation', async () => {
+  for (const status of [403, 429]) {
+    const fake = new FakeGitHub({
+      reviews: [copilotReview()],
+      labels: { 104: [] },
+    });
+    let latest = { generation: 1, state: 'success' };
+    latest = { generation: 2, state: 'in_progress' };
+    fake.failNext = Object.assign(new Error('private diagnostic'), { status });
+    try {
+      await evaluateSnapshot({
+        github: fake,
+        context: context(),
+        pullNumber: 104,
+        expectedIdentity: identity(),
+      });
+    } catch (error) {
+      latest.state = 'failure';
+      assert.match(sanitizedApiFailure(error), /failed closed/);
+      assert.doesNotMatch(sanitizedApiFailure(error), /private diagnostic/);
+    }
+    assert.equal(latest.state, 'failure');
   }
-  assert.equal(mergeReady({
-    'Build and test': 'success',
-    'Review completion gate': 'pending',
-  }), false);
-});
-
-test('new push immediately closes the prior merge-ready window', () => {
-  const fixture = fixtures.find((candidate) =>
-    candidate.name === 'new push invalidates prior review evidence');
-  const timeline = replayTimingWindow(fixture.events);
-  const atPush = timeline.find((event) => event.atSeconds === 300);
-  assert.equal(atPush.mergeReady, false);
-  assert.equal(timeline.at(-1).mergeReady, true);
 });
 
 test('review thread GraphQL pagination reads every page', async () => {
@@ -196,11 +603,19 @@ test('review thread GraphQL pagination reads every page', async () => {
           pullRequest: {
             reviewThreads: variables.cursor === null
               ? {
-                  nodes: [{ isResolved: true }],
+                  nodes: [{
+                    id: 'one',
+                    isResolved: true,
+                    comments: { nodes: [] },
+                  }],
                   pageInfo: { hasNextPage: true, endCursor: 'next' },
                 }
               : {
-                  nodes: [{ isResolved: false }],
+                  nodes: [{
+                    id: 'two',
+                    isResolved: false,
+                    comments: { nodes: [] },
+                  }],
                   pageInfo: { hasNextPage: false, endCursor: null },
                 },
           },
@@ -208,448 +623,294 @@ test('review thread GraphQL pagination reads every page', async () => {
       };
     },
   };
-  const context = { repo: { owner: 'Jamula', repo: 'Andreja' } };
   const threads = await listReviewThreads({
     github,
-    context,
+    context: context(),
     pullNumber: 104,
   });
   assert.deepEqual(cursors, [null, 'next']);
   assert.deepEqual(threads.map((thread) => thread.isResolved), [true, false]);
 });
 
-test('workflow-run evidence identity is bound to its run URL and prefix', () => {
-  const check = {
-    app: { slug: 'github-actions' },
-    external_id: `${EVIDENCE_PREFIX}architecture:${HEAD}:12345`,
-    details_url: 'https://github.com/Jamula/Andreja/actions/runs/12345',
-  };
-  assert.equal(workflowRunId(
-    check,
-    `${EVIDENCE_PREFIX}architecture:${HEAD}:`,
-  ), 12345);
-  assert.equal(workflowRunId(
-    { ...check, details_url: 'https://example.test/actions/runs/12345' },
-    `${EVIDENCE_PREFIX}architecture:${HEAD}:`,
-  ), null);
-  assert.equal(workflowRunId(
-    { ...check, app: { slug: 'other' } },
-    `${EVIDENCE_PREFIX}architecture:${HEAD}:`,
-  ), null);
-});
+function storedZip(fileName, content) {
+  const name = Buffer.from(fileName);
+  const body = Buffer.from(content);
+  const checksum = crc32(body);
+  const local = Buffer.alloc(30 + name.length);
+  local.writeUInt32LE(0x04034b50, 0);
+  local.writeUInt16LE(20, 4);
+  local.writeUInt32LE(checksum, 14);
+  local.writeUInt32LE(body.length, 18);
+  local.writeUInt32LE(body.length, 22);
+  local.writeUInt16LE(name.length, 26);
+  name.copy(local, 30);
 
-test('trusted evidence also requires an unexpired workflow-bound artifact', async () => {
-  const check = {
-    app: { slug: 'github-actions' },
-    external_id: `${EVIDENCE_PREFIX}architecture:${HEAD}:12345`,
-    details_url: 'https://github.com/Jamula/Andreja/actions/runs/12345',
-  };
-  const context = {
-    payload: {
-      repository: {
-        default_branch: 'main',
-        full_name: 'Jamula/Andreja',
-      },
-    },
-    repo: { owner: 'Jamula', repo: 'Andreja' },
-  };
-  const fakeGithub = (artifacts) => ({
-    paginate: async () => artifacts,
-    rest: {
-      actions: {
-        getWorkflowRun: async () => ({
-          data: {
-            event: 'workflow_dispatch',
-            status: 'completed',
-            conclusion: 'success',
-            head_branch: 'main',
-            path: '.github/workflows/record-review-evidence.yml',
-            repository: { full_name: 'Jamula/Andreja' },
-          },
-        }),
-        listWorkflowRunArtifacts() {},
-      },
-    },
-  });
-  const parameters = {
-    context,
-    check,
-    prefix: `${EVIDENCE_PREFIX}architecture:${HEAD}:`,
-    workflowPath: '.github/workflows/record-review-evidence.yml',
-    artifactName: `review-evidence-architecture-approved-${HEAD}`,
-    cache: new Map(),
-  };
-  assert.equal(await isTrustedWorkflowCheck({
-    ...parameters,
-    github: fakeGithub([{
-      name: parameters.artifactName,
-      expired: false,
-    }]),
-  }), true);
-  assert.equal(await isTrustedWorkflowCheck({
-    ...parameters,
-    github: fakeGithub([{
-      name: parameters.artifactName,
-      expired: true,
-    }]),
-    cache: new Map(),
-  }), false);
-});
+  const central = Buffer.alloc(46 + name.length);
+  central.writeUInt32LE(0x02014b50, 0);
+  central.writeUInt16LE(20, 4);
+  central.writeUInt16LE(20, 6);
+  central.writeUInt32LE(checksum, 16);
+  central.writeUInt32LE(body.length, 20);
+  central.writeUInt32LE(body.length, 24);
+  central.writeUInt16LE(name.length, 28);
+  name.copy(central, 46);
 
-test('in-progress evidence workflow state is not cached across gate polls', async () => {
-  let calls = 0;
-  const artifactName = `review-evidence-architecture-approved-${HEAD}`;
-  const github = {
-    paginate: async () => [{
-      name: artifactName,
-      expired: false,
-    }],
-    rest: {
-      actions: {
-        getWorkflowRun: async () => {
-          calls += 1;
-          return {
-            data: {
-              event: 'workflow_dispatch',
-              status: calls === 1 ? 'in_progress' : 'completed',
-              conclusion: calls === 1 ? null : 'success',
-              head_branch: 'main',
-              path: '.github/workflows/record-review-evidence.yml',
-              repository: { full_name: 'Jamula/Andreja' },
-            },
-          };
-        },
-        listWorkflowRunArtifacts() {},
-      },
-    },
-  };
-  const parameters = {
-    github,
-    context: {
-      payload: {
-        repository: {
-          default_branch: 'main',
-          full_name: 'Jamula/Andreja',
-        },
-      },
-      repo: { owner: 'Jamula', repo: 'Andreja' },
-    },
-    check: {
-      app: { slug: 'github-actions' },
-      external_id: `${EVIDENCE_PREFIX}architecture:${HEAD}:12345`,
-      details_url: 'https://github.com/Jamula/Andreja/actions/runs/12345',
-    },
-    prefix: `${EVIDENCE_PREFIX}architecture:${HEAD}:`,
-    workflowPath: '.github/workflows/record-review-evidence.yml',
-    artifactName,
-    cache: new Map(),
-  };
-  assert.equal(await isTrustedWorkflowCheck(parameters), false);
-  assert.equal(await isTrustedWorkflowCheck(parameters), true);
-  assert.equal(calls, 2);
-});
-
-test('only single-PR metadata events poll for asynchronous completion', () => {
-  assert.equal(shouldPoll('pull_request_target', 1), true);
-  assert.equal(shouldPoll('workflow_run', 1), false);
-  assert.equal(shouldPoll('issues', 2), false);
-});
-
-test('linked issue changes dispatch serialized reevaluation only for closing PRs', async () => {
-  const dispatches = [];
-  const github = {
-    paginate: async () => [
-      { number: 201, body: 'Closes #104' },
-      { number: 202, body: 'Closes #105' },
-    ],
-    graphql: async () => ({
-      repository: {
-        pullRequest: {
-          closingIssuesReferences: {
-            nodes: [],
-            pageInfo: { hasNextPage: false, endCursor: null },
-          },
-        },
-      },
-    }),
-    rest: {
-      pulls: { list() {} },
-      actions: {
-        createWorkflowDispatch: async (request) => dispatches.push(request),
-      },
-    },
-  };
-  await dispatchLinkedIssue({
-    github,
-    context: {
-      payload: {
-        issue: { number: 104 },
-        repository: {
-          default_branch: 'main',
-          full_name: 'Jamula/Andreja',
-        },
-      },
-      repo: { owner: 'Jamula', repo: 'Andreja' },
-    },
-    core: { info() {} },
-  });
-  assert.deepEqual(dispatches.map((request) => request.inputs.pr_number), ['201']);
-  assert.equal(dispatches[0].ref, 'main');
-});
-
-test('a completed gate is replaced rather than reopened for late evidence', async () => {
-  const creates = [];
-  const updates = [];
-  const github = {
-    paginate: async () => [{
-      id: 99,
-      name: CHECK_NAMES.gate,
-      status: 'completed',
-      conclusion: 'failure',
-      external_id: `review-completion-gate:v1:pr-104:${HEAD}`,
-      started_at: '2026-08-25T05:00:00Z',
-      app: { slug: 'github-actions' },
-    }],
-    rest: {
-      checks: {
-        listForRef() {},
-        create: async (request) => {
-          creates.push(request);
-          return { data: { id: 100, ...request } };
-        },
-        update: async (request) => updates.push(request),
-      },
-    },
-  };
-  const context = {
-    repo: { owner: 'Jamula', repo: 'Andreja' },
-    runId: 12346,
-    serverUrl: 'https://github.com',
-  };
-  const check = await ensureGateCheck({
-    github,
-    context,
-    headSha: HEAD,
-    identity: 'pr-104',
-  });
-  assert.equal(check.id, 100);
-  assert.equal(creates.length, 1);
-  assert.equal(updates.length, 0);
-});
-
-test('rate limits and API outages expose fail-closed categories', () => {
-  assert.match(sanitizedApiFailure({ status: 429 }), /rate-limited/);
-  assert.match(sanitizedApiFailure(new Error('private diagnostic')), /failed closed/);
-  assert.doesNotMatch(
-    sanitizedApiFailure(new Error('private diagnostic')),
-    /private diagnostic/);
-});
-
-function recorderContext(inputs, overrides = {}) {
-  return {
-    actor: 'cyrusjamula',
-    payload: { inputs },
-    repo: { owner: 'Jamula', repo: 'Andreja' },
-    runId: 12345,
-    serverUrl: 'https://github.com',
-    ...overrides,
-  };
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(1, 8);
+  end.writeUInt16LE(1, 10);
+  end.writeUInt32LE(central.length, 12);
+  end.writeUInt32LE(local.length + body.length, 16);
+  return Buffer.concat([local, body, central, end]);
 }
 
-function recorderGithub({
-  author = 'pr-author',
-  permission = 'admin',
-  headSha = HEAD,
-} = {}) {
-  const created = [];
-  return {
-    created,
-    api: {
-      rest: {
-        pulls: {
-          get: async () => ({
-            data: {
-              state: 'open',
-              head: { sha: headSha },
-              user: { login: author },
-            },
-          }),
-        },
-        repos: {
-          getCollaboratorPermissionLevel: async () => ({
-            data: { permission },
-          }),
-        },
-        checks: {
-          create: async (request) => {
-            created.push(request);
-            return { data: request };
-          },
-        },
-      },
-    },
-  };
-}
+test('downloaded break-glass artifact content is parsed and integrity checked', () => {
+  const name = `${breakGlassArtifactName(identity())}.json`;
+  const binding = { schemaVersion: 2, value: 'expected' };
+  const archive = storedZip(name, JSON.stringify(binding));
+  assert.deepEqual(readZipJson(archive, name), binding);
 
-test('review evidence rejects author self-review and stale heads', async () => {
-  const baseInputs = {
-    pr_number: '104',
-    head_sha: HEAD,
-    domain: 'architecture',
-    verdict: 'approved',
-    reviewer: 'cyrusjamula',
-    evidence_url: 'https://github.com/Jamula/Andreja/issues/104',
-    summary: 'Independent architecture artifact reviewed.',
-  };
-  const self = recorderGithub({ author: 'cyrusjamula' });
-  await assert.rejects(
-    recordReviewEvidence({
-      github: self.api,
-      context: recorderContext(baseInputs),
-      core: { info() {} },
-    }),
-    /author cannot be the independent reviewer/);
-
-  const stale = recorderGithub({ headSha: OLD_HEAD });
-  await assert.rejects(
-    recordReviewEvidence({
-      github: stale.api,
-      context: recorderContext({
-        ...baseInputs,
-        reviewer: 'Spock',
-      }),
-      core: { info() {} },
-    }),
-    /supplied SHA is stale/);
+  const tampered = Buffer.from(archive);
+  tampered[30 + Buffer.byteLength(name)] ^= 1;
+  assert.throws(() => readZipJson(tampered, name), /integrity/);
 });
 
-test('review evidence creates a current-head durable check', async () => {
-  const fake = recorderGithub();
-  const artifactDirectory = path.join(__dirname, 'test-quality-artifact');
-  fs.rmSync(artifactDirectory, { recursive: true, force: true });
+test('real evaluator downloads and validates newest exact break-glass content', async () => {
+  const exactIdentity = identity();
+  const artifactName = breakGlassArtifactName(exactIdentity);
+  const run = {
+    id: 700,
+    display_title: breakGlassRunTitle(exactIdentity),
+    status: 'completed',
+    conclusion: 'success',
+    event: 'workflow_dispatch',
+    path: '.github/workflows/record-review-break-glass.yml',
+    head_branch: 'main',
+    head_sha: BASE,
+    repository: { full_name: 'Jamula/Andreja' },
+    actor: { login: 'maintainer' },
+  };
+  const binding = {
+    schemaVersion: 2,
+    kind: 'review-break-glass',
+    ...exactIdentity,
+    actor: 'maintainer',
+    incidentUrl: 'https://github.com/Jamula/Andreja/issues/104',
+    reason: 'Emergency reviewer outage with recorded residual risk.',
+    workflowRunId: 700,
+  };
+  const fake = new FakeGitHub({
+    reviews: [],
+    workflowRuns: [run],
+    permissions: { maintainer: 'maintain' },
+    artifacts: {
+      700: [{ id: 701, name: artifactName, expired: false }],
+    },
+    downloads: {
+      701: storedZip(`${artifactName}.json`, JSON.stringify(binding)),
+    },
+  });
+  assert.equal(await snapshotState(fake), 'success');
+
+  const tamperedBinding = { ...binding, pullNumber: 205 };
+  fake.state.downloads[701] = storedZip(
+    `${artifactName}.json`,
+    JSON.stringify(tamperedBinding));
+  assert.equal(await snapshotState(fake), 'failure');
+});
+
+test('newest failed break-glass run never falls back to older valid evidence', async () => {
+  const exactIdentity = identity();
+  const artifactName = breakGlassArtifactName(exactIdentity);
+  const validRun = {
+    id: 700,
+    display_title: breakGlassRunTitle(exactIdentity),
+    status: 'completed',
+    conclusion: 'success',
+    event: 'workflow_dispatch',
+    path: '.github/workflows/record-review-break-glass.yml',
+    head_branch: 'main',
+    head_sha: BASE,
+    repository: { full_name: 'Jamula/Andreja' },
+    actor: { login: 'maintainer' },
+  };
+  const failedRun = {
+    ...validRun,
+    id: 702,
+    conclusion: 'failure',
+  };
+  const binding = {
+    schemaVersion: 2,
+    kind: 'review-break-glass',
+    ...exactIdentity,
+    actor: 'maintainer',
+    incidentUrl: 'https://github.com/Jamula/Andreja/issues/104',
+    reason: 'Emergency reviewer outage with recorded residual risk.',
+    workflowRunId: 700,
+  };
+  const fake = new FakeGitHub({
+    workflowRuns: [validRun, failedRun],
+    permissions: { maintainer: 'maintain' },
+    artifacts: {
+      700: [{ id: 701, name: artifactName, expired: false }],
+    },
+    downloads: {
+      701: storedZip(`${artifactName}.json`, JSON.stringify(binding)),
+    },
+  });
+  assert.equal(await snapshotState(fake), 'failure');
+});
+
+test('break-glass recorder binds PR, head, base, actor, and run', async () => {
+  const exactIdentity = identity();
   const outputs = {};
+  const artifactDirectory = path.join(__dirname, 'test-break-glass-artifact-v2');
+  fs.rmSync(artifactDirectory, { recursive: true, force: true });
+  const github = {
+    rest: {
+      pulls: {
+        get: async () => ({ data: pull() }),
+      },
+      repos: {
+        getCollaboratorPermissionLevel: async () => ({
+          data: { permission: 'maintain' },
+        }),
+      },
+    },
+  };
   try {
-    await recordReviewEvidence({
-      github: fake.api,
-      context: recorderContext({
-        pr_number: '104',
-        head_sha: HEAD,
-        domain: 'quality',
-        verdict: 'approved',
-        reviewer: 'Data',
-        evidence_url: 'https://github.com/Jamula/Andreja/pull/104#issuecomment-1',
-        summary: 'The fixture race and failure paths passed.',
-      }),
+    await recordBreakGlass({
+      github,
+      context: {
+        ...context('workflow_dispatch'),
+        actor: 'maintainer',
+        payload: {
+          inputs: {
+            pr_number: String(exactIdentity.pullNumber),
+            head_sha: exactIdentity.headSha,
+            base_repository_id: String(exactIdentity.baseRepositoryId),
+            base_repository: exactIdentity.baseRepository,
+            base_ref: exactIdentity.baseRef,
+            base_sha: exactIdentity.baseSha,
+            confirmation: BREAK_GLASS_CONFIRMATION,
+            reason: 'Emergency reviewer outage with recorded residual risk.',
+            incident_url: 'https://github.com/Jamula/Andreja/issues/104',
+          },
+        },
+      },
       core: {
-        info() {},
+        warning() {},
         setOutput(name, value) { outputs[name] = value; },
       },
       artifactDirectory,
     });
-    assert.equal(fake.created.length, 1);
-    assert.equal(fake.created[0].name, evidenceCheckName('quality'));
-    assert.equal(fake.created[0].head_sha, HEAD);
+    const binding = JSON.parse(fs.readFileSync(outputs['artifact-path'], 'utf8'));
+    assert.equal(binding.pullNumber, 104);
+    assert.equal(binding.headSha, HEAD);
+    assert.equal(binding.baseSha, BASE);
+    assert.equal(binding.actor, 'maintainer');
+    assert.equal(binding.workflowRunId, 9001);
     assert.equal(
-      fake.created[0].external_id,
-      `${EVIDENCE_PREFIX}quality:${HEAD}:12345`);
-    assert.equal(
-      outputs['artifact-name'],
-      `review-evidence-quality-approved-${HEAD}`);
-    assert.ok(fs.existsSync(outputs['artifact-path']));
+      breakGlassRunTitle(exactIdentity),
+      `review-break-glass:v2:pr=104:head=${HEAD}:baseRepo=${REPOSITORY_ID}:baseRef=main:base=${BASE}`);
   } finally {
     fs.rmSync(artifactDirectory, { recursive: true, force: true });
   }
 });
 
-test('break-glass requires a human maintainer and durable current-head audit', async () => {
-  const inputs = {
-    pr_number: '104',
-    head_sha: HEAD,
-    confirmation: BREAK_GLASS_CONFIRMATION,
-    reason: 'Reviewer automation is unavailable during an urgent incident.',
-    incident_url: 'https://github.com/Jamula/Andreja/issues/104',
+function liveRuleset(workflowRules = []) {
+  return {
+    id: 21199927,
+    name: 'Default-Ruleset',
+    target: 'branch',
+    enforcement: 'active',
+    bypass_actors: [],
+    conditions: {
+      ref_name: { include: ['~DEFAULT_BRANCH'], exclude: [] },
+    },
+    rules: [
+      { type: 'deletion' },
+      { type: 'non_fast_forward' },
+      { type: 'required_linear_history' },
+      {
+        type: 'pull_request',
+        parameters: {
+          required_approving_review_count: 0,
+          required_review_thread_resolution: true,
+        },
+      },
+      {
+        type: 'required_status_checks',
+        parameters: {
+          strict_required_status_checks_policy: true,
+          required_status_checks: [
+            'Build and test (Debug)',
+            'Build and test (Release)',
+            'Format verification',
+            'NuGet vulnerability audit',
+            'C# SAST (DevSkim)',
+          ].map((name) => ({ context: name, integration_id: 15368 })),
+        },
+      },
+      ...workflowRules,
+    ],
   };
-  const bot = recorderGithub();
-  await assert.rejects(
-    recordBreakGlass({
-      github: bot.api,
-      context: recorderContext(inputs, { actor: 'emergency[bot]' }),
-      core: { warning() {} },
-    }),
-    /explicit human/);
+}
 
-  const reader = recorderGithub({ permission: 'push' });
-  await assert.rejects(
-    recordBreakGlass({
-      github: reader.api,
-      context: recorderContext(inputs),
-      core: { warning() {} },
-    }),
-    /maintain or admin/);
-
-  const maintainer = recorderGithub();
-  const artifactDirectory = path.join(__dirname, 'test-break-glass-artifact');
-  fs.rmSync(artifactDirectory, { recursive: true, force: true });
-  try {
-    await recordBreakGlass({
-      github: maintainer.api,
-      context: recorderContext(inputs),
-      core: { warning() {}, setOutput() {} },
-      artifactDirectory,
-    });
-    assert.equal(maintainer.created[0].name, CHECK_NAMES.breakGlass);
-    assert.equal(
-      maintainer.created[0].external_id,
-      `${BREAK_GLASS_PREFIX}${HEAD}:12345`);
-  } finally {
-    fs.rmSync(artifactDirectory, { recursive: true, force: true });
-  }
-});
-
-test('evidence URLs remain repository-local', () => {
-  const context = recorderContext({});
+test('rollout adds an exact required-workflow rule and rollback removes only it', () => {
+  const parameters = {
+    repositoryId: REPOSITORY_ID,
+    workflowSha: HEAD,
+  };
+  const rollout = planRollout(liveRuleset(), parameters);
+  const rule = rollout.payload.rules.at(-1);
+  assert.deepEqual(rule, {
+    type: 'workflows',
+    parameters: {
+      do_not_enforce_on_create: false,
+      workflows: [{
+        path: REQUIRED_WORKFLOW_PATH,
+        repository_id: REPOSITORY_ID,
+        sha: HEAD,
+      }],
+    },
+  });
+  const rollback = planRollback(liveRuleset([rule]), parameters);
   assert.equal(
-    repositoryEvidenceUrl(
-      'https://github.com/Jamula/Andreja/issues/104',
-      context),
-    'https://github.com/Jamula/Andreja/issues/104');
-  assert.throws(
-    () => repositoryEvidenceUrl('https://example.test/evidence', context),
-    /this GitHub repository/);
+    rollback.payload.rules.some((candidate) => candidate.type === 'workflows'),
+    false);
+  assert.equal(
+    rollback.payload.rules.find((candidate) =>
+      candidate.type === 'required_status_checks')
+      .parameters.required_status_checks.length,
+    5);
 });
 
-test('privileged workflows execute only pinned trusted default-branch automation', () => {
-  const workflows = [
-    'review-completion.yml',
-    'record-review-evidence.yml',
-    'record-review-break-glass.yml',
-  ].map((file) => ({
-    file,
-    source: fs.readFileSync(
-      path.join(__dirname, '..', 'workflows', file),
-      'utf8'),
-  }));
-
-  for (const { file, source } of workflows) {
-    assert.match(source, /ref: \$\{\{ github\.event\.repository\.default_branch \}\}/);
-    assert.match(source, /persist-credentials: false/);
-    assert.doesNotMatch(source, /^\s+contents:\s+write\s*$/m);
-    assert.doesNotMatch(source, /\bsecrets\./);
-    for (const match of source.matchAll(/uses:\s*[^@\s]+@([^\s]+)/g)) {
-      assert.match(match[1], /^[0-9a-f]{40}$/, `${file} action must be SHA-pinned`);
-    }
-  }
-
-  const gate = workflows.find(({ file }) => file === 'review-completion.yml').source;
-  assert.match(gate, /^\s{2}pull_request_target:\s*$/m);
-  assert.match(gate, /^\s{2}merge_group:\s*$/m);
-  assert.match(gate, /^\s{2}push:\s*$/m);
-  assert.doesNotMatch(gate, /^\s{2}pull_request:\s*$/m);
-
-  for (const file of ['record-review-evidence.yml', 'record-review-break-glass.yml']) {
-    const source = workflows.find((entry) => entry.file === file).source;
-    assert.match(source, /^\s{2}workflow_dispatch:\s*$/m);
-    assert.doesNotMatch(source, /^\s{2}pull_request(?:_target)?:\s*$/m);
+test('privileged workflow executes trusted code and emits no spoofable gate check', () => {
+  const workflowPath = path.join(
+    __dirname,
+    '..',
+    'workflows',
+    'review-completion.yml');
+  const workflow = fs.readFileSync(workflowPath, 'utf8');
+  const runner = fs.readFileSync(
+    path.join(__dirname, 'run-review-completion.js'),
+    'utf8');
+  assert.match(workflow, /name: Required trusted review policy/);
+  assert.match(workflow, /ref: \$\{\{ github\.workflow_sha \}\}/);
+  assert.match(workflow, /^\s{2}pull_request_target:\s*$/m);
+  assert.match(workflow, /^\s{2}pull_request_review:\s*$/m);
+  assert.match(workflow, /^\s{2}pull_request_review_thread:\s*$/m);
+  assert.match(workflow, /^\s{2}merge_group:\s*$/m);
+  assert.doesNotMatch(workflow, /^\s+checks:\s+write\s*$/m);
+  assert.doesNotMatch(runner, /checks\.(?:create|update)/);
+  assert.equal(fs.existsSync(path.join(
+    __dirname,
+    '..',
+    'workflows',
+    'record-review-evidence.yml')), false);
+  for (const match of workflow.matchAll(/uses:\s*[^@\s]+@([^\s]+)/g)) {
+    assert.match(match[1], /^[0-9a-f]{40}$/);
   }
 });
 

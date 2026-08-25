@@ -4,20 +4,18 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const {
-  BREAK_GLASS_PREFIX,
-  CHECK_NAMES,
-  EVIDENCE_PREFIX,
-  REVIEW_DOMAINS,
+  BREAK_GLASS_KIND,
+  BREAK_GLASS_SCHEMA_VERSION,
   breakGlassArtifactName,
-  evidenceArtifactName,
-  evidenceCheckName,
+  pullIdentity,
+  samePullIdentity,
 } = require('./review-completion');
 
 const BREAK_GLASS_CONFIRMATION = 'BREAK GLASS REVIEW GATE';
 const DEFAULT_ARTIFACT_DIRECTORY = path.join(
   process.cwd(),
   'artifacts',
-  'review-evidence');
+  'review-break-glass');
 
 function repositoryEvidenceUrl(value, context) {
   let url;
@@ -34,60 +32,43 @@ function repositoryEvidenceUrl(value, context) {
   return url.toString();
 }
 
-function normalizedInputs(context) {
+function normalizedBreakGlassInputs(context) {
   const inputs = context.payload.inputs || {};
-  const pullNumber = Number(inputs.pr_number);
-  const headSha = String(inputs.head_sha || '').trim();
-  if (!Number.isInteger(pullNumber) || pullNumber <= 0) {
-    throw new Error('A positive pull-request number is required.');
+  const identity = {
+    pullNumber: Number(inputs.pr_number),
+    headSha: String(inputs.head_sha || '').trim(),
+    baseRepositoryId: Number(inputs.base_repository_id),
+    baseRepository: String(inputs.base_repository || '').trim(),
+    baseRef: String(inputs.base_ref || '').trim(),
+    baseSha: String(inputs.base_sha || '').trim(),
+  };
+  if (!Number.isInteger(identity.pullNumber) || identity.pullNumber <= 0 ||
+      !/^[0-9a-f]{40}$/.test(identity.headSha) ||
+      !Number.isInteger(identity.baseRepositoryId) ||
+      identity.baseRepositoryId <= 0 ||
+      !identity.baseRepository ||
+      identity.baseRepository.length > 200 ||
+      !identity.baseRef ||
+      identity.baseRef.length > 255 ||
+      !/^[0-9a-f]{40}$/.test(identity.baseSha)) {
+    throw new Error('A complete exact pull-request diff identity is required.');
   }
-  if (!/^[0-9a-f]{40}$/.test(headSha)) {
-    throw new Error('The exact 40-character lowercase pull-request head SHA is required.');
-  }
-  return { inputs, pullNumber, headSha };
+  return { inputs, identity };
 }
 
-async function currentPullRequest({ github, context, pullNumber, headSha }) {
+async function currentPullRequest({ github, context, identity }) {
   const response = await github.rest.pulls.get({
     ...context.repo,
-    pull_number: pullNumber,
+    pull_number: identity.pullNumber,
   });
   const pullRequest = response.data;
   if (pullRequest.state !== 'open') {
-    throw new Error('Review evidence can be recorded only for an open pull request.');
+    throw new Error('Break-glass can be recorded only for an open pull request.');
   }
-  if (pullRequest.head.sha !== headSha) {
-    throw new Error('The supplied SHA is stale; record evidence for the current head.');
+  if (!samePullIdentity(pullIdentity(pullRequest), identity)) {
+    throw new Error('The supplied pull-request diff identity is stale or incorrect.');
   }
   return pullRequest;
-}
-
-async function createEvidenceCheck({
-  github,
-  context,
-  name,
-  headSha,
-  conclusion,
-  externalId,
-  title,
-  summary,
-}) {
-  const serverUrl = context.serverUrl ||
-    process.env.GITHUB_SERVER_URL ||
-    'https://github.com';
-  const detailsUrl = `${serverUrl}/${context.repo.owner}/${context.repo.repo}` +
-    `/actions/runs/${context.runId}`;
-  return github.rest.checks.create({
-    ...context.repo,
-    name,
-    head_sha: headSha,
-    status: 'completed',
-    conclusion,
-    completed_at: new Date().toISOString(),
-    external_id: externalId,
-    details_url: detailsUrl,
-    output: { title, summary },
-  });
 }
 
 function writeBindingArtifact({
@@ -104,94 +85,13 @@ function writeBindingArtifact({
   return artifactPath;
 }
 
-async function recordReviewEvidence({
-  github,
-  context,
-  core,
-  artifactDirectory,
-}) {
-  const { inputs, pullNumber, headSha } = normalizedInputs(context);
-  const domain = String(inputs.domain || '').trim().toLowerCase();
-  const verdict = String(inputs.verdict || '').trim().toLowerCase();
-  const reviewer = String(inputs.reviewer || '').trim();
-  const summary = String(inputs.summary || '').trim();
-
-  if (!REVIEW_DOMAINS.includes(domain)) {
-    throw new Error('Unknown independent-review domain.');
-  }
-  if (!new Set(['approved', 'rejected']).has(verdict)) {
-    throw new Error('Review verdict must be approved or rejected.');
-  }
-  if (!reviewer || reviewer.length > 100) {
-    throw new Error('A bounded independent reviewer identity is required.');
-  }
-  if (!summary || summary.length > 2000) {
-    throw new Error('A bounded review summary is required.');
-  }
-  const evidenceUrl = repositoryEvidenceUrl(inputs.evidence_url, context);
-  const pullRequest = await currentPullRequest({
-    github,
-    context,
-    pullNumber,
-    headSha,
-  });
-  if (reviewer.toLowerCase() === pullRequest.user.login.toLowerCase()) {
-    throw new Error('The pull-request author cannot be the independent reviewer.');
-  }
-
-  const conclusion = verdict === 'approved' ? 'success' : 'failure';
-  const artifactName = evidenceArtifactName(domain, headSha, verdict);
-  const checkSummary = [
-    `- Pull request: #${pullNumber}`,
-    `- Head SHA: \`${headSha}\``,
-    `- Domain: ${domain}`,
-    `- Verdict: ${verdict}`,
-    `- Independent reviewer: ${reviewer}`,
-    `- Recorded by workflow actor: ${context.actor}`,
-    `- Evidence: ${evidenceUrl}`,
-    '',
-    summary,
-  ].join('\n');
-  await createEvidenceCheck({
-    github,
-    context,
-    name: evidenceCheckName(domain),
-    headSha,
-    conclusion,
-    externalId: `${EVIDENCE_PREFIX}${domain}:${headSha}:${context.runId}`,
-    title: `${domain} review ${verdict}`,
-    summary: checkSummary,
-  });
-  writeBindingArtifact({
-    artifactDirectory,
-    artifactName,
-    binding: {
-      schemaVersion: 1,
-      kind: 'independent-review',
-      pullNumber,
-      headSha,
-      domain,
-      verdict,
-      reviewer,
-      recordedBy: context.actor,
-      evidenceUrl,
-      workflowRunId: context.runId,
-    },
-  });
-  core.setOutput('artifact-name', artifactName);
-  core.setOutput('artifact-path', path.join(
-    artifactDirectory || DEFAULT_ARTIFACT_DIRECTORY,
-    `${artifactName}.json`));
-  core.info(`Recorded ${domain} review evidence for PR #${pullNumber} at ${headSha}.`);
-}
-
 async function recordBreakGlass({
   github,
   context,
   core,
   artifactDirectory,
 }) {
-  const { inputs, pullNumber, headSha } = normalizedInputs(context);
+  const { inputs, identity } = normalizedBreakGlassInputs(context);
   const confirmation = String(inputs.confirmation || '');
   const reason = String(inputs.reason || '').trim();
   if (confirmation !== BREAK_GLASS_CONFIRMATION) {
@@ -200,16 +100,11 @@ async function recordBreakGlass({
   if (reason.length < 20 || reason.length > 2000) {
     throw new Error('A specific bounded break-glass reason is required.');
   }
-  if (String(context.actor).endsWith('[bot]')) {
-    throw new Error('Break-glass requires an explicit human workflow dispatch.');
+  if (!context.actor || String(context.actor).endsWith('[bot]')) {
+    throw new Error('Break-glass requires an explicit authenticated human dispatch.');
   }
   const incidentUrl = repositoryEvidenceUrl(inputs.incident_url, context);
-  await currentPullRequest({
-    github,
-    context,
-    pullNumber,
-    headSha,
-  });
+  await currentPullRequest({ github, context, identity });
   const permission = await github.rest.repos.getCollaboratorPermissionLevel({
     ...context.repo,
     username: context.actor,
@@ -218,54 +113,32 @@ async function recordBreakGlass({
     throw new Error('Break-glass requires maintain or admin repository permission.');
   }
 
-  const checkSummary = [
-    `- Pull request: #${pullNumber}`,
-    `- Head SHA: \`${headSha}\``,
-    `- Human actor: ${context.actor}`,
-    `- Durable incident/decision record: ${incidentUrl}`,
-    '',
-    reason,
-    '',
-    'This record does not bypass draft state, unresolved review threads, or any other required check.',
-  ].join('\n');
-  await createEvidenceCheck({
-    github,
-    context,
-    name: CHECK_NAMES.breakGlass,
-    headSha,
-    conclusion: 'success',
-    externalId: `${BREAK_GLASS_PREFIX}${headSha}:${context.runId}`,
-    title: 'Current-head break-glass decision recorded',
-    summary: checkSummary,
-  });
-  const artifactName = breakGlassArtifactName(headSha);
-  writeBindingArtifact({
+  const artifactName = breakGlassArtifactName(identity);
+  const artifactPath = writeBindingArtifact({
     artifactDirectory,
     artifactName,
     binding: {
-      schemaVersion: 1,
-      kind: 'review-break-glass',
-      pullNumber,
-      headSha,
+      schemaVersion: BREAK_GLASS_SCHEMA_VERSION,
+      kind: BREAK_GLASS_KIND,
+      ...identity,
       actor: context.actor,
       incidentUrl,
-      workflowRunId: context.runId,
+      reason,
+      workflowRunId: Number(context.runId),
     },
   });
   core.setOutput('artifact-name', artifactName);
-  core.setOutput('artifact-path', path.join(
-    artifactDirectory || DEFAULT_ARTIFACT_DIRECTORY,
-    `${artifactName}.json`));
-  core.warning(`Break-glass recorded for PR #${pullNumber} at ${headSha}.`);
+  core.setOutput('artifact-path', artifactPath);
+  core.warning(
+    `Break-glass recorded for PR #${identity.pullNumber} at ${identity.headSha} ` +
+    `against ${identity.baseRepository}:${identity.baseRef}@${identity.baseSha}.`);
 }
 
 module.exports = {
   BREAK_GLASS_CONFIRMATION,
-  createEvidenceCheck,
   currentPullRequest,
-  normalizedInputs,
+  normalizedBreakGlassInputs,
   recordBreakGlass,
-  recordReviewEvidence,
   repositoryEvidenceUrl,
   writeBindingArtifact,
 };

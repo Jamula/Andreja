@@ -1,5 +1,5 @@
 name: Record review break-glass
-run-name: Record review break-glass for PR #${{ inputs.pr_number }}
+run-name: "review-break-glass:v2:pr=${{ inputs.pr_number }}:head=${{ inputs.head_sha }}:baseRepo=${{ inputs.base_repository_id }}:baseRef=${{ inputs.base_ref }}:base=${{ inputs.base_sha }}"
 
 on:
   workflow_dispatch:
@@ -10,6 +10,22 @@ on:
         type: string
       head_sha:
         description: Exact current 40-character pull-request head SHA
+        required: true
+        type: string
+      base_repository_id:
+        description: Exact numeric base repository ID
+        required: true
+        type: string
+      base_repository:
+        description: Exact owner/name of the base repository
+        required: true
+        type: string
+      base_ref:
+        description: Exact base branch name
+        required: true
+        type: string
+      base_sha:
+        description: Exact current 40-character base SHA
         required: true
         type: string
       confirmation:
@@ -34,12 +50,11 @@ concurrency:
 
 jobs:
   record:
-    name: Record current-head human break-glass
+    name: Record exact-diff human break-glass
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       actions: write
-      checks: write
       contents: read
       pull-requests: read
     steps:
@@ -49,7 +64,7 @@ jobs:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
 
-      - name: Record durable break-glass decision
+      - name: Record durable exact-diff break-glass decision
         id: break-glass
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
@@ -66,7 +81,7 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: Dispatch serialized gate reevaluation
+      - name: Request serialized gate reevaluation
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
