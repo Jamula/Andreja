@@ -6,6 +6,7 @@ const path = require('node:path');
 const ALL_DOMAINS = ['docs', 'dotnet', 'postgres', 'powershell', 'javascript', 'oci'];
 const AMBIGUOUS_STATUSES = new Set(['removed', 'renamed']);
 const MARKDOWN_FENCE = /^\s*(`{3,}|~{3,})(.*)$/;
+const SHADOW_SAMPLE_LABEL = 'ci:selective-shadow-sample';
 
 function loadPolicy(policyPath) {
   const policy = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
@@ -276,11 +277,32 @@ function classifyFiles(files, policy, options = {}) {
     policyVersion: policy.schemaVersion,
     eventName: options.eventName ?? 'fixture',
     trustedPolicySha: options.trustedPolicySha ?? null,
+    shadowSample: {
+      label: SHADOW_SAMPLE_LABEL,
+      sampled: options.shadowSampled ?? true,
+      reason: options.shadowSampleReason ?? 'fixture-or-non-pull-request',
+    },
     fullSuite,
     fullReasons: [...new Set(fullReasons)].sort(),
     changedFileCount: classified.length,
     files: classified,
     domains: domainDecisions,
+  };
+}
+
+function shadowSample(eventName, event) {
+  if (eventName !== 'pull_request') {
+    return { sampled: true, reason: 'non-pull-request-full-safety' };
+  }
+  const labels = Array.isArray(event.pull_request?.labels) ? event.pull_request.labels : [];
+  const labelPresent = labels.some((label) => label?.name === SHADOW_SAMPLE_LABEL);
+  const sampled =
+    event.action === 'labeled' &&
+    event.label?.name === SHADOW_SAMPLE_LABEL &&
+    labelPresent;
+  return {
+    sampled,
+    reason: sampled ? 'maintainer-sample-label-event' : 'shadow-not-sampled',
   };
 }
 
@@ -395,6 +417,7 @@ async function acquireChanges(eventName, event, repository, token, fetchImpl = f
 function writeOutputs(decision, outputPath) {
   const lines = [
     `full_suite=${decision.fullSuite}`,
+    `shadow_sampled=${decision.shadowSample.sampled}`,
     ...ALL_DOMAINS.map((domain) => `${domain}=${decision.domains[domain].selected}`),
   ];
   fs.appendFileSync(outputPath, `${lines.join('\n')}\n`);
@@ -406,6 +429,7 @@ async function main() {
   const policyPath = process.env.CHANGE_POLICY_PATH || path.join(__dirname, 'change-policy.v1.json');
   const outputFile = process.env.CHANGE_DECISION_PATH || 'artifacts/selective-ci/classification.json';
   const policy = loadPolicy(policyPath);
+  const sample = shadowSample(eventName, event);
 
   let changes;
   try {
@@ -432,6 +456,8 @@ async function main() {
     eventName,
     trustedPolicySha: process.env.TRUSTED_POLICY_SHA,
     forcedFullReasons: changes.forcedFullReasons,
+    shadowSampled: sample.sampled,
+    shadowSampleReason: sample.reason,
   });
   fs.mkdirSync(path.dirname(outputFile), { recursive: true });
   fs.writeFileSync(outputFile, `${JSON.stringify(decision, null, 2)}\n`);
@@ -455,4 +481,5 @@ module.exports = {
   loadPolicy,
   paginatedFiles,
   parseNext,
+  shadowSample,
 };

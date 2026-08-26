@@ -100,6 +100,9 @@ function main() {
 
   const policyPath = path.join(__dirname, 'change-policy.v1.json');
   const policyBytes = fs.readFileSync(policyPath, 'utf8').replace(/\r\n/g, '\n');
+  const classifierBytes = fs
+    .readFileSync(path.join(__dirname, 'change-classifier.js'), 'utf8')
+    .replace(/\r\n/g, '\n');
   const policy = loadPolicy(policyPath);
   const closed = ghJson(
     `repos/${repository}/pulls?state=closed&sort=updated&direction=desc&per_page=100`,
@@ -162,6 +165,7 @@ function main() {
     repository,
     policyVersion: policy.schemaVersion,
     policySha256: createHash('sha256').update(policyBytes).digest('hex'),
+    classifierSha256: createHash('sha256').update(classifierBytes).digest('hex'),
     sample: {
       method: 'most recently updated merged pull requests returned by GitHub REST',
       count: rows.length,

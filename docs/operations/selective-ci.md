@@ -8,8 +8,10 @@ remain unchanged. Auto-merge remains disabled.
 `.github/ci/change-policy.v1.json` is the versioned path policy and
 `.github/ci/change-classifier.js` is its repository-owned implementation. The
 always-triggered `Selective CI (Shadow)` workflow has no path filter and listens
-for `pull_request`, `merge_group`, `push` to `main`, `schedule`, and
-`workflow_dispatch`.
+for `pull_request`, `merge_group`, a weekly `schedule` (Tuesday 03:17 UTC), and
+`workflow_dispatch`. Automatic `push` execution is intentionally absent during
+the bounded collection window; the existing required workflows remain the
+`main` push safety net.
 
 For a pull request, the classification job checks out only
 `pull_request.base.sha` into `trusted-ci` and gets changed-file metadata from the
@@ -26,8 +28,12 @@ compare limit all select every domain.
 
 Changed workflow, classifier, repository automation script, ruleset/security
 policy, dependency-update configuration (including `.github/dependabot.yml`),
+repository actions, CODEOWNERS, Copilot instructions, agent/skill governance,
 Squad governance, central package/build/project, SDK, generated-schema, or
-executable documentation inputs select the full suite. GitHub Markdown patches
+executable documentation inputs select the full suite. Only the enumerated
+Funding file, current issue/PR templates, `.gitignore`, `.gitattributes`,
+`.env.example`, and `.mcp.json` are inert repository metadata. Any future or
+unknown `.github/**` path is unclassified and therefore fails closed. GitHub Markdown patches
 contain hunk bodies without `+++`/`---` file headers, so every `+` or `-` body
 line counts, including `+- bullet` and `-- bullet`. The count must exactly equal
 GitHub's `changes` value. The classifier reads only the trusted base Markdown to
@@ -49,10 +55,20 @@ SHA/digest pins. The classification job uploads the decision, including each
 file's rule and reasons. The stable `Aggregate gate` always runs. Its JSON and
 summary enumerate `passed`, `not-applicable`, `unavailable`, and `failed`
 dispositions and fail if classification or any selected domain did not pass.
-Push branch-creation events with an all-zero `before` SHA safely check out the
-new trusted push SHA and still force the full suite. Concurrency keys include the
-event name so a push, schedule, and manual run on the same ref cannot cancel one
-another.
+If classification fails, every domain is `unavailable` rather than
+`not-applicable`. Concurrency keys include the event name, cancellation is
+enabled only for superseded pull-request runs, and weekly/manual safety runs
+never cancel each other.
+
+Pull requests always emit `Change classification` and `Aggregate gate`, but
+domain jobs run only for the single `labeled` event that applies
+`ci:selective-shadow-sample`. Merely retaining the label across a synchronize
+event does not sample again. An unsampled PR records `shadow-not-sampled`;
+affected domains remain visible in classification evidence while aggregate
+evidence marks every unscheduled domain `not-applicable`. This is a non-required
+shadow signal: the unchanged existing required workflows remain authoritative.
+GitHub permits label application only to users with triage/write-equivalent
+repository permission, so a fork author cannot self-sample.
 
 ## Domains
 
@@ -65,8 +81,8 @@ another.
 | JavaScript/browser harness | Syntax checks and repository-owned Node fixtures; the existing separately controlled evidence Compose profile remains the source of real-browser evidence |
 | Docker/OCI | Pin policy and negative cases, two-build reproducibility, SBOM/IaC/vulnerability scan, hosted unsigned provenance verification, then destruction of private layers/reports |
 
-Pushes to `main`, schedules, and manual dispatches always select all domains.
-This is the drift/safety net even after pull requests become selective.
+Schedules and manual dispatches always select all domains. The existing required
+workflows remain the `main` push drift/safety net during collection.
 
 ## Measured baseline and target
 
@@ -102,7 +118,7 @@ from local fixtures.
 
 The fixed classifier was replayed against the 20 most recently updated merged
 pull requests (merged 2026-08-24 through 2026-08-26). Machine-readable inputs,
-per-PR outcomes, policy digest, and assumptions are in
+per-PR outcomes, policy and classifier digests, and assumptions are in
 `.github/ci/evidence/recent-merged-pr-replay.json`.
 
 | Replay classification | Count | Share |
@@ -117,15 +133,41 @@ minutes from bootstrap run 32924008713. It estimates 292 rather than 320 rounded
 minutes across the sample: 28 minutes and USD 0.224 list rate saved, or **8.75%
 portfolio savings**. This sits next to, and is deliberately much lower than,
 the **81.25% per-run** target for an eligible docs-only PR. It is a historical
-planning replay, not live selective billing evidence.
+planning replay, not live selective billing evidence. The cost baseline is
+**n=1**, only 3 of 20 replayed PRs (15%) were selectively eligible, and one PR is
+five percentage points of the sample. Reclassifying one docs-only observation
+as full lowers modeled savings from 8.75% to 4.69%; one additional full PR
+becoming docs-only raises it to 12.81%. Treat 8.75% as sensitivity-prone, not a
+forecast.
 
-Shadow operation is additive because the existing required workflows remain.
-Budget the bounded collection conservatively at the observed full selective
-cost of about 16 rounded minutes / USD 0.128 per qualified PR run. Ten qualified
-runs (five docs-only and five full) therefore have a worst-case additive ceiling
-of about 160 minutes / USD 1.28 within the 14-day window. An actual post-merge
-docs-only shadow run is expected to add only 3 minutes / USD 0.024, but that
-lower amount remains unverified.
+Shadow operation is additive because the existing five heavy required contexts
+remain. The modeled **8.75% steady-state saving exists only if a later,
+independently reviewed ruleset change retires those five contexts after parity
+is proven**. Until then, both this shadow and any additive promotion increase
+runner cost.
+
+Run 32927691826 measured fixed shadow overhead at 14 seconds for classification
+plus 5 seconds for aggregation. Independent per-job rounding makes that 2 Linux
+minutes / USD 0.016 for every pull-request event run. Its classification and
+aggregate archives were 337 and 597 bytes (934 bytes total), and the API applied
+the observed 10-day retention cap. Sampled pricing includes that fixed charge:
+a modeled docs sample is 3 minutes / USD 0.024 and a full sample is 16 minutes /
+USD 0.128. Exactly five eligible docs and five full samples therefore plan at
+95 minutes / USD 0.760; if all intended docs samples fail closed to full, their
+conservative ceiling is 160 minutes / USD 1.280.
+
+The weekly Tuesday 03:17 UTC full-safety schedule costs at most 16 minutes /
+USD 0.128 per run. A 14-day window can intersect at most three weekly
+occurrences: 48 minutes / USD 0.384. Let `N` be all pull-request event runs,
+including the ten sampled runs, and `S <= 3` be scheduled runs. The planned
+window is `2N + 75 + 16S` rounded minutes; the fail-closed sampled ceiling is
+`2N + 140 + 16S`. There is no truthful finite total without bounding `N`.
+Operations must therefore cap collection at `N <= 100`, ten sample-label
+applications, and 14 calendar days, pausing the workflow at the first limit.
+At `N=100, S=3`, planned use is 323 minutes / USD 2.584 and the fail-closed
+ceiling is 388 minutes / USD 3.104. Do not start the window without at least 25%
+headroom over that ceiling: 485 rounded minutes / USD 3.880. Re-price from the
+completed-run Jobs API if measured overhead changes.
 
 Live PR run
 [32924008713](https://github.com/Jamula/Andreja/actions/runs/32924008713)
@@ -145,22 +187,39 @@ individual timers can include pre-timing cleanup/upload, but always exclude work
 after their timing step and the aggregate job's final upload. Therefore
 authoritative post-change comparisons must use completed-run Jobs API
 `started_at`/`completed_at`, the same method as the baseline. Verify actual
-artifact `expires_at` rather than assuming requested retention. Compare at least
-five eligible docs-only shadow runs and five full shadow runs before promotion.
-Cap duplicate-heavy shadow collection at 14 calendar days or those ten qualified
-runs, whichever happens first; if blockers remain, keep the ruleset unchanged
-and explicitly decide whether to pause the shadow workflow.
+artifact `expires_at` rather than assuming requested retention. Apply the label
+exactly ten times: five eligible docs-only candidates and five full candidates.
+A failed or canceled labeled run consumes its application and cost slot but is
+not evidence; no replacement is permitted within this window, so incomplete
+evidence remains a promotion blocker. Stop at 14 calendar days, ten label
+applications, 100 PR event runs, or the cost ceiling, whichever happens first;
+if blockers remain, keep the ruleset unchanged and pause the shadow workflow.
 
 ## Shadow rollout and promotion hold
 
 1. Merge only this shadow workflow while existing required checks continue.
-2. Collect live PR evidence for prose-only, C#, migration, workflow/classifier,
-   and Docker changes. Confirm no fork pull request gets write permission or
-   secrets and every skipped domain says `not-applicable`.
-3. Collect a real `merge_group` run with the same stable aggregate context.
-4. Obtain independent workflow correctness, security, and FinOps approvals and
+2. A maintainer provisions the sample label once:
+   `gh label create ci:selective-shadow-sample --repo Jamula/Andreja --color 5319e7 --description "Maintainer-authorized bounded selective-CI sample"`.
+   Confirm the repository role policy still prevents fork authors from applying
+   labels.
+3. Select exactly five eligible prose-only and five full-suite PRs. On a
+   quiescent head, a maintainer applies the label with
+   `gh pr edit <number> --add-label ci:selective-shadow-sample`, waits for that
+   `labeled` run to finish, records Jobs/artifact API evidence, then immediately
+   removes it with
+   `gh pr edit <number> --remove-label ci:selective-shadow-sample`.
+   A synchronize event never qualifies merely because a label remains.
+4. Confirm unsampled PRs emit `shadow-not-sampled` and skipped domain jobs,
+   sampled docs/full runs have correct dispositions, no fork gets write
+   permission or secrets, and classification failure reports every domain
+   `unavailable`.
+5. Collect a real `merge_group` run with the same stable aggregate context.
+6. Obtain independent workflow correctness, security, and FinOps approvals and
    resolve every finding.
-5. Only then prepare, review, and execute an atomic ruleset update.
+7. Only then prepare, review, and execute an atomic ruleset update. At collection
+   end, remove the label from every PR and delete it only after audit evidence
+   confirms no active sample:
+   `gh label delete ci:selective-shadow-sample --repo Jamula/Andreja --yes`.
 
 Repository merge queue is not configured/available as of 2026-08-26: the
 effective main rules have no merge-queue rule and the Actions API reports zero
@@ -195,6 +254,24 @@ the five existing .NET contexts. Before any later write:
 5. Retiring old always-heavy required contexts is a separate reviewed change
    only after the selective workflow itself becomes trusted default-branch code
    and equivalent live evidence is complete.
+
+De-shadowing is also separate and atomic. Do not rename
+`Selective CI (Shadow)`, remove the sample gate, restore `push`, or replace any
+ruleset context in the evidence-collection PR. First demonstrate the exact live
+PR and merge-group check-run names and Actions integration IDs from
+default-branch code. In an ETag-guarded update, add the proven stable aggregate
+context while preserving all old contexts; re-GET and verify before any later
+change renames the workflow or retires a context. Because a workflow display
+name and a job/check context can be represented differently by GitHub, never
+infer one from the YAML name. A missing or renamed aggregate remains fail
+closed. Roll back the ruleset body before rolling back/renaming workflow code.
+
+Restoring `push` is a separately reviewed promotion change. It must retain the
+all-zero `before` branch-creation fallback to `github.sha`, force every domain,
+and keep `github.event_name` in the concurrency key so push cannot collide with
+schedule/manual runs. `cancel-in-progress` must remain false for schedule and
+manual events. Until that change is proven, the existing .NET, OCI, PowerShell,
+docs, and related workflows remain the `main` push safety net.
 
 A future sole-aggregate requirement intentionally concentrates trust in one
 stable context. Its residual-risk controls are explicit: every workflow or

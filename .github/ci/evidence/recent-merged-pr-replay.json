@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-26T03:26:48.937Z",
+  "generatedAt": "2026-08-26T04:21:18.282Z",
   "repository": "Jamula/Andreja",
   "policyVersion": 1,
-  "policySha256": "72fe4674dbd2b7d204f9a2407b72cacc29e65cfd8e155d90cb4935136beb4768",
+  "policySha256": "38d699e36b73a8661773617b407874f2e43d856028030c85dc14963bd215a5e7",
+  "classifierSha256": "11f9c371e842d694798c49c7240d5f39f46aaf8e383dc0bef6e206db14f5c0de",
   "sample": {
     "method": "most recently updated merged pull requests returned by GitHub REST",
     "count": 20,
@@ -119,6 +120,7 @@
         "oci"
       ],
       "fullReasons": [
+        ".github/agents/squad.agent.md:github-governance-boundary",
         ".github/scripts/fixtures/issue-status-events.json:ci-security-boundary",
         ".github/scripts/fixtures/issue-status-linked-prs.json:ci-security-boundary",
         ".github/scripts/issue-status.js:ci-security-boundary",
@@ -304,6 +306,9 @@
         ".github/scripts/issue-status.js:ci-security-boundary",
         ".github/scripts/issue-status.test.js:ci-security-boundary",
         ".github/scripts/run-issue-status.js:ci-security-boundary",
+        ".github/skills/git-workflow/SKILL.md:github-governance-boundary",
+        ".github/skills/iterative-retrieval/SKILL.md:github-governance-boundary",
+        ".github/skills/session-recovery/SKILL.md:github-governance-boundary",
         ".github/workflows/issue-status-tests.yml:ci-security-boundary",
         ".github/workflows/issue-status.yml:ci-security-boundary",
         ".github/workflows/sync-squad-labels.yml:ci-security-boundary",

@@ -3,10 +3,9 @@ name: Selective CI (Shadow)
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, labeled]
   merge_group:
     types: [checks_requested]
-  push:
-    branches: [main]
   schedule:
     - cron: '17 03 * * 2'
   workflow_dispatch:
@@ -17,7 +16,7 @@ permissions:
 
 concurrency:
   group: selective-ci-shadow-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: '1'
@@ -31,6 +30,7 @@ jobs:
     timeout-minutes: 10
     outputs:
       full_suite: ${{ steps.classify.outputs.full_suite }}
+      shadow_sampled: ${{ steps.classify.outputs.shadow_sampled }}
       docs: ${{ steps.classify.outputs.docs }}
       dotnet: ${{ steps.classify.outputs.dotnet }}
       postgres: ${{ steps.classify.outputs.postgres }}
@@ -45,7 +45,7 @@ jobs:
       - name: Checkout only the trusted base revision
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || (github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || github.sha }}
+          ref: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.sha }}
           path: trusted-ci
           persist-credentials: false
           fetch-depth: 1
@@ -60,9 +60,10 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          TRUSTED_POLICY_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || (github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || github.sha }}
+          TRUSTED_POLICY_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.sha }}
           CHANGE_POLICY_PATH: trusted-ci/.github/ci/change-policy.v1.json
           CHANGE_DECISION_PATH: artifacts/selective-ci/classification.json
+          SHADOW_SAMPLED: ${{ github.event_name != 'pull_request' || (github.event.action == 'labeled' && github.event.label.name == 'ci:selective-shadow-sample' && contains(github.event.pull_request.labels.*.name, 'ci:selective-shadow-sample')) }}
         run: |
           mkdir -p artifacts/selective-ci
           if [ -f trusted-ci/.github/ci/change-classifier.js ]; then
@@ -75,6 +76,11 @@ jobs:
             "eventName": "bootstrap",
             "fullSuite": true,
             "fullReasons": ["trusted-classifier-unavailable-on-base"],
+            "shadowSample": {
+              "label": "ci:selective-shadow-sample",
+              "sampled": false,
+              "reason": "shadow-not-sampled"
+            },
             "domains": {
               "docs": {"selected": true, "disposition": "selected"},
               "dotnet": {"selected": true, "disposition": "selected"},
@@ -85,8 +91,17 @@ jobs:
             }
           }
           JSON
+            if [ "$SHADOW_SAMPLED" = "true" ]; then
+              sed -i 's/"sampled": false/"sampled": true/' artifacts/selective-ci/classification.json
+              if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+                sed -i 's/"shadow-not-sampled"/"maintainer-sample-label-event"/' artifacts/selective-ci/classification.json
+              else
+                sed -i 's/"shadow-not-sampled"/"non-pull-request-full-safety"/' artifacts/selective-ci/classification.json
+              fi
+            fi
             {
               echo "full_suite=true"
+              echo "shadow_sampled=$SHADOW_SAMPLED"
               echo "docs=true"
               echo "dotnet=true"
               echo "postgres=true"
@@ -112,7 +127,7 @@ jobs:
 
   docs:
     name: Docs domain
-    if: needs.classify.outputs.docs == 'true'
+    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.docs == 'true'
     needs: classify
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -137,7 +152,7 @@ jobs:
 
   dotnet:
     name: .NET domain
-    if: needs.classify.outputs.dotnet == 'true'
+    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.dotnet == 'true'
     needs: classify
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -182,7 +197,7 @@ jobs:
 
   postgres:
     name: PostgreSQL domain
-    if: needs.classify.outputs.postgres == 'true'
+    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.postgres == 'true'
     needs: classify
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -226,7 +241,7 @@ jobs:
 
   powershell:
     name: PowerShell domain
-    if: needs.classify.outputs.powershell == 'true'
+    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.powershell == 'true'
     needs: classify
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -257,7 +272,7 @@ jobs:
 
   javascript:
     name: JavaScript and browser harness domain
-    if: needs.classify.outputs.javascript == 'true'
+    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.javascript == 'true'
     needs: classify
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -289,7 +304,7 @@ jobs:
 
   oci:
     name: Docker and OCI supply-chain domain
-    if: needs.classify.outputs.oci == 'true'
+    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.oci == 'true'
     needs: classify
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -338,6 +353,7 @@ jobs:
         env:
           CLASSIFY_RESULT: ${{ needs.classify.result }}
           CLASSIFY_SECONDS: ${{ needs.classify.outputs.duration_seconds }}
+          SHADOW_SAMPLED: ${{ needs.classify.outputs.shadow_sampled }}
           DOCS_SELECTED: ${{ needs.classify.outputs.docs }}
           DOCS_RESULT: ${{ needs.docs.result }}
           DOCS_SECONDS: ${{ needs.docs.outputs.duration_seconds }}
@@ -367,15 +383,29 @@ jobs:
             classify: Number(process.env.CLASSIFY_SECONDS || 0),
             aggregateAtEvidenceWrite: Math.max(0, Math.floor(Date.now() / 1000) - Number(process.env.AGGREGATE_START_EPOCH || 0))
           };
+          const classificationAvailable = process.env.CLASSIFY_RESULT === 'success';
+          const shadowSampled = process.env.SHADOW_SAMPLED === 'true';
           for (const name of names) {
             const prefix = name.toUpperCase();
             const selected = process.env[`${prefix}_SELECTED`] === 'true';
+            const scheduled = shadowSampled && selected;
             const result = process.env[`${prefix}_RESULT`] || 'skipped';
             const durationSeconds = Number(process.env[`${prefix}_SECONDS`] || 0);
-            const disposition = selected
-              ? (result === 'success' ? 'passed' : result === 'skipped' ? 'unavailable' : 'failed')
-              : 'not-applicable';
-            domains[name] = { selected, disposition, jobResult: result, durationSeconds };
+            const disposition = !classificationAvailable
+              ? 'unavailable'
+              : !shadowSampled
+                ? 'not-applicable'
+                : selected
+                  ? (result === 'success' ? 'passed' : result === 'skipped' ? 'unavailable' : 'failed')
+                  : 'not-applicable';
+            const reason = !classificationAvailable
+              ? 'classification-unavailable'
+              : !shadowSampled
+                ? 'shadow-not-sampled'
+                : selected
+                  ? (disposition === 'passed' ? 'selected-domain-passed' : 'selected-domain-unavailable-or-failed')
+                  : 'no-affected-input';
+            domains[name] = { selected, scheduled, disposition, reason, jobResult: result, durationSeconds };
           }
           const diagnosticSeconds = timings.classify + timings.aggregateAtEvidenceWrite +
             Object.values(domains).reduce((sum, item) => sum + item.durationSeconds, 0);
@@ -392,6 +422,8 @@ jobs:
             eventName: process.env.GITHUB_EVENT_NAME,
             sha: process.env.GITHUB_SHA,
             classificationResult: process.env.CLASSIFY_RESULT,
+            shadowSampled,
+            samplingReason: shadowSampled ? 'sampled-or-non-pull-request' : 'shadow-not-sampled',
             domains,
             usage: {
               method: 'diagnostic-step-wall-clock; authoritative billing requires completed-run Jobs API',
@@ -402,7 +434,7 @@ jobs:
                 Number((diagnosticRoundedMinutes * 0.008).toFixed(4))
             }
           };
-          const target = 'artifacts/selective-ci/aggregate.json';
+          const target = process.env.AGGREGATE_EVIDENCE_PATH || 'artifacts/selective-ci/aggregate.json';
           evidence.usage.aggregateEvidenceBytes = 0;
           let serialized = '';
           let sizeStable = false;
@@ -424,9 +456,11 @@ jobs:
           if (fs.statSync(target).size !== evidence.usage.aggregateEvidenceBytes) {
             throw new Error('aggregate evidence size differs after write.');
           }
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n\`\`\`json\n${JSON.stringify(evidence, null, 2)}\n\`\`\`\n`);
+          if (process.env.GITHUB_STEP_SUMMARY) {
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n\`\`\`json\n${JSON.stringify(evidence, null, 2)}\n\`\`\`\n`);
+          }
           const failed = process.env.CLASSIFY_RESULT !== 'success' ||
-            Object.values(domains).some((item) => item.selected && item.disposition !== 'passed');
+            Object.values(domains).some((item) => item.scheduled && item.disposition !== 'passed');
           if (failed) process.exitCode = 1;
           NODE
       - if: always()

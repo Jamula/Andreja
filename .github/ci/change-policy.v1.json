@@ -25,6 +25,11 @@
       "fullSuite": true
     },
     {
+      "id": "github-governance-boundary",
+      "pattern": "^(\\.github/(actions|agents|skills)/|\\.github/copilot-instructions\\.md$|(?:\\.github/|docs/)?CODEOWNERS$)",
+      "fullSuite": true
+    },
+    {
       "id": "squad-governance-boundary",
       "pattern": "^\\.squad/",
       "fullSuite": true
@@ -81,7 +86,7 @@
     },
     {
       "id": "docs-tooling",
-      "pattern": "^scripts/docs/|^\\.github/scripts/check_docs_consistency\\.(py|test\\.py)$",
+      "pattern": "^scripts/docs/",
       "domains": ["docs"]
     },
     {
@@ -96,8 +101,8 @@
       "inspectMarkdownPatch": true
     },
     {
-      "id": "repository-metadata",
-      "pattern": "^(\\.github/(?!workflows/|ci/|scripts/).*|\\.gitignore$|\\.gitattributes$|\\.env\\.example$|\\.mcp\\.json$)",
+      "id": "inert-repository-metadata",
+      "pattern": "^(\\.github/(FUNDING\\.yml|pull_request_template\\.md|ISSUE_TEMPLATE/(bug|config|decision|feature|feedback)\\.yml)|\\.gitignore|\\.gitattributes|\\.env\\.example|\\.mcp\\.json)$",
       "domains": ["docs"]
     }
   ]

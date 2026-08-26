@@ -14,12 +14,43 @@ const {
   inspectMarkdownPatch,
   loadPolicy,
   paginatedFiles,
+  shadowSample,
 } = require('./change-classifier');
 
 const root = path.resolve(__dirname, '../..');
 const policy = loadPolicy(path.join(__dirname, 'change-policy.v1.json'));
 const fixtures = require('./fixtures/change-classifier-cases.json');
 const { classificationName, estimatedMinutes } = require('./replay-merged-prs');
+
+function runAggregateArtifact(overrides) {
+  const workflow = fs.readFileSync(
+    path.join(root, '.github/workflows/selective-ci-shadow.yml'),
+    'utf8',
+  );
+  const match = workflow.match(/node <<'NODE'\r?\n([\s\S]*?)\r?\n {10}NODE/);
+  assert.ok(match, 'aggregate Node script must remain directly testable');
+  const artifact = path.join(root, 'artifacts/selective-ci/aggregate-test.json');
+  fs.mkdirSync(path.dirname(artifact), { recursive: true });
+  fs.rmSync(artifact, { force: true });
+  let status = 0;
+  try {
+    execFileSync(process.execPath, ['-e', match[1].replace(/^ {10}/gm, '')], {
+      cwd: root,
+      env: {
+        ...process.env,
+        AGGREGATE_EVIDENCE_PATH: artifact,
+        GITHUB_EVENT_NAME: 'pull_request',
+        GITHUB_RUN_ATTEMPT: '1',
+        ...overrides,
+      },
+    });
+  } catch (error) {
+    status = error.status;
+  }
+  const evidence = JSON.parse(fs.readFileSync(artifact, 'utf8'));
+  fs.rmSync(artifact, { force: true });
+  return { evidence, status };
+}
 
 for (const fixture of fixtures) {
   test(fixture.name, () => {
@@ -45,6 +76,44 @@ test('all tracked paths have an explicit policy rule', () => {
   const result = classifyFiles(files, policy);
   const unknown = result.files.filter((file) => file.rule === 'unclassified').map((file) => file.path);
   assert.deepEqual(unknown, []);
+});
+
+test('every policy rule is reachable as the first matching rule', () => {
+  const representatives = {
+    'ci-security-boundary': '.github/workflows/example.yml',
+    'central-build-dependency-sdk': 'global.json',
+    'dependency-update-configuration': '.github/dependabot.yml',
+    'github-governance-boundary': '.github/actions/setup/action.yml',
+    'squad-governance-boundary': '.squad/example.md',
+    'generated-schema': 'generated/example.schema.json',
+    'postgres-migration': 'src/Adapters/Andreja.Adapters/PostgreSql/Migrations/Example.cs',
+    'docker-compose-iac': 'Dockerfile',
+    'supply-chain-evidence': 'scripts/supply-chain/example.ps1',
+    powershell: 'scripts/example.ps1',
+    'deployed-javascript': 'src/example.js',
+    'javascript-browser': 'scripts/browser-harness.js',
+    'dotnet-source': 'src/Example.cs',
+    'app-web-assets': 'src/example.css',
+    'dotnet-test-fixtures': 'tests/example.json',
+    'docs-tooling': 'scripts/docs/example.py',
+    'known-executable-documentation': 'docs/development.md',
+    documentation: 'docs/example.md',
+    'inert-repository-metadata': '.github/FUNDING.yml',
+  };
+  assert.deepEqual(
+    policy.rules.map((rule) => rule.id).sort(),
+    Object.keys(representatives).sort(),
+  );
+  for (const [rule, filename] of Object.entries(representatives)) {
+    const result = classifyFiles([{
+      filename,
+      status: 'modified',
+      changes: 2,
+      baseContent: 'old prose\n',
+      patch: '@@ -1 +1 @@\n-old prose\n+new prose',
+    }], policy);
+    assert.equal(result.files[0].rule, rule, `${rule} is shadowed by ${result.files[0].rule}`);
+  }
 });
 
 test('C sharp and Docker changes can never be docs-only', () => {
@@ -305,16 +374,72 @@ test('captured PR 103 Markdown patch counts all bullet body lines exactly', () =
   );
 });
 
-test('workflow isolates event concurrency and handles zero-before push safely', () => {
+test('workflow bounds PR sampling and never cancels scheduled safety runs', () => {
   const workflow = fs.readFileSync(
     path.join(root, '.github/workflows/selective-ci-shadow.yml'),
     'utf8',
   );
   assert.match(workflow, /group: selective-ci-shadow-\$\{\{ github\.event_name \}\}-/);
+  assert.match(workflow, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
+  assert.doesNotMatch(workflow, /^\s+push:\s*$/m);
+  assert.match(workflow, /types: \[opened, synchronize, reopened, labeled\]/);
   assert.equal(
-    workflow.match(/github\.event\.before != '0000000000000000000000000000000000000000'/g)?.length,
-    2,
+    workflow.match(/if: needs\.classify\.outputs\.shadow_sampled == 'true' && needs\.classify\.outputs\.[a-z]+ == 'true'/g)?.length,
+    ALL_DOMAINS.length,
   );
+});
+
+test('only the trusted sample-label event enables PR shadow work', () => {
+  const labeled = {
+    action: 'labeled',
+    label: { name: 'ci:selective-shadow-sample' },
+    pull_request: { labels: [{ name: 'ci:selective-shadow-sample' }] },
+  };
+  assert.deepEqual(shadowSample('pull_request', labeled), {
+    sampled: true,
+    reason: 'maintainer-sample-label-event',
+  });
+  assert.equal(
+    shadowSample('pull_request', { ...labeled, action: 'synchronize' }).sampled,
+    false,
+  );
+  assert.equal(
+    shadowSample('pull_request', {
+      ...labeled,
+      label: { name: 'untrusted-lookalike' },
+    }).sampled,
+    false,
+  );
+  assert.equal(shadowSample('schedule', {}).sampled, true);
+});
+
+test('aggregate artifact marks every domain unavailable when classification fails', () => {
+  const { evidence, status } = runAggregateArtifact({
+    CLASSIFY_RESULT: 'failure',
+    SHADOW_SAMPLED: 'false',
+  });
+  assert.equal(status, 1, 'classification failure must fail the aggregate');
+  assert.equal(evidence.classificationResult, 'failure');
+  for (const domain of Object.values(evidence.domains)) {
+    assert.equal(domain.disposition, 'unavailable');
+    assert.equal(domain.reason, 'classification-unavailable');
+  }
+});
+
+test('unsampled PR aggregate succeeds with shadow-not-sampled evidence', () => {
+  const { evidence, status } = runAggregateArtifact({
+    CLASSIFY_RESULT: 'success',
+    SHADOW_SAMPLED: 'false',
+    DOCS_SELECTED: 'true',
+    DOTNET_SELECTED: 'true',
+  });
+  assert.equal(status, 0);
+  assert.equal(evidence.shadowSampled, false);
+  for (const domain of Object.values(evidence.domains)) {
+    assert.equal(domain.scheduled, false);
+    assert.equal(domain.disposition, 'not-applicable');
+    assert.equal(domain.reason, 'shadow-not-sampled');
+  }
 });
 
 test('historical replay economics use the documented per-domain model', () => {
@@ -343,6 +468,9 @@ test('recorded historical replay is internally consistent with the current polic
   const policyBytes = fs
     .readFileSync(path.join(__dirname, 'change-policy.v1.json'), 'utf8')
     .replace(/\r\n/g, '\n');
+  const classifierBytes = fs
+    .readFileSync(path.join(__dirname, 'change-classifier.js'), 'utf8')
+    .replace(/\r\n/g, '\n');
   assert.equal(evidence.sample.count, 20);
   assert.equal(
     Object.values(evidence.portfolio.counts).reduce((sum, count) => sum + count, 0),
@@ -355,6 +483,10 @@ test('recorded historical replay is internally consistent with the current polic
   assert.equal(
     evidence.policySha256,
     createHash('sha256').update(policyBytes).digest('hex'),
+  );
+  assert.equal(
+    evidence.classifierSha256,
+    createHash('sha256').update(classifierBytes).digest('hex'),
   );
 });
 

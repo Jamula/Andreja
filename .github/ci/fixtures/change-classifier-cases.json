@@ -175,5 +175,41 @@
     "files": [{"filename": ".github/dependabot.yml", "status": "modified"}],
     "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
     "fullSuite": true
+  },
+  {
+    "name": "repository action governance",
+    "files": [{"filename": ".github/actions/setup/action.yml", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "CODEOWNERS governance",
+    "files": [{"filename": ".github/CODEOWNERS", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "agent governance",
+    "files": [{"filename": ".github/agents/reviewer.agent.md", "status": "modified", "changes": 2, "patch": "@@ -1 +1 @@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "skill governance",
+    "files": [{"filename": ".github/skills/reviewer/SKILL.md", "status": "modified", "changes": 2, "patch": "@@ -1 +1 @@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "unknown future GitHub metadata",
+    "files": [{"filename": ".github/future-policy.yml", "status": "added"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "explicit inert issue template",
+    "files": [{"filename": ".github/ISSUE_TEMPLATE/bug.yml", "status": "modified"}],
+    "selected": ["docs"],
+    "fullSuite": false
   }
 ]
