@@ -10,6 +10,7 @@ const {
   ALL_DOMAINS,
   acquireChanges,
   attachTrustedMarkdownBase,
+  authorizeLabeledRun,
   authorizeRepositoryDispatchSmoke,
   classifyFiles,
   createBudgetedFetch,
@@ -458,6 +459,606 @@ const smokeRun = (overrides = {}) => ({
   created_at: '2026-08-26T10:01:00Z',
   ...overrides,
 });
+
+const labelEvent = {
+  action: 'labeled',
+  label: { name: 'ci:selective-shadow-sample' },
+  sender: { login: 'Jett-Reno' },
+  pull_request: {
+    number: 118,
+    labels: [{ name: 'ci:selective-shadow-sample' }],
+  },
+};
+const labelRuntime = (overrides = {}) => ({
+  actor: 'Jett-Reno',
+  expectedOperator: 'Jett-Reno',
+  configuredControllerSha: smokeSha,
+  windowStart: '2026-08-26T10:00:00Z',
+  now: '2026-08-26T10:05:00Z',
+  workflowRef: 'refs/heads/main',
+  workflowSha: smokeSha,
+  runId: '800',
+  runAttempt: '1',
+  delay: async () => {},
+  ...overrides,
+});
+const labeledRun = (overrides = {}) => ({
+  id: 800,
+  event: 'pull_request_target',
+  head_sha: smokeSha,
+  head_branch: 'main',
+  path: '.github/workflows/selective-ci-shadow.yml',
+  head_repository: { full_name: 'Jamula/Andreja' },
+  actor: { login: 'Jett-Reno' },
+  pull_requests: [{ number: 118 }],
+  run_attempt: 1,
+  created_at: '2026-08-26T10:01:00Z',
+  ...overrides,
+});
+const labelIssueEvent = (run, overrides = {}) => ({
+  id: Number(run.id) + 10000,
+  event: 'labeled',
+  label: { name: 'ci:selective-shadow-sample' },
+  actor: { login: 'Jett-Reno' },
+  created_at: run.created_at,
+  ...overrides,
+});
+function labelMetadataFetch(options = {}) {
+  const runSnapshots = options.runSnapshots ?? [[[labeledRun()]], [[labeledRun()]]];
+  let historyRead = 0;
+  let activeSnapshotIndex = 0;
+  return async (url) => {
+    if (options.failure) return options.failure;
+    if (url.includes('/actions/workflows/') && !url.includes('test_snapshot=')) {
+      if (url.includes('created=')) {
+        assert.match(
+          url,
+          /event=pull_request_target&created=%3E%3D2026-08-26T10%3A00%3A00Z&per_page=100/,
+        );
+      }
+    }
+    if (url.includes('/actions/workflows/')) {
+      const snapshotMatch = url.match(/[?&]test_snapshot=(\d+)/);
+      const pageMatch = url.match(/[?&]test_page=(\d+)/);
+      const snapshotIndex = snapshotMatch ? Number(snapshotMatch[1]) : historyRead++;
+      activeSnapshotIndex = snapshotIndex;
+      const pageIndex = pageMatch ? Number(pageMatch[1]) : 0;
+      const pages = runSnapshots[Math.min(snapshotIndex, runSnapshots.length - 1)];
+      const next = pageIndex + 1 < pages.length
+        ? `<https://api.github.com/actions/workflows/selective-ci-shadow.yml/runs?test_snapshot=${snapshotIndex}&test_page=${pageIndex + 1}>; rel="next"`
+        : null;
+      const totalCount = options.totalCounts?.[snapshotIndex] ??
+        pages.reduce((sum, page) => sum + page.length, 0);
+      return githubResponse(
+        { total_count: totalCount, workflow_runs: pages[pageIndex] },
+        next,
+        options.rateLimitRemaining,
+      );
+    }
+    const issueMatch =
+      url.match(/\/issues\/(\d+)\/events/) ||
+      url.match(/[?&]test_pull=(\d+)/);
+    if (issueMatch) {
+      const pullRequestNumber = Number(issueMatch[1]);
+      const snapshotMatch = url.match(/[?&]test_snapshot=(\d+)/);
+      const pageMatch = url.match(/[?&]test_page=(\d+)/);
+      const snapshotIndex = snapshotMatch
+        ? Number(snapshotMatch[1])
+        : activeSnapshotIndex;
+      const pageIndex = pageMatch ? Number(pageMatch[1]) : 0;
+      const snapshotRuns = runSnapshots[
+        Math.min(snapshotIndex, runSnapshots.length - 1)
+      ].flat();
+      const configured =
+        options.issueEventSnapshots?.[
+          Math.min(snapshotIndex, (options.issueEventSnapshots?.length ?? 1) - 1)
+        ]?.[pullRequestNumber];
+      const pages = configured ?? [
+        snapshotRuns
+          .filter((run) => run.pull_requests?.[0]?.number === pullRequestNumber)
+          .map((run) => labelIssueEvent(run)),
+      ];
+      const next = pageIndex + 1 < pages.length
+        ? `<https://api.github.com/label-events?test_pull=${pullRequestNumber}&test_snapshot=${snapshotIndex}&test_page=${pageIndex + 1}>; rel="next"`
+        : null;
+      return githubResponse(pages[pageIndex], next, options.rateLimitRemaining);
+    }
+    throw new Error(`Unexpected label metadata URL: ${url}`);
+  };
+}
+
+function withAuthorizedLabelHistory(fallback, options = {}) {
+  const historyFetch = labelMetadataFetch(options);
+  return async (url) =>
+    url.includes('/actions/workflows/') ||
+    url.includes('/issues/') ||
+    url.includes('/label-events?')
+      ? historyFetch(url)
+      : fallback(url);
+}
+
+function configureLabeledMainEnvironment() {
+  process.env.GITHUB_ACTOR = 'Jett-Reno';
+  process.env.GITHUB_REF = 'refs/heads/main';
+  process.env.GITHUB_SHA = smokeSha;
+  process.env.GITHUB_RUN_ID = '800';
+  process.env.GITHUB_RUN_ATTEMPT = '1';
+  process.env.SELECTIVE_CI_SAMPLE_OPERATOR = 'Jett-Reno';
+  process.env.SELECTIVE_CI_CONTROLLER_SHA = smokeSha;
+  process.env.SELECTIVE_CI_WINDOW_START = '2026-08-26T10:00:00Z';
+}
+
+const labelMainRuntime = {
+  now: '2026-08-26T10:05:00Z',
+  delay: async () => {},
+};
+
+test('first and second labeled workflow runs are authorized within N=2', async () => {
+  for (const runs of [
+    [labeledRun()],
+    [labeledRun({ id: 799, pull_requests: [{ number: 117 }] }), labeledRun()],
+  ]) {
+    const budgetedFetch = createBudgetedFetch(labelMetadataFetch({
+      runSnapshots: [[runs], [runs]],
+    }));
+    const authorization = await authorizeLabeledRun(
+      labelEvent,
+      'Jamula/Andreja',
+      'token',
+      budgetedFetch,
+      labelRuntime({ requestObservation: budgetedFetch.observation }),
+    );
+    assert.equal(authorization.authorized, true, JSON.stringify(authorization));
+    assert.match(authorization.reason, /^authorized-labeled-run-slot-[12]-of-2$/);
+    assert.equal(authorization.labelRunCount, runs.length);
+    assert.equal(authorization.authorizedRunCount, runs.length);
+    assert.equal(authorization.historySnapshots.length, 2);
+  }
+});
+
+test('every unrelated labeled run consumes the absolute N=2 cap', async () => {
+  const unrelatedLabelRun = labeledRun({
+    id: 797,
+    pull_requests: [{ number: 115 }],
+    created_at: '2026-08-26T10:00:10Z',
+  });
+  const unrelatedActorRun = labeledRun({
+    id: 798,
+    pull_requests: [{ number: 116 }],
+    actor: { login: 'Other-Operator' },
+    created_at: '2026-08-26T10:00:20Z',
+  });
+  const unrelatedControllerRun = labeledRun({
+    id: 799,
+    pull_requests: [{ number: 117 }],
+    head_sha: 'e'.repeat(40),
+    created_at: '2026-08-26T10:00:30Z',
+  });
+  const runs = [
+    unrelatedLabelRun,
+    unrelatedActorRun,
+    unrelatedControllerRun,
+    labeledRun(),
+  ];
+  const events = {
+    115: [[labelIssueEvent(unrelatedLabelRun, { label: { name: 'triage' } })]],
+    116: [[labelIssueEvent(unrelatedActorRun, {
+      actor: { login: 'Other-Operator' },
+    })]],
+    117: [[labelIssueEvent(unrelatedControllerRun)]],
+    118: [[labelIssueEvent(runs[3])]],
+  };
+  const budgetedFetch = createBudgetedFetch(labelMetadataFetch({
+    runSnapshots: [[runs], [runs]],
+    issueEventSnapshots: [events, events],
+  }));
+  const authorization = await authorizeLabeledRun(
+    labelEvent,
+    'Jamula/Andreja',
+    'token',
+    budgetedFetch,
+    labelRuntime({ requestObservation: budgetedFetch.observation }),
+  );
+  assert.equal(authorization.authorized, false);
+  assert.equal(authorization.reason, 'label-run-limit-exceeded');
+  assert.equal(authorization.labelRunCount, 4);
+  assert.equal(authorization.authorizedRunCount, null);
+  assert.equal(authorization.authorizedSlot, null);
+  assert.equal(authorization.historySnapshots.length, 1);
+  assert.equal(budgetedFetch.observation().used, 1);
+});
+
+test('a repeated PR identity fails before issue-event expansion or domains', async () => {
+  const runs = [
+    labeledRun({ id: 799, pull_requests: [{ number: 118 }] }),
+    labeledRun(),
+  ];
+  const budgetedFetch = createBudgetedFetch(labelMetadataFetch({
+    runSnapshots: [[runs]],
+  }));
+  const authorization = await authorizeLabeledRun(
+    labelEvent,
+    'Jamula/Andreja',
+    'token',
+    budgetedFetch,
+    labelRuntime({ requestObservation: budgetedFetch.observation }),
+  );
+  assert.equal(authorization.authorized, false);
+  assert.equal(authorization.reason, 'label-run-pull-request-repeated');
+  assert.equal(authorization.labelRunCount, 2);
+  assert.equal(authorization.historySnapshots.length, 1);
+  assert.equal(budgetedFetch.observation().used, 1);
+});
+
+test('a non-sample label is counted and emits lightweight unavailable evidence', async () => {
+  const run = labeledRun();
+  const event = {
+    ...labelEvent,
+    label: { name: 'triage' },
+    pull_request: {
+      ...labelEvent.pull_request,
+      labels: [{ name: 'triage' }],
+    },
+  };
+  const issueEvents = {
+    118: [[labelIssueEvent(run, { label: { name: 'triage' } })]],
+  };
+  const budgetedFetch = createBudgetedFetch(labelMetadataFetch({
+    runSnapshots: [[[run]], [[run]]],
+    issueEventSnapshots: [issueEvents, issueEvents],
+  }));
+  const authorization = await authorizeLabeledRun(
+    event,
+    'Jamula/Andreja',
+    'token',
+    budgetedFetch,
+    labelRuntime({ requestObservation: budgetedFetch.observation }),
+  );
+  assert.equal(authorization.authorized, false);
+  assert.equal(authorization.reason, 'label-name-or-state-mismatch');
+  assert.equal(authorization.labelRunCount, 1);
+  assert.equal(authorization.authorizedRunCount, 0);
+  assert.equal(authorization.historySnapshots.length, 2);
+});
+
+test('third labeled workflow run exceeds N=2 before domain classification', async () => {
+  const runs = [
+    labeledRun({ id: 798, pull_requests: [{ number: 116 }] }),
+    labeledRun({ id: 799, pull_requests: [{ number: 117 }] }),
+    labeledRun(),
+  ];
+  const budgetedFetch = createBudgetedFetch(labelMetadataFetch({
+    runSnapshots: [[runs]],
+  }));
+  const authorization = await authorizeLabeledRun(
+    labelEvent,
+    'Jamula/Andreja',
+    'token',
+    budgetedFetch,
+    labelRuntime({ requestObservation: budgetedFetch.observation }),
+  );
+  assert.equal(authorization.authorized, false);
+  assert.equal(authorization.reason, 'label-run-limit-exceeded');
+  assert.equal(authorization.labelRunCount, 3);
+  assert.equal(authorization.authorizedRunCount, null);
+  assert.equal(authorization.historySnapshots.length, 1);
+  assert.equal(budgetedFetch.observation().used, 1);
+});
+
+test('third labeled workflow run emits unavailable classification without PR acquisition', async () => {
+  const directory = path.join(root, 'artifacts/selective-ci');
+  const eventPath = path.join(directory, `label-cap-event-${process.pid}.json`);
+  const decisionPath = path.join(directory, `label-cap-decision-${process.pid}.json`);
+  fs.mkdirSync(directory, { recursive: true });
+  fs.writeFileSync(eventPath, JSON.stringify({
+    ...labelEvent,
+    number: 118,
+    pull_request: {
+      number: 118,
+      changed_files: 1,
+      base: { sha: 'a'.repeat(40) },
+      head: { sha: 'b'.repeat(40) },
+      merge_commit_sha: 'd'.repeat(40),
+      labels: [{ name: 'ci:selective-shadow-sample' }],
+    },
+  }));
+  const runs = [
+    labeledRun({ id: 798, pull_requests: [{ number: 116 }] }),
+    labeledRun({ id: 799, pull_requests: [{ number: 117 }] }),
+    labeledRun(),
+  ];
+  const requestedUrls = [];
+  const metadataFetch = labelMetadataFetch({ runSnapshots: [[runs]] });
+  const originalEnvironment = { ...process.env };
+  const originalExitCode = process.exitCode;
+  process.env.GITHUB_EVENT_NAME = 'pull_request_target';
+  process.env.GITHUB_EVENT_PATH = eventPath;
+  process.env.GITHUB_REPOSITORY = 'Jamula/Andreja';
+  process.env.GITHUB_TOKEN = 'read-only-token';
+  process.env.CHANGE_POLICY_PATH = path.join(__dirname, 'change-policy.v1.json');
+  process.env.CHANGE_DECISION_PATH = decisionPath;
+  configureLabeledMainEnvironment();
+  delete process.env.GITHUB_OUTPUT;
+  try {
+    await main(async (url) => {
+      requestedUrls.push(url);
+      return metadataFetch(url);
+    }, labelMainRuntime);
+    const decision = JSON.parse(fs.readFileSync(decisionPath, 'utf8'));
+    assert.equal(decision.classificationFailure, 'labeled-run-window-unavailable');
+    assert.equal(decision.trustedClassifierAvailable, false);
+    assert.equal(decision.labelRunAuthorization.reason, 'label-run-limit-exceeded');
+    assert.equal(decision.labelRunAuthorization.labelRunCount, 3);
+    assert.equal(decision.mergeCommitProof, null);
+    assert.equal(decision.changedFileCount, 0);
+    assert.equal(requestedUrls.length, 1);
+    assert.ok(requestedUrls.some((url) => url.includes('/actions/workflows/')));
+    assert.ok(requestedUrls.every((url) => url.includes('/actions/workflows/')));
+    assert.ok(requestedUrls.every((url) => !url.includes('/pulls/')));
+    assert.equal(process.exitCode, 1);
+  } finally {
+    process.env = originalEnvironment;
+    process.exitCode = originalExitCode;
+    fs.rmSync(eventPath, { force: true });
+    fs.rmSync(decisionPath, { force: true });
+  }
+});
+
+test('labeled workflow run history is complete, paginated, unique, and stable', async () => {
+  const pages = [
+    [labeledRun({ id: 799, pull_requests: [{ number: 117 }] })],
+    [labeledRun()],
+  ];
+  const paginatedFetch = createBudgetedFetch(labelMetadataFetch({
+    runSnapshots: [pages, pages],
+  }));
+  const paginated = await authorizeLabeledRun(
+    labelEvent,
+    'Jamula/Andreja',
+    'token',
+    paginatedFetch,
+    labelRuntime({ requestObservation: paginatedFetch.observation }),
+  );
+  assert.equal(paginated.authorized, true, JSON.stringify(paginated));
+  assert.equal(paginated.labelRunCount, 2);
+  assert.deepEqual(
+    paginated.historySnapshots.map((snapshot) => snapshot.pageCount),
+    [2, 2],
+  );
+
+  const racedFetch = createBudgetedFetch(labelMetadataFetch({
+    runSnapshots: [
+      [[labeledRun()]],
+      [[labeledRun({ id: 799, pull_requests: [{ number: 117 }] }), labeledRun()]],
+    ],
+  }));
+  const raced = await authorizeLabeledRun(
+    labelEvent,
+    'Jamula/Andreja',
+    'token',
+    racedFetch,
+    labelRuntime({ requestObservation: racedFetch.observation }),
+  );
+  assert.equal(raced.authorized, false);
+  assert.equal(raced.reason, 'label-run-history-unstable');
+  assert.equal(raced.labelRunCount, 2);
+
+  const repeatedPullRuns = [
+    labeledRun({ id: 799, created_at: '2026-08-26T10:00:30Z' }),
+    labeledRun(),
+  ];
+  const repeatedPullFetch = createBudgetedFetch(labelMetadataFetch({
+    runSnapshots: [[repeatedPullRuns], [repeatedPullRuns]],
+  }));
+  const repeatedPull = await authorizeLabeledRun(
+    labelEvent,
+    'Jamula/Andreja',
+    'token',
+    repeatedPullFetch,
+    labelRuntime({ requestObservation: repeatedPullFetch.observation }),
+  );
+  assert.equal(repeatedPull.authorized, false);
+  assert.equal(repeatedPull.reason, 'label-run-pull-request-repeated');
+  assert.equal(repeatedPull.labelRunCount, 2);
+  assert.equal(repeatedPull.historySnapshots.length, 1);
+
+  const duplicateFetch = createBudgetedFetch(labelMetadataFetch({
+    runSnapshots: [[[labeledRun(), labeledRun()]]],
+  }));
+  const duplicate = await authorizeLabeledRun(
+    labelEvent,
+    'Jamula/Andreja',
+    'token',
+    duplicateFetch,
+    labelRuntime({ requestObservation: duplicateFetch.observation }),
+  );
+  assert.equal(duplicate.authorized, false);
+  assert.equal(duplicate.reason, 'label-metadata-unavailable');
+  assert.match(duplicate.error, /duplicate run ID/);
+});
+
+test('labeled workflow guard fails closed on index lag, API failure, and rate limits', async () => {
+  const invisibleFetch = createBudgetedFetch(labelMetadataFetch({
+    runSnapshots: [[[labeledRun({ id: 799 })]]],
+  }));
+  const invisible = await authorizeLabeledRun(
+    labelEvent,
+    'Jamula/Andreja',
+    'token',
+    invisibleFetch,
+    labelRuntime({ requestObservation: invisibleFetch.observation }),
+  );
+  assert.equal(invisible.authorized, false);
+  assert.equal(invisible.reason, 'label-current-run-not-visible');
+  assert.equal(invisible.labelRunCount, 1);
+
+  for (const fixture of [
+    { status: 500, statusText: 'Internal Server Error', remaining: null },
+    { status: 429, statusText: 'Too Many Requests', remaining: '0' },
+  ]) {
+    const budgetedFetch = createBudgetedFetch(labelMetadataFetch({
+      failure: {
+        ok: false,
+        status: fixture.status,
+        statusText: fixture.statusText,
+        headers: {
+          get: (name) => name === 'x-ratelimit-remaining' ? fixture.remaining : null,
+        },
+        json: async () => ({}),
+      },
+    }));
+    const authorization = await authorizeLabeledRun(
+      labelEvent,
+      'Jamula/Andreja',
+      'token',
+      budgetedFetch,
+      labelRuntime({ requestObservation: budgetedFetch.observation }),
+    );
+    assert.equal(authorization.authorized, false);
+    assert.equal(authorization.reason, 'label-metadata-unavailable');
+    assert.match(authorization.error, new RegExp(String(fixture.status)));
+  }
+});
+
+test('labeled workflow guard requires all variables, exact operator, and controller ownership', async () => {
+  for (const fixture of [
+    { runtime: { expectedOperator: '' }, reason: 'label-operator-unconfigured' },
+    { runtime: { configuredControllerSha: '' }, reason: 'label-controller-sha-unconfigured-or-invalid' },
+    { runtime: { windowStart: '' }, reason: 'label-window-start-unconfigured' },
+    { runtime: { actor: 'jett-reno' }, reason: 'label-operator-mismatch' },
+    {
+      event: { ...labelEvent, label: { name: 'triage' } },
+      reason: 'label-name-or-state-mismatch',
+    },
+    {
+      event: {
+        ...labelEvent,
+        pull_request: { ...labelEvent.pull_request, labels: [] },
+      },
+      reason: 'label-name-or-state-mismatch',
+    },
+    { runtime: { workflowRef: 'refs/tags/v1' }, reason: 'label-workflow-ref-mismatch' },
+    { runtime: { workflowSha: 'e'.repeat(40) }, reason: 'label-controller-sha-stale' },
+    { runtime: { runAttempt: '2' }, reason: 'label-rerun-forbidden' },
+  ]) {
+    const budgetedFetch = createBudgetedFetch(labelMetadataFetch());
+    const authorization = await authorizeLabeledRun(
+      fixture.event ?? labelEvent,
+      'Jamula/Andreja',
+      'token',
+      budgetedFetch,
+      labelRuntime({
+        ...fixture.runtime,
+        requestObservation: budgetedFetch.observation,
+      }),
+    );
+    assert.equal(authorization.authorized, false);
+    assert.equal(authorization.reason, fixture.reason);
+  }
+});
+
+test('labeled run binds current PR, workflow, actor, label event, and first attempt', async () => {
+  const fixtures = [
+    {
+      runs: [labeledRun({ pull_requests: [{ number: 117 }] })],
+      reason: 'label-run-pull-request-identity-unavailable',
+    },
+    {
+      runs: [labeledRun({ path: '.github/workflows/other.yml' })],
+      reason: 'label-current-run-identity-mismatch',
+    },
+    {
+      runs: [labeledRun({ run_attempt: 2 })],
+      reason: 'label-current-run-identity-mismatch',
+    },
+    {
+      runs: [labeledRun()],
+      events: {
+        118: [[labelIssueEvent(labeledRun(), { label: { name: 'triage' } })]],
+      },
+      reason: 'label-run-pull-request-identity-unavailable',
+    },
+    {
+      runs: [labeledRun()],
+      events: {
+        118: [[labelIssueEvent(labeledRun(), {
+          actor: { login: 'Other-Operator' },
+        })]],
+      },
+      reason: 'label-run-pull-request-identity-unavailable',
+    },
+  ];
+  for (const fixture of fixtures) {
+    const options = {
+      runSnapshots: [[fixture.runs]],
+      ...(fixture.events ? { issueEventSnapshots: [fixture.events] } : {}),
+    };
+    const budgetedFetch = createBudgetedFetch(labelMetadataFetch(options));
+    const authorization = await authorizeLabeledRun(
+      labelEvent,
+      'Jamula/Andreja',
+      'token',
+      budgetedFetch,
+      labelRuntime({ requestObservation: budgetedFetch.observation }),
+    );
+    assert.equal(authorization.authorized, false);
+    assert.equal(authorization.reason, fixture.reason);
+  }
+
+  const priorRerun = labeledRun({
+    id: 799,
+    run_attempt: 2,
+    pull_requests: [{ number: 117 }],
+    created_at: '2026-08-26T10:00:30Z',
+  });
+  const runs = [priorRerun, labeledRun()];
+  const rerunFetch = createBudgetedFetch(labelMetadataFetch({
+    runSnapshots: [[runs]],
+  }));
+  const rerun = await authorizeLabeledRun(
+    labelEvent,
+    'Jamula/Andreja',
+    'token',
+    rerunFetch,
+    labelRuntime({ requestObservation: rerunFetch.observation }),
+  );
+  assert.equal(rerun.authorized, false);
+  assert.equal(rerun.reason, 'label-authorized-run-rerun-forbidden');
+});
+
+test('labeled run fails closed at Actions and issue-event pagination caps', async () => {
+  const actionsCapFetch = createBudgetedFetch(labelMetadataFetch({
+    totalCounts: [1000],
+  }));
+  const actionsCap = await authorizeLabeledRun(
+    labelEvent,
+    'Jamula/Andreja',
+    'token',
+    actionsCapFetch,
+    labelRuntime({ requestObservation: actionsCapFetch.observation }),
+  );
+  assert.equal(actionsCap.authorized, false);
+  assert.equal(actionsCap.reason, 'label-metadata-unavailable');
+  assert.match(actionsCap.error, /1,000-run API cap/);
+
+  const eventPages = Array.from({ length: 101 }, (_, index) =>
+    index === 100 ? [labelIssueEvent(labeledRun())] : []);
+  const issueCapFetch = createBudgetedFetch(labelMetadataFetch({
+    runSnapshots: [[[labeledRun()]]],
+    issueEventSnapshots: [{ 118: eventPages }],
+  }));
+  const issueCap = await authorizeLabeledRun(
+    labelEvent,
+    'Jamula/Andreja',
+    'token',
+    issueCapFetch,
+    labelRuntime({ requestObservation: issueCapFetch.observation }),
+  );
+  assert.equal(issueCap.authorized, false);
+  assert.equal(issueCap.reason, 'label-metadata-unavailable');
+  assert.match(issueCap.error, /Issue event pagination exceeded 100 pages/);
+});
+
 function smokeMetadataFetch(options = {}) {
   const runSnapshots = options.runSnapshots ?? [[[smokeRun()]], [[smokeRun()]]];
   const defaultBranches = options.defaultBranches ?? ['main', 'main'];
@@ -815,6 +1416,7 @@ test('sample label rejects a null live test-merge SHA before file acquisition', 
     number: 118,
     action: 'labeled',
     label: { name: 'ci:selective-shadow-sample' },
+    sender: { login: 'Jett-Reno' },
     pull_request: {
       number: 118,
       changed_files: 1,
@@ -1334,26 +1936,28 @@ test('stale sample test-merge proof emits unavailable evidence before domains', 
   process.env.GITHUB_EVENT_PATH = eventPath;
   process.env.GITHUB_REPOSITORY = 'Jamula/Andreja';
   process.env.GITHUB_TOKEN = 'read-only-token';
-  process.env.SELECTIVE_CI_SAMPLE_OPERATOR = 'Jett-Reno';
+  configureLabeledMainEnvironment();
   process.env.CHANGE_POLICY_PATH = path.join(__dirname, 'change-policy.v1.json');
   process.env.CHANGE_DECISION_PATH = decisionPath;
   delete process.env.GITHUB_OUTPUT;
   try {
-    await main(async (url) =>
-      url.includes('/git/commits/')
-        ? githubResponse({
-            sha: 'e'.repeat(40),
-            parents: [
-              { sha: 'a'.repeat(40) },
-              { sha: 'b'.repeat(40) },
-            ],
-          })
-        : githubResponse({
-            mergeable: true,
-            base: { sha: 'a'.repeat(40) },
-            head: { sha: 'b'.repeat(40) },
-            merge_commit_sha: 'e'.repeat(40),
-          }),
+    await main(
+      withAuthorizedLabelHistory(async (url) =>
+        url.includes('/git/commits/')
+          ? githubResponse({
+              sha: 'e'.repeat(40),
+              parents: [
+                { sha: 'a'.repeat(40) },
+                { sha: 'b'.repeat(40) },
+              ],
+            })
+          : githubResponse({
+              mergeable: true,
+              base: { sha: 'a'.repeat(40) },
+              head: { sha: 'b'.repeat(40) },
+              merge_commit_sha: 'e'.repeat(40),
+            })),
+      labelMainRuntime,
     );
     const decision = JSON.parse(fs.readFileSync(decisionPath, 'utf8'));
     assert.equal(
@@ -1364,7 +1968,7 @@ test('stale sample test-merge proof emits unavailable evidence before domains', 
     assert.equal(decision.shadowSample.sampled, true);
     assert.equal(decision.mergeCommitProof.verified, false);
     assert.equal(decision.mergeCommitProof.reason, 'pull-request-test-merge-stale');
-    assert.equal(decision.apiRequestBudget.used, 2);
+    assert.equal(decision.apiRequestBudget.used, 6);
     assert.equal(process.exitCode, 1);
   } finally {
     process.env = originalEnvironment;
@@ -1399,37 +2003,40 @@ test('sample metadata errors preserve failed proof and disable trusted domains',
   process.env.GITHUB_EVENT_PATH = eventPath;
   process.env.GITHUB_REPOSITORY = 'Jamula/Andreja';
   process.env.GITHUB_TOKEN = 'read-only-token';
-  process.env.SELECTIVE_CI_SAMPLE_OPERATOR = 'Jett-Reno';
+  configureLabeledMainEnvironment();
   process.env.CHANGE_POLICY_PATH = path.join(__dirname, 'change-policy.v1.json');
   process.env.CHANGE_DECISION_PATH = decisionPath;
   delete process.env.GITHUB_OUTPUT;
   try {
-    await main(async (url) => {
-      if (url.endsWith('/pulls/118')) {
-        return githubResponse({
-          mergeable: true,
-          base: { sha: 'a'.repeat(40) },
-          head: { sha: 'b'.repeat(40) },
-          merge_commit_sha: 'd'.repeat(40),
-        });
-      }
-      if (url.includes('/git/commits/')) {
-        return githubResponse({
-          sha: 'd'.repeat(40),
-          parents: [
-            { sha: 'a'.repeat(40) },
-            { sha: 'b'.repeat(40) },
-          ],
-        });
-      }
-      return {
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-        headers: { get: () => null },
-        json: async () => ({}),
-      };
-    });
+    await main(
+      withAuthorizedLabelHistory(async (url) => {
+        if (url.endsWith('/pulls/118')) {
+          return githubResponse({
+            mergeable: true,
+            base: { sha: 'a'.repeat(40) },
+            head: { sha: 'b'.repeat(40) },
+            merge_commit_sha: 'd'.repeat(40),
+          });
+        }
+        if (url.includes('/git/commits/')) {
+          return githubResponse({
+            sha: 'd'.repeat(40),
+            parents: [
+              { sha: 'a'.repeat(40) },
+              { sha: 'b'.repeat(40) },
+            ],
+          });
+        }
+        return {
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+          headers: { get: () => null },
+          json: async () => ({}),
+        };
+      }),
+      labelMainRuntime,
+    );
     const decision = JSON.parse(fs.readFileSync(decisionPath, 'utf8'));
     assert.equal(
       decision.classificationFailure,
@@ -1442,7 +2049,7 @@ test('sample metadata errors preserve failed proof and disable trusted domains',
       'pull-request-test-merge-metadata-unavailable',
     );
     assert.match(decision.mergeCommitProof.error, /500 Internal Server Error/);
-    assert.equal(decision.apiRequestBudget.used, 3);
+    assert.equal(decision.apiRequestBudget.used, 7);
     assert.equal(process.exitCode, 1);
   } finally {
     process.env = originalEnvironment;
@@ -1461,6 +2068,7 @@ test('Markdown metadata rate limits persist unavailable classification evidence'
     number: 118,
     action: 'labeled',
     label: { name: 'ci:selective-shadow-sample' },
+    sender: { login: 'Jett-Reno' },
     pull_request: {
       number: 118,
       changed_files: 1,
@@ -1476,6 +2084,7 @@ test('Markdown metadata rate limits persist unavailable classification evidence'
   process.env.GITHUB_EVENT_PATH = eventPath;
   process.env.GITHUB_REPOSITORY = 'Jamula/Andreja';
   process.env.GITHUB_TOKEN = 'read-only-token';
+  configureLabeledMainEnvironment();
   process.env.CHANGE_POLICY_PATH = path.join(__dirname, 'change-policy.v1.json');
   process.env.CHANGE_DECISION_PATH = decisionPath;
   delete process.env.GITHUB_OUTPUT;
@@ -1520,7 +2129,7 @@ test('Markdown metadata rate limits persist unavailable classification evidence'
     };
   };
   try {
-    await main(fetchImpl);
+    await main(withAuthorizedLabelHistory(fetchImpl), labelMainRuntime);
     const decision = JSON.parse(fs.readFileSync(decisionPath, 'utf8'));
     assert.equal(decision.classificationFailure, 'github-metadata-rate-limit-or-budget');
     assert.equal(decision.trustedClassifierAvailable, false);
@@ -1530,7 +2139,7 @@ test('Markdown metadata rate limits persist unavailable classification evidence'
       'pull-request-test-merge-recheck-unavailable',
     );
     assert.equal(decision.apiRequestBudget.rateLimitResponseObserved, true);
-    assert.equal(decision.apiRequestBudget.used, 6);
+    assert.equal(decision.apiRequestBudget.used, 10);
     assert.equal(decision.fullSuite, true);
     assert.ok(
       decision.fullReasons.some((reason) =>
@@ -1570,7 +2179,7 @@ test('Markdown Contents HTTP errors disable sampled domains and merge proof', as
   process.env.GITHUB_EVENT_PATH = eventPath;
   process.env.GITHUB_REPOSITORY = 'Jamula/Andreja';
   process.env.GITHUB_TOKEN = 'read-only-token';
-  process.env.SELECTIVE_CI_SAMPLE_OPERATOR = 'Jett-Reno';
+  configureLabeledMainEnvironment();
   process.env.CHANGE_POLICY_PATH = path.join(__dirname, 'change-policy.v1.json');
   process.env.CHANGE_DECISION_PATH = decisionPath;
   delete process.env.GITHUB_OUTPUT;
@@ -1583,41 +2192,44 @@ test('Markdown Contents HTTP errors disable sampled domains and merge proof', as
     patch: '@@ -1 +1 @@\n-old\n+new',
   };
   try {
-    await main(async (url) => {
-      if (url.endsWith('/pulls/118')) {
-        return githubResponse({
-          mergeable: true,
-          base: { sha: 'a'.repeat(40) },
-          head: { sha: 'b'.repeat(40) },
-          merge_commit_sha: 'd'.repeat(40),
-        });
-      }
-      if (url.includes('/git/commits/')) {
-        return githubResponse({
-          sha: 'd'.repeat(40),
-          parents: [
-            { sha: 'a'.repeat(40) },
-            { sha: 'b'.repeat(40) },
-          ],
-        });
-      }
-      if (url.includes('/compare/')) {
-        return githubResponse({
-          merge_base_commit: { sha: 'c'.repeat(40) },
-          files: [file],
-        });
-      }
-      if (url.includes('/contents/')) {
-        return {
-          ok: false,
-          status: 500,
-          statusText: 'Internal Server Error',
-          headers: { get: () => null },
-          json: async () => ({}),
-        };
-      }
-      return githubResponse([file]);
-    });
+    await main(
+      withAuthorizedLabelHistory(async (url) => {
+        if (url.endsWith('/pulls/118')) {
+          return githubResponse({
+            mergeable: true,
+            base: { sha: 'a'.repeat(40) },
+            head: { sha: 'b'.repeat(40) },
+            merge_commit_sha: 'd'.repeat(40),
+          });
+        }
+        if (url.includes('/git/commits/')) {
+          return githubResponse({
+            sha: 'd'.repeat(40),
+            parents: [
+              { sha: 'a'.repeat(40) },
+              { sha: 'b'.repeat(40) },
+            ],
+          });
+        }
+        if (url.includes('/compare/')) {
+          return githubResponse({
+            merge_base_commit: { sha: 'c'.repeat(40) },
+            files: [file],
+          });
+        }
+        if (url.includes('/contents/')) {
+          return {
+            ok: false,
+            status: 500,
+            statusText: 'Internal Server Error',
+            headers: { get: () => null },
+            json: async () => ({}),
+          };
+        }
+        return githubResponse([file]);
+      }),
+      labelMainRuntime,
+    );
     const decision = JSON.parse(fs.readFileSync(decisionPath, 'utf8'));
     assert.equal(decision.classificationFailure, 'github-metadata-unavailable');
     assert.equal(decision.trustedClassifierAvailable, false);
@@ -1627,7 +2239,7 @@ test('Markdown Contents HTTP errors disable sampled domains and merge proof', as
       'pull-request-test-merge-recheck-unavailable',
     );
     assert.match(decision.mergeCommitProof.error, /500 Internal Server Error/);
-    assert.equal(decision.apiRequestBudget.used, 6);
+    assert.equal(decision.apiRequestBudget.used, 10);
     assert.equal(process.exitCode, 1);
   } finally {
     process.env = originalEnvironment;
@@ -1681,7 +2293,7 @@ test('final test-merge recheck preserves HTTP and rate-limit errors', async () =
     process.env.GITHUB_EVENT_PATH = eventPath;
     process.env.GITHUB_REPOSITORY = 'Jamula/Andreja';
     process.env.GITHUB_TOKEN = 'read-only-token';
-    process.env.SELECTIVE_CI_SAMPLE_OPERATOR = 'Jett-Reno';
+    configureLabeledMainEnvironment();
     process.env.CHANGE_POLICY_PATH = path.join(__dirname, 'change-policy.v1.json');
     process.env.CHANGE_DECISION_PATH = decisionPath;
     delete process.env.GITHUB_OUTPUT;
@@ -1693,7 +2305,7 @@ test('final test-merge recheck preserves HTTP and rate-limit errors', async () =
       patch: '@@ -0,0 +1 @@\n+prose',
     };
     try {
-      await main(async (url) => {
+      await main(withAuthorizedLabelHistory(async (url) => {
         if (url.endsWith('/pulls/118')) {
           pullReads += 1;
           if (pullReads === 3) {
@@ -1733,7 +2345,7 @@ test('final test-merge recheck preserves HTTP and rate-limit errors', async () =
           });
         }
         return githubResponse([file]);
-      });
+      }), labelMainRuntime);
       const decision = JSON.parse(fs.readFileSync(decisionPath, 'utf8'));
       assert.equal(decision.classificationFailure, fixture.expectedFailure);
       assert.equal(decision.trustedClassifierAvailable, false);
@@ -1746,7 +2358,7 @@ test('final test-merge recheck preserves HTTP and rate-limit errors', async () =
         decision.mergeCommitProof.error,
         new RegExp(`${fixture.status} ${fixture.statusText}`),
       );
-      assert.equal(decision.apiRequestBudget.used, 6);
+      assert.equal(decision.apiRequestBudget.used, 10);
       assert.equal(process.exitCode, 1);
     } finally {
       process.env = originalEnvironment;
@@ -1908,6 +2520,12 @@ test('workflow isolates authorized samples from cancelable topology runs', () =>
   assert.match(workflow, /trusted_classifier: \$\{\{ steps\.classify\.outputs\.trusted_classifier \}\}/);
   assert.match(
     workflow,
+    /label_run_authorization: \$\{\{ steps\.classify\.outputs\.label_run_authorization \}\}/,
+  );
+  assert.match(workflow, /labelPreconditionFailed/);
+  assert.match(workflow, /labelRunAuthorization/);
+  assert.match(
+    workflow,
     /-SkipPostgreSql -OutputPath artifacts\/vulnerability\/solution\.json/,
   );
   assert.match(
@@ -1949,12 +2567,24 @@ test('only an authorized operator sample-label event enables PR shadow work', ()
     pull_request: { labels: [{ name: 'ci:selective-shadow-sample' }] },
     sender: { login: 'Jett-Reno' },
   };
-  assert.deepEqual(shadowSample('pull_request_target', labeled, 'Jett-Reno'), {
+  assert.deepEqual(
+    shadowSample(
+      'pull_request_target',
+      labeled,
+      'Jett-Reno',
+      null,
+      {
+        authorized: true,
+        reason: 'authorized-labeled-run-slot-1-of-2',
+      },
+    ),
+    {
     sampled: true,
-    reason: 'authorized-sample-label-event',
+    reason: 'authorized-labeled-run-slot-1-of-2',
     observedActor: 'Jett-Reno',
     expectedOperator: 'Jett-Reno',
-  });
+    },
+  );
   assert.deepEqual(
     shadowSample(
       'pull_request_target',
@@ -2115,6 +2745,29 @@ test('repository-dispatch bootstrap is unavailable without trusted authorization
   }
 });
 
+test('labeled-run history failure makes aggregate evidence unavailable before domains', () => {
+  const { evidence, status } = runAggregateArtifact({
+    GITHUB_EVENT_NAME: 'pull_request_target',
+    CLASSIFY_RESULT: 'failure',
+    SHADOW_SAMPLED: 'true',
+    TRUSTED_CLASSIFIER: 'false',
+    LABEL_RUN_AUTHORIZATION: JSON.stringify({
+      authorized: false,
+      reason: 'label-current-run-not-visible',
+      labelRunCount: 1,
+    }),
+    DOCS_SELECTED: 'true',
+  });
+  assert.equal(status, 1);
+  assert.equal(evidence.labelPreconditionFailed, true);
+  assert.equal(evidence.labelRunAuthorization.labelRunCount, 1);
+  assert.equal(evidence.samplingReason, 'trusted-classifier-unavailable-on-base');
+  for (const domain of Object.values(evidence.domains)) {
+    assert.equal(domain.scheduled, false);
+    assert.equal(domain.disposition, 'unavailable');
+  }
+});
+
 test('ordinary unsampled bootstrap remains successful topology evidence', () => {
   const { evidence, status } = runAggregateArtifact({
     CLASSIFY_RESULT: 'success',
@@ -2139,6 +2792,11 @@ test('trusted labeled sample schedules selected domains normally', () => {
     CLASSIFY_RESULT: 'success',
     SHADOW_SAMPLED: 'true',
     TRUSTED_CLASSIFIER: 'true',
+    LABEL_RUN_AUTHORIZATION: JSON.stringify({
+      authorized: true,
+      reason: 'authorized-labeled-run-within-window',
+      labelRunCount: 1,
+    }),
     DOCS_SELECTED: 'true',
     DOCS_RESULT: 'success',
   });
@@ -2200,6 +2858,11 @@ test('aggregate PR sample attributes the event and validated merge revisions', (
     CLASSIFY_RESULT: 'success',
     SHADOW_SAMPLED: 'true',
     TRUSTED_CLASSIFIER: 'true',
+    LABEL_RUN_AUTHORIZATION: JSON.stringify({
+      authorized: true,
+      reason: 'authorized-labeled-run-within-window',
+      labelRunCount: 1,
+    }),
     DOCS_SELECTED: 'true',
     DOCS_RESULT: 'success',
   });
@@ -2214,6 +2877,7 @@ test('aggregate PR sample attributes the event and validated merge revisions', (
   });
   assert.notEqual(evidence.revision.validatedSha, eventBaseSha);
   assert.equal(Object.hasOwn(evidence, 'sha'), false);
+  assert.equal(evidence.labelRunAuthorization.labelRunCount, 1);
 });
 
 test('aggregate PR sample fails closed without an exact merge revision', () => {
@@ -2224,6 +2888,11 @@ test('aggregate PR sample fails closed without an exact merge revision', () => {
     CLASSIFY_RESULT: 'success',
     SHADOW_SAMPLED: 'true',
     TRUSTED_CLASSIFIER: 'true',
+    LABEL_RUN_AUTHORIZATION: JSON.stringify({
+      authorized: true,
+      reason: 'authorized-labeled-run-within-window',
+      labelRunCount: 2,
+    }),
     DOCS_SELECTED: 'true',
     DOCS_RESULT: 'success',
   });
@@ -2267,7 +2936,7 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.match(runbook, /exceeds 6 minutes.*exceeds 32 minutes/s);
   assert.match(runbook, /[Aa]ny observed `F_i >= 4`/);
   assert.match(runbook, /N=2` is the hard cap/);
-  assert.match(runbook, /all labeled events/);
+  assert.match(runbook, /every labeled event[\s\S]+counts against `N`/);
   assert.match(runbook, /terminally disable/);
   assert.match(runbook, /no routine pause\/re-enable path/);
   assert.match(runbook, /ordinary PRs emit no shadow contexts/);
@@ -2299,12 +2968,25 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
     /\$match\.Groups\['owner'\]\.Success[\s\S]+-ine 'Jamula'[\s\S]+-ine 'Andreja'[\s\S]+continue/,
   );
   assert.match(runbook, /waits for that[\s\S]+does not remove, reapply, or apply it elsewhere/);
-  assert.match(runbook, /gh workflow disable selective-ci-shadow\.yml/);
+  assert.match(
+    runbook,
+    /gh workflow disable selective-ci-shadow\.yml --repo Jamula\/Andreja/,
+  );
+  assert.match(
+    runbook,
+    /gh api repos\/Jamula\/Andreja\/actions\/workflows\/selective-ci-shadow\.yml --jq '\.state'/,
+  );
+  assert.doesNotMatch(runbook, /gh workflow view[\s\S]{0,120}--json/);
   assert.match(runbook, /positive\s+docs and full evidence[\s\S]+separate FinOps approval/);
   assert.match(runbook, /0% replay[\s\S]+8\.75%/);
   assert.match(runbook, /SELECTIVE_CI_SAMPLE_OPERATOR/);
   assert.match(runbook, /observedActor.*expectedOperator/s);
   assert.match(runbook, /sample-pr-<number>.*cancellation disabled/s);
+  assert.match(runbook, /queues[\s\S]+history guard rejects[\s\S]+repeated\s+PR identity/);
+  assert.match(runbook, /variables[\s\S]+before \*\*any\*\* label/);
+  assert.match(runbook, /labelRunCount[\s\S]+authorizedRunCount[\s\S]+authorizedSlot/);
+  assert.match(runbook, /Current-run indexing lag fails closed[\s\S]+do not retry/);
+  assert.match(runbook, /[Aa] third raw labeled run[\s\S]+repeat[\s\S]+rerun[\s\S]+duplicate\/ambiguous binding/);
   assert.match(runbook, /\$labelPages = gh api --paginate --slurp[\s\S]+ConvertFrom-Json/);
   assert.doesNotMatch(runbook, /--slurp[\s\S]{0,250}--jq/);
   assert.match(runbook, /exact\s+squash-merged controller SHA[\s\S]+only trusted controller revision/);
@@ -2336,6 +3018,7 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.match(runbook, /gh api --method POST repos\/Jamula\/Andreja\/dispatches/);
   assert.match(runbook, /intentionally carries no controller SHA in\s+`client_payload`/);
   assert.doesNotMatch(runbook, /workflow_dispatch/);
+  assert.doesNotMatch(runbook, /schedule\/manual|manual events/);
   assert.match(runbook, /smoke\s+count `1`/);
   assert.match(runbook, /static workflow-expression and fixture assertions\s+only/);
   assert.match(runbook, /32924008713[\s\S]+fab046f6608fc93b032ed7e618b57f2547c88bdc[\s\S]+pre-trusted-classifier-gate/);

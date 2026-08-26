@@ -28,6 +28,25 @@ stale, repeated, unauthorized, tag/branch, API, pagination, or rate-limit state
 fails unavailable before domain jobs. The read-only token has only
 `contents`, `pull-requests`, and `actions` read access.
 
+Every labeled workflow run is independently bounded by the same
+repository-owned window. Before reading PR files, and again after the final
+merge/Markdown metadata recheck immediately before domain scheduling, the
+classifier requires all three Actions variables, exact canonical
+sender/runtime-actor equality, the trusted `refs/heads/main` controller SHA, a
+first run attempt, and complete paginated `pull_request_target` workflow-run and
+per-PR issue-event history since `SELECTIVE_CI_WINDOW_START`. Each authorization
+pass reads history twice around a bounded delay. It binds each run to exactly one
+`labeled` event by PR and a unique bounded event-to-run timestamp, then records
+the event ID/action/label/operator, run ID/attempt/workflow/controller/repository,
+slot, page counts, request/rate-limit observation, and a SHA-256 history
+fingerprint. Every labeled workflow run since the window start consumes the absolute `N`
+cap, including unrelated labels, actors, workflows, and controller revisions.
+Both snapshots and the final authorization pass must remain identical. Only
+the first two distinct-PR authorized sample runs may proceed. A third raw run,
+a repeat of a sampled PR, any rerun,
+duplicate/ambiguous binding, unstable snapshot, pagination/API/rate-limit
+ambiguity, or unindexed current run fails unavailable before domains.
+
 `pull_request_target` is deliberate: GitHub loads the controller YAML from the
 default branch rather than from the pull request. For a pull request, the
 classification job checks out only `pull_request.base.sha` into `trusted-ci` and
@@ -133,7 +152,7 @@ JavaScript or C# change also selects OCI because it changes image content.
 
 The workflow defaults to no `GITHUB_TOKEN` permissions. Classification receives
 only `contents: read`, `pull-requests: read`, and the `actions: read` needed for
-the smoke history guard. Repository-owned
+the smoke and labeled-run history guards. Repository-owned
 `SELECTIVE_CI_SAMPLE_OPERATOR` Actions variable supplies the expected operator
 login to default-branch `pull_request_target` orchestration; pull-request code
 and event fields cannot override it. The classifier requires the trusted event
@@ -158,18 +177,23 @@ every-PR contexts are future promotion scope. For a triggered event,
 selected domain did not pass.
 If classification fails, every domain is `unavailable` rather than
 `not-applicable`. An authorized sample uses the stable per-PR
-`sample-pr-<number>` concurrency group with cancellation disabled, serializing
-duplicate authorized events. Ordinary PR topology events use a separate
+`sample-pr-<number>` concurrency group with cancellation disabled. GitHub queues
+a repeated same-PR event; it does not cancel the active run. Before a queued
+repeat can schedule heavy work, the complete history guard rejects its repeated
+PR identity or the hard-cap/rerun/binding condition. Distinct PR groups are not globally
+serialized by YAML, so the operator protocol applies one sample label at a time
+and waits for completion. Ordinary PR topology events use a separate
 `topology-pull_request_target-<number>` group with cancellation enabled, so an
 unrelated label cannot cancel a running authorized sample. That separation and
 unsampled topology are **static workflow-expression and fixture assertions
 only** during this two-slot window; never emit an unrelated live label event to
-test them because it consumes `N` and terminally disables collection. GitHub
+test them because it violates the operator protocol even though it does not
+consume `N`. GitHub
 expression string equality is only a scheduling prefilter; the repository
 classifier's exact-case comparison is authoritative, so a differently cased
 login schedules no domain. Repository-dispatch runs share the
 `smoke-<configured-controller-SHA>` concurrency group with cancellation
-disabled. The guard reads completely paginated Actions history twice, with a
+disabled, so repeats queue. The guard reads completely paginated Actions history twice, with a
 bounded delay, and requires the current run to remain the sole run at that
 controller SHA. Thus a concurrent or later repeat cannot start a second heavy
 suite; a rerun attempt is also rejected.
@@ -191,10 +215,11 @@ The classifier also emits `trustedClassifierAvailable`. If a labeled PR's base
 does not yet contain `.github/ci/change-classifier.js`, bootstrap evidence
 contains `trusted-classifier-unavailable-on-base`, every aggregate domain is
 `unavailable`, `samplePreconditionFailed=true`, no domain job runs, and the
-aggregate fails. This is a precondition failure, not a sample. An ordinary
-non-sample labeled event, if one unexpectedly occurs, produces
-`shadow-not-sampled` evidence with no heavy domain work, consumes `N`, and
-terminally disables this window.
+aggregate fails. This is a precondition failure, not a valid sample, but an exact
+authorized sample-label event still consumes `N`. An unexpected non-sample label
+runs only the lightweight classifier/aggregate path, records
+`shadow-not-sampled`, and schedules no heavy domain work, but still consumes
+`N`; the operator protocol terminally ends this window.
 
 Trusted classification enforces an absolute 132-request metadata budget.
 A labeled sample uses four merge-integrity requests (initial live PR, Git
@@ -335,8 +360,10 @@ the 3-minute / USD 0.024 / 81.25%-saving docs-only target.
 
 This window is a **small feasibility gate**, not a savings collection:
 
-- `N <= 2` counts all labeled events, including lightweight non-sample label
-  events. Both slots are reserved for the intended docs and full samples.
+- `N <= 2` counts every labeled workflow run since the window start. Only two
+  distinct, completely bound, authorized sample-label runs at the configured
+  controller may produce evidence; an unrelated run consumes `N` without
+  creating a replacement evidence slot.
 - `S=1` is the single full-safety `repository_dispatch` type
   `selective-ci-smoke`.
 - At most one pre-identified, naturally useful prose-only PR and one full-suite
@@ -381,8 +408,10 @@ exposure bound, not approved spend. Terminally disable if completed Jobs API
 rounded time for the docs sample exceeds 6 minutes or the smoke or full sample
 exceeds 32 minutes (twice modeled duration).
 
-There is no cadence-based run monitoring. Immediately before each of the two
-serialized sample-label applications, query Actions and issue events from the
+There is no cadence-based run monitoring. The three required Actions variables
+must be configured and verified before **any** label is applied during the
+window. Immediately before each of the two serialized sample-label applications,
+query Actions and issue events from the
 recorded UTC window start. Require zero prior labeled runs before the docs label
 and exactly one before the full label. Any unexpected label event or actor
 terminally disables the workflow. Do not claim repository automation is unable
@@ -424,12 +453,26 @@ $controllerRuns = @($smokeRuns | Where-Object head_sha -CEQ '<CONTROLLER_SHA>')
 }
 ```
 
+The classifier independently fetches every `pull_request_target` run for this
+workflow since `<START>`, follows every page, then completely paginates issue
+events for every exact run PR. It requires a unique bounded labeled-event
+binding and records raw `labelRunCount`, `authorizedRunCount`, `authorizedSlot`,
+bound records, page/request/rate evidence, history fingerprints, and its explicit
+authorization or fail-closed reason. Raw history includes sample and non-sample
+labels, and every raw labeled workflow run consumes `N`; only exact
+operator/sample-label/controller bindings can schedule domains.
+Current-run indexing lag fails closed and consumes—and therefore ends—the
+applicable `S` or `N` window; do not retry, rerun, remove/reapply a label, or send
+a replacement dispatch.
+
 `N=2` is the hard cap. The same terminal action applies after the one dispatch,
 the two labeled samples, any unexpected label event/actor, tripwire, exhausted
 headroom, or failure to pre-identify/classify the prose candidate before the
 charged dispatch. Use
-`gh workflow disable selective-ci-shadow.yml`, record the UTC shutdown time and
-last run ID, and verify that no later run was created. Re-enable is not allowed
+`gh workflow disable selective-ci-shadow.yml --repo Jamula/Andreja`, record the
+UTC shutdown time and last run ID, and verify
+`gh api repos/Jamula/Andreja/actions/workflows/selective-ci-shadow.yml --jq '.state'`
+returns `disabled_manually` and that no later run was created. Re-enable is not allowed
 under this window; a new approved budget/window must start with its own charged
 smoke.
 
@@ -466,8 +509,8 @@ continuation.
    evidence. Immediately after merge, read the PR's authoritative `merged_at`
    timestamp and exact squash-merged controller SHA. Record `merged_at` as
    `<START>` before any workflow action; every labeled event and labeled
-   workflow run at or after `<START>` counts against `N`, including any run
-   between merge and the dispatch smoke. The squash-merged SHA is the only
+   workflow run at or after `<START>` counts against `N`, even when authorization
+   rejects it. The squash-merged SHA is the only
    trusted controller revision. Any unexpected label event or actor after
    `<START>` terminally disables the workflow before the smoke.
 2. Before any charged dispatch, identify at most one naturally useful
@@ -527,8 +570,15 @@ continuation.
    and acceptable Jobs API duration. A failed smoke, `F_i >= 4`, more than 32
    rounded minutes, or insufficient headroom terminally disables; no second
    dispatch is authorized.
-4. Reverify the monitored no-unexpected-label precondition and all configured
-   variables before labeling.
+4. Reverify the monitored no-unexpected-label precondition and all three
+   configured variables before **any** label. Each sample run must record two
+   complete, stable Actions/issue-event snapshots in each of two authorization
+   passes, its visible current run, unique run/event binding,
+   `authorizedRunCount` and `authorizedSlot` of one or two, and
+   `authorized-labeled-run-slot-<slot>-of-2`. A third raw labeled run, a repeat
+   of a sampled PR, any rerun, duplicate/ambiguous binding, unstable metadata, final-pass fingerprint change,
+   pagination/API/rate-limit failure, or current-run indexing lag fails
+   unavailable before domains and terminally ends the window without retry.
 
    Do not provision or change these settings merely by editing the runbook. Treat
    an absent, differently cased, stale, or mismatched variable as a fail-closed setup blocker. The operator value is
@@ -596,7 +646,9 @@ continuation.
 
    Preserve the pre-window label inventory and compare it with paginated issue
    events before each sample. Any label added by automation, or any non-sample
-   label event after `<START>`, consumes a slot and terminally disables.
+   label event after `<START>`, is an operator-protocol tripwire, consumes the
+   absolute raw `N` cap, and terminally disables the window without creating
+   replacement evidence.
 
    The maintainer then provisions the sample label once:
    `gh label create ci:selective-shadow-sample --repo Jamula/Andreja --color 5319e7 --description "Maintainer-authorized bounded selective-CI sample"`.
@@ -655,8 +707,8 @@ continuation.
    `gh pr edit <number> --remove-label ci:selective-shadow-sample`.
    Branch updates, retained labels, opened PRs, and reopened PRs do not trigger
    collection. A non-sample label event may emit lightweight
-   `shadow-not-sampled` contexts but consumes one of the two `N` slots; because
-   no replacement is allowed, treat it as terminal.
+   `shadow-not-sampled` contexts and consumes one of the two raw `N` slots
+   without creating replacement evidence; treat it as terminal.
 6. Confirm from static fixtures that a non-sample labeled event would emit
    `shadow-not-sampled` with no heavy domain work; do not create such an event.
    Confirm sampled docs/full runs have correct dispositions, no fork gets write
@@ -675,9 +727,10 @@ continuation.
    collection or promotion by itself; separate FinOps approval and a new
    reviewed window are mandatory.
 9. At any tripwire or feasibility end, terminally disable the workflow:
-   `gh workflow disable selective-ci-shadow.yml`. There is no routine
-   pause/re-enable path. Verify `gh workflow view selective-ci-shadow.yml --json
-   state` reports `disabled_manually`, record the UTC shutdown time and last run
+   `gh workflow disable selective-ci-shadow.yml --repo Jamula/Andreja`. There is
+   no routine pause/re-enable path. Verify
+   `gh api repos/Jamula/Andreja/actions/workflows/selective-ci-shadow.yml --jq '.state'`
+   reports `disabled_manually`, record the UTC shutdown time and last run
    ID, and confirm no later run. Remove the label from every PR and delete it
    only after audit evidence confirms no active sample:
    `gh label delete ci:selective-shadow-sample --repo Jamula/Andreja --yes`.
@@ -741,8 +794,8 @@ closed. Roll back the ruleset body before rolling back/renaming workflow code.
 Restoring `push` is a separately reviewed promotion change. It must retain the
 all-zero `before` branch-creation fallback to `github.sha`, force every domain,
 and keep `github.event_name` in the concurrency key so push cannot collide with
-schedule/manual runs. `cancel-in-progress` must remain false for schedule and
-manual events. Until that change is proven, the existing .NET, OCI, PowerShell,
+schedule/repository-dispatch runs. `cancel-in-progress` must remain false for
+schedule and repository-dispatch events. Until that change is proven, the existing .NET, OCI, PowerShell,
 docs, and related workflows remain the `main` push safety net.
 
 A future sole-aggregate requirement intentionally concentrates trust in one

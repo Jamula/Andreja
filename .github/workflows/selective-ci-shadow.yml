@@ -57,6 +57,7 @@ jobs:
       full_suite: ${{ steps.classify.outputs.full_suite }}
       shadow_sampled: ${{ steps.classify.outputs.shadow_sampled }}
       trusted_classifier: ${{ steps.classify.outputs.trusted_classifier }}
+      label_run_authorization: ${{ steps.classify.outputs.label_run_authorization }}
       smoke_authorization: ${{ steps.classify.outputs.smoke_authorization }}
       api_request_budget: ${{ steps.classify.outputs.api_request_budget }}
       docs: ${{ steps.classify.outputs.docs }}
@@ -145,6 +146,28 @@ jobs:
               }
             : null;
           const sampled = isPullRequest && sampleLabelEvent && operatorMatches;
+          const labelRunAuthorization = isPullRequest
+            ? {
+                authorized: false,
+                reason: 'trusted-classifier-unavailable-on-default-branch',
+                eventAction: event.action ?? null,
+                label: event.label?.name ?? null,
+                sender: observedActor,
+                actor: process.env.GITHUB_ACTOR || null,
+                expectedOperator,
+                workflowRef: process.env.GITHUB_REF || null,
+                workflowSha: process.env.GITHUB_SHA || null,
+                expectedControllerSha: process.env.SELECTIVE_CI_CONTROLLER_SHA || null,
+                windowStart: process.env.SELECTIVE_CI_WINDOW_START || null,
+                currentRunId: process.env.GITHUB_RUN_ID || null,
+                currentRunAttempt: process.env.GITHUB_RUN_ATTEMPT || null,
+                pullRequestNumber: event.pull_request?.number ?? null,
+                labelRunCount: null,
+                historySnapshots: [],
+                requestBudgetAtAuthorization: null,
+                error: null,
+              }
+            : null;
           const reason = sampled
             ? 'authorized-sample-label-event'
             : isSmoke
@@ -169,6 +192,7 @@ jobs:
             },
             fullSuite: true,
             fullReasons: ['trusted-classifier-unavailable-on-base'],
+            labelRunAuthorization,
             smokeAuthorization,
             shadowSample: {
               label: 'ci:selective-shadow-sample',
@@ -192,6 +216,7 @@ jobs:
               'full_suite=true',
               `shadow_sampled=${sampled}`,
               'trusted_classifier=false',
+              `label_run_authorization=${JSON.stringify(labelRunAuthorization)}`,
               `smoke_authorization=${JSON.stringify(smokeAuthorization)}`,
               `api_request_budget=${JSON.stringify(decision.apiRequestBudget)}`,
               'docs=true',
@@ -485,6 +510,7 @@ jobs:
           CLASSIFY_SECONDS: ${{ needs.classify.outputs.duration_seconds }}
           SHADOW_SAMPLED: ${{ needs.classify.outputs.shadow_sampled }}
           TRUSTED_CLASSIFIER: ${{ needs.classify.outputs.trusted_classifier }}
+          LABEL_RUN_AUTHORIZATION: ${{ needs.classify.outputs.label_run_authorization }}
           SMOKE_AUTHORIZATION: ${{ needs.classify.outputs.smoke_authorization }}
           API_REQUEST_BUDGET: ${{ needs.classify.outputs.api_request_budget }}
           DOCS_SELECTED: ${{ needs.classify.outputs.docs }}
@@ -533,8 +559,13 @@ jobs:
             }
           };
           const smokeAuthorization = parseEvidenceJson('SMOKE_AUTHORIZATION');
+          const labelRunAuthorization = parseEvidenceJson('LABEL_RUN_AUTHORIZATION');
           const apiRequestBudget = parseEvidenceJson('API_REQUEST_BUDGET');
           const samplePreconditionFailed = shadowSampled && !trustedClassifierAvailable;
+          const labelPreconditionFailed =
+            process.env.GITHUB_EVENT_NAME === 'pull_request_target' &&
+            labelRunAuthorization !== null &&
+            labelRunAuthorization?.authorized !== true;
           const smokePreconditionFailed =
             process.env.GITHUB_EVENT_NAME === 'repository_dispatch' &&
             smokeAuthorization?.authorized !== true;
@@ -559,6 +590,7 @@ jobs:
             const disposition =
               !classificationAvailable ||
               samplePreconditionFailed ||
+              labelPreconditionFailed ||
               smokePreconditionFailed ||
               (validationRequested && !validationRevisionAvailable)
               ? 'unavailable'
@@ -571,6 +603,8 @@ jobs:
               ? 'classification-unavailable'
               : samplePreconditionFailed
                 ? 'trusted-classifier-unavailable-on-base'
+                : labelPreconditionFailed
+                  ? (labelRunAuthorization?.reason || 'labeled-run-window-unavailable')
                 : smokePreconditionFailed
                   ? (smokeAuthorization?.reason || 'repository-dispatch-smoke-unavailable')
                 : validationRequested && !validationRevisionAvailable
@@ -604,14 +638,18 @@ jobs:
               validationRevisionReason
             },
             classificationResult: process.env.CLASSIFY_RESULT,
+            labelRunAuthorization,
             smokeAuthorization,
             apiRequestBudget,
             shadowSampled,
             trustedClassifierAvailable,
             samplePreconditionFailed,
+            labelPreconditionFailed,
             smokePreconditionFailed,
             samplingReason: samplePreconditionFailed
               ? 'trusted-classifier-unavailable-on-base'
+              : labelPreconditionFailed
+                ? (labelRunAuthorization?.reason || 'labeled-run-window-unavailable')
               : smokeAuthorization
                 ? smokeAuthorization.reason
               : shadowSampled
@@ -654,6 +692,7 @@ jobs:
           }
           const failed = process.env.CLASSIFY_RESULT !== 'success' ||
             samplePreconditionFailed ||
+            labelPreconditionFailed ||
             smokePreconditionFailed ||
             (validationRequested && !validationRevisionAvailable) ||
             Object.values(domains).some((item) => item.scheduled && item.disposition !== 'passed');
