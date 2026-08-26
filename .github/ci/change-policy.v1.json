@@ -11,7 +11,12 @@
   "rules": [
     {
       "id": "ci-security-boundary",
-      "pattern": "^(\\.github/workflows/|\\.github/ci/|\\.github/scripts/|SECURITY\\.md$|supply-chain-policy\\.json$|docs/(security|threat-model|operations/selective-ci|runbooks/review-gate-app))",
+      "pattern": "^(\\.github/workflows/|\\.github/ci/|\\.github/scripts/|SECURITY\\.md$|supply-chain-policy\\.json$|docs/(security|threat-model|runbooks/review-gate-app))",
+      "fullSuite": true
+    },
+    {
+      "id": "selective-ci-runbook-governance",
+      "pattern": "^docs/operations/selective-ci\\.md$",
       "fullSuite": true
     },
     {
@@ -36,7 +41,7 @@
     },
     {
       "id": "runtime-configuration-boundary",
-      "pattern": "^\\.mcp\\.json$",
+      "pattern": "^(\\.mcp\\.json|\\.gitattributes)$",
       "fullSuite": true
     },
     {
@@ -107,7 +112,7 @@
     },
     {
       "id": "inert-repository-metadata",
-      "pattern": "^(\\.github/(FUNDING\\.yml|pull_request_template\\.md|ISSUE_TEMPLATE/(bug|config|decision|feature|feedback)\\.yml)|\\.gitignore|\\.gitattributes|\\.env\\.example)$",
+      "pattern": "^(\\.github/(FUNDING\\.yml|pull_request_template\\.md|ISSUE_TEMPLATE/(bug|config|decision|feature|feedback)\\.yml)|\\.gitignore|\\.env\\.example)$",
       "domains": ["docs"]
     }
   ]

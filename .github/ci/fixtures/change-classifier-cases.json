@@ -177,6 +177,12 @@
     "fullSuite": true
   },
   {
+    "name": "Git attributes repository behavior",
+    "files": [{"filename": ".gitattributes", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
     "name": "executable documentation",
     "files": [{"filename": "docs/help/local-identity.md", "status": "added", "changes": 3, "patch": "@@ -0,0 +1,3 @@\n+```powershell\n+dotnet run\n+```"}],
     "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],

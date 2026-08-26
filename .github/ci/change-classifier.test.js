@@ -97,6 +97,7 @@ test('all tracked paths have an explicit policy rule', () => {
 test('every policy rule is reachable as the first matching rule', () => {
   const representatives = {
     'ci-security-boundary': '.github/workflows/example.yml',
+    'selective-ci-runbook-governance': 'docs/operations/selective-ci.md',
     'central-build-dependency-sdk': 'global.json',
     'dependency-update-configuration': '.github/dependabot.yml',
     'github-governance-boundary': '.github/actions/setup/action.yml',
@@ -133,6 +134,23 @@ test('every policy rule is reachable as the first matching rule', () => {
   }
 });
 
+test('selective CI runbook governance rule is exactly anchored', () => {
+  const rule = policy.rules.find(({ id }) => id === 'selective-ci-runbook-governance');
+  assert.ok(rule);
+  assert.equal(rule.pattern, '^docs/operations/selective-ci\\.md$');
+  assert.equal(rule.fullSuite, true);
+
+  const sibling = classifyFiles([{
+    filename: 'docs/operations/selective-ci-notes.md',
+    status: 'modified',
+    changes: 2,
+    baseContent: 'old prose\n',
+    patch: '@@ -1 +1 @@\n-old prose\n+new prose',
+  }], policy);
+  assert.equal(sibling.files[0].rule, 'documentation');
+  assert.equal(sibling.fullSuite, false);
+});
+
 test('C sharp and Docker changes can never be docs-only', () => {
   for (const filename of ['src/Andreja.AppHost/Program.cs', 'Dockerfile']) {
     const result = classifyFiles([{ filename, status: 'modified' }], policy);
@@ -159,6 +177,16 @@ test('classifier changes fail closed to every domain', () => {
 
 test('MCP runtime configuration can never be classified as docs-only', () => {
   const result = classifyFiles([{ filename: '.mcp.json', status: 'modified' }], policy);
+  assert.equal(result.files[0].rule, 'runtime-configuration-boundary');
+  assert.equal(result.fullSuite, true);
+  assert.deepEqual(
+    ALL_DOMAINS.filter((domain) => result.domains[domain].selected),
+    ALL_DOMAINS,
+  );
+});
+
+test('Git attributes repository behavior can never be classified as docs-only', () => {
+  const result = classifyFiles([{ filename: '.gitattributes', status: 'modified' }], policy);
   assert.equal(result.files[0].rule, 'runtime-configuration-boundary');
   assert.equal(result.fullSuite, true);
   assert.deepEqual(
@@ -604,16 +632,29 @@ test('captured PR 103 Markdown inline code now fails closed', () => {
   );
 });
 
-test('workflow bounds PR sampling and never cancels scheduled safety runs', () => {
+test('workflow isolates authorized samples from cancelable topology runs', () => {
   const workflow = fs.readFileSync(
     path.join(root, '.github/workflows/selective-ci-shadow.yml'),
     'utf8',
   );
-  assert.match(workflow, /group: selective-ci-shadow-\$\{\{ github\.event_name \}\}-/);
+  assert.match(workflow, /format\('sample-pr-\{0\}', github\.event\.pull_request\.number\)/);
+  assert.match(
+    workflow,
+    /format\([\s\S]+?'topology-\{0\}-\{1\}',[\s\S]+?github\.event_name,/,
+  );
+  assert.match(
+    workflow,
+    /vars\.SELECTIVE_CI_SAMPLE_OPERATOR != ''[\s\S]+github\.event\.sender\.login == vars\.SELECTIVE_CI_SAMPLE_OPERATOR/,
+  );
   assert.match(workflow, /^\s+pull_request_target:\s*$/m);
+  assert.match(workflow, /^\s+workflow_dispatch:\s*$/m);
   assert.doesNotMatch(workflow, /^\s+pull_request:\s*$/m);
   assert.doesNotMatch(workflow, /^\s+merge_group:\s*$/m);
-  assert.match(workflow, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request_target' \}\}/);
+  assert.doesNotMatch(workflow, /^\s+schedule:\s*$/m);
+  assert.match(
+    workflow,
+    /cancel-in-progress: >-[\s\S]+github\.event_name == 'pull_request_target' &&[\s\S]+!\([\s\S]+vars\.SELECTIVE_CI_SAMPLE_OPERATOR != ''[\s\S]+github\.event\.sender\.login == vars\.SELECTIVE_CI_SAMPLE_OPERATOR[\s\S]+\)/,
+  );
   assert.doesNotMatch(workflow, /^\s+push:\s*$/m);
   assert.match(workflow, /types: \[opened, labeled\]/);
   assert.doesNotMatch(workflow, /types: \[[^\]]*(synchronize|reopened)/);
@@ -621,7 +662,7 @@ test('workflow bounds PR sampling and never cancels scheduled safety runs', () =
     workflow.match(/if: needs\.classify\.outputs\.shadow_sampled == 'true' && needs\.classify\.outputs\.trusted_classifier == 'true' && needs\.classify\.outputs\.[a-z]+ == 'true'/g)?.length,
     ALL_DOMAINS.length,
   );
-  assert.match(workflow, /echo "trusted_classifier=false"/);
+  assert.match(workflow, /'trusted_classifier=false'/);
   assert.match(workflow, /trusted_classifier: \$\{\{ steps\.classify\.outputs\.trusted_classifier \}\}/);
   assert.match(
     workflow,
@@ -653,28 +694,52 @@ test('workflow bounds PR sampling and never cancels scheduled safety runs', () =
   assert.match(workflow, /permissions:\r?\n\s+contents: read\r?\n\s+pull-requests: read/);
 });
 
-test('only the trusted sample-label event enables PR shadow work', () => {
+test('only an authorized operator sample-label event enables PR shadow work', () => {
   const labeled = {
     action: 'labeled',
     label: { name: 'ci:selective-shadow-sample' },
     pull_request: { labels: [{ name: 'ci:selective-shadow-sample' }] },
+    sender: { login: 'jett-reno' },
   };
-  assert.deepEqual(shadowSample('pull_request_target', labeled), {
+  assert.deepEqual(shadowSample('pull_request_target', labeled, 'Jett-Reno'), {
     sampled: true,
-    reason: 'maintainer-sample-label-event',
+    reason: 'authorized-sample-label-event',
+    observedActor: 'jett-reno',
+    expectedOperator: 'Jett-Reno',
+  });
+  assert.deepEqual(shadowSample('pull_request_target', labeled, 'other-operator'), {
+    sampled: false,
+    reason: 'sample-operator-mismatch',
+    observedActor: 'jett-reno',
+    expectedOperator: 'other-operator',
+  });
+  assert.deepEqual(shadowSample('pull_request_target', labeled), {
+    sampled: false,
+    reason: 'sample-operator-unconfigured',
+    observedActor: 'jett-reno',
+    expectedOperator: null,
   });
   assert.equal(
-    shadowSample('pull_request_target', { ...labeled, action: 'synchronize' }).sampled,
+    shadowSample(
+      'pull_request_target',
+      { ...labeled, action: 'synchronize' },
+      'jett-reno',
+    ).sampled,
     false,
   );
   assert.equal(
     shadowSample('pull_request_target', {
       ...labeled,
       label: { name: 'untrusted-lookalike' },
-    }).sampled,
+    }, 'jett-reno').sampled,
     false,
   );
-  assert.equal(shadowSample('schedule', {}).sampled, true);
+  assert.deepEqual(shadowSample('schedule', {}, 'jett-reno'), {
+    sampled: true,
+    reason: 'non-pull-request-full-safety',
+    observedActor: null,
+    expectedOperator: 'jett-reno',
+  });
   assert.equal(
     classifyFiles([{ filename: 'src/App.cs', status: 'modified' }], policy)
       .trustedClassifierAvailable,
@@ -812,41 +877,47 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
     path.join(root, 'docs/testing-matrix.md'),
     'utf8',
   );
-  assert.match(runbook, /first three valid trusted samples/);
-  assert.match(runbook, /maximum of those three observations/);
-  assert.match(runbook, /remaining seven/);
-  assert.match(runbook, /M=0/);
-  assert.match(runbook, /no current `merge_group`\s+trigger/);
-  assert.match(runbook, /shadow makes no merge-group context claim/);
-  assert.match(runbook, /323 minutes \/ USD 2\.584/);
-  assert.match(runbook, /388 minutes \/ USD 3\.104/);
-  assert.match(runbook, /485 rounded minutes \/ USD 3\.880/);
+  assert.match(runbook, /one pre-identified, naturally useful prose-only PR/);
+  assert.match(runbook, /one full-suite\s+PR/);
+  assert.match(runbook, /No synthetic or no-op change/);
+  assert.match(runbook, /maximum of the smoke, docs, and full trusted runs/);
+  assert.match(runbook, /N <= 25/);
+  assert.match(runbook, /S=1/);
+  assert.match(runbook, /81 minutes \/ USD 0\.648/);
+  assert.match(runbook, /94 minutes \/ USD 0\.752/);
+  assert.match(runbook, /118 minutes \/ USD 0\.944/);
   assert.match(runbook, /200 job-minutes for one full run/);
-  assert.match(runbook, /4,400.*job-minutes \/ USD 35\.200/);
+  assert.match(runbook, /1,060 job-minutes \/ USD 8\.480/);
   assert.match(runbook, /exceeds 6 minutes.*exceeds 32 minutes/s);
-  assert.match(runbook, /observed `F_i >= 4`/);
-  assert.match(runbook, /N=100` is a hard cap/);
-  assert.match(runbook, /outside the original `S <= 3`/);
-  assert.match(runbook, /no continuation or replacement window/);
+  assert.match(runbook, /[Aa]ny observed `F_i >= 4`/);
+  assert.match(runbook, /N >= 20/);
+  assert.match(runbook, /N=25` is the hard cap/);
+  assert.match(runbook, /terminally disable/);
+  assert.match(runbook, /no routine pause\/re-enable path/);
   assert.match(runbook, /workflow_dispatch.*Charge it against `S`/s);
   assert.match(runbook, /schemaVersion: 2/);
   assert.match(runbook, /no-automation precondition/);
   assert.match(runbook, /waits for that[\s\S]+does not remove, reapply, or apply it elsewhere/);
-  assert.match(runbook, /continuation budget[\s\S]+every retained automatic trigger/);
   assert.match(runbook, /gh workflow disable selective-ci-shadow\.yml/);
-  assert.match(runbook, /Promotion remains blocked while it is disabled/);
+  assert.match(runbook, /positive\s+docs and full evidence[\s\S]+separate FinOps approval/);
+  assert.match(runbook, /0% replay[\s\S]+8\.75%/);
+  assert.match(runbook, /SELECTIVE_CI_SAMPLE_OPERATOR/);
+  assert.match(runbook, /observedActor.*expectedOperator/s);
+  assert.match(runbook, /sample-pr-<number>.*cancellation disabled/s);
   assert.match(runbook, /\$pages = gh api --paginate --slurp[\s\S]+ConvertFrom-Json/);
   assert.doesNotMatch(runbook, /--slurp[\s\S]{0,250}--jq/);
-  assert.match(runbook, /final `pull_request_target` YAML at commit `cb7a434` has never\s+executed/);
+  assert.match(
+    runbook,
+    /first default-branch-owned\s+`pull_request_target` controller revision at `cb7a434` has never executed,[\s\S]+`95d7450` has likewise never\s+executed/,
+  );
   assert.match(runbook, /GET \/repos\/Jamula\/Andreja\/issues\/events/);
-  assert.doesNotMatch(runbook, /M <= 3|371 minutes|436 minutes|545 rounded minutes|remaining nine|repos\/cyrusjamula\/Andreja/);
-  assert.match(testingMatrix, /maximum of the first three valid trusted samples/);
-  assert.match(testingMatrix, /remaining seven/);
-  assert.match(testingMatrix, /M=0/);
-  assert.match(testingMatrix, /no `merge_group` trigger/);
-  assert.match(testingMatrix, /323 planned \/ 388 fail-closed ceiling \/ 485 with 25% headroom/);
+  assert.doesNotMatch(runbook, /323 minutes|388 minutes|485 rounded minutes|4,400|remaining seven|five eligible docs|five full/);
+  assert.match(testingMatrix, /maximum of smoke, docs, and full trusted runs/);
+  assert.match(testingMatrix, /no `schedule` or `merge_group` trigger/);
+  assert.match(testingMatrix, /81 planned \/ 94 fail-closed ceiling \/ 118 with 25% headroom/);
+  assert.match(testingMatrix, /N<=25/);
   assert.match(testingMatrix, /timeout-derived full-run bound is 200 job-minutes/);
-  assert.doesNotMatch(testingMatrix, /M <= 3|371 planned|remaining nine/);
+  assert.doesNotMatch(testingMatrix, /323 planned|388 fail-closed|remaining seven|5 docs \+ 5 full/);
 });
 
 test('historical replay economics use the documented per-domain model', () => {

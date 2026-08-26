@@ -427,6 +427,8 @@ function classifyFiles(files, policy, options = {}) {
       label: SHADOW_SAMPLE_LABEL,
       sampled: options.shadowSampled ?? true,
       reason: options.shadowSampleReason ?? 'fixture-or-non-pull-request',
+      observedActor: options.shadowSampleObservedActor ?? null,
+      expectedOperator: options.shadowSampleExpectedOperator ?? null,
     },
     fullSuite,
     fullReasons: [...new Set(fullReasons)].sort(),
@@ -436,19 +438,46 @@ function classifyFiles(files, policy, options = {}) {
   };
 }
 
-function shadowSample(eventName, event) {
+function shadowSample(eventName, event, expectedOperator) {
+  const observedActor =
+    typeof event.sender?.login === 'string' && event.sender.login.length > 0
+      ? event.sender.login
+      : null;
+  const configuredOperator =
+    typeof expectedOperator === 'string' && expectedOperator.length > 0
+      ? expectedOperator
+      : null;
   if (eventName !== 'pull_request' && eventName !== 'pull_request_target') {
-    return { sampled: true, reason: 'non-pull-request-full-safety' };
+    return {
+      sampled: true,
+      reason: 'non-pull-request-full-safety',
+      observedActor,
+      expectedOperator: configuredOperator,
+    };
   }
   const labels = Array.isArray(event.pull_request?.labels) ? event.pull_request.labels : [];
   const labelPresent = labels.some((label) => label?.name === SHADOW_SAMPLE_LABEL);
-  const sampled =
+  const sampleLabelEvent =
     event.action === 'labeled' &&
     event.label?.name === SHADOW_SAMPLE_LABEL &&
     labelPresent;
+  const operatorMatches =
+    observedActor !== null &&
+    configuredOperator !== null &&
+    observedActor.toLowerCase() === configuredOperator.toLowerCase();
+  const sampled = sampleLabelEvent && operatorMatches;
+  const reason = sampled
+    ? 'authorized-sample-label-event'
+    : sampleLabelEvent && configuredOperator === null
+      ? 'sample-operator-unconfigured'
+      : sampleLabelEvent
+        ? 'sample-operator-mismatch'
+        : 'shadow-not-sampled';
   return {
     sampled,
-    reason: sampled ? 'maintainer-sample-label-event' : 'shadow-not-sampled',
+    reason,
+    observedActor,
+    expectedOperator: configuredOperator,
   };
 }
 
@@ -646,7 +675,11 @@ async function main(fetchImpl = fetch) {
   const policyPath = process.env.CHANGE_POLICY_PATH || path.join(__dirname, 'change-policy.v1.json');
   const outputFile = process.env.CHANGE_DECISION_PATH || 'artifacts/selective-ci/classification.json';
   const policy = loadPolicy(policyPath);
-  const sample = shadowSample(eventName, event);
+  const sample = shadowSample(
+    eventName,
+    event,
+    process.env.SELECTIVE_CI_SAMPLE_OPERATOR,
+  );
   const budgetedFetch = createBudgetedFetch(fetchImpl);
 
   let changes;
@@ -697,6 +730,8 @@ async function main(fetchImpl = fetch) {
     forcedFullReasons,
     shadowSampled: sample.sampled,
     shadowSampleReason: sample.reason,
+    shadowSampleObservedActor: sample.observedActor,
+    shadowSampleExpectedOperator: sample.expectedOperator,
     trustedClassifierAvailable: true,
     apiRequestBudget,
     classificationFailure,

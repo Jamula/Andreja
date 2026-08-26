@@ -4,15 +4,37 @@ on:
   pull_request_target:
     branches: [main]
     types: [opened, labeled]
-  schedule:
-    - cron: '17 03 * * 2'
   workflow_dispatch:
 
 permissions: {}
 
 concurrency:
-  group: selective-ci-shadow-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
+  group: >-
+    selective-ci-shadow-${{
+      github.event_name == 'pull_request_target' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'ci:selective-shadow-sample' &&
+      contains(github.event.pull_request.labels.*.name, 'ci:selective-shadow-sample') &&
+      vars.SELECTIVE_CI_SAMPLE_OPERATOR != '' &&
+      github.event.sender.login == vars.SELECTIVE_CI_SAMPLE_OPERATOR &&
+      format('sample-pr-{0}', github.event.pull_request.number) ||
+      format(
+        'topology-{0}-{1}',
+        github.event_name,
+        github.event.pull_request.number || github.event.merge_group.head_sha || github.ref
+      )
+    }}
+  cancel-in-progress: >-
+    ${{
+      github.event_name == 'pull_request_target' &&
+      !(
+        github.event.action == 'labeled' &&
+        github.event.label.name == 'ci:selective-shadow-sample' &&
+        contains(github.event.pull_request.labels.*.name, 'ci:selective-shadow-sample') &&
+        vars.SELECTIVE_CI_SAMPLE_OPERATOR != '' &&
+        github.event.sender.login == vars.SELECTIVE_CI_SAMPLE_OPERATOR
+      )
+    }}
 
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: '1'
@@ -63,63 +85,90 @@ jobs:
           TRUSTED_POLICY_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.sha }}
           CHANGE_POLICY_PATH: trusted-ci/.github/ci/change-policy.v1.json
           CHANGE_DECISION_PATH: artifacts/selective-ci/classification.json
-          SHADOW_SAMPLED: ${{ github.event_name != 'pull_request_target' || (github.event.action == 'labeled' && github.event.label.name == 'ci:selective-shadow-sample' && contains(github.event.pull_request.labels.*.name, 'ci:selective-shadow-sample')) }}
+          SELECTIVE_CI_SAMPLE_OPERATOR: ${{ vars.SELECTIVE_CI_SAMPLE_OPERATOR }}
         run: |
           mkdir -p artifacts/selective-ci
           if [ -f trusted-ci/.github/ci/change-classifier.js ]; then
             node trusted-ci/.github/ci/change-classifier.js
           else
             echo "::warning::Trusted classifier is not yet present on the base; bootstrap fails closed."
-            cat > artifacts/selective-ci/classification.json <<'JSON'
-          {
-            "schemaVersion": 1,
-            "eventName": "bootstrap",
-            "trustedClassifierAvailable": false,
-            "classificationFailure": null,
-            "apiRequestBudget": {
-              "limit": 132,
-              "used": 0,
-              "exhausted": false,
-              "rateLimitResponseObserved": false,
-              "minimumRateLimitRemaining": null,
-              "rateLimitResetEpoch": null
+            node <<'BOOTSTRAP_NODE'
+          const fs = require('node:fs');
+          const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+          const isPullRequest = process.env.GITHUB_EVENT_NAME === 'pull_request_target';
+          const observedActor =
+            typeof event.sender?.login === 'string' && event.sender.login.length > 0
+              ? event.sender.login
+              : null;
+          const expectedOperator =
+            typeof process.env.SELECTIVE_CI_SAMPLE_OPERATOR === 'string' &&
+            process.env.SELECTIVE_CI_SAMPLE_OPERATOR.length > 0
+              ? process.env.SELECTIVE_CI_SAMPLE_OPERATOR
+              : null;
+          const labels = Array.isArray(event.pull_request?.labels) ? event.pull_request.labels : [];
+          const sampleLabelEvent =
+            event.action === 'labeled' &&
+            event.label?.name === 'ci:selective-shadow-sample' &&
+            labels.some((label) => label?.name === 'ci:selective-shadow-sample');
+          const operatorMatches =
+            observedActor !== null &&
+            expectedOperator !== null &&
+            observedActor.toLowerCase() === expectedOperator.toLowerCase();
+          const sampled = !isPullRequest || (sampleLabelEvent && operatorMatches);
+          const reason = sampled
+            ? isPullRequest ? 'authorized-sample-label-event' : 'non-pull-request-full-safety'
+            : sampleLabelEvent && expectedOperator === null
+              ? 'sample-operator-unconfigured'
+              : sampleLabelEvent
+                ? 'sample-operator-mismatch'
+                : 'shadow-not-sampled';
+          const decision = {
+            schemaVersion: 1,
+            eventName: 'bootstrap',
+            trustedClassifierAvailable: false,
+            classificationFailure: null,
+            apiRequestBudget: {
+              limit: 132,
+              used: 0,
+              exhausted: false,
+              rateLimitResponseObserved: false,
+              minimumRateLimitRemaining: null,
+              rateLimitResetEpoch: null,
             },
-            "fullSuite": true,
-            "fullReasons": ["trusted-classifier-unavailable-on-base"],
-            "shadowSample": {
-              "label": "ci:selective-shadow-sample",
-              "sampled": false,
-              "reason": "shadow-not-sampled"
+            fullSuite: true,
+            fullReasons: ['trusted-classifier-unavailable-on-base'],
+            shadowSample: {
+              label: 'ci:selective-shadow-sample',
+              sampled,
+              reason,
+              observedActor,
+              expectedOperator,
             },
-            "domains": {
-              "docs": {"selected": true, "disposition": "selected"},
-              "dotnet": {"selected": true, "disposition": "selected"},
-              "postgres": {"selected": true, "disposition": "selected"},
-              "powershell": {"selected": true, "disposition": "selected"},
-              "javascript": {"selected": true, "disposition": "selected"},
-              "oci": {"selected": true, "disposition": "selected"}
-            }
-          }
-          JSON
-            if [ "$SHADOW_SAMPLED" = "true" ]; then
-              sed -i 's/"sampled": false/"sampled": true/' artifacts/selective-ci/classification.json
-              if [ "$GITHUB_EVENT_NAME" = "pull_request_target" ]; then
-                sed -i 's/"shadow-not-sampled"/"maintainer-sample-label-event"/' artifacts/selective-ci/classification.json
-              else
-                sed -i 's/"shadow-not-sampled"/"non-pull-request-full-safety"/' artifacts/selective-ci/classification.json
-              fi
-            fi
-            {
-              echo "full_suite=true"
-              echo "shadow_sampled=$SHADOW_SAMPLED"
-              echo "trusted_classifier=false"
-              echo "docs=true"
-              echo "dotnet=true"
-              echo "postgres=true"
-              echo "powershell=true"
-              echo "javascript=true"
-              echo "oci=true"
-            } >> "$GITHUB_OUTPUT"
+            domains: Object.fromEntries(
+              ['docs', 'dotnet', 'postgres', 'powershell', 'javascript', 'oci']
+                .map((domain) => [domain, { selected: true, disposition: 'selected' }]),
+            ),
+          };
+          fs.writeFileSync(
+            process.env.CHANGE_DECISION_PATH,
+            `${JSON.stringify(decision, null, 2)}\n`,
+          );
+          fs.appendFileSync(
+            process.env.GITHUB_OUTPUT,
+            [
+              'full_suite=true',
+              `shadow_sampled=${sampled}`,
+              'trusted_classifier=false',
+              'docs=true',
+              'dotnet=true',
+              'postgres=true',
+              'powershell=true',
+              'javascript=true',
+              'oci=true',
+              '',
+            ].join('\n'),
+          );
+          BOOTSTRAP_NODE
           fi
           cat artifacts/selective-ci/classification.json >> "$GITHUB_STEP_SUMMARY"
 

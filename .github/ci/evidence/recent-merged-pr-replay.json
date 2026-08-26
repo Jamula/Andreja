@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-26T07:08:41.130Z",
+  "generatedAt": "2026-08-26T07:31:13.132Z",
   "repository": "Jamula/Andreja",
   "policyVersion": 1,
-  "policySha256": "aaf1ac31cf5b26769c61e0a0dd555707272df3e98cf1989f7f73ca57e521e0f8",
-  "classifierSha256": "145698b77468ca0af8c2599e900a0c22376bf8e22ed727b02ff27c52ecad12f1",
+  "policySha256": "2612bcd2d2f2daa9727610edf57300c80f1944de5abd2a55e040299fe961729b",
+  "classifierSha256": "9ffafa95221c28b0eb30d58c419c1513476e6c5de8b51864e1a78d7b17df2430",
   "sample": {
     "method": "most recently updated merged pull requests returned by GitHub REST",
     "count": 20,
@@ -246,6 +246,7 @@
         "oci"
       ],
       "fullReasons": [
+        ".gitattributes:runtime-configuration-boundary",
         ".github/workflows/docs-consistency.yml:ci-security-boundary",
         "docs/architecture/andreja-high-level.md:known-executable-documentation"
       ],
