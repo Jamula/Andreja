@@ -4,7 +4,8 @@
 - **Date:** 2026-08-23
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
-- **Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
+- **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
+- **Current proposed Plan SHA-256:** `05dd5948568104c6a6ccab389e14c2e05210566ed9e5938c59f9ed1d391fe3b4`
 
 ## Decision
 
@@ -124,3 +125,24 @@ not match the merged `docs/plan.md`.
   aggregate checks that neither depend on nor weaken #115. No Proposed ADR is
   accepted and no production, provider, connector, federation, managed-hosting,
   public-site, or support-intake activation is authorized.
+
+### 2026-08-26 — proposed assistant-provider phase scope
+
+- **Tracking issue:** [#74](https://github.com/Jamula/Andreja/issues/74)
+- **Pull request:** Pending draft pull request assignment
+- **Plan SHA-256:** `05dd5948568104c6a6ccab389e14c2e05210566ed9e5938c59f9ed1d391fe3b4`
+- **Approver:** Cyrus Jamula; **pending**
+- **Approver status:** No Cyrus acceptance is claimed. Merge, issue closure, SDK
+  availability, a compile spike, or prior Copilot access does not substitute for
+  his explicit decision after the required reviews.
+- **Classification:** Proposed editorial/status amendment; no re-ratification,
+  provider activation, account, entitlement, spend, content disclosure, or
+  Phase 1A/1B exit is authorized.
+- **Scope:** Link Proposed ADR 0009 and make its recommendation consistent in the
+  plan: deterministic fake plus optional Andreja-native OpenAI-compatible BYOK
+  remain the only Phase 1A runtime providers; Phase 1A Copilot SDK work is
+  limited to a credential-free, non-shipping compile/conformance toolchain
+  spike; a limited real provider begins no earlier than Phase 1B after explicit
+  acceptance and all provider gates. Unanswered or failed gates defer Copilot
+  without weakening provider-neutral, self-hosted, offline, BYOK, portability,
+  or user-owned-data boundaries.

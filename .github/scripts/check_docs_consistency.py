@@ -2,8 +2,9 @@
 """Documentation CI check for catalog/hash drift.
 
 Fails the build when:
-  1. The plan SHA-256 hash recorded in docs/adr/0000-plan-ratification.md no
-     longer matches the merged docs/plan.md content.
+  1. The current or current-proposed plan SHA-256 content hash recorded in
+     docs/adr/0000-plan-ratification.md no longer matches docs/plan.md. An
+     accepted hash remains separate while a proposed amendment awaits approval.
   2. The seed skill names in docs/plan.md's "Initial first-party skill
      catalog" table drift from the authoritative
      docs/roadmap/first-party-skills.md catalog.
@@ -74,28 +75,122 @@ def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def parse_plan_hash_metadata(adr_text: str) -> tuple[str, str]:
+    metadata = adr_text.split("## Decision", 1)[0]
+    patterns = {
+        "proposed": r"\*\*Current proposed Plan SHA-256:\*\*\s*`([0-9a-fA-F]{64})`",
+        "current": r"\*\*Current Plan SHA-256:\*\*\s*`([0-9a-fA-F]{64})`",
+        "legacy": r"\*\*Plan SHA-256:\*\*\s*`([0-9a-fA-F]{64})`",
+    }
+    matches = {
+        state: re.search(pattern, metadata)
+        for state, pattern in patterns.items()
+    }
+    present = [(state, match) for state, match in matches.items() if match]
+    if len(present) != 1:
+        raise ValueError(
+            "ADR 0000 must contain exactly one current, current-proposed, "
+            "or legacy plan SHA-256 metadata line."
+        )
+
+    state, match = present[0]
+    assert match is not None
+    amendment_sections = re.split(r"(?m)^### ", adr_text)[1:]
+    hashed_sections = [
+        (
+            section,
+            hash_match.group(1).lower(),
+            approver_match.group(1) if approver_match else "",
+            classification_match.group(1) if classification_match else "",
+        )
+        for section in amendment_sections
+        if (hash_match := re.search(
+            r"(?m)^- \*\*Plan SHA-256:\*\*\s*`([0-9a-fA-F]{64})`",
+            section,
+        ))
+        for approver_match in [
+            re.search(r"(?m)^- \*\*Approver:\*\*\s*(.+)$", section)
+        ]
+        for classification_match in [
+            re.search(r"(?m)^- \*\*Classification:\*\*\s*(.+)$", section)
+        ]
+    ]
+    if not hashed_sections:
+        raise ValueError("ADR 0000 has no hashed amendment record.")
+
+    if state == "proposed":
+        accepted_match = re.search(
+            r"\*\*Accepted Plan SHA-256:\*\*\s*`([0-9a-fA-F]{64})`",
+            metadata,
+        )
+        if not accepted_match:
+            raise ValueError(
+                "A current-proposed plan hash requires a separate accepted hash."
+            )
+        proposed_section, proposed_hash, proposed_approver, proposed_classification = (
+            hashed_sections[-1]
+        )
+        if (
+            proposed_hash != match.group(1).lower()
+            or "pending" not in proposed_approver.lower()
+            or not proposed_classification.lower().startswith("proposed")
+        ):
+            raise ValueError(
+                "The current-proposed plan hash must be backed by the latest "
+                "pending, Proposed amendment with the same hash."
+            )
+        accepted_sections = [
+            (section, digest)
+            for section, digest, approver, classification in hashed_sections[:-1]
+            if approver
+            and "pending" not in approver.lower()
+            and not classification.lower().startswith("proposed")
+        ]
+        if (
+            not accepted_sections
+            or accepted_sections[-1][1] != accepted_match.group(1).lower()
+        ):
+            raise ValueError(
+                "The accepted plan hash must match the latest accepted "
+                "amendment before the pending proposal."
+            )
+    else:
+        _, latest_hash, latest_approver, latest_classification = hashed_sections[-1]
+        if (
+            latest_hash != match.group(1).lower()
+            or not latest_approver
+            or "pending" in latest_approver.lower()
+            or latest_classification.lower().startswith("proposed")
+        ):
+            raise ValueError(
+                "The current/legacy plan hash must match the latest explicitly "
+                "approved amendment."
+            )
+    return match.group(1).lower(), state
+
+
 def check_plan_hash() -> None:
     plan_text = read(PLAN_PATH)
     actual_hash = hashlib.sha256(plan_text.encode("utf-8")).hexdigest()
 
     adr_text = read(ADR_PATH)
-    match = re.search(r"\*\*Plan SHA-256:\*\*\s*`([0-9a-fA-F]+)`", adr_text)
-    if not match:
-        fail(
-            "Could not find a '**Plan SHA-256:** `<hash>`' line in "
-            f"{ADR_PATH.relative_to(REPO_ROOT)}."
-        )
-    recorded_hash = match.group(1).lower()
+    try:
+        recorded_hash, hash_state = parse_plan_hash_metadata(adr_text)
+    except ValueError as exc:
+        fail(str(exc))
 
     if recorded_hash != actual_hash:
         fail(
             "docs/plan.md has changed since ADR 0000 was ratified.\n"
             f"  Recorded hash: {recorded_hash}\n"
             f"  Actual hash:   {actual_hash}\n"
-            "Log an amendment (or re-ratify) in "
+            "Log a proposed/accepted amendment (or re-ratify) in "
             f"{ADR_PATH.relative_to(REPO_ROOT)} with the new hash."
         )
-    print("OK: docs/plan.md hash matches ADR 0000.")
+    print(
+        "OK: docs/plan.md content hash matches ADR 0000 "
+        f"({hash_state}; hash state does not imply approval)."
+    )
 
 
 def extract_table_rows(text: str, section_heading: str, header_prefix: str) -> list[list[str]]:
