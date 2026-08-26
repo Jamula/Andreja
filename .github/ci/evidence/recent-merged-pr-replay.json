@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-26T10:20:50.408Z",
+  "generatedAt": "2026-08-26T10:59:02.983Z",
   "repository": "Jamula/Andreja",
   "policyVersion": 1,
-  "policySha256": "7212458313ca930b9b324855770af209a2c21363c59d5563ae39c5d99c95e8d0",
-  "classifierSha256": "c45706e4b11e66f23c94d42869bac9a41b1cb23b94d7c82d663ac70dd64de9bf",
+  "policySha256": "6f76489ef723351eb6b18c4783e836cf52634575b2c75848bf1db91c1c558701",
+  "classifierSha256": "95cb36167fd516e6fdff05d4dc98e145c7dc47055e536c10640b4baafa272856",
   "sample": {
     "method": "most recently updated merged pull requests returned by GitHub REST",
     "count": 20,

@@ -76,12 +76,12 @@
     },
     {
       "id": "deployed-javascript",
-      "pattern": "^src/.*\\.(js|mjs|cjs|ts|tsx|jsx)$",
+      "pattern": "^src/.*\\.(js|mjs|cjs)$",
       "domains": ["dotnet", "javascript", "oci"]
     },
     {
       "id": "javascript-browser",
-      "pattern": "\\.(js|mjs|cjs|ts|tsx|jsx)$",
+      "pattern": "\\.(js|mjs|cjs)$",
       "domains": ["javascript"]
     },
     {

@@ -29,7 +29,7 @@ the classifier never follows compare links. A merge group has no PR files/count
 endpoint, so it uses only the first compare response and selects the full suite
 on any compare link, 300 files, or other truncation uncertainty. The initial
 rollout, metadata errors, unexpected events, missing policy, empty changes,
-invalid paths, unclassified files, unknown statuses, renames, deletions, and the
+invalid paths, unclassified files, unknown statuses, copies, renames, deletions, and the
 3,000-file PR limit, 100-file merge-base Markdown fetch budget, or 300-file
 compare limit all select every domain.
 
@@ -71,6 +71,16 @@ unknown extensions remain unclassified and therefore select the full suite
 unless an earlier executable/domain/security rule handles them. In particular,
 `docs/public-website/prototype/**` is an explicit full-suite executable boundary,
 so its tracked HTML cannot be misclassified as prose documentation.
+
+The JavaScript policy matches only `.js`, `.mjs`, and `.cjs`, which are the
+extensions the pinned Node `--check` job actually parses. The repository has no
+pinned TypeScript or JSX validator, so `.ts`, `.tsx`, and `.jsx` remain
+unclassified and select the full suite rather than producing false validation
+evidence. Supporting those extensions requires a separately reviewed pinned
+validator and negative/positive fixtures; the workflow must not install one
+from the network at runtime. GitHub `copied` status is also ambiguous: a new
+Markdown destination can inherit executable content outside the patch, so every
+copy selects the full suite. Rename and delete ambiguity remains unchanged.
 
 GitHub Markdown patches
 contain hunk bodies without `+++`/`---` file headers, so every `+` or `-` body
@@ -203,7 +213,7 @@ repository permission, but label permission alone does not authorize sampling.
 | .NET | Restore, Debug/Release build and unit/architecture tests, format, direct/transitive vulnerability scan, pinned DevSkim |
 | PostgreSQL | Compile, format, PostgreSQL-project vulnerability scan, and runtime tests against a disposable pinned PostgreSQL service |
 | PowerShell | Pinned PSScriptAnalyzer with findings as failure |
-| JavaScript/browser harness | Syntax checks and repository-owned Node fixtures; the existing separately controlled evidence Compose profile remains the source of real-browser evidence |
+| JavaScript/browser harness | Pinned Node syntax checks for tracked `.js`, `.mjs`, and `.cjs` plus repository-owned Node fixtures; unsupported `.ts`, `.tsx`, and `.jsx` changes fail closed to the full suite, and the existing separately controlled evidence Compose profile remains the source of real-browser evidence |
 | Docker/OCI | Pin policy and negative cases, two-build reproducibility, SBOM/IaC/vulnerability scan, hosted unsigned provenance verification, then destruction of private layers/reports |
 
 Manual dispatches always select all domains. The existing required

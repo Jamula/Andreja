@@ -131,6 +131,12 @@ for (const fixture of fixtures) {
     const selected = ALL_DOMAINS.filter((domain) => result.domains[domain].selected).sort();
     assert.deepEqual(selected, fixture.selected.sort());
     assert.equal(result.fullSuite, fixture.fullSuite);
+    if (fixture.reasons) {
+      assert.deepEqual(
+        result.files.flatMap((file) => file.reasons),
+        fixture.reasons,
+      );
+    }
   });
 }
 
@@ -223,6 +229,9 @@ test('generic documentation is Markdown-only with explicit inert artifacts', () 
     'docs/example.html',
     'docs/example.py',
     'docs/example.sh',
+    'docs/example.ts',
+    'docs/example.tsx',
+    'docs/example.jsx',
     'docs/example.json',
     'docs/example.yaml',
     'docs/example.png',

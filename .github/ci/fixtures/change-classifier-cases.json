@@ -173,6 +173,27 @@
     "fullSuite": false
   },
   {
+    "name": "unsupported TypeScript fails closed",
+    "files": [{"filename": "src/Andreja.AppHost/wwwroot/new-client.ts", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["unclassified-path"]
+  },
+  {
+    "name": "unsupported TSX fails closed",
+    "files": [{"filename": "src/Andreja.AppHost/wwwroot/new-component.tsx", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["unclassified-path"]
+  },
+  {
+    "name": "unsupported JSX fails closed",
+    "files": [{"filename": "src/Andreja.AppHost/wwwroot/new-component.jsx", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["unclassified-path"]
+  },
+  {
     "name": "Docker",
     "files": [{"filename": "Dockerfile", "status": "modified"}],
     "selected": ["dotnet", "postgres", "powershell", "javascript", "oci"],
@@ -204,6 +225,13 @@
     "files": [{"filename": "docs/renamed.md", "previous_filename": "docs/old.md", "status": "renamed", "patch": "@@\n-old\n+new"}],
     "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
     "fullSuite": true
+  },
+  {
+    "name": "copied Markdown with pre-existing executable content fails closed",
+    "files": [{"filename": "docs/help/copied-runbook.md", "previous_filename": "docs/help/source-runbook.md", "status": "copied", "changes": 2, "baseContent": "```powershell\ndotnet test\n```\nold prose\n", "patch": "@@ -4 +4 @@\n-old prose\n+new prose"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["ambiguous-copied"]
   },
   {
     "name": "delete ambiguity",

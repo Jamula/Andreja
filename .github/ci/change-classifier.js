@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ALL_DOMAINS = ['docs', 'dotnet', 'postgres', 'powershell', 'javascript', 'oci'];
-const AMBIGUOUS_STATUSES = new Set(['removed', 'renamed']);
+const AMBIGUOUS_STATUSES = new Set(['copied', 'removed', 'renamed']);
 const MARKDOWN_FENCE = /^\s*(`{3,}|~{3,})(.*)$/;
 const MARKDOWN_INDENTED_CODE = /^(?: {4}|\t).*\S/;
 const SHADOW_SAMPLE_LABEL = 'ci:selective-shadow-sample';
