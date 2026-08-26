@@ -1839,6 +1839,8 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.match(runbook, /pulls\/\{number\}\/files[\s\S]+follows every file-page link/);
   assert.match(runbook, /merge group has no PR files\/count\s+endpoint[\s\S]+any compare link/);
   assert.match(runbook, /mergeable` is non-null\/true[\s\S]+parent 0\/parent 1/);
+  assert.match(runbook, /requires exactly two parents/);
+  assert.match(runbook, /present patch requires[\s\S]+positive integer exactly equal[\s\S]+Missing, fractional, zero, negative/);
   assert.match(runbook, /mergeCommitProof\.verified=true/);
   assert.match(runbook, /at most eight concurrent requests/);
   assert.match(runbook, /exact canonical GitHub login casing/);
