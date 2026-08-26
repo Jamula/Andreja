@@ -1,0 +1,137 @@
+[
+  {
+    "name": "docs-only prose",
+    "files": [{"filename": "docs/charter.md", "status": "modified", "patch": "@@\n-old words\n+new words"}],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
+    "name": "C sharp source",
+    "files": [{"filename": "src/Modules/Andreja.Modules/OpenLoops/OpenLoopTask.cs", "status": "modified"}],
+    "selected": ["dotnet", "oci"],
+    "fullSuite": false
+  },
+  {
+    "name": "project package fanout",
+    "files": [{"filename": "src/Modules/Andreja.Modules/Andreja.Modules.csproj", "status": "modified"}],
+    "selected": ["dotnet", "postgres", "powershell", "javascript", "oci", "docs"],
+    "fullSuite": true
+  },
+  {
+    "name": "global SDK fanout",
+    "files": [{"filename": "global.json", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "migration",
+    "files": [{"filename": "src/Adapters/Andreja.Adapters/PostgreSql/Migrations/New.cs", "status": "added"}],
+    "selected": ["dotnet", "postgres", "oci"],
+    "fullSuite": false
+  },
+  {
+    "name": "PowerShell",
+    "files": [{"filename": "scripts/example.ps1", "status": "modified"}],
+    "selected": ["powershell"],
+    "fullSuite": false
+  },
+  {
+    "name": "workflow security boundary",
+    "files": [{"filename": ".github/workflows/new.yml", "status": "added"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "JavaScript browser",
+    "files": [{"filename": "src/Andreja.AppHost/wwwroot/identity-passkeys.js", "status": "modified"}],
+    "selected": ["dotnet", "javascript", "oci"],
+    "fullSuite": false
+  },
+  {
+    "name": "Docker",
+    "files": [{"filename": "Dockerfile", "status": "modified"}],
+    "selected": ["dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": false
+  },
+  {
+    "name": "Compose",
+    "files": [{"filename": "deploy/compose.evidence.yaml", "status": "modified"}],
+    "selected": ["dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": false
+  },
+  {
+    "name": "supply chain",
+    "files": [{"filename": "scripts/supply-chain/New-OciEvidence.ps1", "status": "modified"}],
+    "selected": ["dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": false
+  },
+  {
+    "name": "mixed docs and PowerShell",
+    "files": [
+      {"filename": "docs/charter.md", "status": "modified", "patch": "@@\n-old\n+new"},
+      {"filename": "scripts/example.ps1", "status": "modified"}
+    ],
+    "selected": ["docs", "powershell"],
+    "fullSuite": false
+  },
+  {
+    "name": "rename ambiguity",
+    "files": [{"filename": "docs/renamed.md", "previous_filename": "docs/old.md", "status": "renamed", "patch": "@@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "delete ambiguity",
+    "files": [{"filename": "docs/old.md", "status": "removed"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "generated schema",
+    "files": [{"filename": "docs/operations/application-export-v1.schema.json", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "unknown path",
+    "files": [{"filename": "new-area/opaque.xyz", "status": "added"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "classifier boundary",
+    "files": [{"filename": ".github/ci/change-policy.v1.json", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "security policy",
+    "files": [{"filename": "SECURITY.md", "status": "modified", "patch": "@@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "executable documentation",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "patch": "@@\n+```powershell\n+dotnet run\n+```"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "known executable documentation command edit",
+    "files": [{"filename": "docs/development.md", "status": "modified", "patch": "@@\n-old command\n+new command"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "truncated Markdown patch",
+    "files": [{"filename": "docs/charter.md", "status": "modified", "changes": 8, "patch": "@@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "unavailable markdown patch",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  }
+]
