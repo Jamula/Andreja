@@ -113,7 +113,7 @@ jobs:
           const operatorMatches =
             observedActor !== null &&
             expectedOperator !== null &&
-            observedActor.toLowerCase() === expectedOperator.toLowerCase();
+            observedActor === expectedOperator;
           const sampled = !isPullRequest || (sampleLabelEvent && operatorMatches);
           const reason = sampled
             ? isPullRequest ? 'authorized-sample-label-event' : 'non-pull-request-full-safety'

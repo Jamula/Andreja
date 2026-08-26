@@ -78,6 +78,53 @@ function runAggregateArtifact(overrides) {
   return { evidence, status };
 }
 
+function runBootstrapDecision(actor, operator) {
+  const workflow = fs.readFileSync(
+    path.join(root, '.github/workflows/selective-ci-shadow.yml'),
+    'utf8',
+  );
+  const match = workflow.match(
+    /node <<'BOOTSTRAP_NODE'\r?\n([\s\S]*?)\r?\n {10}BOOTSTRAP_NODE/,
+  );
+  assert.ok(match, 'bootstrap Node script must remain directly testable');
+  const directory = path.join(root, 'artifacts/selective-ci');
+  const eventPath = path.join(directory, `bootstrap-event-${process.pid}.json`);
+  const decisionPath = path.join(directory, `bootstrap-decision-${process.pid}.json`);
+  const outputPath = path.join(directory, `bootstrap-output-${process.pid}.txt`);
+  fs.mkdirSync(directory, { recursive: true });
+  fs.writeFileSync(eventPath, JSON.stringify({
+    action: 'labeled',
+    label: { name: 'ci:selective-shadow-sample' },
+    sender: { login: actor },
+    pull_request: {
+      labels: [{ name: 'ci:selective-shadow-sample' }],
+    },
+  }));
+  fs.writeFileSync(outputPath, '');
+  try {
+    execFileSync(
+      process.execPath,
+      ['-e', match[1].replace(/^ {10}/gm, '')],
+      {
+        cwd: root,
+        env: {
+          ...process.env,
+          GITHUB_EVENT_NAME: 'pull_request_target',
+          GITHUB_EVENT_PATH: eventPath,
+          CHANGE_DECISION_PATH: decisionPath,
+          GITHUB_OUTPUT: outputPath,
+          SELECTIVE_CI_SAMPLE_OPERATOR: operator,
+        },
+      },
+    );
+    return JSON.parse(fs.readFileSync(decisionPath, 'utf8'));
+  } finally {
+    fs.rmSync(eventPath, { force: true });
+    fs.rmSync(decisionPath, { force: true });
+    fs.rmSync(outputPath, { force: true });
+  }
+}
+
 for (const fixture of fixtures) {
   test(fixture.name, () => {
     const result = classifyFiles(fixture.files, policy);
@@ -125,7 +172,9 @@ test('every policy rule is reachable as the first matching rule', () => {
     'dotnet-test-fixtures': 'tests/example.json',
     'docs-tooling': 'scripts/docs/example.py',
     'known-executable-documentation': 'docs/development.md',
+    'public-website-prototype': 'docs/public-website/prototype/index.html',
     documentation: 'docs/example.md',
+    'documentation-artifact': 'docs/architecture/andreja-high-level.png',
     'inert-repository-metadata': '.github/FUNDING.yml',
   };
   assert.deepEqual(
@@ -159,6 +208,46 @@ test('selective CI runbook governance rule is exactly anchored', () => {
   }], policy);
   assert.equal(sibling.files[0].rule, 'documentation');
   assert.equal(sibling.fullSuite, false);
+});
+
+test('generic documentation is Markdown-only with explicit inert artifacts', () => {
+  const documentation = policy.rules.find(({ id }) => id === 'documentation');
+  const artifacts = policy.rules.find(({ id }) => id === 'documentation-artifact');
+  assert.equal(documentation.pattern, '^(docs/.*\\.md|LICENSE)$');
+  assert.equal(
+    artifacts.pattern,
+    '^docs/architecture/andreja-high-level\\.(png|svg|excalidraw|png\\.sha256)$',
+  );
+  for (const filename of [
+    'docs/example.html',
+    'docs/example.py',
+    'docs/example.sh',
+    'docs/example.json',
+    'docs/example.yaml',
+    'docs/example.png',
+    'docs/example.svg',
+    'docs/example.unknown',
+  ]) {
+    const result = classifyFiles([{ filename, status: 'modified' }], policy);
+    assert.equal(result.fullSuite, true, `${filename} must fail closed`);
+  }
+  const docsJavaScript = classifyFiles(
+    [{ filename: 'docs/example.js', status: 'modified' }],
+    policy,
+  );
+  assert.equal(docsJavaScript.files[0].rule, 'javascript-browser');
+  assert.deepEqual(
+    ALL_DOMAINS.filter((domain) => docsJavaScript.domains[domain].selected),
+    ['javascript'],
+  );
+  for (const filename of [
+    'docs/public-website/prototype/index.html',
+    'docs/public-website/prototype/app.js',
+  ]) {
+    const prototype = classifyFiles([{ filename, status: 'modified' }], policy);
+    assert.equal(prototype.files[0].rule, 'public-website-prototype');
+    assert.equal(prototype.fullSuite, true);
+  }
 });
 
 test('C sharp and Docker changes can never be docs-only', () => {
@@ -1449,6 +1538,17 @@ test('only an authorized operator sample-label event enables PR shadow work', ()
   assert.doesNotMatch(classifierSource, /observedActor\.toLowerCase\(\)/);
 });
 
+test('bootstrap operator comparison preserves exact canonical-case reasons', () => {
+  const exact = runBootstrapDecision('Jett-Reno', 'Jett-Reno');
+  assert.equal(exact.shadowSample.sampled, true);
+  assert.equal(exact.shadowSample.reason, 'authorized-sample-label-event');
+  const wrongCase = runBootstrapDecision('jett-reno', 'Jett-Reno');
+  assert.equal(wrongCase.shadowSample.sampled, false);
+  assert.equal(wrongCase.shadowSample.reason, 'sample-operator-mismatch');
+  assert.equal(wrongCase.shadowSample.observedActor, 'jett-reno');
+  assert.equal(wrongCase.shadowSample.expectedOperator, 'Jett-Reno');
+});
+
 test('aggregate artifact marks every domain unavailable when classification fails', () => {
   const { evidence, status } = runAggregateArtifact({
     CLASSIFY_RESULT: 'failure',
@@ -1603,8 +1703,13 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.match(runbook, /no routine pause\/re-enable path/);
   assert.match(runbook, /ordinary PRs emit no shadow contexts/);
   assert.match(runbook, /[Ss]table\s+every-PR contexts are future promotion scope/);
-  assert.match(runbook, /locally classify each candidate with the exact merged\s+classifier/);
+  assert.match(runbook, /run the exact\s+squash-merged classifier and policy against both current candidate/);
   assert.match(runbook, /workflow_dispatch.*Charge it against `S`/s);
+  const candidateGate = runbook.indexOf('2. Before any charged dispatch');
+  const chargedSmoke = runbook.indexOf('3. Before provisioning any label');
+  assert.ok(candidateGate >= 0 && chargedSmoke > candidateGate);
+  assert.match(runbook, /no natural prose candidate exists[\s\S]+do \*\*not\*\* dispatch or\s+spend `S`/);
+  assert.match(runbook, /read-only local\/GitHub metadata[\s\S]+exact\s+squash-merged classifier and policy/);
   assert.match(runbook, /schemaVersion: 2/);
   assert.match(runbook, /no-unexpected-label precondition/);
   assert.match(runbook, /issue-status\.yml[\s\S]+PR-to-PR closing-reference residual/);
@@ -1625,6 +1730,18 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.doesNotMatch(runbook, /--slurp[\s\S]{0,250}--jq/);
   assert.match(runbook, /exact\s+squash-merged controller SHA[\s\S]+only trusted controller revision/);
   assert.match(runbook, /GET \/repos\/Jamula\/Andreja\/issues\/events/);
+  for (const workflow of [
+    'issue-status.yml',
+    'squad-heartbeat.yml',
+    'squad-issue-assign.yml',
+    'squad-label-enforce.yml',
+    'squad-triage.yml',
+    'sync-squad-labels.yml',
+  ]) {
+    assert.match(runbook, new RegExp(workflow.replace('.', '\\.')));
+  }
+  assert.match(runbook, /pulls\/\{number\}\/files[\s\S]+follows every file-page link/);
+  assert.match(runbook, /merge group has no PR files\/count\s+endpoint[\s\S]+any compare link/);
   assert.match(runbook, /mergeable` is non-null\/true[\s\S]+parent 0\/parent 1/);
   assert.match(runbook, /mergeCommitProof\.verified=true/);
   assert.match(runbook, /at most eight concurrent requests/);
@@ -1638,9 +1755,11 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.match(testingMatrix, /38 planned \/ 51 fail-closed ceiling \/ 64 with 25% headroom/);
   assert.match(testingMatrix, /N<=2/);
   assert.match(testingMatrix, /timeout-derived full-run bound is 200 job-minutes/);
-  assert.match(testingMatrix, /issue-status\.yml` can label PRs/);
+  assert.match(testingMatrix, /all six label-write-capable workflows/);
   assert.match(testingMatrix, /`F=3` is an uncertainty budget ceiling/);
   assert.match(testingMatrix, /eight-concurrent Markdown Contents cap/);
+  assert.match(testingMatrix, /Markdown-only generic docs/);
+  assert.match(testingMatrix, /No qualifying natural prose candidate terminally disables without dispatching or spending `S`/);
   assert.doesNotMatch(testingMatrix, /opened|N<=25|81 planned|94 fail-closed|remaining seven|5 docs \+ 5 full/);
 });
 

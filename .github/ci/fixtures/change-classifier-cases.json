@@ -6,6 +6,68 @@
     "fullSuite": false
   },
   {
+    "name": "arbitrary docs HTML fails closed",
+    "files": [{"filename": "docs/example.html", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "arbitrary docs Python fails closed",
+    "files": [{"filename": "docs/example.py", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "arbitrary docs shell fails closed",
+    "files": [{"filename": "docs/example.sh", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "arbitrary docs JavaScript uses explicit browser domain",
+    "files": [{"filename": "docs/example.js", "status": "modified"}],
+    "selected": ["javascript"],
+    "fullSuite": false
+  },
+  {
+    "name": "arbitrary docs data files fail closed",
+    "files": [
+      {"filename": "docs/example.json", "status": "modified"},
+      {"filename": "docs/example.yaml", "status": "modified"}
+    ],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "explicit inert docs media and digest artifacts remain docs-only",
+    "files": [
+      {"filename": "docs/architecture/andreja-high-level.png", "status": "modified"},
+      {"filename": "docs/architecture/andreja-high-level.svg", "status": "modified"},
+      {"filename": "docs/architecture/andreja-high-level.excalidraw", "status": "modified"},
+      {"filename": "docs/architecture/andreja-high-level.png.sha256", "status": "modified"}
+    ],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
+    "name": "unlisted docs media fails closed",
+    "files": [{"filename": "docs/example.png", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "public website prototype HTML fails closed",
+    "files": [{"filename": "docs/public-website/prototype/index.html", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "public website prototype JavaScript fails closed",
+    "files": [{"filename": "docs/public-website/prototype/app.js", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
     "name": "docs-only bullet replacement counts both body lines",
     "files": [{"filename": "docs/charter.md", "status": "modified", "changes": 2, "baseContent": "# List\n- old item\n", "patch": "@@ -1,2 +1,2 @@\n # List\n-- old item\n+- new item"}],
     "selected": ["docs"],

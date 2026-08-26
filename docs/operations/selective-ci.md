@@ -15,22 +15,27 @@ trigger. The existing required workflows remain the `main` push safety net.
 `pull_request_target` is deliberate: GitHub loads the controller YAML from the
 default branch rather than from the pull request. For a pull request, the
 classification job checks out only `pull_request.base.sha` into `trusted-ci` and
-gets changed-file metadata from the read-only, paginated REST endpoint. It never
-checks out or executes pull-request code to classify it. Dormant merge-group
+gets changed-file metadata from the read-only
+`pulls/{number}/files` REST endpoint, follows every file-page link, and requires
+the result count to equal live `changed_files`. It never checks out or executes
+pull-request code to classify it. Dormant merge-group
 classifier/workflow expressions remain fail-closed code but are unreachable in
 this collection. A separately reviewed activation/promotion must restore the
 trigger and then execute `merge_group.base_sha` code to compare the base and
-group head. Compare API
-`Link` headers paginate commits rather than file slices, so the classifier uses
-only the first compare response and selects the full suite on any link, 300
-files, or other truncation uncertainty. The initial
+group head. Compare API `Link` headers paginate commits rather than file slices.
+For a PR, the exact paginated files/count identity remains authoritative while
+the first base/head compare body supplies the immutable snapshot and merge base;
+the classifier never follows compare links. A merge group has no PR files/count
+endpoint, so it uses only the first compare response and selects the full suite
+on any compare link, 300 files, or other truncation uncertainty. The initial
 rollout, metadata errors, unexpected events, missing policy, empty changes,
 invalid paths, unclassified files, unknown statuses, renames, deletions, and the
 3,000-file PR limit, 100-file merge-base Markdown fetch budget, or 300-file
 compare limit all select every domain.
 
-For PR events, the classifier compares the paginated current PR-file response
-with the immutable event base/head compare snapshot. Any filename, status,
+For PR events, the classifier compares the fully paginated current PR-file
+response and exact count with the immutable event base/head first compare
+snapshot. Any filename, status,
 count, statistics, or patch mismatch indicates a moving-head race and forces
 the full suite. Before an event can be a labeled sample, the classifier also
 reads the live PR and requires `mergeable=true` plus exact 40-hex event/live
@@ -55,7 +60,18 @@ runtime configuration and also selects the full governance/security suite.
 and checkout/line-ending normalization, so it also selects the full suite. Only
 the enumerated Funding file, current issue/PR templates, `.gitignore`, and
 `.env.example` are inert repository metadata. Any future or unknown
-`.github/**` path is unclassified and therefore fails closed. GitHub Markdown patches
+`.github/**` path is unclassified and therefore fails closed.
+The generic documentation rule matches only `docs/**/*.md` and root `LICENSE`
+(with known executable Markdown rules taking precedence). The explicit inert
+artifact allowlist is limited to the tracked
+`docs/architecture/andreja-high-level` `.png`, `.svg`, `.excalidraw`, and
+`.png.sha256` outputs. New media paths and arbitrary docs HTML, Python, shell,
+JSON, YAML, SVG, or unknown extensions remain unclassified and therefore select
+the full suite unless an earlier executable/domain/security rule handles them. In particular,
+`docs/public-website/prototype/**` is an explicit full-suite executable boundary,
+so its tracked HTML cannot be misclassified as prose documentation.
+
+GitHub Markdown patches
 contain hunk bodies without `+++`/`---` file headers, so every `+` or `-` body
 line counts, including `+- bullet` and `-- bullet`. The count must exactly equal
 GitHub's `changes` value. The classifier reads only the trusted base Markdown to
@@ -334,9 +350,23 @@ recorded UTC window start. Require zero prior labeled runs before the docs label
 and exactly one before the full label. Any unexpected label event or actor
 terminally disables the workflow. Do not claim repository automation is unable
 to label PRs: `.github/workflows/issue-status.yml` is a known residual because a
-PR body with a closing reference to a PR number can cause automated PR status
-labels. Before the window and again before each sample, audit every open PR body
-and its resolved closing references, plus every open PR's current labels. Any
+PR body with a closing reference to a PR number can route that PR number into
+reconciliation. Its current `issue.pull_request` guard returns before label
+mutation, but that guard is audited rather than assumed. These are the six
+repository workflows with label-write capability:
+
+| Workflow | Why it cannot currently apply a label to a PR |
+| --- | --- |
+| `issue-status.yml` | The reconciler fetches each target and returns immediately when `issue.pull_request` is present; PR-body closing references can still reach this guard. |
+| `squad-heartbeat.yml` | Ralph's label decisions come from its issue-only (`is:issue`) triage input; a closed-PR trigger does not directly label the PR. |
+| `squad-issue-assign.yml` | It listens only to the `issues` labeled event, which does not fire for pull requests. |
+| `squad-label-enforce.yml` | It listens only to the `issues` labeled event, which does not fire for pull requests. |
+| `squad-triage.yml` | It listens only to the `issues` labeled event, which does not fire for pull requests. |
+| `sync-squad-labels.yml` | It creates/updates repository label definitions only and never applies a label to an issue or PR. |
+
+Before the window and again before each sample, audit all six workflow
+revisions, every open PR body and its resolved closing references, plus every
+open PR's current labels. Any
 PR-to-PR closing reference, automation-applied label, or non-sample label event
 after `<START>` terminally disables the workflow.
 
@@ -350,8 +380,8 @@ $runs.Count
 
 `N=2` is the hard cap. The same terminal action applies after the one dispatch,
 the two labeled samples, any unexpected label event/actor, tripwire, exhausted
-headroom, or failure to find the prose candidate before the first intended
-label. Use
+headroom, or failure to pre-identify/classify the prose candidate before the
+charged dispatch. Use
 `gh workflow disable selective-ci-shadow.yml`, record the UTC shutdown time and
 last run ID, and verify that no later run was created. Re-enable is not allowed
 under this window; a new approved budget/window must start with its own charged
@@ -381,7 +411,8 @@ continuation.
 ## Shadow rollout and promotion hold
 
 1. Merge only this shadow workflow while existing required checks continue.
-   Before merge, inventory repository Apps/workflows that can apply PR labels
+   Before merge, inventory the six label-write-capable workflows listed above
+   and any repository Apps that can apply PR labels
    and audit every open PR body, closing reference, and current label. Explicitly
    include the `issue-status.yml` PR-to-PR closing-reference residual; do not
    assert that automation cannot label PRs. Keep the audited no-unexpected-label
@@ -393,7 +424,18 @@ continuation.
    between merge and the dispatch smoke. The squash-merged SHA is the only
    trusted controller revision. Any unexpected label event or actor after
    `<START>` terminally disables the workflow before the smoke.
-2. Before provisioning any label, run one `workflow_dispatch` full-safety smoke
+2. Before any charged dispatch, identify at most one naturally useful
+   prose-only candidate and one naturally useful full-suite candidate. The
+   prose candidate must satisfy the boundaries above, be Markdown, and contain
+   no changed inline code, fences, or indented commands. Do not create a
+   synthetic/no-op PR. Using only read-only local/GitHub metadata, run the exact
+   squash-merged classifier and policy against both current candidate
+   head/base snapshots; record the merged classifier SHA, policy digest,
+   candidate head/base, and decisions. If either result is not the expected
+   docs-only/full classification, or no natural prose candidate exists,
+   feasibility fails: terminally disable immediately and do **not** dispatch or
+   spend `S`.
+3. Before provisioning any label, run one `workflow_dispatch` full-safety smoke
    from the merged default-branch workflow. Immediately before dispatch, run
    the paginated Actions-run and repository issue-event audits documented in
    this section from `<START>` through the current UTC time. Require zero
@@ -405,7 +447,7 @@ continuation.
    only dispatch (`S=1`). A failed
    smoke, `F_i >= 4`, more than 32 rounded minutes, or insufficient headroom
    terminally disables the workflow; do not provision the label.
-3. Reverify the monitored no-unexpected-label precondition. Jett Reno is the named
+4. Reverify the monitored no-unexpected-label precondition. Jett Reno is the named
    sample operator; record his exact GitHub login before collection, then have an
    authorized repository administrator store that exact canonical-cased login
    in the repository-owned
@@ -423,8 +465,8 @@ continuation.
    an operator login, not a secret; repository settings, rather than pull-request
    code or event input, own it. GitHub expression equality is a prefilter; the
    classifier's exact-case equality is authoritative and is covered by fixtures.
-   Inventory label-capable repository Apps/workflows, including
-   `issue-status.yml`. Immediately before each sample, query paginated
+   Reverify all six label-write-capable workflows and any label-capable
+   repository Apps. Immediately before each sample, query paginated
    issue events from the recorded UTC start and require no unexpected label
    event or actor. Any unexpected event terminally disables this window. The
    supported audit source is `GET /repos/Jamula/Andreja/issues/events`:
@@ -480,15 +522,6 @@ continuation.
    `gh label create ci:selective-shadow-sample --repo Jamula/Andreja --color 5319e7 --description "Maintainer-authorized bounded selective-CI sample"`.
    Confirm the repository role policy still prevents fork authors from applying
    labels.
-4. Before collection starts, identify at most one naturally useful prose-only
-   candidate and one naturally useful full-suite candidate. The prose candidate
-   must satisfy the boundaries above and contain no changed inline code,
-   fences, or indented commands. Do not create a synthetic/no-op PR. Before
-   applying either label, locally classify each candidate with the exact merged
-   classifier against current read-only PR metadata; record the squash-merged
-   classifier SHA, policy digest, candidate head/base, and decision. If either
-   decision is not the expected docs-only/full result, or no qualifying prose
-   candidate is available, feasibility fails and promotion remains blocked.
 5. On a quiescent head, first update each candidate branch so
    `pull_request.base.sha` contains the merged classifier. Because `synchronize`
    is not a collection trigger, that update does not run shadow CI. Before

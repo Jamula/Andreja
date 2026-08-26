@@ -20,6 +20,11 @@
       "fullSuite": true
     },
     {
+      "id": "public-website-prototype",
+      "pattern": "^docs/public-website/prototype/",
+      "fullSuite": true
+    },
+    {
       "id": "central-build-dependency-sdk",
       "pattern": "(^|/)(global\\.json|Directory\\.(Build|Packages)\\.(props|targets)|NuGet\\.config|[^/]+\\.(sln|slnx|csproj|fsproj|vbproj|props|targets)|package(-lock)?\\.json|pnpm-lock\\.yaml|yarn\\.lock)$",
       "fullSuite": true
@@ -106,9 +111,14 @@
     },
     {
       "id": "documentation",
-      "pattern": "^(docs/|README\\.md$|LICENSE$)",
+      "pattern": "^(docs/.*\\.md|LICENSE)$",
       "domains": ["docs"],
       "inspectMarkdownPatch": true
+    },
+    {
+      "id": "documentation-artifact",
+      "pattern": "^docs/architecture/andreja-high-level\\.(png|svg|excalidraw|png\\.sha256)$",
+      "domains": ["docs"]
     },
     {
       "id": "inert-repository-metadata",

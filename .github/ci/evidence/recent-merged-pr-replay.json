@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-26T09:28:45.173Z",
+  "generatedAt": "2026-08-26T10:07:33.346Z",
   "repository": "Jamula/Andreja",
   "policyVersion": 1,
-  "policySha256": "2612bcd2d2f2daa9727610edf57300c80f1944de5abd2a55e040299fe961729b",
+  "policySha256": "314c0fd258ebc40b448edcfca297c9d3053d5b2f5ee40f2c2eeddba1995e4736",
   "classifierSha256": "c2b5455d4a70fb34db99533e2312fe8a57f6809f8ef5dc829169af3896acf61e",
   "sample": {
     "method": "most recently updated merged pull requests returned by GitHub REST",
@@ -223,7 +223,8 @@
         "PRODUCT.md:unclassified-path",
         "docs/adr/0008-public-website-artifact-boundary.md:ambiguous-renamed",
         "docs/public-website/claims-inventory.md:known-executable-documentation",
-        "docs/public-website/prototype/README.md:known-executable-documentation"
+        "docs/public-website/prototype/README.md:public-website-prototype",
+        "docs/public-website/prototype/index.html:public-website-prototype"
       ],
       "estimatedSelectiveRoundedMinutes": 16
     },
@@ -277,7 +278,8 @@
         "docs/public-website/README.md:executable-documentation",
         "docs/public-website/claims-inventory.md:known-executable-documentation",
         "docs/public-website/design-hosting-matrix.md:known-executable-documentation",
-        "docs/public-website/prototype/README.md:known-executable-documentation"
+        "docs/public-website/prototype/README.md:public-website-prototype",
+        "docs/public-website/prototype/index.html:public-website-prototype"
       ],
       "estimatedSelectiveRoundedMinutes": 16
     },
