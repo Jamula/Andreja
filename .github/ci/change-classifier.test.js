@@ -607,6 +607,7 @@ test('workflow bounds PR sampling and never cancels scheduled safety runs', () =
   assert.match(workflow, /group: selective-ci-shadow-\$\{\{ github\.event_name \}\}-/);
   assert.match(workflow, /^\s+pull_request_target:\s*$/m);
   assert.doesNotMatch(workflow, /^\s+pull_request:\s*$/m);
+  assert.doesNotMatch(workflow, /^\s+merge_group:\s*$/m);
   assert.match(workflow, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request_target' \}\}/);
   assert.doesNotMatch(workflow, /^\s+push:\s*$/m);
   assert.match(workflow, /types: \[opened, labeled\]/);
@@ -635,7 +636,13 @@ test('workflow bounds PR sampling and never cancels scheduled safety runs', () =
   );
   assert.equal(
     workflow.match(/missing-pull-request-merge-sha/g)?.length,
-    ALL_DOMAINS.length,
+    ALL_DOMAINS.length + 2,
+  );
+  assert.match(workflow, /EVENT_BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \|\| github\.event\.merge_group\.base_sha \|\| github\.event\.before \|\| github\.sha \}\}/);
+  assert.match(workflow, /EVENT_HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.event\.merge_group\.head_sha \|\| github\.event\.after \|\| github\.sha \}\}/);
+  assert.equal(
+    workflow.match(/VALIDATED_(?:REF|SHA): \$\{\{ github\.event_name == 'pull_request_target' && \(github\.event\.pull_request\.merge_commit_sha \|\| 'missing-pull-request-merge-sha'\) \|\| github\.event\.merge_group\.head_sha \|\| github\.sha \}\}/g)?.length,
+    2,
   );
   assert.match(workflow, /permissions:\s*\{\}/);
   assert.match(workflow, /permissions:\r?\n\s+contents: read\r?\n\s+pull-requests: read/);
@@ -736,6 +743,79 @@ test('trusted labeled sample schedules selected domains normally', () => {
   assert.equal(evidence.domains.docs.disposition, 'passed');
   assert.equal(evidence.domains.dotnet.scheduled, false);
   assert.equal(evidence.domains.dotnet.disposition, 'not-applicable');
+});
+
+test('aggregate PR sample attributes the event and validated merge revisions', () => {
+  const eventBaseSha = 'a'.repeat(40);
+  const eventHeadSha = 'b'.repeat(40);
+  const mergeSha = 'd'.repeat(40);
+  const { evidence, status } = runAggregateArtifact({
+    GITHUB_EVENT_NAME: 'pull_request_target',
+    GITHUB_SHA: eventBaseSha,
+    EVENT_BASE_SHA: eventBaseSha,
+    EVENT_HEAD_SHA: eventHeadSha,
+    VALIDATED_REF: mergeSha,
+    VALIDATED_SHA: mergeSha,
+    CLASSIFY_RESULT: 'success',
+    SHADOW_SAMPLED: 'true',
+    TRUSTED_CLASSIFIER: 'true',
+    DOCS_SELECTED: 'true',
+    DOCS_RESULT: 'success',
+  });
+  assert.equal(status, 0);
+  assert.deepEqual(evidence.revision, {
+    eventBaseSha,
+    eventHeadSha,
+    validatedRef: mergeSha,
+    validatedSha: mergeSha,
+  });
+  assert.notEqual(evidence.revision.validatedSha, eventBaseSha);
+  assert.equal(Object.hasOwn(evidence, 'sha'), false);
+});
+
+test('selective CI runbook preserves the approved sample and budget gates', () => {
+  const runbook = fs.readFileSync(
+    path.join(root, 'docs/operations/selective-ci.md'),
+    'utf8',
+  );
+  const testingMatrix = fs.readFileSync(
+    path.join(root, 'docs/testing-matrix.md'),
+    'utf8',
+  );
+  assert.match(runbook, /first three valid trusted samples/);
+  assert.match(runbook, /maximum of those three observations/);
+  assert.match(runbook, /remaining seven/);
+  assert.match(runbook, /M=0/);
+  assert.match(runbook, /no current `merge_group`\s+trigger/);
+  assert.match(runbook, /shadow makes no merge-group context claim/);
+  assert.match(runbook, /323 minutes \/ USD 2\.584/);
+  assert.match(runbook, /388 minutes \/ USD 3\.104/);
+  assert.match(runbook, /485 rounded minutes \/ USD 3\.880/);
+  assert.match(runbook, /200 job-minutes for one full run/);
+  assert.match(runbook, /4,400.*job-minutes \/ USD 35\.200/);
+  assert.match(runbook, /exceeds 6 minutes.*exceeds 32 minutes/s);
+  assert.match(runbook, /observed `F_i >= 4`/);
+  assert.match(runbook, /N=100` is a hard cap/);
+  assert.match(runbook, /outside the original `S <= 3`/);
+  assert.match(runbook, /no continuation or replacement window/);
+  assert.match(runbook, /workflow_dispatch.*Charge it against `S`/s);
+  assert.match(runbook, /schemaVersion: 2/);
+  assert.match(runbook, /no-automation precondition/);
+  assert.match(runbook, /waits for that[\s\S]+does not remove, reapply, or apply it elsewhere/);
+  assert.match(runbook, /removes the `schedule`[\s\S]+keeping PR contexts enabled/);
+  assert.match(runbook, /Do not use\s+`gh workflow disable` as the collection end state/);
+  assert.match(runbook, /\$pages = gh api --paginate --slurp[\s\S]+ConvertFrom-Json/);
+  assert.doesNotMatch(runbook, /--slurp[\s\S]{0,250}--jq/);
+  assert.match(runbook, /final `pull_request_target` YAML at commit `cb7a434` has never\s+executed/);
+  assert.match(runbook, /GET \/repos\/Jamula\/Andreja\/issues\/events/);
+  assert.doesNotMatch(runbook, /M <= 3|371 minutes|436 minutes|545 rounded minutes|remaining nine|repos\/cyrusjamula\/Andreja/);
+  assert.match(testingMatrix, /maximum of the first three valid trusted samples/);
+  assert.match(testingMatrix, /remaining seven/);
+  assert.match(testingMatrix, /M=0/);
+  assert.match(testingMatrix, /no `merge_group` trigger/);
+  assert.match(testingMatrix, /323 planned \/ 388 fail-closed ceiling \/ 485 with 25% headroom/);
+  assert.match(testingMatrix, /timeout-derived full-run bound is 200 job-minutes/);
+  assert.doesNotMatch(testingMatrix, /M <= 3|371 planned|remaining nine/);
 });
 
 test('historical replay economics use the documented per-domain model', () => {

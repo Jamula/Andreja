@@ -8,8 +8,9 @@ remain unchanged. Auto-merge remains disabled.
 `.github/ci/change-policy.v1.json` is the versioned path policy and
 `.github/ci/change-classifier.js` is its repository-owned implementation. The
 `Selective CI (Shadow)` workflow has no path filter and listens only for
-read-only `pull_request_target` `opened`/`labeled`, dormant future `merge_group`, a weekly
-`schedule` (Tuesday 03:17 UTC), and `workflow_dispatch`. `synchronize`,
+read-only `pull_request_target` `opened`/`labeled`, a weekly `schedule`
+(Tuesday 03:17 UTC), and `workflow_dispatch`. There is no current `merge_group`
+trigger. `synchronize`,
 `reopened`, and automatic `push` execution are intentionally absent during the
 bounded collection window; the existing required workflows remain the `main`
 push safety net.
@@ -18,9 +19,11 @@ push safety net.
 default branch rather than from the pull request. For a pull request, the
 classification job checks out only `pull_request.base.sha` into `trusted-ci` and
 gets changed-file metadata from the read-only, paginated REST endpoint. It never
-checks out or executes pull-request code to classify it. Merge-group
-classification similarly executes
-`merge_group.base_sha` code and compares the base and group head. Compare API
+checks out or executes pull-request code to classify it. Dormant merge-group
+classifier/workflow expressions remain fail-closed code but are unreachable in
+this collection. A separately reviewed activation/promotion must restore the
+trigger and then execute `merge_group.base_sha` code to compare the base and
+group head. Compare API
 `Link` headers paginate commits rather than file slices, so the classifier uses
 only the first compare response and selects the full suite on any link, 300
 files, or other truncation uncertainty. The initial
@@ -83,7 +86,12 @@ selected domain did not pass.
 If classification fails, every domain is `unavailable` rather than
 `not-applicable`. Concurrency keys include the event name, cancellation is
 enabled only for superseded pull-request runs, and weekly/manual safety runs
-never cancel each other.
+never cancel each other. Aggregate revision evidence records the event base and
+head SHAs separately from the revision used by domain jobs. A valid PR sample
+records its immutable merge SHA as both the validated ref and SHA; merge-group
+jobs record the group head, and push/schedule/manual jobs record the exact
+default-branch `github.sha`. Unsampled or bootstrap-blocked runs record no
+validated revision.
 
 The classifier also emits `trustedClassifierAvailable`. If a labeled PR's base
 does not yet contain `.github/ci/change-classifier.js`, bootstrap evidence
@@ -217,9 +225,14 @@ the observed 10-day retention cap. **This is bootstrap-only pricing, not trusted
 classifier pricing.** The first three valid labeled runs must use PR bases
 containing the merged classifier. For each, compute independently rounded fixed
 overhead as `ceil(classification seconds/60) + ceil(aggregate seconds/60)`.
-Set `F` to the maximum of those three observations. Do not start the remaining
-seven samples until FinOps approves `F` and refreshes every formula, ceiling, and
+Retain conservative provisional `F=2` until all three finish, then set `F` to
+the maximum of those three observations. Do not start the remaining seven
+samples until FinOps approves `F` and refreshes every formula, ceiling, and
 headroom number below if it differs from 2 minutes.
+After each of the first three samples, calculate its observed fixed value `F_i`.
+An observed `F_i >= 4`, or a ceiling recomputed with the maximum observed `F_i`
+that exceeds the approved 485-minute headroom, is an immediate tripwire: stop
+before any further sample and require a new approved reprice/window.
 
 Provisional sampled pricing includes that fixed charge:
 a modeled docs sample is 3 minutes / USD 0.024 and a full sample is 16 minutes /
@@ -232,17 +245,32 @@ The weekly Tuesday 03:17 UTC full-safety schedule costs provisionally 16 minutes
 occurrences. Let `S <= 3` cover scheduled and manual full-safety runs combined:
 a manual dispatch consumes the same cap, and collection must pause before a
 later weekly run would exceed it. Merge queue is unavailable, so this collection
-sets `M=0` and budgets no merge-group run. Let `F` be trusted fixed rounded
-overhead (provisionally 2) and `N <= 100` all opened/labeled PR event runs. The
-planned window is `F*N + 75 + (F+14)*S`; the fail-closed sampled ceiling is
-`F*N + 140 + (F+14)*S`. At provisional `F=2`, `N=100`, and `S=3`, planned use
-is 323 minutes / USD 2.584 and the ceiling is 388 minutes / USD 3.104. Do not
-start without 25% headroom: 485 rounded minutes / USD 3.880.
+sets `M=0` and budgets no merge-group run. Activation/evidence is a separate
+future prerequisite with its own reviewed decision and budget. Let `F` be
+trusted fixed rounded overhead (provisionally 2) and `N <= 100` all
+opened/labeled PR event runs. The planned window is `F*N + 75 + (F+14)*S`;
+the fail-closed sampled ceiling is `F*N + 140 + (F+14)*S`. At provisional
+`F=2`, `N=100`, and `S=3`, planned use is 323 minutes / USD 2.584 and the
+ceiling is 388 minutes / USD 3.104. Do not start without 25% headroom:
+485 rounded minutes / USD 3.880.
+
+The modeled ceiling is not the runner-time hard maximum. Workflow job timeouts
+sum to **200 job-minutes for one full run**: classifier 10, docs 15, .NET 45,
+PostgreSQL 30, PowerShell 15, JavaScript 15, OCI 60, and aggregate 10. If all ten
+samples failed into full work and timed out, their sample exposure alone would
+be 2,000 job-minutes. With `N=100` (20 classifier/aggregate timeout minutes per
+event) and `S=3`, the whole-window timeout-derived bound is
+`20*N + 180*10 + 200*S = 4,400` job-minutes / USD 35.200. This is a fail-safe
+exposure bound, not approved spend. Pause collection immediately if completed
+Jobs API rounded time for any docs sample exceeds 6 minutes or any full sample
+exceeds 32 minutes (twice its modeled duration), then reprice and reapprove
+before another label or full-safety run.
 
 The rate baseline observed 60 PR openings from 2026-08-24 through the
 2026-08-26 observation. A paginated
-`GET /repos/cyrusjamula/Andreja/issues/events` observation covering that window
-found zero labeled PR events, including zero historical sample-label events.
+`GET /repos/Jamula/Andreja/issues/events` observation covering that window was
+rechecked through `2026-08-26T05:58:18Z` and found zero labeled PR events,
+including zero historical sample-label events.
 With ten planned valid label events, `N=70` at that observed volume. The 60
 openings arrived in roughly two days (43 on August 24 and 17 thereafter),
 approximately 30/day, so `N=100` is likely to bind near collection day 3, well
@@ -255,9 +283,11 @@ records are mandatory audit points, not the only cap enforcement. Using the
 recorded UTC window bounds, run this exact paginated Actions query:
 
 ```powershell
-gh api --paginate --slurp `
-  "repos/Jamula/Andreja/actions/workflows/selective-ci-shadow.yml/runs?event=pull_request_target&created=<START>..<END>&per_page=100" `
-  --jq '[.[].workflow_runs[]] | length'
+$pages = gh api --paginate --slurp `
+  "repos/Jamula/Andreja/actions/workflows/selective-ci-shadow.yml/runs?event=pull_request_target&created=<START>..<END>&per_page=100" |
+  ConvertFrom-Json
+$runs = @($pages | ForEach-Object { $_.workflow_runs })
+$runs.Count
 ```
 
 Jett records the result with Jobs API spend and recomputes remaining headroom
@@ -266,11 +296,18 @@ ceiling, disable the workflow proactively at `N >= 75` or when fewer than
 `25*F` rounded minutes remain above the computed spend; those 25 unsampled-run
 slots are a reserve, not collection capacity. Pause with
 `gh workflow disable selective-ci-shadow.yml`; re-enabling requires refreshed
-headroom and FinOps approval. Also pause immediately at ten
+headroom and FinOps approval. `N=100` is a hard cap, while `N >= 75` is the
+proactive stop that preserves the 25-run reserve. If either stop leaves fewer
+than ten valid samples, evidence remains incomplete and promotion stays
+blocked; there is no continuation or replacement window without a separately
+approved budget/window. Also pause immediately at ten
 valid samples or `S=3`. If an activity spike crosses `N=100` despite the
 reserve, collection has breached its approved ceiling: keep the workflow
 disabled, record the overrun, and require new FinOps approval rather than
-calling the original ceiling satisfied.
+calling the original ceiling satisfied. A disabled workflow blocks promotion:
+an emergency re-smoke is outside the original `S <= 3` and cannot bypass that
+cap. Approve a new reprice/window before re-enable, then charge the repeated
+dispatch smoke to that new window before any ruleset context can be proposed.
 
 Live PR run
 [32924008713](https://github.com/Jamula/Andreja/actions/runs/32924008713)
@@ -282,9 +319,11 @@ controller evidence**. Run
 both stable contexts passed, all domains skipped, and aggregate evidence recorded
 `trustedClassifierAvailable=false`, `samplePreconditionFailed=false`,
 `shadow-not-sampled`, and `not-applicable`. It also ran from pull-request-owned
-YAML and is not trusted topology evidence. Neither run is trusted-classifier,
-trusted-controller, docs-only, merge-group, or valid-sample evidence.
-Default-branch-owned `pull_request_target` topology begins only after merge.
+YAML before the controller rewrite, so it is prior unsampled topology evidence
+only. The final `pull_request_target` YAML at commit `cb7a434` has never
+executed. Neither run is trusted-classifier, trusted-controller, docs-only,
+merge-group, or valid-sample evidence. Default-branch-owned topology begins only
+after merge.
 
 Every aggregate artifact records diagnostic step-wall-clock seconds for
 classification, selected domains, and aggregate evaluation, plus rounded-minute
@@ -313,46 +352,86 @@ the ruleset unchanged and pause the shadow workflow.
    Do not count any pre-merge `pull_request` run as controller-trust evidence;
    the trusted `pull_request_target` trigger exists only after the workflow is
    present on the default branch.
-2. A maintainer provisions the sample label once:
+2. Before provisioning any label, run one `workflow_dispatch` full-safety smoke
+   from the merged default-branch workflow. Charge it against `S`, and require
+   successful stable contexts, aggregate `schemaVersion: 2`, exact revision
+   attribution, request-budget evidence, and both vulnerability JSON artifacts.
+3. Establish the monitored no-automation precondition. Jett Reno is the named
+   sample operator; record his exact GitHub login before collection. Inventory
+   repository Apps/workflows and confirm none can apply
+   `ci:selective-shadow-sample`. At every 12-hour checkpoint and before each
+   sample, query paginated issue events and require every application actor for
+   that label to equal the recorded login. Any other actor pauses collection.
+   Use the recorded UTC start bound:
+
+   ```powershell
+   $pages = gh api --paginate --slurp `
+     "repos/Jamula/Andreja/issues/events?per_page=100" |
+     ConvertFrom-Json
+   @($pages | ForEach-Object { $_ }) |
+     Where-Object {
+       $_.event -eq 'labeled' -and
+       $_.label.name -eq 'ci:selective-shadow-sample' -and
+       [datetime]$_.created_at -ge [datetime]'<START>'
+     } |
+     Select-Object created_at, @{Name='actor'; Expression={$_.actor.login}},
+       @{Name='pull'; Expression={$_.issue.number}}
+   ```
+
+   The maintainer then provisions the sample label once:
    `gh label create ci:selective-shadow-sample --repo Jamula/Andreja --color 5319e7 --description "Maintainer-authorized bounded selective-CI sample"`.
    Confirm the repository role policy still prevents fork authors from applying
    labels.
-3. Select exactly five eligible prose-only and five full-suite PRs. On a
+4. Select exactly five eligible prose-only and five full-suite PRs. On a
    quiescent head, first update the branch so `pull_request.base.sha` contains
    the merged classifier. Because `synchronize` is not a collection trigger,
-   that update does not run shadow CI. A maintainer applies the label with
+   that update does not run shadow CI. The named maintainer applies the label with
    `gh pr edit <number> --add-label ci:selective-shadow-sample`, waits for that
-   `labeled` run to finish, and counts it only if classification JSON has
+   `labeled` run to finish, and does not remove, reapply, or apply it elsewhere
+   while a sample is in progress. Count it only if classification JSON has
    `trustedClassifierAvailable=true`, no bootstrap reason, and an acceptable API
    request-budget observation. The maintainer records Jobs/artifact API evidence,
    then immediately removes the label with
    `gh pr edit <number> --remove-label ci:selective-shadow-sample`.
    Branch updates, retained labels, and reopened PRs do not trigger collection.
-4. Treat a labeled bootstrap aggregate failure as a precondition failure: remove
+5. Treat a labeled bootstrap aggregate failure as a precondition failure: remove
    the label, update the branch, and do not increment the ten-slot counter. After
    the first three valid trusted samples, set `F` to their maximum independently
    rounded fixed overhead; FinOps approval of refreshed formulas/headroom is
    required before the remaining seven.
-5. Confirm unsampled PRs emit `shadow-not-sampled` and skipped domain jobs,
+6. Confirm unsampled PRs emit `shadow-not-sampled` and skipped domain jobs,
    sampled docs/full runs have correct dispositions, no fork gets write
    permission or secrets, and classification failure reports every domain
    `unavailable`.
-6. Do not enable merge queue or collect merge-group canaries in this window.
-   Complete the named **Merge Queue Activation and Merge-Group Evidence**
-   prerequisite as a separate reviewed ruleset decision; its budget and canary
-   protocol are outside this collection (`M=0`).
-7. Obtain independent workflow correctness, security, and FinOps approvals and
+7. Do not enable merge queue for this collection. Complete the named
+   **Merge Queue Activation and Merge-Group Evidence** prerequisite as a separate
+   future ruleset decision with its own approved budget before collecting any
+   merge-group evidence (`M=0` here). That change restores the `merge_group`
+   trigger and revalidates the retained classifier/workflow code; no current
+   shadow context or cost is claimed for merge groups.
+8. Obtain independent workflow correctness, security, and FinOps approvals and
    resolve every finding.
-8. Only then prepare, review, and execute an atomic ruleset update. At collection
+9. Only then prepare, review, and execute an atomic ruleset update. At collection
    end, remove the label from every PR and delete it only after audit evidence
    confirms no active sample:
    `gh label delete ci:selective-shadow-sample --repo Jamula/Andreja --yes`.
+   Land a separately reviewed workflow-only change that removes the `schedule`
+   trigger while keeping PR contexts enabled, unless a separately reviewed
+   continuation budget explicitly covers the schedule. Do not use
+   `gh workflow disable` as the collection end state. If an emergency pause
+   disabled the whole workflow, promotion remains blocked until the schedule
+   change lands and a new reprice/window is approved. Only then may the workflow
+   be re-enabled and a dispatch smoke charged to that new window verify both
+   stable contexts again; the original `S <= 3` cannot be extended.
 
 Repository merge queue is not configured/available as of 2026-08-26: the
 effective main rules have no merge-queue rule and the Actions API reports zero
 `merge_group` runs. Enabling it changes the ruleset and requires the separately
 reviewed **Merge Queue Activation and Merge-Group Evidence** prerequisite. This
-collection budgets `M=0`; no merge-group evidence may be fabricated or implied.
+collection sets `M=0`; no merge-group evidence may be fabricated or implied.
+Removing the trigger prevents an administrator enabling the queue from silently
+adding collection cost. The future prerequisite must define its own trigger,
+canary count, cost ceiling, and ruleset decision.
 
 Ruleset `21199927` was read but not changed. Its observed weak ETag was
 `W/"027443a7de0846f3da4da7e0ec926a795f7ce378ebd57df4f5ca6a0e646c3514"`;
@@ -386,8 +465,10 @@ the five existing .NET contexts. Before any later write:
 De-shadowing is also separate and atomic. Do not rename
 `Selective CI (Shadow)`, remove the sample gate, restore `push`, or replace any
 ruleset context in the evidence-collection PR. First demonstrate the exact live
-PR and merge-group check-run names and Actions integration IDs from
-default-branch code. In an ETag-guarded update, add the proven stable aggregate
+PR check-run name and Actions integration ID from default-branch code. This
+shadow makes no merge-group context claim. Only after the separate merge-queue
+activation prerequisite restores the trigger may its live canary establish the
+merge-group name/ID. In an ETag-guarded update, add the proven stable aggregate
 context while preserving all old contexts; re-GET and verify before any later
 change renames the workflow or retires a context. Because a workflow display
 name and a job/check context can be represented differently by GitHub, never
@@ -407,7 +488,7 @@ classifier edit forces the full suite, and deleting or renaming the workflow,
 workflow name, or `Aggregate gate` job prevents the exact required context from
 appearing, so strict protection blocks rather than silently passing. This does
 not replace independent workflow review, default-branch trust, or the live
-merge-group canary.
+future merge-group canary required after separate activation.
 
 Issue #115's blocked external review-gate contract is not a dependency or a
 completed control here. Issue #104's independent review-completion protections

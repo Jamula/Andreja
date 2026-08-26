@@ -4,8 +4,6 @@ on:
   pull_request_target:
     branches: [main]
     types: [opened, labeled]
-  merge_group:
-    types: [checks_requested]
   schedule:
     - cron: '17 03 * * 2'
   workflow_dispatch:
@@ -422,6 +420,10 @@ jobs:
           OCI_RESULT: ${{ needs.oci.result }}
           OCI_SECONDS: ${{ needs.oci.outputs.duration_seconds }}
           AGGREGATE_START_EPOCH: ${{ steps.start.outputs.epoch }}
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || github.sha }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.event.after || github.sha }}
+          VALIDATED_REF: ${{ github.event_name == 'pull_request_target' && (github.event.pull_request.merge_commit_sha || 'missing-pull-request-merge-sha') || github.event.merge_group.head_sha || github.sha }}
+          VALIDATED_SHA: ${{ github.event_name == 'pull_request_target' && (github.event.pull_request.merge_commit_sha || 'missing-pull-request-merge-sha') || github.event.merge_group.head_sha || github.sha }}
         run: |
           mkdir -p artifacts/selective-ci
           node <<'NODE'
@@ -468,12 +470,18 @@ jobs:
               (sum, item) => sum + (item.selected ? Math.ceil(item.durationSeconds / 60) : 0),
               0
             );
+          const validationRan = classificationAvailable && shadowSampled && trustedClassifierAvailable;
           const evidence = {
-            schemaVersion: 1,
+            schemaVersion: 2,
             runId: process.env.GITHUB_RUN_ID,
             runAttempt: Number(process.env.GITHUB_RUN_ATTEMPT),
             eventName: process.env.GITHUB_EVENT_NAME,
-            sha: process.env.GITHUB_SHA,
+            revision: {
+              eventBaseSha: process.env.EVENT_BASE_SHA || null,
+              eventHeadSha: process.env.EVENT_HEAD_SHA || null,
+              validatedRef: validationRan ? (process.env.VALIDATED_REF || null) : null,
+              validatedSha: validationRan ? (process.env.VALIDATED_SHA || null) : null
+            },
             classificationResult: process.env.CLASSIFY_RESULT,
             shadowSampled,
             trustedClassifierAvailable,
