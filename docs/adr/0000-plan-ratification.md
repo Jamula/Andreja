@@ -4,7 +4,7 @@
 - **Date:** 2026-08-23
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
-- **Plan SHA-256:** `cf16bdd551943eb1d57eb9763d85e57e6d65417fb7098acac86b719daccbd5b4`
+- **Plan SHA-256:** `90a2348b8c80148182bff7ed7d9804fdd52e67c36870cbf52d72c0b24e1617b9`
 
 ## Decision
 
@@ -104,7 +104,7 @@ not match the merged `docs/plan.md`.
 
 - **Tracking issue:** [#116](https://github.com/Jamula/Andreja/issues/116)
 - **Pull request:** [#117](https://github.com/Jamula/Andreja/pull/117)
-- **Plan SHA-256:** `cf16bdd551943eb1d57eb9763d85e57e6d65417fb7098acac86b719daccbd5b4`
+- **Plan SHA-256:** `90a2348b8c80148182bff7ed7d9804fdd52e67c36870cbf52d72c0b24e1617b9`
 - **Approver:** Cyrus Jamula
 - **Approver status:** Cyrus directed creation and review of the canonical
   artifacts on 2026-08-25 and kept merge through the protected pull request as
@@ -112,9 +112,14 @@ not match the merged `docs/plan.md`.
   This entry does not claim a separate pre-merge decision.
 - **Classification:** Logged documentation/status amendment; no re-ratification.
 - **Scope:** Record that `docs/privacy.md` and `docs/threat-model.md` now provide
-  canonical descriptive baselines but are not ratified. Tuvok/Deanna Troi
+  canonical descriptive baselines but are not ratified. Tuvok/Deanna Troi/Rai
   challenge, Cyrus residual-risk acceptance, classification/impact assessment,
   numeric retention, residency, production export/purge, model-provider choices,
-  and evidence exits remain open. No Proposed ADR is accepted and no production,
-  provider, connector, federation, managed-hosting, public-site, or support-intake
-  activation is authorized.
+  and evidence exits remain open. Also record #106 as completed at `7a1fc20`, the
+  #104 auto-merge race as contained only by disabled repository auto-merge, the
+  full external-App review gate as open and human-blocked in draft #115, and #102
+  as the next safe engineering lane only with stable, always-present fail-closed
+  aggregate checks that neither depend on nor weaken #115. No external review gate
+  is claimed, no Proposed ADR is accepted, and no production, provider, connector,
+  federation, managed-hosting, public-site, or support-intake activation is
+  authorized.

@@ -4,7 +4,8 @@
 - **Scope:** Current Phase 1A implementation, contract-only seams, blocked evidence,
   and explicitly gated future capabilities
 - **Owner:** Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek
-- **Required challenge:** Tuvok (security) and Deanna Troi (privacy); pending
+- **Required challenge:** Tuvok (security), Deanna Troi (privacy), and
+  Rai (AI safety); pending
 - **Residual-risk acceptance:** Cyrus; pending
 - **Classification/impact assessment:** Open; this model does not satisfy that gate
   without an explicitly approved assessment and cited evidence

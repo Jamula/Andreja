@@ -22,12 +22,14 @@ def plan_table(artifacts: dict[str, str]) -> str:
     ]
     for path, digest in artifacts.items():
         if path in DOCS_CHECK.CANONICAL_BASELINE_REQUIREMENTS:
-            challenger = DOCS_CHECK.CANONICAL_BASELINE_REQUIREMENTS[path]
+            challengers = DOCS_CHECK.CANONICAL_BASELINE_REQUIREMENTS[path]
+            challenge_text = ", ".join(challengers[:-1])
             rows.append(
                 f"| [`{path}`]({path.removeprefix('docs/')}) | "
                 f"Issue [#116](issue), PR [#117](pr); `{digest}` | "
                 "**Canonical descriptive baseline; not ratified.** "
-                f"{challenger} challenge and Cyrus residual-risk acceptance remain pending. |"
+                f"{challenge_text}, {challengers[-1]}. "
+                "Cyrus residual-risk acceptance remains pending. |"
             )
         else:
             rows.append(
@@ -35,6 +37,22 @@ def plan_table(artifacts: dict[str, str]) -> str:
                 f"`{digest}` | Draft |"
             )
     return "\n".join(rows)
+
+
+def canonical_documents() -> dict[str, str]:
+    return {
+        path: "\n".join(
+            (
+                "# Baseline",
+                "",
+                "- **Status:** Canonical descriptive baseline; not ratified",
+                f"- **Required challenge:** {', '.join(challengers)}",
+                "- **Residual-risk acceptance:** Cyrus; pending",
+                "- **Classification/impact assessment:** Open",
+            )
+        )
+        for path, challengers in DOCS_CHECK.CANONICAL_BASELINE_REQUIREMENTS.items()
+    }
 
 
 class StatusArtifactHashTests(unittest.TestCase):
@@ -53,6 +71,7 @@ class StatusArtifactHashTests(unittest.TestCase):
         parsed = DOCS_CHECK.extract_status_artifact_hashes(plan)
         DOCS_CHECK.validate_status_artifact_hashes(parsed, self.expected, self.digest)
         DOCS_CHECK.validate_canonical_baseline_rows(plan)
+        DOCS_CHECK.validate_canonical_baseline_documents(canonical_documents())
 
     def test_canonical_baseline_requires_issue_and_pr(self) -> None:
         plan = plan_table(self.actual).replace("PR [#117](pr)", "PR pending", 1)
@@ -69,13 +88,24 @@ class StatusArtifactHashTests(unittest.TestCase):
             DOCS_CHECK.validate_canonical_baseline_rows(plan)
 
     def test_canonical_baseline_requires_challenge_and_residual_acceptance(self) -> None:
-        plan = plan_table(self.actual).replace(
-            "Deanna Troi challenge and Cyrus residual-risk acceptance",
-            "Review complete",
-            1,
-        )
-        with self.assertRaisesRegex(ValueError, "authority drifted"):
-            DOCS_CHECK.validate_canonical_baseline_rows(plan)
+        for requirement in (
+            "Deanna Troi",
+            "Tuvok",
+            "Rai",
+            "Cyrus",
+            "residual-risk acceptance",
+        ):
+            with self.subTest(requirement=requirement):
+                plan = plan_table(self.actual).replace(requirement, "omitted", 1)
+                with self.assertRaisesRegex(ValueError, "authority drifted"):
+                    DOCS_CHECK.validate_canonical_baseline_rows(plan)
+
+    def test_canonical_baseline_header_requires_rai(self) -> None:
+        documents = canonical_documents()
+        privacy = documents["docs/privacy.md"]
+        documents["docs/privacy.md"] = privacy.replace("Rai", "omitted", 1)
+        with self.assertRaisesRegex(ValueError, "header drifted"):
+            DOCS_CHECK.validate_canonical_baseline_documents(documents)
 
     def test_missing_artifact_is_rejected(self) -> None:
         artifacts = dict(self.actual)

@@ -40,8 +40,8 @@ EXPECTED_STATUS_ARTIFACTS = {
     "docs/legal/regulatory-applicability.md",
 }
 CANONICAL_BASELINE_REQUIREMENTS = {
-    "docs/privacy.md": "Deanna Troi",
-    "docs/threat-model.md": "Tuvok",
+    "docs/privacy.md": ("Deanna Troi", "Tuvok", "Rai (AI safety); pending"),
+    "docs/threat-model.md": ("Tuvok", "Deanna Troi", "Rai (AI safety); pending"),
 }
 
 
@@ -157,7 +157,7 @@ def extract_status_artifact_cells(plan_text: str) -> dict[str, list[str]]:
 
 def validate_canonical_baseline_rows(plan_text: str) -> None:
     rows = extract_status_artifact_cells(plan_text)
-    for path, challenger in CANONICAL_BASELINE_REQUIREMENTS.items():
+    for path, challengers in CANONICAL_BASELINE_REQUIREMENTS.items():
         if path not in rows:
             raise ValueError(f"Missing canonical baseline status row: {path}")
         _, source, authority = rows[path]
@@ -165,7 +165,7 @@ def validate_canonical_baseline_rows(plan_text: str) -> None:
         missing_source = [part for part in required_source_parts if part not in source]
         required_authority_parts = (
             "Canonical descriptive baseline; not ratified",
-            challenger,
+            *challengers,
             "Cyrus",
             "residual-risk acceptance",
         )
@@ -177,6 +177,26 @@ def validate_canonical_baseline_rows(plan_text: str) -> None:
                 f"Canonical baseline authority drifted for {path}.\n"
                 f"  Missing source text: {missing_source}\n"
                 f"  Missing authority text: {missing_authority}"
+            )
+
+
+def validate_canonical_baseline_documents(document_texts: dict[str, str]) -> None:
+    for path, challengers in CANONICAL_BASELINE_REQUIREMENTS.items():
+        header = " ".join(document_texts[path].splitlines()[:15])
+        required_header_parts = (
+            "**Status:** Canonical descriptive baseline; not ratified",
+            "**Required challenge:**",
+            *challengers,
+            "**Residual-risk acceptance:** Cyrus; pending",
+            "**Classification/impact assessment:** Open",
+        )
+        missing_header = [
+            part for part in required_header_parts if part not in header
+        ]
+        if missing_header:
+            raise ValueError(
+                f"Canonical baseline header drifted for {path}.\n"
+                f"  Missing header text: {missing_header}"
             )
 
 
@@ -212,6 +232,12 @@ def check_status_artifact_hashes() -> None:
             lambda path: hashlib.sha256((REPO_ROOT / path).read_bytes()).hexdigest(),
         )
         validate_canonical_baseline_rows(plan_text)
+        validate_canonical_baseline_documents(
+            {
+                path: read(REPO_ROOT / path)
+                for path in CANONICAL_BASELINE_REQUIREMENTS
+            }
+        )
     except (OSError, ValueError) as error:
         fail(str(error))
     print(f"OK: {len(artifacts)} status-artifact hashes match.")
