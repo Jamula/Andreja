@@ -35,6 +35,11 @@
       "fullSuite": true
     },
     {
+      "id": "runtime-configuration-boundary",
+      "pattern": "^\\.mcp\\.json$",
+      "fullSuite": true
+    },
+    {
       "id": "generated-schema",
       "pattern": "(^|/)(generated/|[^/]+\\.schema\\.json$)",
       "fullSuite": true
@@ -102,7 +107,7 @@
     },
     {
       "id": "inert-repository-metadata",
-      "pattern": "^(\\.github/(FUNDING\\.yml|pull_request_template\\.md|ISSUE_TEMPLATE/(bug|config|decision|feature|feedback)\\.yml)|\\.gitignore|\\.gitattributes|\\.env\\.example|\\.mcp\\.json)$",
+      "pattern": "^(\\.github/(FUNDING\\.yml|pull_request_template\\.md|ISSUE_TEMPLATE/(bug|config|decision|feature|feedback)\\.yml)|\\.gitignore|\\.gitattributes|\\.env\\.example)$",
       "domains": ["docs"]
     }
   ]

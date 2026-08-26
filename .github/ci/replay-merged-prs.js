@@ -61,6 +61,16 @@ function pullFiles(repository, pull, mergeBaseSha) {
   });
 }
 
+function replayForcedFullReasons(pull, files, mergeBaseSha) {
+  const reasons =
+    Number.isInteger(pull.changed_files) && pull.changed_files === files.length
+      ? []
+      : ['replay-pull-request-file-count-mismatch'];
+  if (files.length >= 3000) reasons.push('pull-request-file-limit');
+  if (!mergeBaseSha) reasons.push('replay-merge-base-unavailable');
+  return reasons;
+}
+
 function classificationName(decision) {
   if (decision.fullSuite) return 'full';
   const selected = ALL_DOMAINS.filter((domain) => decision.domains[domain].selected);
@@ -121,11 +131,7 @@ function main() {
     );
     const mergeBaseSha = compare.merge_base_commit?.sha;
     const files = pullFiles(repository, pull, mergeBaseSha);
-    const forcedFullReasons =
-      Number.isInteger(pull.changed_files) && pull.changed_files === files.length
-        ? []
-        : ['replay-pull-request-file-count-mismatch'];
-    if (!mergeBaseSha) forcedFullReasons.push('replay-merge-base-unavailable');
+    const forcedFullReasons = replayForcedFullReasons(pull, files, mergeBaseSha);
     const decision = classifyFiles(files, policy, {
       eventName: 'historical-replay',
       trustedPolicySha: 'policy-at-generation-commit',
@@ -213,4 +219,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { classificationName, estimatedMinutes };
+module.exports = { classificationName, estimatedMinutes, replayForcedFullReasons };

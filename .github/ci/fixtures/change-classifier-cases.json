@@ -117,6 +117,12 @@
     "fullSuite": true
   },
   {
+    "name": "MCP runtime configuration",
+    "files": [{"filename": ".mcp.json", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
     "name": "executable documentation",
     "files": [{"filename": "docs/help/local-identity.md", "status": "added", "changes": 3, "patch": "@@ -0,0 +1,3 @@\n+```powershell\n+dotnet run\n+```"}],
     "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
@@ -139,6 +145,30 @@
     "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "~~~unknown-language\ncommand\n~~~\n", "patch": "@@ -1,3 +1,2 @@\n ~~~unknown-language\n-command\n ~~~"}],
     "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
     "fullSuite": true
+  },
+  {
+    "name": "addition of Markdown indented code",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "# Run\n\nAfter\n", "patch": "@@ -1,3 +1,4 @@\n # Run\n \n+\t  dotnet test\n After"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "deletion of Markdown indented code",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "# Run\n\n    dotnet test\n\nAfter\n", "patch": "@@ -1,5 +1,4 @@\n # Run\n \n-    dotnet test\n \n After"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "addition of three-space Markdown prose stays docs-only",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "# Note\n\nAfter\n", "patch": "@@ -1,3 +1,4 @@\n # Note\n \n+   prose\n After"}],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
+    "name": "deletion of three-space Markdown prose stays docs-only",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "# Note\n\n   prose\nAfter\n", "patch": "@@ -1,4 +1,3 @@\n # Note\n \n-   prose\n After"}],
+    "selected": ["docs"],
+    "fullSuite": false
   },
   {
     "name": "prose change outside unchanged fence stays docs-only",

@@ -11,8 +11,10 @@ const {
   acquireChanges,
   attachTrustedMarkdownBase,
   classifyFiles,
+  createBudgetedFetch,
   inspectMarkdownPatch,
   loadPolicy,
+  main,
   paginatedFiles,
   shadowSample,
 } = require('./change-classifier');
@@ -20,7 +22,12 @@ const {
 const root = path.resolve(__dirname, '../..');
 const policy = loadPolicy(path.join(__dirname, 'change-policy.v1.json'));
 const fixtures = require('./fixtures/change-classifier-cases.json');
-const { classificationName, estimatedMinutes } = require('./replay-merged-prs');
+const {
+  classificationName,
+  estimatedMinutes,
+  replayForcedFullReasons,
+} = require('./replay-merged-prs');
+let aggregateArtifactSequence = 0;
 
 function runAggregateArtifact(overrides) {
   const workflow = fs.readFileSync(
@@ -29,7 +36,11 @@ function runAggregateArtifact(overrides) {
   );
   const match = workflow.match(/node <<'NODE'\r?\n([\s\S]*?)\r?\n {10}NODE/);
   assert.ok(match, 'aggregate Node script must remain directly testable');
-  const artifact = path.join(root, 'artifacts/selective-ci/aggregate-test.json');
+  aggregateArtifactSequence += 1;
+  const artifact = path.join(
+    root,
+    `artifacts/selective-ci/aggregate-test-${process.pid}-${aggregateArtifactSequence}.json`,
+  );
   fs.mkdirSync(path.dirname(artifact), { recursive: true });
   fs.rmSync(artifact, { force: true });
   let status = 0;
@@ -85,6 +96,7 @@ test('every policy rule is reachable as the first matching rule', () => {
     'dependency-update-configuration': '.github/dependabot.yml',
     'github-governance-boundary': '.github/actions/setup/action.yml',
     'squad-governance-boundary': '.squad/example.md',
+    'runtime-configuration-boundary': '.mcp.json',
     'generated-schema': 'generated/example.schema.json',
     'postgres-migration': 'src/Adapters/Andreja.Adapters/PostgreSql/Migrations/Example.cs',
     'docker-compose-iac': 'Dockerfile',
@@ -140,6 +152,16 @@ test('classifier changes fail closed to every domain', () => {
   );
 });
 
+test('MCP runtime configuration can never be classified as docs-only', () => {
+  const result = classifyFiles([{ filename: '.mcp.json', status: 'modified' }], policy);
+  assert.equal(result.files[0].rule, 'runtime-configuration-boundary');
+  assert.equal(result.fullSuite, true);
+  assert.deepEqual(
+    ALL_DOMAINS.filter((domain) => result.domains[domain].selected),
+    ALL_DOMAINS,
+  );
+});
+
 test('PR metadata acquisition follows every pagination link', async () => {
   const calls = [];
   const pages = new Map([
@@ -156,7 +178,16 @@ test('PR metadata acquisition follows every pagination link', async () => {
     ],
     [
       `https://api.github.com/repos/Jamula/Andreja/compare/${'a'.repeat(40)}...${'b'.repeat(40)}?per_page=1`,
-      { body: { merge_base_commit: { sha: 'c'.repeat(40) } }, link: null },
+      {
+        body: {
+          merge_base_commit: { sha: 'c'.repeat(40) },
+          files: [
+            { filename: 'docs/a.md', status: 'modified', changes: 2, patch: '@@ -1 +1 @@\n-a\n+b' },
+            { filename: 'src/App.cs', status: 'added' },
+          ],
+        },
+        link: null,
+      },
     ],
   ]);
   const fetchImpl = async (url) => {
@@ -171,13 +202,14 @@ test('PR metadata acquisition follows every pagination link', async () => {
     };
   };
   const result = await acquireChanges(
-    'pull_request',
+    'pull_request_target',
     {
       number: 102,
       pull_request: {
         changed_files: 2,
         base: { sha: 'a'.repeat(40) },
         head: { sha: 'b'.repeat(40) },
+        merge_commit_sha: 'd'.repeat(40),
       },
     },
     'Jamula/Andreja',
@@ -188,6 +220,81 @@ test('PR metadata acquisition follows every pagination link', async () => {
   assert.deepEqual(result.forcedFullReasons, []);
   assert.equal(result.trustedContentSha, 'c'.repeat(40));
   assert.equal(calls.length, 3);
+});
+
+test('PR target metadata without an immutable merge commit fails closed', async () => {
+  const file = { filename: 'docs/a.md', status: 'added', changes: 1, patch: '@@ -0,0 +1 @@\n+prose' };
+  const fetchImpl = async (url) => ({
+    ok: true,
+    status: 200,
+    statusText: 'OK',
+    headers: { get: () => null },
+    json: async () =>
+      url.includes('/compare/')
+        ? { merge_base_commit: { sha: 'c'.repeat(40) }, files: [file] }
+        : [file],
+  });
+  const changes = await acquireChanges(
+    'pull_request_target',
+    {
+      number: 118,
+      pull_request: {
+        changed_files: 1,
+        base: { sha: 'a'.repeat(40) },
+        head: { sha: 'b'.repeat(40) },
+      },
+    },
+    'Jamula/Andreja',
+    'read-only-token',
+    fetchImpl,
+  );
+  assert.ok(
+    changes.forcedFullReasons.includes('pull-request-merge-commit-sha-unavailable'),
+  );
+  assert.equal(
+    classifyFiles(changes.files, policy, {
+      forcedFullReasons: changes.forcedFullReasons,
+    }).fullSuite,
+    true,
+  );
+});
+
+test('PR metadata snapshot races fail closed against the event head', async () => {
+  const fetchImpl = async (url) => ({
+    ok: true,
+    status: 200,
+    statusText: 'OK',
+    headers: { get: () => null },
+    json: async () =>
+      url.includes('/compare/')
+        ? {
+            merge_base_commit: { sha: 'c'.repeat(40) },
+            files: [{ filename: 'src/EventHead.cs', status: 'added', changes: 1 }],
+          }
+        : [{ filename: 'docs/NewHead.md', status: 'added', changes: 1 }],
+  });
+  const changes = await acquireChanges(
+    'pull_request_target',
+    {
+      number: 118,
+      pull_request: {
+        changed_files: 1,
+        base: { sha: 'a'.repeat(40) },
+        head: { sha: 'b'.repeat(40) },
+      },
+    },
+    'Jamula/Andreja',
+    'read-only-token',
+    fetchImpl,
+  );
+  assert.equal(changes.files[0].filename, 'src/EventHead.cs');
+  assert.ok(changes.forcedFullReasons.includes('pull-request-file-snapshot-mismatch'));
+  assert.equal(
+    classifyFiles(changes.files, policy, {
+      forcedFullReasons: changes.forcedFullReasons,
+    }).fullSuite,
+    true,
+  );
 });
 
 test('PR metadata count mismatch fails closed on silent API truncation', async () => {
@@ -261,6 +368,124 @@ test('pagination failures reject rather than returning partial metadata', async 
     paginatedFiles('https://api.github.com/page/1', 'token', fetchImpl),
     /metadata request failed/,
   );
+});
+
+test('metadata requests expose and enforce a bounded API budget', async () => {
+  const budgetedFetch = createBudgetedFetch(async () => ({
+    ok: true,
+    status: 200,
+    statusText: 'OK',
+    headers: {
+      get: (name) =>
+        name === 'x-ratelimit-remaining' ? '14987' :
+          name === 'x-ratelimit-reset' ? '1787723028' : null,
+    },
+    json: async () => [],
+  }), 1);
+  await budgetedFetch('https://api.github.com/one', {});
+  await assert.rejects(
+    budgetedFetch('https://api.github.com/two', {}),
+    /request budget exceeded 1/,
+  );
+  assert.deepEqual(budgetedFetch.observation(), {
+    limit: 1,
+    used: 1,
+    exhausted: true,
+    rateLimitResponseObserved: false,
+    minimumRateLimitRemaining: 14987,
+    rateLimitResetEpoch: 1787723028,
+  });
+});
+
+test('rate-limit responses fail classification metadata acquisition closed', async () => {
+  const fetchImpl = async () => ({
+    ok: false,
+    status: 429,
+    statusText: 'Too Many Requests',
+    headers: { get: () => '0' },
+    json: async () => ({}),
+  });
+  await assert.rejects(
+    acquireChanges(
+      'pull_request_target',
+      { number: 118, pull_request: { changed_files: 1 } },
+      'Jamula/Andreja',
+      'token',
+      fetchImpl,
+    ),
+    /metadata rate limit exhausted/,
+  );
+});
+
+test('Markdown metadata rate limits persist unavailable classification evidence', async () => {
+  const directory = path.join(root, 'artifacts/selective-ci');
+  const eventPath = path.join(directory, `rate-limit-event-${process.pid}.json`);
+  const decisionPath = path.join(directory, `rate-limit-decision-${process.pid}.json`);
+  fs.mkdirSync(directory, { recursive: true });
+  fs.writeFileSync(eventPath, JSON.stringify({
+    number: 118,
+    action: 'labeled',
+    label: { name: 'ci:selective-shadow-sample' },
+    pull_request: {
+      number: 118,
+      changed_files: 1,
+      base: { sha: 'a'.repeat(40) },
+      head: { sha: 'b'.repeat(40) },
+      merge_commit_sha: 'd'.repeat(40),
+      labels: [{ name: 'ci:selective-shadow-sample' }],
+    },
+  }));
+  const originalEnvironment = { ...process.env };
+  const originalExitCode = process.exitCode;
+  process.env.GITHUB_EVENT_NAME = 'pull_request_target';
+  process.env.GITHUB_EVENT_PATH = eventPath;
+  process.env.GITHUB_REPOSITORY = 'Jamula/Andreja';
+  process.env.GITHUB_TOKEN = 'read-only-token';
+  process.env.CHANGE_POLICY_PATH = path.join(__dirname, 'change-policy.v1.json');
+  process.env.CHANGE_DECISION_PATH = decisionPath;
+  delete process.env.GITHUB_OUTPUT;
+  const file = {
+    filename: 'docs/rate-limit.md',
+    status: 'modified',
+    additions: 1,
+    deletions: 1,
+    changes: 2,
+    patch: '@@ -1 +1 @@\n-old\n+new',
+  };
+  const fetchImpl = async (url) => {
+    const limited = url.includes('/contents/');
+    const body = url.includes('/compare/')
+      ? { merge_base_commit: { sha: 'c'.repeat(40) }, files: [file] }
+      : [file];
+    return {
+      ok: !limited,
+      status: limited ? 429 : 200,
+      statusText: limited ? 'Too Many Requests' : 'OK',
+      headers: {
+        get: (name) =>
+          name === 'x-ratelimit-remaining' ? (limited ? '0' : '14987') :
+            name === 'x-ratelimit-reset' ? '1787723028' : null,
+      },
+      json: async () => body,
+    };
+  };
+  try {
+    await main(fetchImpl);
+    const decision = JSON.parse(fs.readFileSync(decisionPath, 'utf8'));
+    assert.equal(decision.classificationFailure, 'github-metadata-rate-limit-or-budget');
+    assert.equal(decision.apiRequestBudget.rateLimitResponseObserved, true);
+    assert.equal(decision.fullSuite, true);
+    assert.ok(
+      decision.fullReasons.some((reason) =>
+        reason.startsWith('trusted-markdown-base-error:GitHub metadata rate limit exhausted')),
+    );
+    assert.equal(process.exitCode, 1);
+  } finally {
+    process.env = originalEnvironment;
+    process.exitCode = originalExitCode;
+    fs.rmSync(eventPath, { force: true });
+    fs.rmSync(decisionPath, { force: true });
+  }
 });
 
 test('merge-group compare never follows commit pagination links and fails closed', async () => {
@@ -380,15 +605,40 @@ test('workflow bounds PR sampling and never cancels scheduled safety runs', () =
     'utf8',
   );
   assert.match(workflow, /group: selective-ci-shadow-\$\{\{ github\.event_name \}\}-/);
-  assert.match(workflow, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
+  assert.match(workflow, /^\s+pull_request_target:\s*$/m);
+  assert.doesNotMatch(workflow, /^\s+pull_request:\s*$/m);
+  assert.match(workflow, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request_target' \}\}/);
   assert.doesNotMatch(workflow, /^\s+push:\s*$/m);
-  assert.match(workflow, /types: \[opened, synchronize, reopened, labeled\]/);
+  assert.match(workflow, /types: \[opened, labeled\]/);
+  assert.doesNotMatch(workflow, /types: \[[^\]]*(synchronize|reopened)/);
   assert.equal(
     workflow.match(/if: needs\.classify\.outputs\.shadow_sampled == 'true' && needs\.classify\.outputs\.trusted_classifier == 'true' && needs\.classify\.outputs\.[a-z]+ == 'true'/g)?.length,
     ALL_DOMAINS.length,
   );
   assert.match(workflow, /echo "trusted_classifier=false"/);
   assert.match(workflow, /trusted_classifier: \$\{\{ steps\.classify\.outputs\.trusted_classifier \}\}/);
+  assert.match(
+    workflow,
+    /-SkipPostgreSql -OutputPath artifacts\/vulnerability\/solution\.json/,
+  );
+  assert.match(
+    workflow,
+    /-OnlyPostgreSql -OutputPath artifacts\/vulnerability\/postgresql\.json/,
+  );
+  assert.equal(
+    workflow.match(/name: selective-ci-nuget-(solution|postgresql)-\$\{\{ github\.run_attempt \}\}/g)?.length,
+    2,
+  );
+  assert.equal(
+    workflow.match(/name: Upload bounded (solution|PostgreSQL) vulnerability evidence[\s\S]{0,400}?retention-days: 14/g)?.length,
+    2,
+  );
+  assert.equal(
+    workflow.match(/missing-pull-request-merge-sha/g)?.length,
+    ALL_DOMAINS.length,
+  );
+  assert.match(workflow, /permissions:\s*\{\}/);
+  assert.match(workflow, /permissions:\r?\n\s+contents: read\r?\n\s+pull-requests: read/);
 });
 
 test('only the trusted sample-label event enables PR shadow work', () => {
@@ -397,16 +647,16 @@ test('only the trusted sample-label event enables PR shadow work', () => {
     label: { name: 'ci:selective-shadow-sample' },
     pull_request: { labels: [{ name: 'ci:selective-shadow-sample' }] },
   };
-  assert.deepEqual(shadowSample('pull_request', labeled), {
+  assert.deepEqual(shadowSample('pull_request_target', labeled), {
     sampled: true,
     reason: 'maintainer-sample-label-event',
   });
   assert.equal(
-    shadowSample('pull_request', { ...labeled, action: 'synchronize' }).sampled,
+    shadowSample('pull_request_target', { ...labeled, action: 'synchronize' }).sampled,
     false,
   );
   assert.equal(
-    shadowSample('pull_request', {
+    shadowSample('pull_request_target', {
       ...labeled,
       label: { name: 'untrusted-lookalike' },
     }).sampled,
@@ -507,6 +757,24 @@ test('historical replay economics use the documented per-domain model', () => {
   assert.equal(estimatedMinutes(source), 10);
   assert.equal(classificationName(full), 'full');
   assert.equal(estimatedMinutes(full), 16);
+});
+
+test('historical replay fails closed at the exact GitHub 3000-file cap', () => {
+  const files = Array.from({ length: 3000 }, (_, index) => ({
+    filename: `docs/replay-${index}.md`,
+    status: 'added',
+    changes: 1,
+    patch: '@@ -0,0 +1 @@\n+prose',
+  }));
+  const forcedFullReasons = replayForcedFullReasons(
+    { changed_files: files.length },
+    files,
+    'c'.repeat(40),
+  );
+  assert.deepEqual(forcedFullReasons, ['pull-request-file-limit']);
+  const result = classifyFiles(files, policy, { forcedFullReasons });
+  assert.equal(result.fullSuite, true);
+  assert.ok(result.fullReasons.includes('pull-request-file-limit'));
 });
 
 test('recorded historical replay is internally consistent with the current policy', () => {
