@@ -4,7 +4,7 @@
 - **Date:** 2026-08-23
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
-- **Plan SHA-256:** `90a2348b8c80148182bff7ed7d9804fdd52e67c36870cbf52d72c0b24e1617b9`
+- **Plan SHA-256:** `f6827de9267fd786e1bae1f47bca9db95c7e019f9a91b042be01c2b620c897f9`
 
 ## Decision
 
@@ -104,7 +104,7 @@ not match the merged `docs/plan.md`.
 
 - **Tracking issue:** [#116](https://github.com/Jamula/Andreja/issues/116)
 - **Pull request:** [#117](https://github.com/Jamula/Andreja/pull/117)
-- **Plan SHA-256:** `90a2348b8c80148182bff7ed7d9804fdd52e67c36870cbf52d72c0b24e1617b9`
+- **Plan SHA-256:** `f6827de9267fd786e1bae1f47bca9db95c7e019f9a91b042be01c2b620c897f9`
 - **Approver:** Cyrus Jamula
 - **Approver status:** Cyrus directed creation and review of the canonical
   artifacts on 2026-08-25 and kept merge through the protected pull request as
@@ -116,10 +116,11 @@ not match the merged `docs/plan.md`.
   challenge, Cyrus residual-risk acceptance, classification/impact assessment,
   numeric retention, residency, production export/purge, model-provider choices,
   and evidence exits remain open. Also record #106 as completed at `7a1fc20`, the
-  #104 auto-merge race as contained only by disabled repository auto-merge, the
-  full external-App review gate as open and human-blocked in draft #115, and #102
-  as the next safe engineering lane only with stable, always-present fail-closed
-  aggregate checks that neither depend on nor weaken #115. No external review gate
-  is claimed, no Proposed ADR is accepted, and no production, provider, connector,
-  federation, managed-hosting, public-site, or support-intake activation is
-  authorized.
+  #104 auto-merge race as contained only by disabled repository auto-merge, not as
+  full completion. Issue #104 remains open; merged PR #115 (`c93c6be`) contributed
+  human-blocked design evidence only, and no external GitHub App/worker or
+  always-present review-completion gate exists or is authorized. Record #102 as
+  the next safe engineering lane only with stable, always-present fail-closed
+  aggregate checks that neither depend on nor weaken #115. No Proposed ADR is
+  accepted and no production, provider, connector, federation, managed-hosting,
+  public-site, or support-intake activation is authorized.

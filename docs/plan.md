@@ -124,10 +124,10 @@ reconciliation at merge commit `7a1fc20`.
 The exact premature-auto-merge race in
 [#104](https://github.com/Jamula/Andreja/issues/104) is currently contained because
 repository auto-merge is disabled (`allow_auto_merge=false`). This is containment,
-not the full required outcome: #104 remains open, draft PR
-[#115](https://github.com/Jamula/Andreja/pull/115) remains human-blocked design
-evidence, and no external GitHub App/worker or always-present review-completion gate
-exists or is authorized.
+not the full required outcome: #104 remains open, and merged PR
+[#115](https://github.com/Jamula/Andreja/pull/115) (`c93c6be`) contributed
+human-blocked design evidence only. No external GitHub App/worker or always-present
+review-completion gate exists or is authorized.
 
 The next safe engineering lane is fail-closed selective CI under
 [#102](https://github.com/Jamula/Andreja/issues/102), only while repository

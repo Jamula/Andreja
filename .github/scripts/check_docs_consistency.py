@@ -47,6 +47,16 @@ CANONICAL_OPEN_ASSESSMENT = (
     "The classification/impact assessment remains open unless explicitly approved "
     "with cited evidence."
 )
+CANONICAL_DOCUMENT_OPEN_ASSESSMENTS = {
+    "docs/privacy.md": (
+        "**Classification/impact assessment:** Open; this inventory does not satisfy "
+        "that gate without an explicitly approved assessment and cited evidence"
+    ),
+    "docs/threat-model.md": (
+        "**Classification/impact assessment:** Open; this model does not satisfy "
+        "that gate without an explicitly approved assessment and cited evidence"
+    ),
+}
 
 
 def fail(message: str) -> None:
@@ -187,13 +197,13 @@ def validate_canonical_baseline_rows(plan_text: str) -> None:
 
 def validate_canonical_baseline_documents(document_texts: dict[str, str]) -> None:
     for path, challengers in CANONICAL_BASELINE_REQUIREMENTS.items():
-        header = " ".join(document_texts[path].splitlines()[:15])
+        header = " ".join(" ".join(document_texts[path].splitlines()[:15]).split())
         required_header_parts = (
             "**Status:** Canonical descriptive baseline; not ratified",
             "**Required challenge:**",
             *challengers,
             "**Residual-risk acceptance:** Cyrus; pending",
-            "**Classification/impact assessment:** Open",
+            CANONICAL_DOCUMENT_OPEN_ASSESSMENTS[path],
         )
         missing_header = [
             part for part in required_header_parts if part not in header

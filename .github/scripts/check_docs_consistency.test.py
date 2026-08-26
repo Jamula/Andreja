@@ -49,7 +49,7 @@ def canonical_documents() -> dict[str, str]:
                 "- **Status:** Canonical descriptive baseline; not ratified",
                 f"- **Required challenge:** {', '.join(challengers)}",
                 "- **Residual-risk acceptance:** Cyrus; pending",
-                "- **Classification/impact assessment:** Open",
+                f"- {DOCS_CHECK.CANONICAL_DOCUMENT_OPEN_ASSESSMENTS[path]}",
             )
         )
         for path, challengers in DOCS_CHECK.CANONICAL_BASELINE_REQUIREMENTS.items()
@@ -115,12 +115,42 @@ class StatusArtifactHashTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "authority drifted"):
                     DOCS_CHECK.validate_canonical_baseline_rows(plan)
 
-    def test_canonical_baseline_header_requires_rai(self) -> None:
-        documents = canonical_documents()
-        privacy = documents["docs/privacy.md"]
-        documents["docs/privacy.md"] = privacy.replace("Rai", "omitted", 1)
-        with self.assertRaisesRegex(ValueError, "header drifted"):
-            DOCS_CHECK.validate_canonical_baseline_documents(documents)
+    def test_canonical_baseline_header_requires_open_assessment(self) -> None:
+        for path, required in DOCS_CHECK.CANONICAL_DOCUMENT_OPEN_ASSESSMENTS.items():
+            for replacement in (
+                "**Classification/impact assessment:** Completed",
+                "",
+            ):
+                with self.subTest(path=path, replacement=replacement or "omitted"):
+                    documents = canonical_documents()
+                    documents[path] = documents[path].replace(
+                        required,
+                        replacement,
+                        1,
+                    )
+                    with self.assertRaisesRegex(ValueError, "header drifted"):
+                        DOCS_CHECK.validate_canonical_baseline_documents(documents)
+
+    def test_canonical_baseline_header_requires_status_challenge_and_acceptance(
+        self,
+    ) -> None:
+        for path, challengers in DOCS_CHECK.CANONICAL_BASELINE_REQUIREMENTS.items():
+            required_parts = (
+                "**Status:** Canonical descriptive baseline; not ratified",
+                "**Required challenge:**",
+                *challengers,
+                "**Residual-risk acceptance:** Cyrus; pending",
+            )
+            for requirement in required_parts:
+                with self.subTest(path=path, requirement=requirement):
+                    documents = canonical_documents()
+                    documents[path] = documents[path].replace(
+                        requirement,
+                        "omitted",
+                        1,
+                    )
+                    with self.assertRaisesRegex(ValueError, "header drifted"):
+                        DOCS_CHECK.validate_canonical_baseline_documents(documents)
 
     def test_missing_artifact_is_rejected(self) -> None:
         artifacts = dict(self.actual)
