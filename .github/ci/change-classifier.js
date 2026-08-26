@@ -11,6 +11,8 @@ const SHADOW_SAMPLE_LABEL = 'ci:selective-shadow-sample';
 const API_REQUEST_LIMIT = 132;
 const MARKDOWN_FETCH_CONCURRENCY = 8;
 const EXACT_SHA = /^[0-9a-f]{40}$/;
+const SMOKE_EVENT_TYPE = 'selective-ci-smoke';
+const SMOKE_WORKFLOW_FILE = 'selective-ci-shadow.yml';
 
 function loadPolicy(policyPath) {
   const policy = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
@@ -456,6 +458,7 @@ function classifyFiles(files, policy, options = {}) {
     apiRequestBudget: options.apiRequestBudget ?? null,
     classificationFailure: options.classificationFailure ?? null,
     mergeCommitProof: options.mergeCommitProof ?? null,
+    smokeAuthorization: options.smokeAuthorization ?? null,
     shadowSample: {
       label: SHADOW_SAMPLE_LABEL,
       sampled: options.shadowSampled ?? true,
@@ -471,7 +474,7 @@ function classifyFiles(files, policy, options = {}) {
   };
 }
 
-function shadowSample(eventName, event, expectedOperator) {
+function shadowSample(eventName, event, expectedOperator, smokeAuthorization = null) {
   const observedActor =
     typeof event.sender?.login === 'string' && event.sender.login.length > 0
       ? event.sender.login
@@ -480,10 +483,18 @@ function shadowSample(eventName, event, expectedOperator) {
     typeof expectedOperator === 'string' && expectedOperator.length > 0
       ? expectedOperator
       : null;
+  if (eventName === 'repository_dispatch') {
+    return {
+      sampled: smokeAuthorization?.authorized === true,
+      reason: smokeAuthorization?.reason ?? 'repository-dispatch-smoke-unavailable',
+      observedActor: smokeAuthorization?.sender ?? observedActor,
+      expectedOperator: smokeAuthorization?.expectedOperator ?? configuredOperator,
+    };
+  }
   if (eventName !== 'pull_request' && eventName !== 'pull_request_target') {
     return {
-      sampled: true,
-      reason: 'non-pull-request-full-safety',
+      sampled: false,
+      reason: 'unsupported-shadow-event',
       observedActor,
       expectedOperator: configuredOperator,
     };
@@ -599,6 +610,216 @@ async function paginatedFiles(initialUrl, token, fetchImpl = fetch) {
   return files;
 }
 
+async function authorizeRepositoryDispatchSmoke(
+  event,
+  repository,
+  token,
+  fetchImpl = fetch,
+  runtime = {},
+) {
+  const sender =
+    typeof event.sender?.login === 'string' && event.sender.login.length > 0
+      ? event.sender.login
+      : null;
+  const actor =
+    typeof runtime.actor === 'string' && runtime.actor.length > 0
+      ? runtime.actor
+      : null;
+  const expectedOperator =
+    typeof runtime.expectedOperator === 'string' && runtime.expectedOperator.length > 0
+      ? runtime.expectedOperator
+      : null;
+  const expectedControllerSha =
+    typeof runtime.configuredControllerSha === 'string' &&
+    runtime.configuredControllerSha.length > 0
+      ? runtime.configuredControllerSha
+      : null;
+  const evidence = {
+    authorized: false,
+    reason: null,
+    eventType: event.action ?? null,
+    sender,
+    actor,
+    expectedOperator,
+    workflowRef: runtime.workflowRef ?? null,
+    workflowSha: runtime.workflowSha ?? null,
+    expectedControllerSha,
+    defaultBranch: null,
+    liveDefaultBranchSha: null,
+    currentRunId: runtime.runId ?? null,
+    currentRunAttempt: runtime.runAttempt ?? null,
+    historySnapshots: [],
+    requestBudgetAtAuthorization: null,
+    error: null,
+  };
+  const fail = (reason, error = null) => ({
+    ...evidence,
+    reason,
+    error: error === null ? null : String(error),
+  });
+  if (event.action !== SMOKE_EVENT_TYPE) return fail('smoke-event-type-mismatch');
+  if (expectedOperator === null) return fail('smoke-operator-unconfigured');
+  if (sender === null || actor === null) return fail('smoke-operator-missing');
+  if (sender !== expectedOperator || actor !== expectedOperator) {
+    return fail('smoke-operator-mismatch');
+  }
+  if (!EXACT_SHA.test(String(runtime.workflowSha ?? ''))) {
+    return fail('smoke-workflow-sha-invalid');
+  }
+  if (!EXACT_SHA.test(String(expectedControllerSha ?? ''))) {
+    return fail('smoke-controller-sha-unconfigured-or-invalid');
+  }
+  if (!/^[1-9]\d*$/.test(String(runtime.runId ?? ''))) {
+    return fail('smoke-run-id-invalid');
+  }
+  if (String(runtime.runAttempt ?? '') !== '1') return fail('smoke-rerun-forbidden');
+
+  const api = process.env.GITHUB_API_URL || 'https://api.github.com';
+  const delay = runtime.delay ?? ((milliseconds) =>
+    new Promise((resolve) => setTimeout(resolve, milliseconds)));
+
+  const readHistory = async (label, defaultBranch, liveSha) => {
+    const runs = [];
+    const ids = new Set();
+    let pageCount = 0;
+    let totalCount = null;
+    let url =
+      `${api}/repos/${repository}/actions/workflows/${SMOKE_WORKFLOW_FILE}/runs` +
+      '?event=repository_dispatch&per_page=100';
+    while (url) {
+      pageCount += 1;
+      if (pageCount > 100) throw new Error('Smoke run pagination exceeded 100 pages.');
+      const { body, next } = await getJson(url, token, fetchImpl);
+      if (
+        !Number.isSafeInteger(body.total_count) ||
+        body.total_count < 0 ||
+        body.total_count >= 1000
+      ) {
+        throw new Error('Smoke run total_count was invalid or reached the 1,000-run API cap.');
+      }
+      if (totalCount === null) totalCount = body.total_count;
+      if (body.total_count !== totalCount) {
+        throw new Error('Smoke run total_count changed during pagination.');
+      }
+      if (!Array.isArray(body.workflow_runs)) {
+        throw new Error('Smoke run metadata omitted workflow_runs.');
+      }
+      for (const run of body.workflow_runs) {
+        const id = String(run.id ?? '');
+        if (!/^[1-9]\d*$/.test(id) || ids.has(id)) {
+          throw new Error('Smoke run metadata contained an invalid or duplicate run ID.');
+        }
+        if (
+          typeof run.created_at !== 'string' ||
+          !Number.isFinite(Date.parse(run.created_at))
+        ) {
+          throw new Error('Smoke run metadata omitted a valid creation timestamp.');
+        }
+        ids.add(id);
+        runs.push(run);
+      }
+      url = next;
+    }
+    if (runs.length !== totalCount) {
+      throw new Error(
+        `Smoke run pagination was incomplete: expected ${totalCount}, observed ${runs.length}.`,
+      );
+    }
+    const revisionRuns = runs.filter((run) => run.head_sha === liveSha);
+    const currentRun = revisionRuns.find(
+      (run) => String(run.id) === String(runtime.runId),
+    );
+    evidence.historySnapshots.push({
+      label,
+      totalCount,
+      pageCount,
+      currentRevisionCount: revisionRuns.length,
+      currentRevisionRunIds: revisionRuns.map((run) => String(run.id)),
+      currentRunVisible: currentRun !== undefined,
+    });
+    if (!currentRun) return 'smoke-current-run-not-visible';
+    if (
+      currentRun.event !== 'repository_dispatch' ||
+      currentRun.head_sha !== liveSha ||
+      currentRun.head_branch !== defaultBranch ||
+      currentRun.path !== `.github/workflows/${SMOKE_WORKFLOW_FILE}` ||
+      currentRun.head_repository?.full_name !== repository ||
+      currentRun.actor?.login !== expectedOperator ||
+      currentRun.run_attempt !== 1
+    ) {
+      return 'smoke-current-run-identity-mismatch';
+    }
+    if (revisionRuns.length !== 1) {
+      return 'smoke-run-limit-exceeded';
+    }
+    return null;
+  };
+
+  const readLiveState = async (label, previous = null) => {
+    const { body: repositoryMetadata } = await getJson(
+      `${api}/repos/${repository}`,
+      token,
+      fetchImpl,
+    );
+    const defaultBranch = repositoryMetadata.default_branch ?? null;
+    if (defaultBranch !== 'main') return { failure: 'smoke-default-branch-mismatch' };
+    if (runtime.workflowRef !== `refs/heads/${defaultBranch}`) {
+      return { failure: 'smoke-workflow-ref-mismatch' };
+    }
+    const { body: branchMetadata } = await getJson(
+      `${api}/repos/${repository}/branches/${encodeURIComponent(defaultBranch)}`,
+      token,
+      fetchImpl,
+    );
+    const liveSha = branchMetadata.commit?.sha ?? null;
+    if (!EXACT_SHA.test(String(liveSha ?? ''))) {
+      return { failure: 'smoke-live-default-sha-invalid' };
+    }
+    if (previous && (previous.defaultBranch !== defaultBranch || previous.liveSha !== liveSha)) {
+      return { failure: 'smoke-live-default-raced' };
+    }
+    if (runtime.workflowSha !== liveSha) return { failure: 'smoke-workflow-sha-stale' };
+    if (expectedControllerSha !== liveSha) {
+      return { failure: 'smoke-expected-controller-sha-stale' };
+    }
+    const historyFailure = await readHistory(label, defaultBranch, liveSha);
+    if (historyFailure) return { failure: historyFailure };
+    return { defaultBranch, liveSha };
+  };
+
+  try {
+    const first = await readLiveState('initial');
+    if (first.failure) return fail(first.failure);
+    evidence.defaultBranch = first.defaultBranch;
+    evidence.liveDefaultBranchSha = first.liveSha;
+    await delay(5000);
+    const recheck = await readLiveState('race-recheck', first);
+    if (recheck.failure) return fail(recheck.failure);
+    const requestBudget =
+      typeof runtime.requestObservation === 'function'
+        ? runtime.requestObservation()
+        : null;
+    evidence.requestBudgetAtAuthorization = requestBudget;
+    if (
+      requestBudget === null ||
+      requestBudget.exhausted !== false ||
+      requestBudget.rateLimitResponseObserved !== false ||
+      !Number.isSafeInteger(requestBudget.minimumRateLimitRemaining) ||
+      requestBudget.minimumRateLimitRemaining < 1
+    ) {
+      return fail('smoke-rate-limit-observation-unavailable');
+    }
+
+    return {
+      ...evidence,
+      authorized: true,
+      reason: 'authorized-first-repository-dispatch-smoke',
+    };
+  } catch (error) {
+    return fail('smoke-metadata-unavailable', error.message);
+  }
+}
+
 function isSampleLabelEvent(eventName, event) {
   if (eventName !== 'pull_request_target') return false;
   const labels = Array.isArray(event.pull_request?.labels) ? event.pull_request.labels : [];
@@ -657,7 +878,7 @@ function mergeIntegritySnapshot(eventPull, livePull, commit) {
   return proof;
 }
 
-async function acquireChanges(eventName, event, repository, token, fetchImpl = fetch) {
+async function acquireChanges(eventName, event, repository, token, fetchImpl = fetch, runtime = {}) {
   const api = process.env.GITHUB_API_URL || 'https://api.github.com';
   if (eventName === 'pull_request' || eventName === 'pull_request_target') {
     const number = event.pull_request?.number ?? event.number;
@@ -775,6 +996,39 @@ async function acquireChanges(eventName, event, repository, token, fetchImpl = f
     };
   }
 
+  if (eventName === 'repository_dispatch') {
+    const smokeAuthorization = await authorizeRepositoryDispatchSmoke(
+      event,
+      repository,
+      token,
+      fetchImpl,
+      runtime,
+    );
+    const metadataFailure =
+      smokeAuthorization.reason === 'smoke-metadata-unavailable' ||
+      smokeAuthorization.reason.includes('rate-limit');
+    return {
+      files: [],
+      forcedFullReasons: [
+        smokeAuthorization.authorized
+          ? 'repository-dispatch-full-safety-suite'
+          : smokeAuthorization.reason,
+      ],
+      trustedContentSha: smokeAuthorization.authorized
+        ? smokeAuthorization.liveDefaultBranchSha
+        : null,
+      classificationFailure: smokeAuthorization.authorized
+        ? null
+        : metadataFailure && /rate limit exhausted|request budget exceeded/i.test(
+          smokeAuthorization.error ?? '',
+        )
+          ? 'github-metadata-rate-limit-or-budget'
+          : 'repository-dispatch-smoke-unavailable',
+      mergeCommitProof: null,
+      smokeAuthorization,
+    };
+  }
+
   if (eventName === 'merge_group') {
     const base = event.merge_group?.base_sha;
     const head = event.merge_group?.head_sha;
@@ -797,7 +1051,7 @@ async function acquireChanges(eventName, event, repository, token, fetchImpl = f
   if (eventName === 'push') {
     return { files: [], forcedFullReasons: ['push-main-full-safety-suite'] };
   }
-  if (eventName === 'schedule' || eventName === 'workflow_dispatch') {
+  if (eventName === 'schedule') {
     return { files: [], forcedFullReasons: [`${eventName}-full-safety-suite`] };
   }
   return { files: [], forcedFullReasons: [`unsupported-event-${eventName}`] };
@@ -808,6 +1062,8 @@ function writeOutputs(decision, outputPath) {
     `full_suite=${decision.fullSuite}`,
     `shadow_sampled=${decision.shadowSample.sampled}`,
     `trusted_classifier=${decision.trustedClassifierAvailable}`,
+    `smoke_authorization=${JSON.stringify(decision.smokeAuthorization)}`,
+    `api_request_budget=${JSON.stringify(decision.apiRequestBudget)}`,
     ...ALL_DOMAINS.map((domain) => `${domain}=${decision.domains[domain].selected}`),
   ];
   fs.appendFileSync(outputPath, `${lines.join('\n')}\n`);
@@ -819,11 +1075,6 @@ async function main(fetchImpl = fetch) {
   const policyPath = process.env.CHANGE_POLICY_PATH || path.join(__dirname, 'change-policy.v1.json');
   const outputFile = process.env.CHANGE_DECISION_PATH || 'artifacts/selective-ci/classification.json';
   const policy = loadPolicy(policyPath);
-  const sample = shadowSample(
-    eventName,
-    event,
-    process.env.SELECTIVE_CI_SAMPLE_OPERATOR,
-  );
   const budgetedFetch = createBudgetedFetch(fetchImpl);
 
   let changes;
@@ -835,6 +1086,16 @@ async function main(fetchImpl = fetch) {
       process.env.GITHUB_REPOSITORY,
       process.env.GITHUB_TOKEN,
       budgetedFetch,
+      {
+        actor: process.env.GITHUB_ACTOR,
+        expectedOperator: process.env.SELECTIVE_CI_SAMPLE_OPERATOR,
+        configuredControllerSha: process.env.SELECTIVE_CI_CONTROLLER_SHA,
+        workflowRef: process.env.GITHUB_REF,
+        workflowSha: process.env.GITHUB_SHA,
+        runId: process.env.GITHUB_RUN_ID,
+        runAttempt: process.env.GITHUB_RUN_ATTEMPT,
+        requestObservation: budgetedFetch.observation,
+      },
     );
     classificationFailure = changes.classificationFailure ?? null;
   } catch (error) {
@@ -849,6 +1110,25 @@ async function main(fetchImpl = fetch) {
             error: error.message,
           }
         : null,
+      smokeAuthorization: eventName === 'repository_dispatch'
+        ? {
+            authorized: false,
+            reason: 'smoke-metadata-unavailable',
+            sender: event.sender?.login ?? null,
+            actor: process.env.GITHUB_ACTOR || null,
+            expectedOperator: process.env.SELECTIVE_CI_SAMPLE_OPERATOR || null,
+            workflowRef: process.env.GITHUB_REF || null,
+            workflowSha: process.env.GITHUB_SHA || null,
+            expectedControllerSha: process.env.SELECTIVE_CI_CONTROLLER_SHA || null,
+            defaultBranch: null,
+            liveDefaultBranchSha: null,
+            currentRunId: process.env.GITHUB_RUN_ID || null,
+            currentRunAttempt: process.env.GITHUB_RUN_ATTEMPT || null,
+            historySnapshots: [],
+            requestBudgetAtAuthorization: budgetedFetch.observation(),
+            error: error.message,
+          }
+        : null,
     };
     if (/rate limit exhausted|request budget exceeded/i.test(error.message)) {
       classificationFailure = 'github-metadata-rate-limit-or-budget';
@@ -856,6 +1136,12 @@ async function main(fetchImpl = fetch) {
       classificationFailure = 'pull-request-merge-integrity-unavailable';
     }
   }
+  const sample = shadowSample(
+    eventName,
+    event,
+    process.env.SELECTIVE_CI_SAMPLE_OPERATOR,
+    changes.smokeAuthorization ?? null,
+  );
 
   let files = changes.files;
   if (changes.forcedFullReasons.length === 0) {
@@ -941,6 +1227,7 @@ async function main(fetchImpl = fetch) {
     apiRequestBudget,
     classificationFailure,
     mergeCommitProof: changes.mergeCommitProof ?? null,
+    smokeAuthorization: changes.smokeAuthorization ?? null,
   });
   fs.mkdirSync(path.dirname(outputFile), { recursive: true });
   fs.writeFileSync(outputFile, `${JSON.stringify(decision, null, 2)}\n`);
@@ -959,6 +1246,7 @@ if (require.main === module) {
 module.exports = {
   ALL_DOMAINS,
   acquireChanges,
+  authorizeRepositoryDispatchSmoke,
   attachTrustedMarkdownBase,
   classifyFiles,
   createBudgetedFetch,

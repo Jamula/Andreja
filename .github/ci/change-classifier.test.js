@@ -10,6 +10,7 @@ const {
   ALL_DOMAINS,
   acquireChanges,
   attachTrustedMarkdownBase,
+  authorizeRepositoryDispatchSmoke,
   classifyFiles,
   createBudgetedFetch,
   inspectMarkdownPatch,
@@ -29,12 +30,19 @@ const {
 } = require('./replay-merged-prs');
 let aggregateArtifactSequence = 0;
 
-function githubResponse(body, link = null) {
+function githubResponse(body, link = null, rateLimitRemaining = '14999') {
   return {
     ok: true,
     status: 200,
     statusText: 'OK',
-    headers: { get: (name) => name === 'link' ? link : null },
+    headers: {
+      get: (name) => {
+        if (name === 'link') return link;
+        if (name === 'x-ratelimit-remaining') return rateLimitRemaining;
+        if (name === 'x-ratelimit-reset') return '1787750000';
+        return null;
+      },
+    },
     json: async () => body,
   };
 }
@@ -78,7 +86,7 @@ function runAggregateArtifact(overrides) {
   return { evidence, status };
 }
 
-function runBootstrapDecision(actor, operator) {
+function runBootstrapDecision(actor, operator, options = {}) {
   const workflow = fs.readFileSync(
     path.join(root, '.github/workflows/selective-ci-shadow.yml'),
     'utf8',
@@ -92,14 +100,14 @@ function runBootstrapDecision(actor, operator) {
   const decisionPath = path.join(directory, `bootstrap-decision-${process.pid}.json`);
   const outputPath = path.join(directory, `bootstrap-output-${process.pid}.txt`);
   fs.mkdirSync(directory, { recursive: true });
-  fs.writeFileSync(eventPath, JSON.stringify({
-    action: 'labeled',
-    label: { name: 'ci:selective-shadow-sample' },
-    sender: { login: actor },
-    pull_request: {
-      labels: [{ name: 'ci:selective-shadow-sample' }],
-    },
-  }));
+  fs.writeFileSync(eventPath, JSON.stringify(options.event ?? {
+      action: 'labeled',
+      label: { name: 'ci:selective-shadow-sample' },
+      sender: { login: actor },
+      pull_request: {
+        labels: [{ name: 'ci:selective-shadow-sample' }],
+      },
+    }));
   fs.writeFileSync(outputPath, '');
   try {
     execFileSync(
@@ -109,11 +117,17 @@ function runBootstrapDecision(actor, operator) {
         cwd: root,
         env: {
           ...process.env,
-          GITHUB_EVENT_NAME: 'pull_request_target',
+          GITHUB_EVENT_NAME: options.eventName ?? 'pull_request_target',
           GITHUB_EVENT_PATH: eventPath,
+          GITHUB_ACTOR: actor,
+          GITHUB_REF: options.workflowRef ?? 'refs/heads/main',
+          GITHUB_SHA: options.workflowSha ?? smokeSha,
+          GITHUB_RUN_ID: options.runId ?? '700',
+          GITHUB_RUN_ATTEMPT: options.runAttempt ?? '1',
           CHANGE_DECISION_PATH: decisionPath,
           GITHUB_OUTPUT: outputPath,
           SELECTIVE_CI_SAMPLE_OPERATOR: operator,
+          SELECTIVE_CI_CONTROLLER_SHA: options.controllerSha ?? smokeSha,
         },
       },
     );
@@ -392,6 +406,318 @@ test('PR metadata acquisition follows every pagination link', async () => {
   assert.deepEqual(result.forcedFullReasons, []);
   assert.equal(result.trustedContentSha, 'c'.repeat(40));
   assert.equal(calls.length, 3);
+});
+
+const smokeSha = 'd'.repeat(40);
+const smokeEvent = {
+  action: 'selective-ci-smoke',
+  sender: { login: 'Jett-Reno' },
+};
+const smokeRuntime = (overrides = {}) => ({
+  actor: 'Jett-Reno',
+  expectedOperator: 'Jett-Reno',
+  configuredControllerSha: smokeSha,
+  workflowRef: 'refs/heads/main',
+  workflowSha: smokeSha,
+  runId: '700',
+  runAttempt: '1',
+  delay: async () => {},
+  ...overrides,
+});
+const smokeRun = (overrides = {}) => ({
+  id: 700,
+  event: 'repository_dispatch',
+  head_sha: smokeSha,
+  head_branch: 'main',
+  path: '.github/workflows/selective-ci-shadow.yml',
+  head_repository: { full_name: 'Jamula/Andreja' },
+  actor: { login: 'Jett-Reno' },
+  run_attempt: 1,
+  created_at: '2026-08-26T10:01:00Z',
+  ...overrides,
+});
+function smokeMetadataFetch(options = {}) {
+  const runSnapshots = options.runSnapshots ?? [[[smokeRun()]], [[smokeRun()]]];
+  const defaultBranches = options.defaultBranches ?? ['main', 'main'];
+  const branchShas = options.branchShas ?? [smokeSha, smokeSha];
+  let repositoryRead = 0;
+  let branchRead = 0;
+  let historyRead = 0;
+  return async (url) => {
+    if (/\/repos\/Jamula\/Andreja$/.test(url)) {
+      const value = defaultBranches[Math.min(repositoryRead, defaultBranches.length - 1)];
+      repositoryRead += 1;
+      return githubResponse({ default_branch: value }, null, options.rateLimitRemaining);
+    }
+    if (url.includes('/branches/main')) {
+      const value = branchShas[Math.min(branchRead, branchShas.length - 1)];
+      branchRead += 1;
+      return githubResponse({ commit: { sha: value } }, null, options.rateLimitRemaining);
+    }
+    if (options.failure) return options.failure;
+    if (url.includes('/actions/workflows/')) {
+      assert.match(
+        url,
+        /event=repository_dispatch&per_page=100/,
+      );
+    }
+    const snapshotMatch = url.match(/[?&]test_snapshot=(\d+)/);
+    const pageMatch = url.match(/[?&]test_page=(\d+)/);
+    const snapshotIndex = snapshotMatch ? Number(snapshotMatch[1]) : historyRead++;
+    const pageIndex = pageMatch ? Number(pageMatch[1]) : 0;
+    const pages = runSnapshots[Math.min(snapshotIndex, runSnapshots.length - 1)];
+    const next = pageIndex + 1 < pages.length
+      ? `<https://api.github.com/smoke-runs?test_snapshot=${snapshotIndex}&test_page=${pageIndex + 1}>; rel="next"`
+      : null;
+    const totalCount = options.totalCounts?.[snapshotIndex] ??
+      pages.reduce((sum, page) => sum + page.length, 0);
+    return githubResponse(
+      { total_count: totalCount, workflow_runs: pages[pageIndex] },
+      next,
+      options.rateLimitRemaining,
+    );
+  };
+}
+
+test('first repository dispatch smoke is default-branch owned and authorized', async () => {
+  const budgetedFetch = createBudgetedFetch(smokeMetadataFetch());
+  const runtime = smokeRuntime({
+    requestObservation: budgetedFetch.observation,
+  });
+  const authorization = await authorizeRepositoryDispatchSmoke(
+    smokeEvent,
+    'Jamula/Andreja',
+    'token',
+    budgetedFetch,
+    runtime,
+  );
+  assert.equal(authorization.authorized, true);
+  assert.equal(authorization.reason, 'authorized-first-repository-dispatch-smoke');
+  assert.equal(authorization.liveDefaultBranchSha, smokeSha);
+  assert.equal(authorization.historySnapshots.length, 2);
+  assert.deepEqual(
+    authorization.historySnapshots.map((snapshot) => snapshot.currentRevisionCount),
+    [1, 1],
+  );
+  assert.equal(authorization.requestBudgetAtAuthorization.used, 6);
+});
+
+test('repository dispatch smoke rejects wrong event, operator, controller, and rerun', async () => {
+  for (const fixture of [
+    { event: { ...smokeEvent, action: 'wrong-smoke' }, reason: 'smoke-event-type-mismatch' },
+    { event: { ...smokeEvent, sender: undefined }, reason: 'smoke-operator-missing' },
+    { event: { ...smokeEvent, sender: { login: 'jett-reno' } }, reason: 'smoke-operator-mismatch' },
+    { runtime: { actor: 'jett-reno' }, reason: 'smoke-operator-mismatch' },
+    { runtime: { expectedOperator: '' }, reason: 'smoke-operator-unconfigured' },
+    { runtime: { configuredControllerSha: '' }, reason: 'smoke-controller-sha-unconfigured-or-invalid' },
+    {
+      runtime: { configuredControllerSha: 'not-a-sha' },
+      reason: 'smoke-controller-sha-unconfigured-or-invalid',
+    },
+    { runtime: { runAttempt: '2' }, reason: 'smoke-rerun-forbidden' },
+  ]) {
+    const budgetedFetch = createBudgetedFetch(smokeMetadataFetch());
+    const authorization = await authorizeRepositoryDispatchSmoke(
+      fixture.event ?? smokeEvent,
+      'Jamula/Andreja',
+      'token',
+      budgetedFetch,
+      smokeRuntime({
+        ...fixture.runtime,
+        requestObservation: budgetedFetch.observation,
+      }),
+    );
+    assert.equal(authorization.authorized, false);
+    assert.equal(authorization.reason, fixture.reason);
+  }
+});
+
+test('repository dispatch smoke rejects branch or tag refs and stale or non-main SHAs', async () => {
+  for (const fixture of [
+    { runtime: { workflowRef: 'refs/heads/feature' }, reason: 'smoke-workflow-ref-mismatch' },
+    { runtime: { workflowRef: 'refs/tags/v1' }, reason: 'smoke-workflow-ref-mismatch' },
+    { runtime: { workflowSha: 'e'.repeat(40) }, reason: 'smoke-workflow-sha-stale' },
+    {
+      runtime: { configuredControllerSha: 'e'.repeat(40) },
+      reason: 'smoke-expected-controller-sha-stale',
+    },
+    {
+      fetchOptions: { defaultBranches: ['develop'] },
+      reason: 'smoke-default-branch-mismatch',
+    },
+    { runtime: { runId: '' }, reason: 'smoke-run-id-invalid' },
+  ]) {
+    const budgetedFetch = createBudgetedFetch(smokeMetadataFetch(fixture.fetchOptions));
+    const authorization = await authorizeRepositoryDispatchSmoke(
+      fixture.event ?? smokeEvent,
+      'Jamula/Andreja',
+      'token',
+      budgetedFetch,
+      smokeRuntime({
+        ...fixture.runtime,
+        requestObservation: budgetedFetch.observation,
+      }),
+    );
+    assert.equal(authorization.authorized, false);
+    assert.equal(authorization.reason, fixture.reason);
+  }
+});
+
+test('repository dispatch smoke pagination enforces the S=1 run limit', async () => {
+  const paginatedFetch = createBudgetedFetch(smokeMetadataFetch({
+    runSnapshots: [
+      [[], [smokeRun()]],
+      [[], [smokeRun()]],
+    ],
+  }));
+  const paginated = await authorizeRepositoryDispatchSmoke(
+    smokeEvent,
+    'Jamula/Andreja',
+    'token',
+    paginatedFetch,
+    smokeRuntime({ requestObservation: paginatedFetch.observation }),
+  );
+  assert.equal(paginated.authorized, true);
+  assert.equal(paginated.historySnapshots[1].pageCount, 2);
+
+  const repeatedFetch = createBudgetedFetch(smokeMetadataFetch({
+    runSnapshots: [
+      [[smokeRun({ id: 699 })], [smokeRun()]],
+    ],
+  }));
+  const repeated = await authorizeRepositoryDispatchSmoke(
+    smokeEvent,
+    'Jamula/Andreja',
+    'token',
+    repeatedFetch,
+    smokeRuntime({ requestObservation: repeatedFetch.observation }),
+  );
+  assert.equal(repeated.authorized, false);
+  assert.equal(repeated.reason, 'smoke-run-limit-exceeded');
+  assert.equal(repeated.historySnapshots[0].currentRevisionCount, 2);
+  assert.equal(repeated.historySnapshots[0].totalCount, 2);
+
+  const previousControllerFetch = createBudgetedFetch(smokeMetadataFetch({
+    runSnapshots: [
+      [[smokeRun({ id: 699, head_sha: 'e'.repeat(40) }), smokeRun()]],
+      [[smokeRun({ id: 699, head_sha: 'e'.repeat(40) }), smokeRun()]],
+    ],
+  }));
+  const previousController = await authorizeRepositoryDispatchSmoke(
+    smokeEvent,
+    'Jamula/Andreja',
+    'token',
+    previousControllerFetch,
+    smokeRuntime({ requestObservation: previousControllerFetch.observation }),
+  );
+  assert.equal(previousController.authorized, true);
+  assert.equal(previousController.historySnapshots[0].totalCount, 2);
+  assert.equal(previousController.historySnapshots[0].currentRevisionCount, 1);
+
+  const racedFetch = createBudgetedFetch(smokeMetadataFetch({
+    runSnapshots: [
+      [[smokeRun()]],
+      [[smokeRun(), smokeRun({ id: 701 })]],
+    ],
+  }));
+  const raced = await authorizeRepositoryDispatchSmoke(
+    smokeEvent,
+    'Jamula/Andreja',
+    'token',
+    racedFetch,
+    smokeRuntime({ requestObservation: racedFetch.observation }),
+  );
+  assert.equal(raced.authorized, false);
+  assert.equal(raced.reason, 'smoke-run-limit-exceeded');
+});
+
+test('repository dispatch smoke fails closed on live-main race and Actions API truncation', async () => {
+  const mainRaceFetch = createBudgetedFetch(smokeMetadataFetch({
+    branchShas: [smokeSha, 'e'.repeat(40)],
+  }));
+  const mainRace = await authorizeRepositoryDispatchSmoke(
+    smokeEvent,
+    'Jamula/Andreja',
+    'token',
+    mainRaceFetch,
+    smokeRuntime({ requestObservation: mainRaceFetch.observation }),
+  );
+  assert.equal(mainRace.reason, 'smoke-live-default-raced');
+
+  const truncatedFetch = createBudgetedFetch(smokeMetadataFetch({
+    totalCounts: [2],
+  }));
+  const truncated = await authorizeRepositoryDispatchSmoke(
+    smokeEvent,
+    'Jamula/Andreja',
+    'token',
+    truncatedFetch,
+    smokeRuntime({ requestObservation: truncatedFetch.observation }),
+  );
+  assert.equal(truncated.authorized, false);
+  assert.equal(truncated.reason, 'smoke-metadata-unavailable');
+  assert.match(truncated.error, /pagination was incomplete/);
+});
+
+test('repository dispatch smoke API and rate-limit ambiguity fail unavailable', async () => {
+  for (const fixture of [
+    { status: 500, statusText: 'Internal Server Error', remaining: null },
+    { status: 429, statusText: 'Too Many Requests', remaining: '0' },
+  ]) {
+    const budgetedFetch = createBudgetedFetch(async () => ({
+      ok: false,
+      status: fixture.status,
+      statusText: fixture.statusText,
+      headers: {
+        get: (name) => name === 'x-ratelimit-remaining' ? fixture.remaining : null,
+      },
+      json: async () => ({}),
+    }));
+    const changes = await acquireChanges(
+      'repository_dispatch',
+      smokeEvent,
+      'Jamula/Andreja',
+      'token',
+      budgetedFetch,
+      smokeRuntime({
+        requestObservation: budgetedFetch.observation,
+      }),
+    );
+    assert.equal(changes.smokeAuthorization.authorized, false);
+    assert.equal(changes.smokeAuthorization.reason, 'smoke-metadata-unavailable');
+    assert.equal(
+      changes.classificationFailure,
+      fixture.status === 429
+        ? 'github-metadata-rate-limit-or-budget'
+        : 'repository-dispatch-smoke-unavailable',
+    );
+  }
+
+  const ambiguousFetch = createBudgetedFetch(smokeMetadataFetch({
+    rateLimitRemaining: null,
+  }));
+  const ambiguous = await authorizeRepositoryDispatchSmoke(
+    smokeEvent,
+    'Jamula/Andreja',
+    'token',
+    ambiguousFetch,
+    smokeRuntime({ requestObservation: ambiguousFetch.observation }),
+  );
+  assert.equal(ambiguous.authorized, false);
+  assert.equal(ambiguous.reason, 'smoke-rate-limit-observation-unavailable');
+
+  const exhaustedFetch = createBudgetedFetch(smokeMetadataFetch(), 1);
+  const exhausted = await authorizeRepositoryDispatchSmoke(
+    smokeEvent,
+    'Jamula/Andreja',
+    'token',
+    exhaustedFetch,
+    smokeRuntime({ requestObservation: exhaustedFetch.observation }),
+  );
+  assert.equal(exhausted.authorized, false);
+  assert.equal(exhausted.reason, 'smoke-metadata-unavailable');
+  assert.match(exhausted.error, /request budget exceeded/);
+  assert.equal(exhaustedFetch.observation().exhausted, true);
 });
 
 test('PR target metadata without an immutable merge commit fails closed', async () => {
@@ -1502,10 +1828,16 @@ test('workflow isolates authorized samples from cancelable topology runs', () =>
   );
   assert.match(
     workflow,
+    /github\.event_name == 'repository_dispatch' &&\s+format\('smoke-\{0\}', vars\.SELECTIVE_CI_CONTROLLER_SHA\)/,
+  );
+  assert.match(
+    workflow,
     /vars\.SELECTIVE_CI_SAMPLE_OPERATOR != ''[\s\S]+github\.event\.sender\.login == vars\.SELECTIVE_CI_SAMPLE_OPERATOR/,
   );
   assert.match(workflow, /^\s+pull_request_target:\s*$/m);
-  assert.match(workflow, /^\s+workflow_dispatch:\s*$/m);
+  assert.match(workflow, /^\s+repository_dispatch:\s*$/m);
+  assert.match(workflow, /^\s+types: \[selective-ci-smoke\]\s*$/m);
+  assert.doesNotMatch(workflow, /workflow_dispatch/);
   assert.doesNotMatch(workflow, /^\s+pull_request:\s*$/m);
   assert.doesNotMatch(workflow, /^\s+merge_group:\s*$/m);
   assert.doesNotMatch(workflow, /^\s+schedule:\s*$/m);
@@ -1549,7 +1881,12 @@ test('workflow isolates authorized samples from cancelable topology runs', () =>
     2,
   );
   assert.match(workflow, /permissions:\s*\{\}/);
-  assert.match(workflow, /permissions:\r?\n\s+contents: read\r?\n\s+pull-requests: read/);
+  assert.match(workflow, /permissions:\r?\n\s+actions: read\r?\n\s+contents: read\r?\n\s+pull-requests: read/);
+  assert.match(workflow, /SELECTIVE_CI_CONTROLLER_SHA: \$\{\{ vars\.SELECTIVE_CI_CONTROLLER_SHA \}\}/);
+  assert.doesNotMatch(workflow, /client_payload|SELECTIVE_CI_WINDOW_START/);
+  assert.match(workflow, /trusted-classifier-unavailable-on-default-branch/);
+  assert.match(workflow, /smoke_authorization: \$\{\{ steps\.classify\.outputs\.smoke_authorization \}\}/);
+  assert.match(workflow, /API_REQUEST_BUDGET: \$\{\{ needs\.classify\.outputs\.api_request_budget \}\}/);
 });
 
 test('only an authorized operator sample-label event enables PR shadow work', () => {
@@ -1606,11 +1943,29 @@ test('only an authorized operator sample-label event enables PR shadow work', ()
     false,
   );
   assert.deepEqual(shadowSample('schedule', {}, 'jett-reno'), {
-    sampled: true,
-    reason: 'non-pull-request-full-safety',
+    sampled: false,
+    reason: 'unsupported-shadow-event',
     observedActor: null,
     expectedOperator: 'jett-reno',
   });
+  assert.equal(
+    shadowSample('repository_dispatch', smokeEvent, 'Jett-Reno', {
+      authorized: true,
+      reason: 'authorized-first-repository-dispatch-smoke',
+      sender: 'Jett-Reno',
+      expectedOperator: 'Jett-Reno',
+    }).sampled,
+    true,
+  );
+  assert.equal(
+    shadowSample('repository_dispatch', smokeEvent, 'Jett-Reno', {
+      authorized: false,
+      reason: 'smoke-run-limit-exceeded',
+      sender: 'Jett-Reno',
+      expectedOperator: 'Jett-Reno',
+    }).sampled,
+    false,
+  );
   assert.equal(
     classifyFiles([{ filename: 'src/App.cs', status: 'modified' }], policy)
       .trustedClassifierAvailable,
@@ -1633,6 +1988,24 @@ test('bootstrap operator comparison preserves exact canonical-case reasons', () 
   assert.equal(wrongCase.shadowSample.reason, 'sample-operator-mismatch');
   assert.equal(wrongCase.shadowSample.observedActor, 'jett-reno');
   assert.equal(wrongCase.shadowSample.expectedOperator, 'Jett-Reno');
+});
+
+test('bootstrap never authorizes repository dispatch without the trusted classifier', () => {
+  const decision = runBootstrapDecision('Jett-Reno', 'Jett-Reno', {
+    eventName: 'repository_dispatch',
+    event: smokeEvent,
+  });
+  assert.equal(decision.shadowSample.sampled, false);
+  assert.equal(
+    decision.shadowSample.reason,
+    'trusted-classifier-unavailable-on-default-branch',
+  );
+  assert.equal(decision.smokeAuthorization.authorized, false);
+  assert.equal(decision.smokeAuthorization.sender, 'Jett-Reno');
+  assert.equal(decision.smokeAuthorization.workflowRef, 'refs/heads/main');
+  assert.equal(decision.smokeAuthorization.workflowSha, smokeSha);
+  assert.equal(decision.smokeAuthorization.expectedControllerSha, smokeSha);
+  assert.deepEqual(decision.smokeAuthorization.historySnapshots, []);
 });
 
 test('aggregate artifact marks every domain unavailable when classification fails', () => {
@@ -1665,6 +2038,26 @@ test('labeled bootstrap is an unavailable precondition failure', () => {
     assert.equal(domain.scheduled, false);
     assert.equal(domain.disposition, 'unavailable');
     assert.equal(domain.reason, 'trusted-classifier-unavailable-on-base');
+  }
+});
+
+test('repository-dispatch bootstrap is unavailable without trusted authorization', () => {
+  const { evidence, status } = runAggregateArtifact({
+    GITHUB_EVENT_NAME: 'repository_dispatch',
+    CLASSIFY_RESULT: 'success',
+    SHADOW_SAMPLED: 'false',
+    TRUSTED_CLASSIFIER: 'false',
+    SMOKE_AUTHORIZATION: JSON.stringify({
+      authorized: false,
+      reason: 'trusted-classifier-unavailable-on-default-branch',
+    }),
+  });
+  assert.equal(status, 1);
+  assert.equal(evidence.smokePreconditionFailed, true);
+  for (const domain of Object.values(evidence.domains)) {
+    assert.equal(domain.scheduled, false);
+    assert.equal(domain.disposition, 'unavailable');
+    assert.equal(domain.reason, 'trusted-classifier-unavailable-on-default-branch');
   }
 });
 
@@ -1701,6 +2094,42 @@ test('trusted labeled sample schedules selected domains normally', () => {
   assert.equal(evidence.domains.docs.disposition, 'passed');
   assert.equal(evidence.domains.dotnet.scheduled, false);
   assert.equal(evidence.domains.dotnet.disposition, 'not-applicable');
+});
+
+test('aggregate records smoke authorization and request-budget evidence', () => {
+  const smokeAuthorization = {
+    authorized: true,
+    reason: 'authorized-first-repository-dispatch-smoke',
+    sender: 'Jett-Reno',
+    actor: 'Jett-Reno',
+    expectedOperator: 'Jett-Reno',
+    liveDefaultBranchSha: smokeSha,
+    historySnapshots: [
+      { label: 'initial', currentRevisionCount: 1 },
+      { label: 'race-recheck', currentRevisionCount: 1 },
+    ],
+  };
+  const requestBudget = {
+    limit: 132,
+    used: 3,
+    exhausted: false,
+    rateLimitResponseObserved: false,
+  };
+  const { evidence, status } = runAggregateArtifact({
+    GITHUB_EVENT_NAME: 'repository_dispatch',
+    CLASSIFY_RESULT: 'success',
+    SHADOW_SAMPLED: 'true',
+    TRUSTED_CLASSIFIER: 'true',
+    SMOKE_AUTHORIZATION: JSON.stringify(smokeAuthorization),
+    API_REQUEST_BUDGET: JSON.stringify(requestBudget),
+  });
+  assert.equal(status, 0);
+  assert.deepEqual(evidence.smokeAuthorization, smokeAuthorization);
+  assert.deepEqual(evidence.apiRequestBudget, requestBudget);
+  assert.equal(
+    evidence.samplingReason,
+    'authorized-first-repository-dispatch-smoke',
+  );
 });
 
 test('aggregate PR sample attributes the event and validated merge revisions', () => {
@@ -1790,7 +2219,7 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.match(runbook, /ordinary PRs emit no shadow contexts/);
   assert.match(runbook, /[Ss]table\s+every-PR contexts are future promotion scope/);
   assert.match(runbook, /run the exact\s+squash-merged classifier and policy against both current candidate/);
-  assert.match(runbook, /workflow_dispatch.*Charge it against `S`/s);
+  assert.match(runbook, /repository_dispatch` type\s+`selective-ci-smoke`/);
   const candidateGate = runbook.indexOf('2. Before any charged dispatch');
   const chargedSmoke = runbook.indexOf('3. Before provisioning any label');
   assert.ok(candidateGate >= 0 && chargedSmoke > candidateGate);
@@ -1804,7 +2233,7 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.doesNotMatch(runbook, /confirm that none can\s+apply any PR label/);
   assert.match(runbook, /Record `merged_at` as\s+`<START>` before any workflow action/);
   assert.match(runbook, /every labeled event and labeled\s+workflow run at or after `<START>` counts against `N`/);
-  assert.match(runbook, /Immediately before dispatch[\s\S]+zero\s+labeled workflow runs and zero label events/);
+  assert.match(runbook, /Require zero repository-dispatch\s+smoke runs, zero labeled workflow runs, and zero label events/);
   assert.match(runbook, /@?\(\$commit\.parents\)\.Count -ne 2/);
   assert.doesNotMatch(runbook, /@?\(\$commit\.parents\)\.Count -lt 2/);
   assert.match(
@@ -1822,7 +2251,7 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.match(runbook, /SELECTIVE_CI_SAMPLE_OPERATOR/);
   assert.match(runbook, /observedActor.*expectedOperator/s);
   assert.match(runbook, /sample-pr-<number>.*cancellation disabled/s);
-  assert.match(runbook, /\$pages = gh api --paginate --slurp[\s\S]+ConvertFrom-Json/);
+  assert.match(runbook, /\$labelPages = gh api --paginate --slurp[\s\S]+ConvertFrom-Json/);
   assert.doesNotMatch(runbook, /--slurp[\s\S]{0,250}--jq/);
   assert.match(runbook, /exact\s+squash-merged controller SHA[\s\S]+only trusted controller revision/);
   assert.match(runbook, /GET \/repos\/Jamula\/Andreja\/issues\/events/);
@@ -1844,12 +2273,16 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.match(runbook, /mergeCommitProof\.verified=true/);
   assert.match(runbook, /at most eight concurrent requests/);
   assert.match(runbook, /exact canonical GitHub login casing/);
+  assert.match(runbook, /SELECTIVE_CI_CONTROLLER_SHA/);
+  assert.match(runbook, /gh api --method POST repos\/Jamula\/Andreja\/dispatches/);
+  assert.doesNotMatch(runbook, /client_payload|SELECTIVE_CI_WINDOW_START|workflow_dispatch/);
+  assert.match(runbook, /smoke\s+count `1`/);
   assert.match(runbook, /static workflow-expression and fixture assertions\s+only/);
   assert.match(runbook, /32924008713[\s\S]+fab046f6608fc93b032ed7e618b57f2547c88bdc[\s\S]+pre-trusted-classifier-gate/);
   assert.doesNotMatch(runbook, /ordinary\s+unlabelled bootstrap/);
   assert.doesNotMatch(runbook, /cb7a434|95d7450|N <= 25|N >= 20|81 minutes|94 minutes|118 minutes|1,060|every 12 hours|remaining seven|five eligible docs|five full/);
   assert.match(testingMatrix, /maximum of smoke, docs, and full trusted runs/);
-  assert.match(testingMatrix, /only `labeled` and `workflow_dispatch`/);
+  assert.match(testingMatrix, /only `labeled` and `repository_dispatch: selective-ci-smoke`/);
   assert.match(testingMatrix, /38 planned \/ 51 fail-closed ceiling \/ 64 with 25% headroom/);
   assert.match(testingMatrix, /N<=2/);
   assert.match(testingMatrix, /timeout-derived full-run bound is 200 job-minutes/);
@@ -1928,8 +2361,8 @@ test('recorded historical replay is internally consistent with the current polic
   );
 });
 
-test('push, schedule, dispatch, and unsupported events force full safety', async () => {
-  for (const eventName of ['push', 'schedule', 'workflow_dispatch', 'repository_dispatch']) {
+test('push, schedule, unauthorized repository dispatch, and unsupported events force full safety', async () => {
+  for (const eventName of ['push', 'schedule', 'repository_dispatch', 'unsupported']) {
     const changes = await acquireChanges(eventName, {}, 'Jamula/Andreja', 'token');
     const result = classifyFiles(changes.files, policy, {
       eventName,

@@ -4,7 +4,8 @@ on:
   pull_request_target:
     branches: [main]
     types: [labeled]
-  workflow_dispatch:
+  repository_dispatch:
+    types: [selective-ci-smoke]
 
 permissions: {}
 
@@ -18,6 +19,8 @@ concurrency:
       vars.SELECTIVE_CI_SAMPLE_OPERATOR != '' &&
       github.event.sender.login == vars.SELECTIVE_CI_SAMPLE_OPERATOR &&
       format('sample-pr-{0}', github.event.pull_request.number) ||
+      github.event_name == 'repository_dispatch' &&
+      format('smoke-{0}', vars.SELECTIVE_CI_CONTROLLER_SHA) ||
       format(
         'topology-{0}-{1}',
         github.event_name,
@@ -47,12 +50,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
+      actions: read
       contents: read
       pull-requests: read
     outputs:
       full_suite: ${{ steps.classify.outputs.full_suite }}
       shadow_sampled: ${{ steps.classify.outputs.shadow_sampled }}
       trusted_classifier: ${{ steps.classify.outputs.trusted_classifier }}
+      smoke_authorization: ${{ steps.classify.outputs.smoke_authorization }}
+      api_request_budget: ${{ steps.classify.outputs.api_request_budget }}
       docs: ${{ steps.classify.outputs.docs }}
       dotnet: ${{ steps.classify.outputs.dotnet }}
       postgres: ${{ steps.classify.outputs.postgres }}
@@ -86,6 +92,7 @@ jobs:
           CHANGE_POLICY_PATH: trusted-ci/.github/ci/change-policy.v1.json
           CHANGE_DECISION_PATH: artifacts/selective-ci/classification.json
           SELECTIVE_CI_SAMPLE_OPERATOR: ${{ vars.SELECTIVE_CI_SAMPLE_OPERATOR }}
+          SELECTIVE_CI_CONTROLLER_SHA: ${{ vars.SELECTIVE_CI_CONTROLLER_SHA }}
         run: |
           mkdir -p artifacts/selective-ci
           if [ -f trusted-ci/.github/ci/change-classifier.js ]; then
@@ -96,6 +103,7 @@ jobs:
           const fs = require('node:fs');
           const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
           const isPullRequest = process.env.GITHUB_EVENT_NAME === 'pull_request_target';
+          const isSmoke = process.env.GITHUB_EVENT_NAME === 'repository_dispatch';
           const observedActor =
             typeof event.sender?.login === 'string' && event.sender.login.length > 0
               ? event.sender.login
@@ -114,9 +122,31 @@ jobs:
             observedActor !== null &&
             expectedOperator !== null &&
             observedActor === expectedOperator;
-          const sampled = !isPullRequest || (sampleLabelEvent && operatorMatches);
+          const smokeAuthorization = isSmoke
+            ? {
+                authorized: false,
+                reason: 'trusted-classifier-unavailable-on-default-branch',
+                eventType: event.action ?? null,
+                sender: observedActor,
+                actor: process.env.GITHUB_ACTOR || null,
+                expectedOperator,
+                workflowRef: process.env.GITHUB_REF || null,
+                workflowSha: process.env.GITHUB_SHA || null,
+                expectedControllerSha: process.env.SELECTIVE_CI_CONTROLLER_SHA || null,
+                defaultBranch: null,
+                liveDefaultBranchSha: null,
+                currentRunId: process.env.GITHUB_RUN_ID || null,
+                currentRunAttempt: process.env.GITHUB_RUN_ATTEMPT || null,
+                historySnapshots: [],
+                requestBudgetAtAuthorization: null,
+                error: null,
+              }
+            : null;
+          const sampled = isPullRequest && sampleLabelEvent && operatorMatches;
           const reason = sampled
-            ? isPullRequest ? 'authorized-sample-label-event' : 'non-pull-request-full-safety'
+            ? 'authorized-sample-label-event'
+            : isSmoke
+              ? smokeAuthorization.reason
             : sampleLabelEvent && expectedOperator === null
               ? 'sample-operator-unconfigured'
               : sampleLabelEvent
@@ -137,6 +167,7 @@ jobs:
             },
             fullSuite: true,
             fullReasons: ['trusted-classifier-unavailable-on-base'],
+            smokeAuthorization,
             shadowSample: {
               label: 'ci:selective-shadow-sample',
               sampled,
@@ -159,6 +190,8 @@ jobs:
               'full_suite=true',
               `shadow_sampled=${sampled}`,
               'trusted_classifier=false',
+              `smoke_authorization=${JSON.stringify(smokeAuthorization)}`,
+              `api_request_budget=${JSON.stringify(decision.apiRequestBudget)}`,
               'docs=true',
               'dotnet=true',
               'postgres=true',
@@ -450,6 +483,8 @@ jobs:
           CLASSIFY_SECONDS: ${{ needs.classify.outputs.duration_seconds }}
           SHADOW_SAMPLED: ${{ needs.classify.outputs.shadow_sampled }}
           TRUSTED_CLASSIFIER: ${{ needs.classify.outputs.trusted_classifier }}
+          SMOKE_AUTHORIZATION: ${{ needs.classify.outputs.smoke_authorization }}
+          API_REQUEST_BUDGET: ${{ needs.classify.outputs.api_request_budget }}
           DOCS_SELECTED: ${{ needs.classify.outputs.docs }}
           DOCS_RESULT: ${{ needs.docs.result }}
           DOCS_SECONDS: ${{ needs.docs.outputs.duration_seconds }}
@@ -486,7 +521,21 @@ jobs:
           const classificationAvailable = process.env.CLASSIFY_RESULT === 'success';
           const shadowSampled = process.env.SHADOW_SAMPLED === 'true';
           const trustedClassifierAvailable = process.env.TRUSTED_CLASSIFIER === 'true';
+          const parseEvidenceJson = (name) => {
+            const value = process.env[name];
+            if (!value || value === 'null') return null;
+            try {
+              return JSON.parse(value);
+            } catch {
+              throw new Error(`${name} was not valid JSON.`);
+            }
+          };
+          const smokeAuthorization = parseEvidenceJson('SMOKE_AUTHORIZATION');
+          const apiRequestBudget = parseEvidenceJson('API_REQUEST_BUDGET');
           const samplePreconditionFailed = shadowSampled && !trustedClassifierAvailable;
+          const smokePreconditionFailed =
+            process.env.GITHUB_EVENT_NAME === 'repository_dispatch' &&
+            smokeAuthorization?.authorized !== true;
           const validationRequested =
             classificationAvailable && shadowSampled && trustedClassifierAvailable;
           const exactRevision = (value) => /^[0-9a-f]{40}$/i.test(value || '');
@@ -508,6 +557,7 @@ jobs:
             const disposition =
               !classificationAvailable ||
               samplePreconditionFailed ||
+              smokePreconditionFailed ||
               (validationRequested && !validationRevisionAvailable)
               ? 'unavailable'
               : !shadowSampled
@@ -519,6 +569,8 @@ jobs:
               ? 'classification-unavailable'
               : samplePreconditionFailed
                 ? 'trusted-classifier-unavailable-on-base'
+                : smokePreconditionFailed
+                  ? (smokeAuthorization?.reason || 'repository-dispatch-smoke-unavailable')
                 : validationRequested && !validationRevisionAvailable
                   ? 'exact-validation-revision-unavailable'
                 : !shadowSampled
@@ -550,11 +602,16 @@ jobs:
               validationRevisionReason
             },
             classificationResult: process.env.CLASSIFY_RESULT,
+            smokeAuthorization,
+            apiRequestBudget,
             shadowSampled,
             trustedClassifierAvailable,
             samplePreconditionFailed,
+            smokePreconditionFailed,
             samplingReason: samplePreconditionFailed
               ? 'trusted-classifier-unavailable-on-base'
+              : smokeAuthorization
+                ? smokeAuthorization.reason
               : shadowSampled
                 ? 'sampled-or-non-pull-request'
                 : 'shadow-not-sampled',
@@ -595,6 +652,7 @@ jobs:
           }
           const failed = process.env.CLASSIFY_RESULT !== 'success' ||
             samplePreconditionFailed ||
+            smokePreconditionFailed ||
             (validationRequested && !validationRevisionAvailable) ||
             Object.values(domains).some((item) => item.scheduled && item.disposition !== 'passed');
           if (failed) process.exitCode = 1;

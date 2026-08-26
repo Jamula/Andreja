@@ -8,9 +8,23 @@ remain unchanged. Auto-merge remains disabled.
 `.github/ci/change-policy.v1.json` is the versioned path policy and
 `.github/ci/change-classifier.js` is its repository-owned implementation. The
 `Selective CI (Shadow)` workflow has no path filter and listens only for
-read-only `pull_request_target` `labeled` and `workflow_dispatch`. There is no
+read-only `pull_request_target` `labeled` and default-branch-only
+`repository_dispatch` type `selective-ci-smoke`. There is no
 current `opened`, `push`, `schedule`, `merge_group`, `synchronize`, or `reopened`
 trigger. The existing required workflows remain the `main` push safety net.
+
+GitHub loads `repository_dispatch` workflows from the default branch. The smoke
+controller additionally requires `GITHUB_REF=refs/heads/main`, an exact
+`GITHUB_SHA` equal to the live API-reported default-branch head, exact canonical
+event-sender/actor equality, configured exact 40-hex
+`SELECTIVE_CI_CONTROLLER_SHA` and `SELECTIVE_CI_SAMPLE_OPERATOR`
+repository Actions variables, and exactly one repository-dispatch run at the
+configured controller revision across the complete available workflow history.
+Runs from older controller revisions do not spend the newly reviewed revision's
+one-shot budget. Any missing,
+stale, repeated, unauthorized, tag/branch, API, pagination, or rate-limit state
+fails unavailable before domain jobs. The read-only token has only
+`contents`, `pull-requests`, and `actions` read access.
 
 `pull_request_target` is deliberate: GitHub loads the controller YAML from the
 default branch rather than from the pull request. For a pull request, the
@@ -116,7 +130,8 @@ misaligned merge-base content, patch, or hunk state fails closed. A deployed
 JavaScript or C# change also selects OCI because it changes image content.
 
 The workflow defaults to no `GITHUB_TOKEN` permissions. Classification receives
-only `contents: read` and `pull-requests: read`. A repository-owned
+only `contents: read`, `pull-requests: read`, and the `actions: read` needed for
+the smoke history guard. Repository-owned
 `SELECTIVE_CI_SAMPLE_OPERATOR` Actions variable supplies the expected operator
 login to default-branch `pull_request_target` orchestration; pull-request code
 and event fields cannot override it. The classifier requires the trusted event
@@ -134,7 +149,7 @@ owns orchestration and classification, while validation of pull-request code is
 confined to unprivileged jobs. External actions and service images are immutable
 SHA/digest pins. The classification job uploads the decision, including each
 file's rule and reasons. `Change classification` and `Aggregate gate` are emitted only for labeled and
-manual feasibility events; ordinary PRs emit no shadow contexts. Stable
+repository-dispatch feasibility events; ordinary PRs emit no shadow contexts. Stable
 every-PR contexts are future promotion scope. For a triggered event,
 `Aggregate gate` always runs. Its JSON and summary enumerate `passed`, `not-applicable`,
 `unavailable`, and `failed` dispositions and fail if classification or any
@@ -150,11 +165,16 @@ only** during this two-slot window; never emit an unrelated live label event to
 test them because it consumes `N` and terminally disables collection. GitHub
 expression string equality is only a scheduling prefilter; the repository
 classifier's exact-case comparison is authoritative, so a differently cased
-login schedules no domain. Manual safety runs never cancel each other.
+login schedules no domain. Repository-dispatch runs share the
+`smoke-<configured-controller-SHA>` concurrency group with cancellation
+disabled. The guard reads completely paginated Actions history twice, with a
+bounded delay, and requires the current run to remain the sole run at that
+controller SHA. Thus a concurrent or later repeat cannot start a second heavy
+suite; a rerun attempt is also rejected.
 Aggregate revision evidence records the event base and
 head SHAs separately from the revision used by domain jobs. A valid PR sample
 records its immutable merge SHA as both the validated ref and SHA; merge-group
-jobs record the group head, and workflow-dispatch jobs record the exact
+jobs record the group head, and repository-dispatch jobs record the exact
 default-branch `github.sha`. Dormant merge-group, push, and schedule handling is
 unreachable until a separately reviewed trigger change. Unsampled or
 bootstrap-blocked runs record no validated revision. The aggregate populates
@@ -219,7 +239,7 @@ repository permission, but label permission alone does not authorize sampling.
 | JavaScript/browser harness | Pinned Node syntax checks for tracked `.js`, `.mjs`, and `.cjs` plus repository-owned Node fixtures; unsupported `.ts`, `.tsx`, and `.jsx` changes fail closed to the full suite, and the existing separately controlled evidence Compose profile remains the source of real-browser evidence |
 | Docker/OCI | Pin policy and negative cases, two-build reproducibility, SBOM/IaC/vulnerability scan, hosted unsigned provenance verification, then destruction of private layers/reports |
 
-Manual dispatches always select all domains. The existing required
+The first authorized repository dispatch selects all domains. The existing required
 workflows remain the `main` push drift/safety net during collection.
 
 The selective .NET domain deliberately invokes the advisory scan with
@@ -315,7 +335,8 @@ This window is a **small feasibility gate**, not a savings collection:
 
 - `N <= 2` counts all labeled events, including lightweight non-sample label
   events. Both slots are reserved for the intended docs and full samples.
-- `S=1` is the single full-safety `workflow_dispatch` smoke.
+- `S=1` is the single full-safety `repository_dispatch` type
+  `selective-ci-smoke`.
 - At most one pre-identified, naturally useful prose-only PR and one full-suite
   PR may receive the sample label.
 - No synthetic or no-op change may be created solely to obtain evidence.
@@ -385,11 +406,20 @@ PR-to-PR closing reference, automation-applied label, or non-sample label event
 after `<START>` terminally disables the workflow.
 
 ```powershell
-$pages = gh api --paginate --slurp `
+$labelPages = gh api --paginate --slurp `
   "repos/Jamula/Andreja/actions/workflows/selective-ci-shadow.yml/runs?event=pull_request_target&created=<START>..<END>&per_page=100" |
   ConvertFrom-Json
-$runs = @($pages | ForEach-Object { $_.workflow_runs })
-$runs.Count
+$labeledRuns = @($labelPages | ForEach-Object { $_.workflow_runs })
+$smokePages = gh api --paginate --slurp `
+  "repos/Jamula/Andreja/actions/workflows/selective-ci-shadow.yml/runs?event=repository_dispatch&created=%3E%3D<START>&per_page=100" |
+  ConvertFrom-Json
+$smokeRuns = @($smokePages | ForEach-Object { $_.workflow_runs })
+$controllerRuns = @($smokeRuns | Where-Object head_sha -CEQ '<CONTROLLER_SHA>')
+[pscustomobject]@{
+  labeled = $labeledRuns.Count
+  smoke = $smokeRuns.Count
+  controllerSmoke = $controllerRuns.Count
+}
 ```
 
 `N=2` is the hard cap. The same terminal action applies after the one dispatch,
@@ -449,33 +479,52 @@ continuation.
    docs-only/full classification, or no natural prose candidate exists,
    feasibility fails: terminally disable immediately and do **not** dispatch or
    spend `S`.
-3. Before provisioning any label, run one `workflow_dispatch` full-safety smoke
-   from the merged default-branch workflow. Immediately before dispatch, run
-   the paginated Actions-run and repository issue-event audits documented in
-   this section from `<START>` through the current UTC time. Require zero
-   labeled workflow runs and zero label events; any result terminally disables
-   the workflow, and the smoke must not run. Charge it against `S`, and require
-   successful stable contexts, aggregate `schemaVersion: 2`, exact revision
-   attribution to that squash-merged SHA, request-budget evidence, both
-   vulnerability JSON artifacts, and acceptable Jobs API duration. This is the
-   only dispatch (`S=1`). A failed
-   smoke, `F_i >= 4`, more than 32 rounded minutes, or insufficient headroom
-   terminally disables the workflow; do not provision the label.
-4. Reverify the monitored no-unexpected-label precondition. Jett Reno is the named
-   sample operator; record his exact GitHub login before collection, then have an
-   authorized repository administrator store that exact canonical-cased login
-   in the repository-owned
-   Actions variable:
+3. Before provisioning any label, configure the required repository-owned
+   Actions variables. Jett Reno is the named sample operator; record his exact
+   canonical GitHub login. Set the controller variable to the recorded exact
+   40-hex squash-merged controller SHA before any dispatch:
 
    ```powershell
    gh variable set SELECTIVE_CI_SAMPLE_OPERATOR --repo Jamula/Andreja --body '<LOGIN>'
+   gh variable set SELECTIVE_CI_CONTROLLER_SHA --repo Jamula/Andreja --body '<CONTROLLER_SHA>'
    $expectedOperator = gh variable get SELECTIVE_CI_SAMPLE_OPERATOR `
      --repo Jamula/Andreja --json value --jq '.value'
+   $configuredControllerSha = gh variable get SELECTIVE_CI_CONTROLLER_SHA `
+     --repo Jamula/Andreja --json value --jq '.value'
    if ($expectedOperator -cne '<LOGIN>') { throw 'Sample operator configuration mismatch' }
+   if ($configuredControllerSha -cne '<CONTROLLER_SHA>') { throw 'Controller configuration mismatch' }
    ```
 
+   Run the paginated Actions-run and repository issue-event audits from
+   `<START>` through the current UTC time. Require zero repository-dispatch
+   smoke runs, zero labeled workflow runs, and zero label events; any result
+   terminally disables before spend. Fetch the live default-branch head, require
+   it equals the recorded squash-merged controller SHA, then create exactly one
+   default-branch-owned smoke:
+
+   ```powershell
+   $controllerSha = gh api repos/Jamula/Andreja/branches/main --jq '.commit.sha'
+   if ($controllerSha -cne '<CONTROLLER_SHA>') { throw 'Controller SHA drifted' }
+   gh api --method POST repos/Jamula/Andreja/dispatches `
+     -f event_type=selective-ci-smoke
+   ```
+
+   Charge this sole dispatch against `S=1`. Require the classification and
+   aggregate evidence to record exact event sender and actor, `refs/heads/main`,
+   live-main SHA, configured expected-controller SHA, current run
+   ID/attempt, and two history snapshots with total and current-revision smoke
+   count `1`, authorization
+   reason, and request-budget/rate-limit observations. Actions pagination must
+   be complete and below the 1,000-run API cap. Also require successful stable
+   contexts, aggregate `schemaVersion: 2`, both vulnerability JSON artifacts,
+   and acceptable Jobs API duration. A failed smoke, `F_i >= 4`, more than 32
+   rounded minutes, or insufficient headroom terminally disables; no second
+   dispatch is authorized.
+4. Reverify the monitored no-unexpected-label precondition and both configured
+   variables before labeling.
+
    Do not provision or change this setting merely by editing the runbook. Treat
-   an absent, differently cased, or mismatched variable as a fail-closed setup blocker. The value is
+   an absent, differently cased, stale, or mismatched variable as a fail-closed setup blocker. The operator value is
    an operator login, not a secret; repository settings, rather than pull-request
    code or event input, own it. GitHub expression equality is a prefilter; the
    classifier's exact-case equality is authoritative and is covered by fixtures.
@@ -625,7 +674,7 @@ continuation.
    only after audit evidence confirms no active sample:
    `gh label delete ci:selective-shadow-sample --repo Jamula/Andreja --yes`.
    Land a separately reviewed workflow-only follow-up removing
-   `pull_request_target` and `workflow_dispatch` unless a new window has already
+   `pull_request_target` and `repository_dispatch` unless a new window has already
    been approved. Do not re-enable merely to preserve non-required shadow
    contexts. Any later run requires a new approved budget/window and a newly
    charged smoke.
