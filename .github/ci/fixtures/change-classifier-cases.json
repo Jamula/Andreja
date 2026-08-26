@@ -6,6 +6,54 @@
     "fullSuite": false
   },
   {
+    "name": "trailing newline in current filename fails closed",
+    "files": [{"filename": "docs/charter.md\n", "status": "modified", "changes": 2, "baseContent": "old words\n", "patch": "@@ -1 +1 @@\n-old words\n+new words"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["invalid-path"]
+  },
+  {
+    "name": "tab in current filename fails closed",
+    "files": [{"filename": "docs/\tcharter.md", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["invalid-path"]
+  },
+  {
+    "name": "carriage return in current filename fails closed",
+    "files": [{"filename": "docs/charter.md\r", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["invalid-path"]
+  },
+  {
+    "name": "unit separator in current filename fails closed",
+    "files": [{"filename": "docs/charter\u001f.md", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["invalid-path"]
+  },
+  {
+    "name": "DEL in current filename fails closed",
+    "files": [{"filename": "docs/charter\u007f.md", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["invalid-path"]
+  },
+  {
+    "name": "control character in previous filename fails closed",
+    "files": [{"filename": "docs/renamed.md", "previous_filename": "docs/old\u0001.md", "status": "renamed"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["invalid-path", "ambiguous-renamed"]
+  },
+  {
+    "name": "legitimate Unicode filename remains supported",
+    "files": [{"filename": "docs/résumé-東京.md", "status": "modified", "changes": 2, "baseContent": "old words\n", "patch": "@@ -1 +1 @@\n-old words\n+new words"}],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
     "name": "arbitrary docs HTML fails closed",
     "files": [{"filename": "docs/example.html", "status": "modified"}],
     "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],

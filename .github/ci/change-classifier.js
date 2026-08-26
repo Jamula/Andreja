@@ -11,6 +11,7 @@ const SHADOW_SAMPLE_LABEL = 'ci:selective-shadow-sample';
 const API_REQUEST_LIMIT = 132;
 const MARKDOWN_FETCH_CONCURRENCY = 8;
 const EXACT_SHA = /^[0-9a-f]{40}$/;
+const ASCII_CONTROL = /[\x00-\x1f\x7f]/;
 const SMOKE_EVENT_TYPE = 'selective-ci-smoke';
 const SMOKE_WORKFLOW_FILE = 'selective-ci-shadow.yml';
 
@@ -29,18 +30,32 @@ function loadPolicy(policyPath) {
   };
 }
 
-function normalizeFile(file) {
-  const filename = String(file.filename ?? '');
-  if (
+function invalidRepositoryPath(filename) {
+  return (
     !filename ||
+    ASCII_CONTROL.test(filename) ||
     filename.includes('\\') ||
-    filename.includes('\0') ||
     filename.startsWith('/') ||
     filename.split('/').includes('..')
-  ) {
-    return { ...file, filename, invalid: true };
-  }
-  return { ...file, filename, status: String(file.status ?? 'unknown').toLowerCase() };
+  );
+}
+
+function normalizeFile(file) {
+  const filename = String(file.filename ?? '');
+  const previousFilename =
+    file.previous_filename === undefined || file.previous_filename === null
+      ? undefined
+      : String(file.previous_filename);
+  const invalid =
+    invalidRepositoryPath(filename) ||
+    (previousFilename !== undefined && invalidRepositoryPath(previousFilename));
+  return {
+    ...file,
+    filename,
+    ...(previousFilename === undefined ? {} : { previous_filename: previousFilename }),
+    ...(invalid ? { invalid: true } : {}),
+    status: String(file.status ?? 'unknown').toLowerCase(),
+  };
 }
 
 function markdownStructure(line) {

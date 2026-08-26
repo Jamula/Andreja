@@ -551,7 +551,8 @@ continuation.
        [datetime]$_.created_at -ge [datetime]'<START>'
      } |
      Select-Object created_at, @{Name='actor'; Expression={$_.actor.login}},
-       @{Name='pull'; Expression={$_.issue.number}}
+       @{Name='pull'; Expression={$_.issue.number}},
+       @{Name='label'; Expression={$_.label.name}}
    ```
 
    Also paginate all open PRs before the window and before each sample. Record

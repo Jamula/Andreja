@@ -156,6 +156,24 @@ for (const fixture of fixtures) {
   });
 }
 
+test('every ASCII control is rejected in current and previous filenames', () => {
+  for (const codePoint of [...Array(32).keys(), 0x7f]) {
+    const control = String.fromCharCode(codePoint);
+    for (const file of [
+      { filename: `docs/current${control}.md`, status: 'modified' },
+      {
+        filename: 'docs/current.md',
+        previous_filename: `docs/previous${control}.md`,
+        status: 'modified',
+      },
+    ]) {
+      const result = classifyFiles([file], policy);
+      assert.equal(result.fullSuite, true, `U+${codePoint.toString(16).padStart(4, '0')}`);
+      assert.ok(result.files[0].reasons.includes('invalid-path'));
+    }
+  }
+});
+
 test('Markdown patch change metadata must be a positive integer', () => {
   const baseFile = {
     filename: 'docs/charter.md',
@@ -2291,6 +2309,10 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.doesNotMatch(runbook, /--slurp[\s\S]{0,250}--jq/);
   assert.match(runbook, /exact\s+squash-merged controller SHA[\s\S]+only trusted controller revision/);
   assert.match(runbook, /GET \/repos\/Jamula\/Andreja\/issues\/events/);
+  assert.match(
+    runbook,
+    /Select-Object created_at,[\s\S]+Name='actor'[\s\S]+Name='pull'[\s\S]+Name='label'; Expression=\{\$_.label\.name\}/,
+  );
   for (const workflow of [
     'issue-status.yml',
     'squad-heartbeat.yml',
