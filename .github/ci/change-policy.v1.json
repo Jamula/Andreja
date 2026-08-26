@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "domains": [
+    "docs",
+    "dotnet",
+    "postgres",
+    "powershell",
+    "javascript",
+    "oci"
+  ],
+  "rules": [
+    {
+      "id": "ci-security-boundary",
+      "pattern": "^(\\.github/workflows/|\\.github/ci/|\\.github/scripts/|SECURITY\\.md$|supply-chain-policy\\.json$|docs/(security|threat-model|runbooks/review-gate-app))",
+      "fullSuite": true
+    },
+    {
+      "id": "selective-ci-runbook-governance",
+      "pattern": "^docs/operations/selective-ci\\.md$",
+      "fullSuite": true
+    },
+    {
+      "id": "public-website-prototype",
+      "pattern": "^docs/public-website/prototype/",
+      "fullSuite": true
+    },
+    {
+      "id": "central-build-dependency-sdk",
+      "pattern": "(^|/)(global\\.json|Directory\\.(Build|Packages)\\.(props|targets)|NuGet\\.config|[^/]+\\.(sln|slnx|csproj|fsproj|vbproj|props|targets)|package(-lock)?\\.json|pnpm-lock\\.yaml|yarn\\.lock)$",
+      "fullSuite": true
+    },
+    {
+      "id": "dependency-update-configuration",
+      "pattern": "^(\\.github/dependabot\\.ya?ml|dependabot\\.ya?ml|\\.github/renovate\\.json|renovate\\.json|\\.renovaterc(\\.json)?)$",
+      "fullSuite": true
+    },
+    {
+      "id": "github-governance-boundary",
+      "pattern": "^(\\.github/(actions|agents|skills)/|\\.github/copilot-instructions\\.md$|(?:\\.github/|docs/)?CODEOWNERS$)",
+      "fullSuite": true
+    },
+    {
+      "id": "squad-governance-boundary",
+      "pattern": "^\\.squad/",
+      "fullSuite": true
+    },
+    {
+      "id": "runtime-configuration-boundary",
+      "pattern": "^(\\.mcp\\.json|\\.gitattributes)$",
+      "fullSuite": true
+    },
+    {
+      "id": "generated-schema",
+      "pattern": "(^|/)(generated/|[^/]+\\.schema\\.json$)",
+      "fullSuite": true
+    },
+    {
+      "id": "postgres-migration",
+      "pattern": "(^|/)(Migrations?/|migrations?/)|^tests/Andreja\\.PostgreSqlIntegrationTests/|^src/Adapters/Andreja\\.Adapters/PostgreSql/",
+      "domains": ["dotnet", "postgres", "oci"]
+    },
+    {
+      "id": "docker-compose-iac",
+      "pattern": "(^|/)(Dockerfile[^/]*|compose[^/]*\\.(yml|yaml)|\\.dockerignore)$|^deploy/",
+      "domains": ["dotnet", "postgres", "powershell", "javascript", "oci"]
+    },
+    {
+      "id": "supply-chain-evidence",
+      "pattern": "^scripts/(supply-chain|evidence|operations)/",
+      "domains": ["dotnet", "postgres", "powershell", "javascript", "oci"]
+    },
+    {
+      "id": "powershell",
+      "pattern": "\\.(ps1|psm1|psd1)$",
+      "domains": ["powershell"]
+    },
+    {
+      "id": "deployed-javascript",
+      "pattern": "^src/.*\\.(js|mjs|cjs)$",
+      "domains": ["dotnet", "javascript", "oci"]
+    },
+    {
+      "id": "javascript-browser",
+      "pattern": "\\.(js|mjs|cjs)$",
+      "domains": ["javascript"]
+    },
+    {
+      "id": "dotnet-source",
+      "pattern": "\\.(cs|csproj|fs|fsproj|vb|vbproj|razor|cshtml)$",
+      "domains": ["dotnet", "oci"]
+    },
+    {
+      "id": "app-web-assets",
+      "pattern": "^src/.*\\.(css|scss|html|json)$",
+      "domains": ["dotnet", "javascript", "oci"]
+    },
+    {
+      "id": "dotnet-test-fixtures",
+      "pattern": "^tests/.*\\.(json|jsonld)$",
+      "domains": ["dotnet", "oci"]
+    },
+    {
+      "id": "docs-tooling",
+      "pattern": "^scripts/docs/",
+      "domains": ["docs"]
+    },
+    {
+      "id": "known-executable-documentation",
+      "pattern": "^(README\\.md|docs/(development\\.md|semantic-graph\\.md|adr/(0001-phase-1a-modular-boundaries|0005-phase-1a-self-host-operations)\\.md|architecture/andreja-high-level\\.md|frameworks/prioritization-launch\\.md|operations/(portability|self-hosting)\\.md|phase-1a/(evidence-44|evidence-gates)\\.md|public-website/(claims-inventory|design-hosting-matrix|prototype/README)\\.md|runbooks/review-gate-app\\.md))$",
+      "fullSuite": true
+    },
+    {
+      "id": "documentation",
+      "pattern": "^(docs/.*\\.md|LICENSE)$",
+      "domains": ["docs"],
+      "inspectMarkdownPatch": true
+    },
+    {
+      "id": "documentation-artifact",
+      "pattern": "^docs/architecture/andreja-high-level\\.(png|svg|excalidraw|png\\.sha256)$",
+      "caseSensitive": true,
+      "domains": ["docs"]
+    },
+    {
+      "id": "inert-repository-metadata",
+      "pattern": "^(\\.github/(FUNDING\\.yml|pull_request_template\\.md|ISSUE_TEMPLATE/(bug|config|decision|feature|feedback)\\.yml)|\\.gitignore|\\.env\\.example)$",
+      "domains": ["docs"]
+    }
+  ]
+}

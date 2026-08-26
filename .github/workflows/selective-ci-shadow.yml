@@ -1,0 +1,714 @@
+name: Selective CI (Shadow)
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [labeled]
+  repository_dispatch:
+    types: [selective-ci-smoke]
+
+permissions: {}
+
+concurrency:
+  group: >-
+    selective-ci-shadow-${{
+      github.event_name == 'pull_request_target' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'ci:selective-shadow-sample' &&
+      contains(github.event.pull_request.labels.*.name, 'ci:selective-shadow-sample') &&
+      vars.SELECTIVE_CI_SAMPLE_OPERATOR != '' &&
+      github.event.sender.login == vars.SELECTIVE_CI_SAMPLE_OPERATOR &&
+      format('sample-pr-{0}', github.event.pull_request.number) ||
+      github.event_name == 'repository_dispatch' &&
+      format('smoke-{0}', vars.SELECTIVE_CI_CONTROLLER_SHA) ||
+      format(
+        'topology-{0}-{1}',
+        github.event_name,
+        github.event.pull_request.number || github.event.merge_group.head_sha || github.ref
+      )
+    }}
+  cancel-in-progress: >-
+    ${{
+      github.event_name == 'pull_request_target' &&
+      !(
+        github.event.action == 'labeled' &&
+        github.event.label.name == 'ci:selective-shadow-sample' &&
+        contains(github.event.pull_request.labels.*.name, 'ci:selective-shadow-sample') &&
+        vars.SELECTIVE_CI_SAMPLE_OPERATOR != '' &&
+        github.event.sender.login == vars.SELECTIVE_CI_SAMPLE_OPERATOR
+      )
+    }}
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1'
+
+jobs:
+  classify:
+    name: Change classification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    outputs:
+      full_suite: ${{ steps.classify.outputs.full_suite }}
+      shadow_sampled: ${{ steps.classify.outputs.shadow_sampled }}
+      trusted_classifier: ${{ steps.classify.outputs.trusted_classifier }}
+      label_run_authorization: ${{ steps.classify.outputs.label_run_authorization }}
+      smoke_authorization: ${{ steps.classify.outputs.smoke_authorization }}
+      api_request_budget: ${{ steps.classify.outputs.api_request_budget }}
+      docs: ${{ steps.classify.outputs.docs }}
+      dotnet: ${{ steps.classify.outputs.dotnet }}
+      postgres: ${{ steps.classify.outputs.postgres }}
+      powershell: ${{ steps.classify.outputs.powershell }}
+      javascript: ${{ steps.classify.outputs.javascript }}
+      oci: ${{ steps.classify.outputs.oci }}
+      duration_seconds: ${{ steps.timing.outputs.duration_seconds }}
+    steps:
+      - id: start
+        run: echo "epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout only the trusted base revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.sha }}
+          path: trusted-ci
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.18.0'
+
+      - id: classify
+        name: Classify from read-only GitHub metadata
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TRUSTED_POLICY_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.sha }}
+          CHANGE_POLICY_PATH: trusted-ci/.github/ci/change-policy.v1.json
+          CHANGE_DECISION_PATH: artifacts/selective-ci/classification.json
+          SELECTIVE_CI_SAMPLE_OPERATOR: ${{ vars.SELECTIVE_CI_SAMPLE_OPERATOR }}
+          SELECTIVE_CI_CONTROLLER_SHA: ${{ vars.SELECTIVE_CI_CONTROLLER_SHA }}
+          SELECTIVE_CI_WINDOW_START: ${{ vars.SELECTIVE_CI_WINDOW_START }}
+        run: |
+          mkdir -p artifacts/selective-ci
+          if [ -f trusted-ci/.github/ci/change-classifier.js ]; then
+            node trusted-ci/.github/ci/change-classifier.js
+          else
+            echo "::warning::Trusted classifier is not yet present on the base; bootstrap fails closed."
+            node <<'BOOTSTRAP_NODE'
+          const fs = require('node:fs');
+          const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+          const isPullRequest = process.env.GITHUB_EVENT_NAME === 'pull_request_target';
+          const isSmoke = process.env.GITHUB_EVENT_NAME === 'repository_dispatch';
+          const observedActor =
+            typeof event.sender?.login === 'string' && event.sender.login.length > 0
+              ? event.sender.login
+              : null;
+          const expectedOperator =
+            typeof process.env.SELECTIVE_CI_SAMPLE_OPERATOR === 'string' &&
+            process.env.SELECTIVE_CI_SAMPLE_OPERATOR.length > 0
+              ? process.env.SELECTIVE_CI_SAMPLE_OPERATOR
+              : null;
+          const labels = Array.isArray(event.pull_request?.labels) ? event.pull_request.labels : [];
+          const sampleLabelEvent =
+            event.action === 'labeled' &&
+            event.label?.name === 'ci:selective-shadow-sample' &&
+            labels.some((label) => label?.name === 'ci:selective-shadow-sample');
+          const operatorMatches =
+            observedActor !== null &&
+            expectedOperator !== null &&
+            observedActor === expectedOperator;
+          const smokeAuthorization = isSmoke
+            ? {
+                authorized: false,
+                reason: 'trusted-classifier-unavailable-on-default-branch',
+                eventType: event.action ?? null,
+                sender: observedActor,
+                actor: process.env.GITHUB_ACTOR || null,
+                expectedOperator,
+                workflowRef: process.env.GITHUB_REF || null,
+                workflowSha: process.env.GITHUB_SHA || null,
+                expectedControllerSha: process.env.SELECTIVE_CI_CONTROLLER_SHA || null,
+                windowStart: process.env.SELECTIVE_CI_WINDOW_START || null,
+                defaultBranch: null,
+                liveDefaultBranchSha: null,
+                currentRunId: process.env.GITHUB_RUN_ID || null,
+                currentRunAttempt: process.env.GITHUB_RUN_ATTEMPT || null,
+                historySnapshots: [],
+                requestBudgetAtAuthorization: null,
+                error: null,
+              }
+            : null;
+          const sampled = isPullRequest && sampleLabelEvent && operatorMatches;
+          const labelRunAuthorization = isPullRequest
+            ? {
+                authorized: false,
+                reason: 'trusted-classifier-unavailable-on-default-branch',
+                eventAction: event.action ?? null,
+                label: event.label?.name ?? null,
+                sender: observedActor,
+                actor: process.env.GITHUB_ACTOR || null,
+                expectedOperator,
+                workflowRef: process.env.GITHUB_REF || null,
+                workflowSha: process.env.GITHUB_SHA || null,
+                expectedControllerSha: process.env.SELECTIVE_CI_CONTROLLER_SHA || null,
+                windowStart: process.env.SELECTIVE_CI_WINDOW_START || null,
+                defaultBranch: null,
+                liveDefaultBranchSha: null,
+                liveStateSnapshots: [],
+                currentRunId: process.env.GITHUB_RUN_ID || null,
+                currentRunAttempt: process.env.GITHUB_RUN_ATTEMPT || null,
+                pullRequestNumber: event.pull_request?.number ?? null,
+                labelRunCount: null,
+                authorizedRunCount: null,
+                authorizedSlot: null,
+                historyFingerprint: null,
+                historySnapshots: [],
+                requestBudgetAtAuthorization: null,
+                error: null,
+              }
+            : null;
+          const reason = sampled
+            ? 'authorized-sample-label-event'
+            : isSmoke
+              ? smokeAuthorization.reason
+            : sampleLabelEvent && expectedOperator === null
+              ? 'sample-operator-unconfigured'
+              : sampleLabelEvent
+                ? 'sample-operator-mismatch'
+                : 'shadow-not-sampled';
+          const decision = {
+            schemaVersion: 1,
+            eventName: 'bootstrap',
+            trustedClassifierAvailable: false,
+            classificationFailure: null,
+            apiRequestBudget: {
+              limit: 132,
+              used: 0,
+              exhausted: false,
+              rateLimitResponseObserved: false,
+              minimumRateLimitRemaining: null,
+              rateLimitResetEpoch: null,
+            },
+            fullSuite: true,
+            fullReasons: ['trusted-classifier-unavailable-on-base'],
+            labelRunAuthorization,
+            smokeAuthorization,
+            shadowSample: {
+              label: 'ci:selective-shadow-sample',
+              sampled,
+              reason,
+              observedActor,
+              expectedOperator,
+            },
+            domains: Object.fromEntries(
+              ['docs', 'dotnet', 'postgres', 'powershell', 'javascript', 'oci']
+                .map((domain) => [domain, { selected: true, disposition: 'selected' }]),
+            ),
+          };
+          fs.writeFileSync(
+            process.env.CHANGE_DECISION_PATH,
+            `${JSON.stringify(decision, null, 2)}\n`,
+          );
+          fs.appendFileSync(
+            process.env.GITHUB_OUTPUT,
+            [
+              'full_suite=true',
+              `shadow_sampled=${sampled}`,
+              'trusted_classifier=false',
+              `label_run_authorization=${JSON.stringify(labelRunAuthorization)}`,
+              `smoke_authorization=${JSON.stringify(smokeAuthorization)}`,
+              `api_request_budget=${JSON.stringify(decision.apiRequestBudget)}`,
+              'docs=true',
+              'dotnet=true',
+              'postgres=true',
+              'powershell=true',
+              'javascript=true',
+              'oci=true',
+              '',
+            ].join('\n'),
+          );
+          BOOTSTRAP_NODE
+          fi
+          cat artifacts/selective-ci/classification.json >> "$GITHUB_STEP_SUMMARY"
+
+      - if: always()
+        name: Upload bounded classification evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: selective-ci-classification-${{ github.run_attempt }}
+          path: artifacts/selective-ci/classification.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - id: timing
+        if: always()
+        run: echo "duration_seconds=$(($(date +%s)-${{ steps.start.outputs.epoch }}))" >> "$GITHUB_OUTPUT"
+
+  docs:
+    name: Docs domain
+    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.trusted_classifier == 'true' && needs.classify.outputs.docs == 'true'
+    needs: classify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      duration_seconds: ${{ steps.timing.outputs.duration_seconds }}
+    steps:
+      - id: start
+        run: echo "epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && (github.event.pull_request.merge_commit_sha || 'missing-pull-request-merge-sha') || github.event.merge_group.head_sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.x'
+      - run: python3 .github/scripts/check_docs_consistency.test.py
+      - run: python3 .github/scripts/check_docs_consistency.py
+      - run: python3 scripts/docs/generate_architecture_diagram.py --check
+      - run: python3 scripts/docs/test_architecture_diagram.py
+      - id: timing
+        if: always()
+        run: echo "duration_seconds=$(($(date +%s)-${{ steps.start.outputs.epoch }}))" >> "$GITHUB_OUTPUT"
+
+  dotnet:
+    name: .NET domain
+    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.trusted_classifier == 'true' && needs.classify.outputs.dotnet == 'true'
+    needs: classify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    outputs:
+      duration_seconds: ${{ steps.timing.outputs.duration_seconds }}
+    steps:
+      - id: start
+        run: echo "epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && (github.event.pull_request.merge_commit_sha || 'missing-pull-request-merge-sha') || github.event.merge_group.head_sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: |
+          dotnet restore Andreja.slnx
+      - name: Build and test Debug and Release
+        run: |
+          for configuration in Debug Release; do
+            dotnet build Andreja.slnx --configuration "$configuration" --no-restore
+            dotnet test Andreja.slnx --configuration "$configuration" --no-build
+          done
+      - name: Verify format and vulnerabilities
+        shell: pwsh
+        run: |
+          dotnet format Andreja.slnx --verify-no-changes --no-restore
+          ./.github/scripts/invoke-nuget-vulnerability-scan.ps1 -SkipPostgreSql -OutputPath artifacts/vulnerability/solution.json
+      - if: always()
+        name: Upload bounded solution vulnerability evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: selective-ci-nuget-solution-${{ github.run_attempt }}
+          path: artifacts/vulnerability/solution.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Run pinned C# SAST
+        shell: pwsh
+        run: |
+          dotnet tool install Microsoft.CST.DevSkim.CLI --version 1.0.90 --tool-path .tools/devskim
+          New-Item -ItemType Directory -Path artifacts/sast -Force | Out-Null
+          & ./.tools/devskim/devskim analyze --source-code . --output-file artifacts/sast/results.sarif --include-globs '**/*.cs' --ignore-globs '**/.git/**,**/bin/**,**/obj/**,**/artifacts/**,**/.tools/**' --ignore-rule-ids 'DS137138,DS162092'
+          if ($LASTEXITCODE -ne 0) { throw "DevSkim analysis failed." }
+          $sarif = Get-Content artifacts/sast/results.sarif -Raw | ConvertFrom-Json
+          $findings = @($sarif.runs | ForEach-Object { @($_.results) })
+          if ($findings.Count -gt 0) { throw "DevSkim reported $($findings.Count) finding(s)." }
+      - id: timing
+        if: always()
+        run: echo "duration_seconds=$(($(date +%s)-${{ steps.start.outputs.epoch }}))" >> "$GITHUB_OUTPUT"
+
+  postgres:
+    name: PostgreSQL domain
+    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.trusted_classifier == 'true' && needs.classify.outputs.postgres == 'true'
+    needs: classify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3
+        env:
+          POSTGRES_DB: andreja_test_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-only-disposable
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready --username postgres --dbname andreja_test_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 6
+    outputs:
+      duration_seconds: ${{ steps.timing.outputs.duration_seconds }}
+    steps:
+      - id: start
+        run: echo "epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && (github.event.pull_request.merge_commit_sha || 'missing-pull-request-merge-sha') || github.event.merge_group.head_sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+      - name: Compile, format, and run disposable PostgreSQL evidence
+        env:
+          ANDREJA_TEST_POSTGRES: Host=localhost;Port=5432;Database=andreja_test_ci;Username=postgres;Password=ci-only-disposable
+        run: |
+          dotnet restore tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj
+          dotnet build tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj --configuration Release --no-restore
+          dotnet format tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj --verify-no-changes --no-restore
+          pwsh -NoProfile -File .github/scripts/invoke-nuget-vulnerability-scan.ps1 -OnlyPostgreSql -OutputPath artifacts/vulnerability/postgresql.json
+          dotnet test tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj --configuration Release --no-build
+      - if: always()
+        name: Upload bounded PostgreSQL vulnerability evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: selective-ci-nuget-postgresql-${{ github.run_attempt }}
+          path: artifacts/vulnerability/postgresql.json
+          if-no-files-found: error
+          retention-days: 14
+      - id: timing
+        if: always()
+        run: echo "duration_seconds=$(($(date +%s)-${{ steps.start.outputs.epoch }}))" >> "$GITHUB_OUTPUT"
+
+  powershell:
+    name: PowerShell domain
+    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.trusted_classifier == 'true' && needs.classify.outputs.powershell == 'true'
+    needs: classify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      duration_seconds: ${{ steps.timing.outputs.duration_seconds }}
+    steps:
+      - id: start
+        run: echo "epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && (github.event.pull_request.merge_commit_sha || 'missing-pull-request-merge-sha') || github.event.merge_group.head_sha || github.sha }}
+          persist-credentials: false
+      - name: Run PSScriptAnalyzer
+        uses: microsoft/psscriptanalyzer-action@6b2948b1944407914a58661c49941824d149734f
+        with:
+          path: .\
+          recurse: true
+          includeRule: '"PSAvoidGlobalAliases", "PSAvoidUsingConvertToSecureStringWithPlainText"'
+          output: results.sarif
+      - name: Fail on findings
+        shell: pwsh
+        run: |
+          $sarif = Get-Content results.sarif -Raw | ConvertFrom-Json
+          $results = @($sarif.runs | ForEach-Object { @($_.results) })
+          if ($results.Count -gt 0) { throw "PSScriptAnalyzer reported $($results.Count) finding(s)." }
+      - id: timing
+        if: always()
+        run: echo "duration_seconds=$(($(date +%s)-${{ steps.start.outputs.epoch }}))" >> "$GITHUB_OUTPUT"
+
+  javascript:
+    name: JavaScript and browser harness domain
+    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.trusted_classifier == 'true' && needs.classify.outputs.javascript == 'true'
+    needs: classify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      duration_seconds: ${{ steps.timing.outputs.duration_seconds }}
+    steps:
+      - id: start
+        run: echo "epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && (github.event.pull_request.merge_commit_sha || 'missing-pull-request-merge-sha') || github.event.merge_group.head_sha || github.sha }}
+          persist-credentials: false
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.18.0'
+      - name: Check tracked JavaScript syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do node --check "$file"; done < <(git ls-files -z '*.js' '*.mjs' '*.cjs')
+      - name: Run repository-owned JavaScript fixtures
+        run: >-
+          node --test
+          .github/ci/change-classifier.test.js
+          .github/scripts/issue-status.test.js
+          .github/scripts/review-gate-app.test.js
+      - id: timing
+        if: always()
+        run: echo "duration_seconds=$(($(date +%s)-${{ steps.start.outputs.epoch }}))" >> "$GITHUB_OUTPUT"
+
+  oci:
+    name: Docker and OCI supply-chain domain
+    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.trusted_classifier == 'true' && needs.classify.outputs.oci == 'true'
+    needs: classify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    outputs:
+      duration_seconds: ${{ steps.timing.outputs.duration_seconds }}
+    steps:
+      - id: start
+        run: echo "epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && (github.event.pull_request.merge_commit_sha || 'missing-pull-request-merge-sha') || github.event.merge_group.head_sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+        with:
+          driver: docker-container
+      - name: Validate pins and negative cases
+        shell: pwsh
+        run: |
+          ./scripts/supply-chain/Test-SupplyChainPolicy.ps1
+          ./scripts/supply-chain/Invoke-NegativeTests.ps1
+      - name: Build twice, scan, and verify bounded evidence
+        shell: pwsh
+        run: |
+          ./scripts/supply-chain/New-OciEvidence.ps1 -OutputDirectory artifacts/supply-chain -Platform linux/amd64 -HostedUnsigned
+          ./scripts/supply-chain/Test-OciEvidence.ps1 -BundleDirectory artifacts/supply-chain -AllowUnsignedHostedEvidence
+      - if: always()
+        name: Destroy private OCI layers and reports
+        shell: pwsh
+        run: Remove-Item artifacts/supply-chain -Recurse -Force -ErrorAction SilentlyContinue
+      - id: timing
+        if: always()
+        run: echo "duration_seconds=$(($(date +%s)-${{ steps.start.outputs.epoch }}))" >> "$GITHUB_OUTPUT"
+
+  aggregate:
+    name: Aggregate gate
+    if: always()
+    needs: [classify, docs, dotnet, postgres, powershell, javascript, oci]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      - id: start
+        run: echo "epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - name: Write machine-readable aggregate evidence
+        env:
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
+          CLASSIFY_SECONDS: ${{ needs.classify.outputs.duration_seconds }}
+          SHADOW_SAMPLED: ${{ needs.classify.outputs.shadow_sampled }}
+          TRUSTED_CLASSIFIER: ${{ needs.classify.outputs.trusted_classifier }}
+          LABEL_RUN_AUTHORIZATION: ${{ needs.classify.outputs.label_run_authorization }}
+          SMOKE_AUTHORIZATION: ${{ needs.classify.outputs.smoke_authorization }}
+          API_REQUEST_BUDGET: ${{ needs.classify.outputs.api_request_budget }}
+          DOCS_SELECTED: ${{ needs.classify.outputs.docs }}
+          DOCS_RESULT: ${{ needs.docs.result }}
+          DOCS_SECONDS: ${{ needs.docs.outputs.duration_seconds }}
+          DOTNET_SELECTED: ${{ needs.classify.outputs.dotnet }}
+          DOTNET_RESULT: ${{ needs.dotnet.result }}
+          DOTNET_SECONDS: ${{ needs.dotnet.outputs.duration_seconds }}
+          POSTGRES_SELECTED: ${{ needs.classify.outputs.postgres }}
+          POSTGRES_RESULT: ${{ needs.postgres.result }}
+          POSTGRES_SECONDS: ${{ needs.postgres.outputs.duration_seconds }}
+          POWERSHELL_SELECTED: ${{ needs.classify.outputs.powershell }}
+          POWERSHELL_RESULT: ${{ needs.powershell.result }}
+          POWERSHELL_SECONDS: ${{ needs.powershell.outputs.duration_seconds }}
+          JAVASCRIPT_SELECTED: ${{ needs.classify.outputs.javascript }}
+          JAVASCRIPT_RESULT: ${{ needs.javascript.result }}
+          JAVASCRIPT_SECONDS: ${{ needs.javascript.outputs.duration_seconds }}
+          OCI_SELECTED: ${{ needs.classify.outputs.oci }}
+          OCI_RESULT: ${{ needs.oci.result }}
+          OCI_SECONDS: ${{ needs.oci.outputs.duration_seconds }}
+          AGGREGATE_START_EPOCH: ${{ steps.start.outputs.epoch }}
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || github.sha }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.event.after || github.sha }}
+          VALIDATED_REF: ${{ github.event_name == 'pull_request_target' && (github.event.pull_request.merge_commit_sha || 'missing-pull-request-merge-sha') || github.event.merge_group.head_sha || github.sha }}
+          VALIDATED_SHA: ${{ github.event_name == 'pull_request_target' && (github.event.pull_request.merge_commit_sha || 'missing-pull-request-merge-sha') || github.event.merge_group.head_sha || github.sha }}
+        run: |
+          mkdir -p artifacts/selective-ci
+          node <<'NODE'
+          const fs = require('node:fs');
+          const names = ['docs', 'dotnet', 'postgres', 'powershell', 'javascript', 'oci'];
+          const domains = {};
+          const timings = {
+            classify: Number(process.env.CLASSIFY_SECONDS || 0),
+            aggregateAtEvidenceWrite: Math.max(0, Math.floor(Date.now() / 1000) - Number(process.env.AGGREGATE_START_EPOCH || 0))
+          };
+          const classificationAvailable = process.env.CLASSIFY_RESULT === 'success';
+          const shadowSampled = process.env.SHADOW_SAMPLED === 'true';
+          const trustedClassifierAvailable = process.env.TRUSTED_CLASSIFIER === 'true';
+          const parseEvidenceJson = (name) => {
+            const value = process.env[name];
+            if (!value || value === 'null') return null;
+            try {
+              return JSON.parse(value);
+            } catch {
+              throw new Error(`${name} was not valid JSON.`);
+            }
+          };
+          const smokeAuthorization = parseEvidenceJson('SMOKE_AUTHORIZATION');
+          const labelRunAuthorization = parseEvidenceJson('LABEL_RUN_AUTHORIZATION');
+          const apiRequestBudget = parseEvidenceJson('API_REQUEST_BUDGET');
+          const samplePreconditionFailed = shadowSampled && !trustedClassifierAvailable;
+          const labelPreconditionFailed =
+            process.env.GITHUB_EVENT_NAME === 'pull_request_target' &&
+            labelRunAuthorization !== null &&
+            labelRunAuthorization?.authorized !== true;
+          const smokePreconditionFailed =
+            process.env.GITHUB_EVENT_NAME === 'repository_dispatch' &&
+            smokeAuthorization?.authorized !== true;
+          const validationRequested =
+            classificationAvailable && shadowSampled && trustedClassifierAvailable;
+          const exactRevision = (value) => /^[0-9a-f]{40}$/i.test(value || '');
+          const validationRevisionAvailable =
+            validationRequested &&
+            exactRevision(process.env.VALIDATED_REF) &&
+            exactRevision(process.env.VALIDATED_SHA);
+          const validationRevisionReason = !validationRequested
+            ? 'validation-not-requested'
+            : validationRevisionAvailable
+              ? 'exact-validation-revision'
+              : 'exact-validation-revision-unavailable';
+          for (const name of names) {
+            const prefix = name.toUpperCase();
+            const selected = process.env[`${prefix}_SELECTED`] === 'true';
+            const scheduled = shadowSampled && trustedClassifierAvailable && selected;
+            const result = process.env[`${prefix}_RESULT`] || 'skipped';
+            const durationSeconds = Number(process.env[`${prefix}_SECONDS`] || 0);
+            const disposition =
+              !classificationAvailable ||
+              samplePreconditionFailed ||
+              labelPreconditionFailed ||
+              smokePreconditionFailed ||
+              (validationRequested && !validationRevisionAvailable)
+              ? 'unavailable'
+              : !shadowSampled
+                ? 'not-applicable'
+                : selected
+                  ? (result === 'success' ? 'passed' : result === 'skipped' ? 'unavailable' : 'failed')
+                  : 'not-applicable';
+            const reason = !classificationAvailable
+              ? 'classification-unavailable'
+              : samplePreconditionFailed
+                ? 'trusted-classifier-unavailable-on-base'
+                : labelPreconditionFailed
+                  ? (labelRunAuthorization?.reason || 'labeled-run-window-unavailable')
+                : smokePreconditionFailed
+                  ? (smokeAuthorization?.reason || 'repository-dispatch-smoke-unavailable')
+                : validationRequested && !validationRevisionAvailable
+                  ? 'exact-validation-revision-unavailable'
+                : !shadowSampled
+                  ? 'shadow-not-sampled'
+                  : selected
+                    ? (disposition === 'passed' ? 'selected-domain-passed' : 'selected-domain-unavailable-or-failed')
+                    : 'no-affected-input';
+            domains[name] = { selected, scheduled, disposition, reason, jobResult: result, durationSeconds };
+          }
+          const diagnosticSeconds = timings.classify + timings.aggregateAtEvidenceWrite +
+            Object.values(domains).reduce((sum, item) => sum + item.durationSeconds, 0);
+          const diagnosticRoundedMinutes = Math.ceil(timings.classify / 60) +
+            Math.ceil(timings.aggregateAtEvidenceWrite / 60) +
+            Object.values(domains).reduce(
+              (sum, item) => sum + (item.selected ? Math.ceil(item.durationSeconds / 60) : 0),
+              0
+            );
+          const evidence = {
+            schemaVersion: 2,
+            runId: process.env.GITHUB_RUN_ID,
+            runAttempt: Number(process.env.GITHUB_RUN_ATTEMPT),
+            eventName: process.env.GITHUB_EVENT_NAME,
+            revision: {
+              eventBaseSha: process.env.EVENT_BASE_SHA || null,
+              eventHeadSha: process.env.EVENT_HEAD_SHA || null,
+              validatedRef: validationRevisionAvailable ? process.env.VALIDATED_REF : null,
+              validatedSha: validationRevisionAvailable ? process.env.VALIDATED_SHA : null,
+              validationRevisionAvailable,
+              validationRevisionReason
+            },
+            classificationResult: process.env.CLASSIFY_RESULT,
+            labelRunAuthorization,
+            smokeAuthorization,
+            apiRequestBudget,
+            shadowSampled,
+            trustedClassifierAvailable,
+            samplePreconditionFailed,
+            labelPreconditionFailed,
+            smokePreconditionFailed,
+            samplingReason: samplePreconditionFailed
+              ? 'trusted-classifier-unavailable-on-base'
+              : labelPreconditionFailed
+                ? (labelRunAuthorization?.reason || 'labeled-run-window-unavailable')
+              : smokeAuthorization
+                ? smokeAuthorization.reason
+              : shadowSampled
+                ? 'sampled-or-non-pull-request'
+                : 'shadow-not-sampled',
+            domains,
+            usage: {
+              method: 'diagnostic-step-wall-clock; authoritative billing requires completed-run Jobs API',
+              timings,
+              diagnosticStepSeconds: diagnosticSeconds,
+              diagnosticRoundedMinutesLowerBound: diagnosticRoundedMinutes,
+              diagnosticLinuxRunnerUsdLowerBoundAt0_008PerMinute:
+                Number((diagnosticRoundedMinutes * 0.008).toFixed(4))
+            }
+          };
+          const target = process.env.AGGREGATE_EVIDENCE_PATH || 'artifacts/selective-ci/aggregate.json';
+          evidence.usage.aggregateEvidenceBytes = 0;
+          let serialized = '';
+          let sizeStable = false;
+          for (let index = 0; index < 20; index += 1) {
+            serialized = `${JSON.stringify(evidence, null, 2)}\n`;
+            const bytes = Buffer.byteLength(serialized);
+            if (evidence.usage.aggregateEvidenceBytes === bytes) {
+              sizeStable = true;
+              break;
+            }
+            evidence.usage.aggregateEvidenceBytes = bytes;
+          }
+          if (!sizeStable) throw new Error('aggregateEvidenceBytes did not converge.');
+          serialized = `${JSON.stringify(evidence, null, 2)}\n`;
+          if (Buffer.byteLength(serialized) !== evidence.usage.aggregateEvidenceBytes) {
+            throw new Error('aggregateEvidenceBytes is stale.');
+          }
+          fs.writeFileSync(target, serialized);
+          if (fs.statSync(target).size !== evidence.usage.aggregateEvidenceBytes) {
+            throw new Error('aggregate evidence size differs after write.');
+          }
+          if (process.env.GITHUB_STEP_SUMMARY) {
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n\`\`\`json\n${JSON.stringify(evidence, null, 2)}\n\`\`\`\n`);
+          }
+          const failed = process.env.CLASSIFY_RESULT !== 'success' ||
+            samplePreconditionFailed ||
+            labelPreconditionFailed ||
+            smokePreconditionFailed ||
+            (validationRequested && !validationRevisionAvailable) ||
+            Object.values(domains).some((item) => item.scheduled && item.disposition !== 'passed');
+          if (failed) process.exitCode = 1;
+          NODE
+      - if: always()
+        name: Upload bounded aggregate evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: selective-ci-aggregate-${{ github.run_attempt }}
+          path: artifacts/selective-ci/aggregate.json
+          if-no-files-found: error
+          retention-days: 14

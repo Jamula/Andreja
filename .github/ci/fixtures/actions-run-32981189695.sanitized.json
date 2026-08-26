@@ -1,0 +1,41 @@
+{
+  "id": 32981189695,
+  "event": "pull_request_target",
+  "head_sha": "ae61421a29af0102a1aeaf32059e92c2c6e552ea",
+  "head_branch": "u/cyrusjamula/issue-102-fail-closed-ci",
+  "path": ".github/workflows/issue-status.yml",
+  "run_attempt": 1,
+  "created_at": "2026-08-26T10:01:00Z",
+  "head_repository": {
+    "id": 1342901808,
+    "full_name": "Jamula/Andreja",
+    "url": "https://api.github.com/repos/Jamula/Andreja",
+    "fork": false
+  },
+  "actor": {
+    "login": "cyrusjamula"
+  },
+  "pull_requests": [
+    {
+      "number": 118,
+      "head": {
+        "sha": "ae61421a29af0102a1aeaf32059e92c2c6e552ea",
+        "ref": "u/cyrusjamula/issue-102-fail-closed-ci",
+        "repo": {
+          "id": 1342901808,
+          "name": "Andreja",
+          "url": "https://api.github.com/repos/Jamula/Andreja"
+        }
+      },
+      "base": {
+        "sha": "2e35d4da59b6b1c660b596dee527ec9eba2a4dda",
+        "ref": "main",
+        "repo": {
+          "id": 1342901808,
+          "name": "Andreja",
+          "url": "https://api.github.com/repos/Jamula/Andreja"
+        }
+      }
+    }
+  ]
+}
