@@ -52,6 +52,11 @@ function runAggregateArtifact(overrides) {
         AGGREGATE_EVIDENCE_PATH: artifact,
         GITHUB_EVENT_NAME: 'pull_request',
         GITHUB_RUN_ATTEMPT: '1',
+        GITHUB_SHA: 'c'.repeat(40),
+        EVENT_BASE_SHA: 'a'.repeat(40),
+        EVENT_HEAD_SHA: 'b'.repeat(40),
+        VALIDATED_REF: 'c'.repeat(40),
+        VALIDATED_SHA: 'c'.repeat(40),
         ...overrides,
       },
     });
@@ -585,17 +590,17 @@ test('merge-group compare fails closed when merge base is unavailable', async ()
   assert.ok(changes.forcedFullReasons.includes('merge-group-merge-base-unavailable'));
 });
 
-test('captured PR 103 Markdown patch counts all bullet body lines exactly', () => {
+test('captured PR 103 Markdown inline code now fails closed', () => {
   const file = require('./fixtures/pr-103-markdown.json');
   const inspection = inspectMarkdownPatch(file);
   assert.equal(inspection.changedLineCount, 372);
   assert.equal(inspection.uncertain, undefined);
-  assert.equal(inspection.executable, false);
+  assert.equal(inspection.executable, true);
   const result = classifyFiles([file], policy);
-  assert.equal(result.fullSuite, false);
+  assert.equal(result.fullSuite, true);
   assert.deepEqual(
     ALL_DOMAINS.filter((domain) => result.domains[domain].selected),
-    ['docs'],
+    ALL_DOMAINS,
   );
 });
 
@@ -768,9 +773,34 @@ test('aggregate PR sample attributes the event and validated merge revisions', (
     eventHeadSha,
     validatedRef: mergeSha,
     validatedSha: mergeSha,
+    validationRevisionAvailable: true,
+    validationRevisionReason: 'exact-validation-revision',
   });
   assert.notEqual(evidence.revision.validatedSha, eventBaseSha);
   assert.equal(Object.hasOwn(evidence, 'sha'), false);
+});
+
+test('aggregate PR sample fails closed without an exact merge revision', () => {
+  const { evidence, status } = runAggregateArtifact({
+    GITHUB_EVENT_NAME: 'pull_request_target',
+    VALIDATED_REF: 'missing-pull-request-merge-sha',
+    VALIDATED_SHA: '',
+    CLASSIFY_RESULT: 'success',
+    SHADOW_SAMPLED: 'true',
+    TRUSTED_CLASSIFIER: 'true',
+    DOCS_SELECTED: 'true',
+    DOCS_RESULT: 'success',
+  });
+  assert.equal(status, 1);
+  assert.equal(evidence.revision.validatedRef, null);
+  assert.equal(evidence.revision.validatedSha, null);
+  assert.equal(evidence.revision.validationRevisionAvailable, false);
+  assert.equal(
+    evidence.revision.validationRevisionReason,
+    'exact-validation-revision-unavailable',
+  );
+  assert.equal(evidence.domains.docs.disposition, 'unavailable');
+  assert.equal(evidence.domains.docs.reason, 'exact-validation-revision-unavailable');
 });
 
 test('selective CI runbook preserves the approved sample and budget gates', () => {
@@ -802,8 +832,9 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.match(runbook, /schemaVersion: 2/);
   assert.match(runbook, /no-automation precondition/);
   assert.match(runbook, /waits for that[\s\S]+does not remove, reapply, or apply it elsewhere/);
-  assert.match(runbook, /removes the `schedule`[\s\S]+keeping PR contexts enabled/);
-  assert.match(runbook, /Do not use\s+`gh workflow disable` as the collection end state/);
+  assert.match(runbook, /continuation budget[\s\S]+every retained automatic trigger/);
+  assert.match(runbook, /gh workflow disable selective-ci-shadow\.yml/);
+  assert.match(runbook, /Promotion remains blocked while it is disabled/);
   assert.match(runbook, /\$pages = gh api --paginate --slurp[\s\S]+ConvertFrom-Json/);
   assert.doesNotMatch(runbook, /--slurp[\s\S]{0,250}--jq/);
   assert.match(runbook, /final `pull_request_target` YAML at commit `cb7a434` has never\s+executed/);
@@ -870,10 +901,11 @@ test('recorded historical replay is internally consistent with the current polic
     Object.values(evidence.portfolio.counts).reduce((sum, count) => sum + count, 0),
     evidence.sample.count,
   );
-  assert.equal(evidence.portfolio.counts['docs-only'], 2);
-  assert.equal(evidence.portfolio.counts.partial, 1);
-  assert.equal(evidence.portfolio.expectedRoundedMinutesSaved, 28);
-  assert.equal(evidence.portfolio.expectedSavingsShare, 0.0875);
+  assert.equal(evidence.portfolio.counts['docs-only'], 0);
+  assert.equal(evidence.portfolio.counts.partial, 0);
+  assert.equal(evidence.portfolio.counts.full, 20);
+  assert.equal(evidence.portfolio.expectedRoundedMinutesSaved, 0);
+  assert.equal(evidence.portfolio.expectedSavingsShare, 0);
   assert.equal(
     evidence.policySha256,
     createHash('sha256').update(policyBytes).digest('hex'),

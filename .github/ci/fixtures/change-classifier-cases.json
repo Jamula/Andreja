@@ -12,6 +12,54 @@
     "fullSuite": false
   },
   {
+    "name": "benign non-code Markdown text stays docs-only",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 2, "baseContent": "Use the local development environment.\n", "patch": "@@ -1 +1 @@\n-Use the local development environment.\n+Use the local test environment."}],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
+    "name": "inline command addition is executable documentation",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "Run the test suite.\n", "patch": "@@ -1 +1,2 @@\n Run the test suite.\n+Use `dotnet test` before pushing."}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "inline command deletion is executable documentation",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "Use `dotnet test` before pushing.\nKeep the result.\n", "patch": "@@ -1,2 +1 @@\n-Use `dotnet test` before pushing.\n Keep the result."}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "escaped backticks remain benign Markdown text",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "Explain punctuation.\n", "patch": "@@ -1 +1,2 @@\n Explain punctuation.\n+Use \\`literal\\` backticks in prose."}],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
+    "name": "multi-backtick inline command delimiter is executable documentation",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "added", "changes": 1, "patch": "@@ -0,0 +1 @@\n+Run ``echo `value` `` locally."}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "ambiguous unmatched inline backtick fails closed",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "added", "changes": 1, "patch": "@@ -0,0 +1 @@\n+Run `dotnet test before pushing."}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "addition inside trusted multiline inline code span fails closed",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "Use `dotnet\nnow` locally.\n", "patch": "@@ -1,2 +1,3 @@\n Use `dotnet\n+test\n now` locally."}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "deletion inside trusted multiline inline code span fails closed",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "Use `dotnet\ntest\nnow` locally.\n", "patch": "@@ -1,3 +1,2 @@\n Use `dotnet\n-test\n now` locally."}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
     "name": "C sharp source",
     "files": [{"filename": "src/Modules/Andreja.Modules/OpenLoops/OpenLoopTask.cs", "status": "modified"}],
     "selected": ["dotnet", "oci"],
@@ -107,6 +155,12 @@
   {
     "name": "classifier boundary",
     "files": [{"filename": ".github/ci/change-policy.v1.json", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "selective CI governance runbook",
+    "files": [{"filename": "docs/operations/selective-ci.md", "status": "modified", "changes": 2, "baseContent": "old governance\n", "patch": "@@ -1 +1 @@\n-old governance\n+new governance"}],
     "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
     "fullSuite": true
   },

@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-26T05:46:36.506Z",
+  "generatedAt": "2026-08-26T07:08:41.130Z",
   "repository": "Jamula/Andreja",
   "policyVersion": 1,
-  "policySha256": "9b27bb369bb7e1a047dc1c0f7bb49d8384b1b033122f0639feec015a8ac12d73",
-  "classifierSha256": "6c8a352712693f3c2a6d22b09fd7039b065f10ead5822897bfd3ced5156318ab",
+  "policySha256": "aaf1ac31cf5b26769c61e0a0dd555707272df3e98cf1989f7f73ca57e521e0f8",
+  "classifierSha256": "145698b77468ca0af8c2599e900a0c22376bf8e22ed727b02ff27c52ecad12f1",
   "sample": {
     "method": "most recently updated merged pull requests returned by GitHub REST",
     "count": 20,
@@ -27,20 +27,20 @@
   },
   "portfolio": {
     "counts": {
-      "docs-only": 2,
-      "partial": 1,
-      "full": 17
+      "docs-only": 0,
+      "partial": 0,
+      "full": 20
     },
     "shares": {
-      "docs-only": 0.1,
-      "partial": 0.05,
-      "full": 0.85
+      "docs-only": 0,
+      "partial": 0,
+      "full": 1
     },
     "normalizedBaselineRoundedMinutes": 320,
-    "estimatedSelectiveRoundedMinutes": 292,
-    "expectedRoundedMinutesSaved": 28,
-    "expectedSavingsShare": 0.0875,
-    "expectedListRateUsdSaved": 0.224
+    "estimatedSelectiveRoundedMinutes": 320,
+    "expectedRoundedMinutesSaved": 0,
+    "expectedSavingsShare": 0,
+    "expectedListRateUsdSaved": 0
   },
   "pullRequests": [
     {
@@ -65,8 +65,10 @@
         ".github/scripts/check_docs_consistency.py:ci-security-boundary",
         ".github/scripts/check_docs_consistency.test.py:ci-security-boundary",
         "README.md:known-executable-documentation",
+        "docs/adr/0000-plan-ratification.md:executable-documentation",
         "docs/architecture/andreja-high-level.md:known-executable-documentation",
         "docs/phase-1a/evidence-gates.md:known-executable-documentation",
+        "docs/plan.md:executable-documentation",
         "docs/privacy.md:executable-documentation",
         "docs/threat-model.md:ci-security-boundary"
       ],
@@ -98,7 +100,8 @@
         ".github/scripts/review-gate-policy.js:ci-security-boundary",
         ".github/scripts/review-gate-ruleset.js:ci-security-boundary",
         ".github/workflows/review-gate-app-tests.yml:ci-security-boundary",
-        "docs/runbooks/review-gate-app.md:ci-security-boundary"
+        "docs/runbooks/review-gate-app.md:ci-security-boundary",
+        "docs/testing-matrix.md:executable-documentation"
       ],
       "estimatedSelectiveRoundedMinutes": 16
     },
@@ -133,7 +136,10 @@
         ".squad/templates/copilot-agent.md:squad-governance-boundary",
         ".squad/templates/issue-lifecycle.md:squad-governance-boundary",
         ".squad/templates/squad.agent.md.template:squad-governance-boundary",
-        ".squad/templates/workflows/squad-issue-assign.yml:squad-governance-boundary"
+        ".squad/templates/workflows/squad-issue-assign.yml:squad-governance-boundary",
+        "docs/adr/0000-plan-ratification.md:executable-documentation",
+        "docs/help/issue-status.md:executable-documentation",
+        "docs/plan.md:executable-documentation"
       ],
       "estimatedSelectiveRoundedMinutes": 16
     },
@@ -159,7 +165,13 @@
         ".github/scripts/check_docs_consistency.py:ci-security-boundary",
         ".github/scripts/check_docs_consistency.test.py:ci-security-boundary",
         ".github/workflows/docs-consistency.yml:ci-security-boundary",
-        "docs/frameworks/prioritization-launch.md:known-executable-documentation"
+        "docs/adr/0000-plan-ratification.md:executable-documentation",
+        "docs/adr/0008-public-website-artifact-boundary.md:executable-documentation",
+        "docs/frameworks/feedback-support.md:executable-documentation",
+        "docs/frameworks/prioritization-launch.md:known-executable-documentation",
+        "docs/operating-model.md:executable-documentation",
+        "docs/plan.md:executable-documentation",
+        "docs/public-website/README.md:executable-documentation"
       ],
       "estimatedSelectiveRoundedMinutes": 16
     },
@@ -171,13 +183,20 @@
       "headSha": "a435c5a6c8ea46dc8b5beb22072ee8cf2ce8c04e",
       "mergeBaseSha": "08cce1d3f0d689bc89d77f99c25ca9c17581006b",
       "changedFileCount": 1,
-      "classification": "docs-only",
-      "fullSuite": false,
+      "classification": "full",
+      "fullSuite": true,
       "selectedDomains": [
-        "docs"
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
       ],
-      "fullReasons": [],
-      "estimatedSelectiveRoundedMinutes": 3
+      "fullReasons": [
+        "docs/adr/0007-test-framework.md:executable-documentation"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
     },
     {
       "number": 111,
@@ -254,6 +273,7 @@
         "DESIGN.md:unclassified-path",
         "PRODUCT.md:unclassified-path",
         "docs/adr/0006-public-website-artifact-boundary.md:executable-documentation",
+        "docs/public-website/README.md:executable-documentation",
         "docs/public-website/claims-inventory.md:known-executable-documentation",
         "docs/public-website/design-hosting-matrix.md:known-executable-documentation",
         "docs/public-website/prototype/README.md:known-executable-documentation"
@@ -320,7 +340,9 @@
         ".squad/templates/skills/ralph-two-pass-scan/SKILL.md:squad-governance-boundary",
         ".squad/templates/skills/session-recovery/SKILL.md:squad-governance-boundary",
         ".squad/templates/workflows/sync-squad-labels.yml:squad-governance-boundary",
-        "README.md:known-executable-documentation"
+        "README.md:known-executable-documentation",
+        "docs/help/issue-status.md:executable-documentation",
+        "docs/operating-model.md:executable-documentation"
       ],
       "estimatedSelectiveRoundedMinutes": 16
     },
@@ -372,6 +394,7 @@
         "docs/operations/portability.md:known-executable-documentation",
         "docs/phase-1a/evidence-44.md:known-executable-documentation",
         "docs/phase-1a/exit-checklist.md:executable-documentation",
+        "docs/testing-matrix.md:executable-documentation",
         "src/Andreja.Portability.Cli/Andreja.Portability.Cli.csproj:central-build-dependency-sdk",
         "tests/Andreja.UnitTests/Andreja.UnitTests.csproj:central-build-dependency-sdk"
       ],
@@ -385,13 +408,20 @@
       "headSha": "2eec6167ad986f275f2eb7baba3d0cf5d3a911d3",
       "mergeBaseSha": "27a702c9a6308aa7be41ec9930829b417a6d5e3e",
       "changedFileCount": 2,
-      "classification": "docs-only",
-      "fullSuite": false,
+      "classification": "full",
+      "fullSuite": true,
       "selectedDomains": [
-        "docs"
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
       ],
-      "fullReasons": [],
-      "estimatedSelectiveRoundedMinutes": 3
+      "fullReasons": [
+        "docs/adr/0000-plan-ratification.md:executable-documentation"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
     },
     {
       "number": 83,
@@ -412,10 +442,12 @@
         "oci"
       ],
       "fullReasons": [
+        "docs/adr/0003-phase-1a-persistence-portability.md:executable-documentation",
         "docs/development.md:known-executable-documentation",
         "docs/operations/application-export-v1.schema.json:generated-schema",
         "docs/phase-1a/evidence-gates.md:known-executable-documentation",
         "docs/semantic-graph.md:known-executable-documentation",
+        "docs/testing-matrix.md:executable-documentation",
         "tests/Andreja.UnitTests/Andreja.UnitTests.csproj:central-build-dependency-sdk"
       ],
       "estimatedSelectiveRoundedMinutes": 16
@@ -428,16 +460,20 @@
       "headSha": "09f18da62e4e74104b177085a26763be44271d67",
       "mergeBaseSha": "2f538c434e2b539b028a1ec756a780969048c40c",
       "changedFileCount": 5,
-      "classification": "partial",
-      "fullSuite": false,
+      "classification": "full",
+      "fullSuite": true,
       "selectedDomains": [
         "docs",
         "dotnet",
         "postgres",
+        "powershell",
+        "javascript",
         "oci"
       ],
-      "fullReasons": [],
-      "estimatedSelectiveRoundedMinutes": 14
+      "fullReasons": [
+        "docs/testing-matrix.md:executable-documentation"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
     },
     {
       "number": 81,
@@ -458,8 +494,10 @@
         "oci"
       ],
       "fullReasons": [
+        "docs/adr/0004-phase-1a-assistant-skill-channel-contracts.md:executable-documentation",
         "docs/development.md:known-executable-documentation",
-        "docs/phase-1a/evidence-gates.md:known-executable-documentation"
+        "docs/phase-1a/evidence-gates.md:known-executable-documentation",
+        "docs/testing-matrix.md:executable-documentation"
       ],
       "estimatedSelectiveRoundedMinutes": 16
     },
@@ -483,7 +521,8 @@
       ],
       "fullReasons": [
         "docs/operations/self-hosting.md:known-executable-documentation",
-        "docs/phase-1a/evidence-gates.md:known-executable-documentation"
+        "docs/phase-1a/evidence-gates.md:known-executable-documentation",
+        "docs/testing-matrix.md:executable-documentation"
       ],
       "estimatedSelectiveRoundedMinutes": 16
     },
@@ -508,9 +547,11 @@
       "fullReasons": [
         ".github/workflows/oci-supply-chain.yml:ci-security-boundary",
         "docs/development.md:known-executable-documentation",
+        "docs/operations/oci-migration-notes.md:executable-documentation",
         "docs/operations/oci-supply-chain-evidence-v1.schema.json:generated-schema",
         "docs/operations/self-hosting.md:known-executable-documentation",
         "docs/phase-1a/evidence-gates.md:known-executable-documentation",
+        "docs/testing-matrix.md:executable-documentation",
         "supply-chain-policy.json:ci-security-boundary"
       ],
       "estimatedSelectiveRoundedMinutes": 16
@@ -536,7 +577,8 @@
       "fullReasons": [
         "docs/operations/self-hosting.md:known-executable-documentation",
         "docs/phase-1a/evidence-44.md:known-executable-documentation",
-        "docs/phase-1a/evidence-gates.md:known-executable-documentation"
+        "docs/phase-1a/evidence-gates.md:known-executable-documentation",
+        "docs/testing-matrix.md:executable-documentation"
       ],
       "estimatedSelectiveRoundedMinutes": 16
     },
@@ -561,8 +603,12 @@
       "fullReasons": [
         "README.md:known-executable-documentation",
         "SECURITY.md:ci-security-boundary",
+        "docs/cost-model.md:executable-documentation",
         "docs/development.md:known-executable-documentation",
-        "docs/operations/self-hosting.md:known-executable-documentation"
+        "docs/help/open-loops.md:executable-documentation",
+        "docs/operations/self-hosting.md:known-executable-documentation",
+        "docs/phase-1a/byok-security-privacy.md:executable-documentation",
+        "docs/testing-matrix.md:executable-documentation"
       ],
       "estimatedSelectiveRoundedMinutes": 16
     }

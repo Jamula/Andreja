@@ -11,7 +11,7 @@
   "rules": [
     {
       "id": "ci-security-boundary",
-      "pattern": "^(\\.github/workflows/|\\.github/ci/|\\.github/scripts/|SECURITY\\.md$|supply-chain-policy\\.json$|docs/(security|threat-model|runbooks/review-gate-app))",
+      "pattern": "^(\\.github/workflows/|\\.github/ci/|\\.github/scripts/|SECURITY\\.md$|supply-chain-policy\\.json$|docs/(security|threat-model|operations/selective-ci|runbooks/review-gate-app))",
       "fullSuite": true
     },
     {

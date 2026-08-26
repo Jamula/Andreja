@@ -92,33 +92,79 @@ function transitionIndentedCode(state, line) {
   return false;
 }
 
+function transitionInlineCode(state, line) {
+  const value = String(line);
+  let delimiterLength = state;
+  let sawDelimiter = false;
+  for (let index = 0; index < value.length;) {
+    if (value[index] !== '`') {
+      index += 1;
+      continue;
+    }
+    let end = index + 1;
+    while (value[end] === '`') end += 1;
+    let precedingBackslashes = 0;
+    for (let cursor = index - 1; cursor >= 0 && value[cursor] === '\\'; cursor -= 1) {
+      precedingBackslashes += 1;
+    }
+    const escaped = delimiterLength === null && precedingBackslashes % 2 === 1;
+    if (!escaped) {
+      const runLength = end - index;
+      sawDelimiter = true;
+      if (delimiterLength === null) {
+        delimiterLength = runLength;
+      } else if (runLength === delimiterLength) {
+        delimiterLength = null;
+      }
+    }
+    index = end;
+  }
+  return { state: delimiterLength, sawDelimiter };
+}
+
 function markdownFenceStates(baseContent) {
   const lines = String(baseContent).split('\n');
   const before = new Array(lines.length + 2).fill(false);
   const after = new Array(lines.length + 2).fill(false);
   const indentedBefore = new Array(lines.length + 2).fill(false);
   const indentedAfter = new Array(lines.length + 2).fill(false);
+  const inlineBefore = new Array(lines.length + 2).fill(null);
+  const inlineAfter = new Array(lines.length + 2).fill(null);
   let fenceState = null;
   let indentedState = false;
+  let inlineState = null;
   for (let index = 0; index < lines.length; index += 1) {
     const lineNumber = index + 1;
     const line = lines[index].replace(/\r$/, '');
     before[lineNumber] = fenceState !== null;
     indentedBefore[lineNumber] = indentedState;
+    inlineBefore[lineNumber] = inlineState;
+    const delimiter = fenceDelimiter(line);
+    const scanInline =
+      inlineState !== null ||
+      (fenceState === null &&
+        delimiter === null &&
+        !MARKDOWN_INDENTED_CODE.test(markdownStructuralContent(line)));
+    if (scanInline) inlineState = transitionInlineCode(inlineState, line).state;
     fenceState = transitionFence(fenceState, line);
     indentedState = fenceState === null && transitionIndentedCode(indentedState, line);
     after[lineNumber] = fenceState !== null;
     indentedAfter[lineNumber] = indentedState;
+    inlineAfter[lineNumber] = inlineState;
   }
   before[lines.length + 1] = fenceState !== null;
   after[lines.length + 1] = fenceState !== null;
   indentedBefore[lines.length + 1] = indentedState;
   indentedAfter[lines.length + 1] = indentedState;
+  inlineBefore[lines.length + 1] = inlineState;
+  inlineAfter[lines.length + 1] = inlineState;
   return {
     before,
     after,
     indentedBefore,
     indentedAfter,
+    inlineBefore,
+    inlineAfter,
     lines,
     lineCount: lines.length,
   };
@@ -154,6 +200,7 @@ function inspectMarkdownPatch(file) {
   let oldLine = 0;
   let fenceState = null;
   let indentedState = false;
+  let inlineState = null;
   let sawHunk = false;
   let hunkAligned = isAdded;
   let executable = false;
@@ -171,6 +218,7 @@ function inspectMarkdownPatch(file) {
       fenceState =
         oldLine === 0 ? null : base.before[oldLine] ? { marker: '?', length: 0 } : null;
       indentedState = oldLine === 0 ? false : base.indentedBefore[oldLine];
+      inlineState = oldLine === 0 ? null : base.inlineBefore[oldLine];
       sawHunk = true;
       hunkAligned = isAdded;
       continue;
@@ -189,6 +237,7 @@ function inspectMarkdownPatch(file) {
       hunkAligned = true;
       fenceState = !isAdded && base.after[oldLine] ? { marker: '?', length: 0 } : null;
       indentedState = !isAdded && base.indentedAfter[oldLine];
+      inlineState = !isAdded ? base.inlineAfter[oldLine] : null;
       oldLine += 1;
       continue;
     }
@@ -200,31 +249,39 @@ function inspectMarkdownPatch(file) {
       if (
         fenceDelimiter(content) ||
         MARKDOWN_INDENTED_CODE.test(markdownStructuralContent(content)) ||
+        transitionInlineCode(null, content).sawDelimiter ||
         (!isAdded &&
           (base.before[oldLine] ||
             base.indentedBefore[oldLine] ||
-            base.indentedAfter[oldLine]))
+            base.indentedAfter[oldLine] ||
+            base.inlineBefore[oldLine] !== null ||
+            base.inlineAfter[oldLine] !== null))
       ) {
         executable = true;
       }
       fenceState =
         !isAdded && base.before[oldLine] ? { marker: '?', length: 0 } : fenceState;
       indentedState = !isAdded && base.indentedBefore[oldLine];
+      inlineState = !isAdded ? base.inlineBefore[oldLine] : inlineState;
       oldLine += 1;
       continue;
     }
     if (prefix === '+') {
+      const inlineTransition = transitionInlineCode(inlineState, content);
       if (
         fenceState ||
         indentedState ||
+        inlineState !== null ||
         fenceDelimiter(content) ||
-        MARKDOWN_INDENTED_CODE.test(markdownStructuralContent(content))
+        MARKDOWN_INDENTED_CODE.test(markdownStructuralContent(content)) ||
+        inlineTransition.sawDelimiter
       ) {
         executable = true;
       }
       fenceState = transitionFence(fenceState, content);
       indentedState =
         fenceState === null && transitionIndentedCode(indentedState, content);
+      inlineState = inlineTransition.state;
       continue;
     }
     return { uncertain: 'markdown-hunk-line-invalid', changedLineCount };

@@ -58,6 +58,12 @@ merge-base blob.
 The scan treats additions, deletions, fence starts/ends, changed lines inside
 unchanged backtick or tilde fences, and four-space/tab-indented code as
 executable, including those constructs nested in Markdown blockquotes.
+Changed inline code spans also select the full suite. The scan recognizes
+matching single- or multi-backtick delimiters, ignores backslash-escaped
+backticks outside code spans, and preserves literal shorter backtick runs inside
+longer delimiters. Additions or deletions within a trusted-base multiline code
+span are executable even when the changed line contains no delimiter. Any
+unmatched changed delimiter or other inline-span ambiguity fails closed.
 Indented-block state is established from the trusted base and
 advanced through exact hunk context; indentation ambiguity is treated as
 executable rather than docs-only. Tabs in changed lines or the trusted base are
@@ -91,7 +97,13 @@ head SHAs separately from the revision used by domain jobs. A valid PR sample
 records its immutable merge SHA as both the validated ref and SHA; merge-group
 jobs record the group head, and push/schedule/manual jobs record the exact
 default-branch `github.sha`. Unsampled or bootstrap-blocked runs record no
-validated revision.
+validated revision. The aggregate populates `validatedRef` and `validatedSha`
+only when both are valid 40-hex revisions. A sampled run with a missing or
+malformed merge SHA records both fields as `null`,
+`validationRevisionAvailable=false`, and
+`exact-validation-revision-unavailable`; every selected domain is unavailable
+and the aggregate fails even if an upstream job result incorrectly appears
+successful.
 
 The classifier also emits `trustedClassifierAvailable`. If a labeled PR's base
 does not yet contain `.github/ci/change-classifier.js`, bootstrap evidence
@@ -194,28 +206,28 @@ per-PR outcomes, policy and classifier digests, and assumptions are in
 
 | Replay classification | Count | Share |
 | --- | ---: | ---: |
-| Eligible docs-only | 2 | 10% |
-| Partial domain selection | 1 | 5% |
-| Fail-closed full suite | 17 | 85% |
+| Eligible docs-only | 0 | 0% |
+| Partial domain selection | 0 | 0% |
+| Fail-closed full suite | 20 | 100% |
 
 The normalized planning model uses the measured 16-minute full baseline,
 a provisional 2 fixed minutes for classification/aggregate, and measured rounded
-domain minutes from bootstrap run 32924008713. It estimates 292 rather than 320 rounded
-minutes across the sample: 28 minutes and USD 0.224 list rate saved, or **8.75%
-portfolio savings**. This sits next to, and is deliberately much lower than,
-the **81.25% per-run** target for an eligible docs-only PR. It is a historical
-planning replay, not live selective billing evidence. The cost baseline is
-**n=1**, only 3 of 20 replayed PRs (15%) were selectively eligible, and one PR is
-five percentage points of the sample. Reclassifying one docs-only observation
-as full lowers modeled savings from 8.75% to 4.69%; one additional full PR
-becoming docs-only raises it to 12.81%. Treat 8.75% as sensitivity-prone, not a
-forecast.
+domain minutes from bootstrap run 32924008713. After changed inline code spans
+were classified fail closed, it estimates 320 rounded minutes across the sample:
+zero minutes and USD 0 saved, or **0% portfolio savings**. The historical sample
+contains no eligible prose-only or partial change, so it provides no portfolio
+savings evidence. The **81.25% per-run** target remains only a target for a
+future genuinely prose-only PR. This is a historical planning replay, not live
+selective billing evidence. The cost baseline is **n=1**, and one PR is five
+percentage points of the 20-PR sample. The zero result does not prove future
+prose-only changes are impossible; it does mean this sample cannot support a
+savings forecast.
 
 Shadow operation is additive because the existing five heavy required contexts
-remain. The modeled **8.75% steady-state saving exists only if a later,
-independently reviewed ruleset change retires those five contexts after parity
-is proven**. Until then, both this shadow and any additive promotion increase
-runner cost.
+remain. The replay models **no steady-state portfolio saving** under the current
+conservative classifier. Any later savings claim requires new representative
+evidence and an independently reviewed ruleset change after parity is proven.
+Until then, both this shadow and any additive promotion increase runner cost.
 
 Bootstrap run 32927691826 measured fixed shadow overhead at 14 seconds for classification
 plus 5 seconds for aggregation. Independent per-job rounding makes that 2 Linux
@@ -343,8 +355,10 @@ shows `trustedClassifierAvailable=true` and no
 `trusted-classifier-unavailable-on-base` reason. Any later failed/canceled
 trusted sample consumes its valid slot and cost but is not evidence; incomplete
 evidence remains a promotion blocker. Stop at 14 calendar days, ten valid slots, 100 PR event
-runs, or exhausted headroom, whichever happens first; if blockers remain, keep
-the ruleset unchanged and pause the shadow workflow.
+runs, or exhausted headroom, whichever happens first. Unless a separately
+approved continuation budget already covers every retained automatic trigger,
+disable the shadow workflow at that boundary. If blockers remain, keep the
+ruleset unchanged and keep the workflow disabled.
 
 ## Shadow rollout and promotion hold
 
@@ -415,14 +429,23 @@ the ruleset unchanged and pause the shadow workflow.
    end, remove the label from every PR and delete it only after audit evidence
    confirms no active sample:
    `gh label delete ci:selective-shadow-sample --repo Jamula/Andreja --yes`.
-   Land a separately reviewed workflow-only change that removes the `schedule`
-   trigger while keeping PR contexts enabled, unless a separately reviewed
-   continuation budget explicitly covers the schedule. Do not use
-   `gh workflow disable` as the collection end state. If an emergency pause
-   disabled the whole workflow, promotion remains blocked until the schedule
-   change lands and a new reprice/window is approved. Only then may the workflow
-   be re-enabled and a dispatch smoke charged to that new window verify both
-   stable contexts again; the original `S <= 3` cannot be extended.
+   Before the 14-day/cap boundary, obtain a separately reviewed continuation
+   budget for every retained automatic trigger, including both
+   `pull_request_target` and `schedule`; approval for only the schedule is not a
+   continuation budget. Without that approval, immediately run
+   `gh workflow disable selective-ci-shadow.yml` when collection ends or
+   promotion remains blocked. Verify `gh workflow view
+   selective-ci-shadow.yml --json state` reports `disabled_manually`, record the
+   UTC shutdown time and last run ID, and confirm no later automatic run was
+   created. Then land a separately reviewed workflow-only shutdown change that
+   removes the automatic `schedule` and `pull_request_target` triggers while the
+   shadow remains blocked; `workflow_dispatch` may remain only for a future
+   explicitly approved smoke. Do not enable the workflow merely to preserve
+   shadow contexts: they are non-required, and the existing required workflows
+   remain authoritative. Promotion remains blocked while it is disabled. A new
+   approved reprice/window must cover every restored trigger before re-enable,
+   and a dispatch smoke charged to that new window must verify both stable
+   contexts; the original `S <= 3` cannot be extended.
 
 Repository merge queue is not configured/available as of 2026-08-26: the
 effective main rules have no merge-queue rule and the Actions API reports zero

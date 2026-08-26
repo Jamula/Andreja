@@ -438,13 +438,28 @@ jobs:
           const shadowSampled = process.env.SHADOW_SAMPLED === 'true';
           const trustedClassifierAvailable = process.env.TRUSTED_CLASSIFIER === 'true';
           const samplePreconditionFailed = shadowSampled && !trustedClassifierAvailable;
+          const validationRequested =
+            classificationAvailable && shadowSampled && trustedClassifierAvailable;
+          const exactRevision = (value) => /^[0-9a-f]{40}$/i.test(value || '');
+          const validationRevisionAvailable =
+            validationRequested &&
+            exactRevision(process.env.VALIDATED_REF) &&
+            exactRevision(process.env.VALIDATED_SHA);
+          const validationRevisionReason = !validationRequested
+            ? 'validation-not-requested'
+            : validationRevisionAvailable
+              ? 'exact-validation-revision'
+              : 'exact-validation-revision-unavailable';
           for (const name of names) {
             const prefix = name.toUpperCase();
             const selected = process.env[`${prefix}_SELECTED`] === 'true';
             const scheduled = shadowSampled && trustedClassifierAvailable && selected;
             const result = process.env[`${prefix}_RESULT`] || 'skipped';
             const durationSeconds = Number(process.env[`${prefix}_SECONDS`] || 0);
-            const disposition = !classificationAvailable || samplePreconditionFailed
+            const disposition =
+              !classificationAvailable ||
+              samplePreconditionFailed ||
+              (validationRequested && !validationRevisionAvailable)
               ? 'unavailable'
               : !shadowSampled
                 ? 'not-applicable'
@@ -455,6 +470,8 @@ jobs:
               ? 'classification-unavailable'
               : samplePreconditionFailed
                 ? 'trusted-classifier-unavailable-on-base'
+                : validationRequested && !validationRevisionAvailable
+                  ? 'exact-validation-revision-unavailable'
                 : !shadowSampled
                   ? 'shadow-not-sampled'
                   : selected
@@ -470,7 +487,6 @@ jobs:
               (sum, item) => sum + (item.selected ? Math.ceil(item.durationSeconds / 60) : 0),
               0
             );
-          const validationRan = classificationAvailable && shadowSampled && trustedClassifierAvailable;
           const evidence = {
             schemaVersion: 2,
             runId: process.env.GITHUB_RUN_ID,
@@ -479,8 +495,10 @@ jobs:
             revision: {
               eventBaseSha: process.env.EVENT_BASE_SHA || null,
               eventHeadSha: process.env.EVENT_HEAD_SHA || null,
-              validatedRef: validationRan ? (process.env.VALIDATED_REF || null) : null,
-              validatedSha: validationRan ? (process.env.VALIDATED_SHA || null) : null
+              validatedRef: validationRevisionAvailable ? process.env.VALIDATED_REF : null,
+              validatedSha: validationRevisionAvailable ? process.env.VALIDATED_SHA : null,
+              validationRevisionAvailable,
+              validationRevisionReason
             },
             classificationResult: process.env.CLASSIFY_RESULT,
             shadowSampled,
@@ -528,6 +546,7 @@ jobs:
           }
           const failed = process.env.CLASSIFY_RESULT !== 'success' ||
             samplePreconditionFailed ||
+            (validationRequested && !validationRevisionAvailable) ||
             Object.values(domains).some((item) => item.scheduled && item.disposition !== 'passed');
           if (failed) process.exitCode = 1;
           NODE
