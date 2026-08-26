@@ -43,6 +43,10 @@ CANONICAL_BASELINE_REQUIREMENTS = {
     "docs/privacy.md": ("Deanna Troi", "Tuvok", "Rai (AI safety); pending"),
     "docs/threat-model.md": ("Tuvok", "Deanna Troi", "Rai (AI safety); pending"),
 }
+CANONICAL_OPEN_ASSESSMENT = (
+    "The classification/impact assessment remains open unless explicitly approved "
+    "with cited evidence."
+)
 
 
 def fail(message: str) -> None:
@@ -168,6 +172,7 @@ def validate_canonical_baseline_rows(plan_text: str) -> None:
             *challengers,
             "Cyrus",
             "residual-risk acceptance",
+            CANONICAL_OPEN_ASSESSMENT,
         )
         missing_authority = [
             part for part in required_authority_parts if part not in authority

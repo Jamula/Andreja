@@ -29,7 +29,8 @@ def plan_table(artifacts: dict[str, str]) -> str:
                 f"Issue [#116](issue), PR [#117](pr); `{digest}` | "
                 "**Canonical descriptive baseline; not ratified.** "
                 f"{challenge_text}, {challengers[-1]}. "
-                "Cyrus residual-risk acceptance remains pending. |"
+                "Cyrus residual-risk acceptance remains pending. "
+                f"{DOCS_CHECK.CANONICAL_OPEN_ASSESSMENT} |"
             )
         else:
             rows.append(
@@ -97,6 +98,20 @@ class StatusArtifactHashTests(unittest.TestCase):
         ):
             with self.subTest(requirement=requirement):
                 plan = plan_table(self.actual).replace(requirement, "omitted", 1)
+                with self.assertRaisesRegex(ValueError, "authority drifted"):
+                    DOCS_CHECK.validate_canonical_baseline_rows(plan)
+
+    def test_canonical_baseline_requires_open_classification_assessment(self) -> None:
+        for replacement in (
+            "The classification/impact assessment is complete.",
+            "",
+        ):
+            with self.subTest(replacement=replacement or "omitted"):
+                plan = plan_table(self.actual).replace(
+                    DOCS_CHECK.CANONICAL_OPEN_ASSESSMENT,
+                    replacement,
+                    1,
+                )
                 with self.assertRaisesRegex(ValueError, "authority drifted"):
                     DOCS_CHECK.validate_canonical_baseline_rows(plan)
 
