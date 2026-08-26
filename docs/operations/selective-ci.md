@@ -15,17 +15,33 @@ For a pull request, the classification job checks out only
 `pull_request.base.sha` into `trusted-ci` and gets changed-file metadata from the
 read-only, paginated REST endpoint. It never checks out or executes pull-request
 code to classify it. Merge-group classification similarly executes
-`merge_group.base_sha` code and compares the base and group head. The initial
+`merge_group.base_sha` code and compares the base and group head. Compare API
+`Link` headers paginate commits rather than file slices, so the classifier uses
+only the first compare response and selects the full suite on any link, 300
+files, or other truncation uncertainty. The initial
 rollout, metadata errors, unexpected events, missing policy, empty changes,
 invalid paths, unclassified files, unknown statuses, renames, deletions, and the
-300-file compare limit all select every domain.
+3,000-file PR limit, 100-file merge-base Markdown fetch budget, or 300-file
+compare limit all select every domain.
 
 Changed workflow, classifier, repository automation script, ruleset/security
-policy, Squad governance, central package/build/project, SDK, generated-schema,
-or executable documentation inputs select the full suite. Markdown is docs-only only when its
-API patch is present and does not change a fenced executable snippet. Missing
-patches fail closed. A deployed JavaScript or C# change also selects OCI because
-it changes image content.
+policy, dependency-update configuration (including `.github/dependabot.yml`),
+Squad governance, central package/build/project, SDK, generated-schema, or
+executable documentation inputs select the full suite. GitHub Markdown patches
+contain hunk bodies without `+++`/`---` file headers, so every `+` or `-` body
+line counts, including `+- bullet` and `-- bullet`. The count must exactly equal
+GitHub's `changes` value. The classifier reads only the trusted base Markdown to
+establish fence state at each hunk. For pull requests and merge groups it
+requires the REST compare `merge_base_commit` and reads the old file through the
+read-only Contents API at that exact SHA; it does not assume the moving
+base-branch tip matches the patch. Context and deleted lines must also match the
+merge-base blob.
+The scan treats additions, deletions, fence starts/ends, and changed lines inside
+unchanged backtick or tilde fences as executable. Labeled, unlabeled, and
+unknown-language fences are all treated conservatively. Markdown is docs-only
+only when its complete API patch changes prose outside every fence. Missing or
+misaligned merge-base content, patch, or hunk state fails closed. A deployed
+JavaScript or C# change also selects OCI because it changes image content.
 
 The only permissions are `contents: read` and `pull-requests: read`. Checkout
 does not persist credentials. External actions and service images are immutable
@@ -33,6 +49,10 @@ SHA/digest pins. The classification job uploads the decision, including each
 file's rule and reasons. The stable `Aggregate gate` always runs. Its JSON and
 summary enumerate `passed`, `not-applicable`, `unavailable`, and `failed`
 dispositions and fail if classification or any selected domain did not pass.
+Push branch-creation events with an all-zero `before` SHA safely check out the
+new trusted push SHA and still force the full suite. Concurrency keys include the
+event name so a push, schedule, and manual run on the same ref cannot cancel one
+another.
 
 ## Domains
 
@@ -80,6 +100,43 @@ risk require owner approval. Post-change duration/storage/cost remains
 **unavailable until a live shadow docs-only PR exists**; it must not be inferred
 from local fixtures.
 
+The fixed classifier was replayed against the 20 most recently updated merged
+pull requests (merged 2026-08-24 through 2026-08-26). Machine-readable inputs,
+per-PR outcomes, policy digest, and assumptions are in
+`.github/ci/evidence/recent-merged-pr-replay.json`.
+
+| Replay classification | Count | Share |
+| --- | ---: | ---: |
+| Eligible docs-only | 2 | 10% |
+| Partial domain selection | 1 | 5% |
+| Fail-closed full suite | 17 | 85% |
+
+The normalized planning model uses the measured 16-minute full baseline,
+2 fixed minutes for classification/aggregate, and measured rounded domain
+minutes from bootstrap run 32924008713. It estimates 292 rather than 320 rounded
+minutes across the sample: 28 minutes and USD 0.224 list rate saved, or **8.75%
+portfolio savings**. This sits next to, and is deliberately much lower than,
+the **81.25% per-run** target for an eligible docs-only PR. It is a historical
+planning replay, not live selective billing evidence.
+
+Shadow operation is additive because the existing required workflows remain.
+Budget the bounded collection conservatively at the observed full selective
+cost of about 16 rounded minutes / USD 0.128 per qualified PR run. Ten qualified
+runs (five docs-only and five full) therefore have a worst-case additive ceiling
+of about 160 minutes / USD 1.28 within the 14-day window. An actual post-merge
+docs-only shadow run is expected to add only 3 minutes / USD 0.024, but that
+lower amount remains unverified.
+
+Live PR run
+[32924008713](https://github.com/Jamula/Andreja/actions/runs/32924008713)
+proved the workflow topology, complete job graph, stable aggregate context, and
+artifact upload: all six selected domains passed in 635 completed-job seconds
+and 16 rounded minutes, matching the baseline's 16-minute full-suite cost class.
+It used `trusted-classifier-unavailable-on-base` bootstrap behavior. It is
+**bootstrap topology/job-graph/artifact evidence only**, not trusted-classifier,
+docs-only, merge-group, or post-fix behavioral evidence. The five-docs plus
+five-full collection starts only after the shadow workflow merges to `main`.
+
 Every aggregate artifact records diagnostic step-wall-clock seconds for
 classification, selected domains, and aggregate evaluation, plus rounded-minute
 and cost lower bounds and aggregate JSON bytes. Step timers exclude queue,
@@ -119,17 +176,33 @@ the five existing .NET contexts. Before any later write:
    required contexts, pull-request parameters, and bypass actors as rollback
    evidence.
 2. Abort if the body or ETag differs from the independently reviewed candidate.
-3. Preserve deletion/non-fast-forward/linear-history rules, all pull-request
-   parameters (especially thread resolution), code-quality/Copilot review,
-   strictness, zero bypass, and every existing required context during the first
-   additive change. Add the live aggregate context with its observed Actions
-   integration ID; never guess it.
+3. Preserve every existing property: active enforcement; default-branch
+   conditions; deletion, non-fast-forward, and linear-history rules; zero
+   approving reviews; `dismiss_stale_reviews_on_push=false`; empty
+   `required_reviewers`; `require_code_owner_review=false`; disabled/empty
+   dismissal restrictions; `require_last_push_approval=false`;
+   `required_review_thread_resolution=true`;
+   `require_extra_approval_for_unattributed_changes=true`;
+   `allowed_merge_methods=[squash]`; code-quality severity `notes`; Copilot
+   `review_on_push=true` and `review_draft_pull_requests=false`; strict required
+   checks; `do_not_enforce_on_create=false`; all five existing required contexts
+   with integration ID 15368; and empty bypass actors. During the first additive
+   change, add the live aggregate context with its observed Actions integration
+   ID; never guess it.
 4. Send the complete update with `If-Match: <live-etag>`. Re-GET and compare
    every preserved field. On mismatch, restore the saved body with the new live
    ETag and verify again.
 5. Retiring old always-heavy required contexts is a separate reviewed change
    only after the selective workflow itself becomes trusted default-branch code
    and equivalent live evidence is complete.
+
+A future sole-aggregate requirement intentionally concentrates trust in one
+stable context. Its residual-risk controls are explicit: every workflow or
+classifier edit forces the full suite, and deleting or renaming the workflow,
+workflow name, or `Aggregate gate` job prevents the exact required context from
+appearing, so strict protection blocks rather than silently passing. This does
+not replace independent workflow review, default-branch trust, or the live
+merge-group canary.
 
 Issue #115's blocked external review-gate contract is not a dependency or a
 completed control here. Issue #104's independent review-completion protections

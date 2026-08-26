@@ -16,7 +16,7 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: selective-ci-shadow-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
+  group: selective-ci-shadow-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -45,7 +45,7 @@ jobs:
       - name: Checkout only the trusted base revision
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || github.sha }}
+          ref: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || (github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || github.sha }}
           path: trusted-ci
           persist-credentials: false
           fetch-depth: 1
@@ -60,7 +60,7 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          TRUSTED_POLICY_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || github.sha }}
+          TRUSTED_POLICY_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || (github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || github.sha }}
           CHANGE_POLICY_PATH: trusted-ci/.github/ci/change-policy.v1.json
           CHANGE_DECISION_PATH: artifacts/selective-ci/classification.json
         run: |
@@ -403,15 +403,27 @@ jobs:
             }
           };
           const target = 'artifacts/selective-ci/aggregate.json';
+          evidence.usage.aggregateEvidenceBytes = 0;
           let serialized = '';
-          for (let index = 0; index < 5; index += 1) {
+          let sizeStable = false;
+          for (let index = 0; index < 20; index += 1) {
             serialized = `${JSON.stringify(evidence, null, 2)}\n`;
             const bytes = Buffer.byteLength(serialized);
-            if (evidence.usage.aggregateEvidenceBytes === bytes) break;
+            if (evidence.usage.aggregateEvidenceBytes === bytes) {
+              sizeStable = true;
+              break;
+            }
             evidence.usage.aggregateEvidenceBytes = bytes;
           }
+          if (!sizeStable) throw new Error('aggregateEvidenceBytes did not converge.');
           serialized = `${JSON.stringify(evidence, null, 2)}\n`;
+          if (Buffer.byteLength(serialized) !== evidence.usage.aggregateEvidenceBytes) {
+            throw new Error('aggregateEvidenceBytes is stale.');
+          }
           fs.writeFileSync(target, serialized);
+          if (fs.statSync(target).size !== evidence.usage.aggregateEvidenceBytes) {
+            throw new Error('aggregate evidence size differs after write.');
+          }
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n\`\`\`json\n${JSON.stringify(evidence, null, 2)}\n\`\`\`\n`);
           const failed = process.env.CLASSIFY_RESULT !== 'success' ||
             Object.values(domains).some((item) => item.selected && item.disposition !== 'passed');

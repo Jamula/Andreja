@@ -20,6 +20,11 @@
       "fullSuite": true
     },
     {
+      "id": "dependency-update-configuration",
+      "pattern": "^(\\.github/dependabot\\.ya?ml|dependabot\\.ya?ml|\\.github/renovate\\.json|renovate\\.json|\\.renovaterc(\\.json)?)$",
+      "fullSuite": true
+    },
+    {
       "id": "squad-governance-boundary",
       "pattern": "^\\.squad/",
       "fullSuite": true

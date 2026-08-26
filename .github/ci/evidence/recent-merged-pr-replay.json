@@ -1,0 +1,562 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-26T03:26:48.937Z",
+  "repository": "Jamula/Andreja",
+  "policyVersion": 1,
+  "policySha256": "72fe4674dbd2b7d204f9a2407b72cacc29e65cfd8e155d90cb4935136beb4768",
+  "sample": {
+    "method": "most recently updated merged pull requests returned by GitHub REST",
+    "count": 20,
+    "newestMergedAt": "2026-08-26T02:07:09Z",
+    "oldestMergedAt": "2026-08-24T16:02:16Z"
+  },
+  "assumptions": {
+    "normalizedCurrentFullSuiteRoundedMinutesPerPullRequest": 16,
+    "normalizedCurrentFullSuiteUsdPerPullRequest": 0.128,
+    "selectiveFixedClassificationAndAggregateRoundedMinutes": 2,
+    "selectedDomainRoundedMinutes": {
+      "docs": 1,
+      "dotnet": 3,
+      "postgres": 3,
+      "powershell": 1,
+      "javascript": 1,
+      "oci": 5
+    },
+    "note": "Planning estimate from baseline and live bootstrap run; not an invoice or live selective result."
+  },
+  "portfolio": {
+    "counts": {
+      "docs-only": 2,
+      "partial": 1,
+      "full": 17
+    },
+    "shares": {
+      "docs-only": 0.1,
+      "partial": 0.05,
+      "full": 0.85
+    },
+    "normalizedBaselineRoundedMinutes": 320,
+    "estimatedSelectiveRoundedMinutes": 292,
+    "expectedRoundedMinutesSaved": 28,
+    "expectedSavingsShare": 0.0875,
+    "expectedListRateUsdSaved": 0.224
+  },
+  "pullRequests": [
+    {
+      "number": 117,
+      "title": "docs: add canonical privacy and threat models",
+      "mergedAt": "2026-08-26T02:07:09Z",
+      "baseSha": "c93c6beea6ac53c4a57f3ec4afd37822025394f1",
+      "headSha": "e0c6c2843b2c19b9de84f0c2e89417d58801a23d",
+      "mergeBaseSha": "c93c6beea6ac53c4a57f3ec4afd37822025394f1",
+      "changedFileCount": 12,
+      "classification": "full",
+      "fullSuite": true,
+      "selectedDomains": [
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
+      ],
+      "fullReasons": [
+        ".github/scripts/check_docs_consistency.py:ci-security-boundary",
+        ".github/scripts/check_docs_consistency.test.py:ci-security-boundary",
+        "README.md:known-executable-documentation",
+        "docs/architecture/andreja-high-level.md:known-executable-documentation",
+        "docs/phase-1a/evidence-gates.md:known-executable-documentation",
+        "docs/threat-model.md:ci-security-boundary"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
+    },
+    {
+      "number": 115,
+      "title": "Define blocked external review-gate contract",
+      "mergedAt": "2026-08-26T01:18:01Z",
+      "baseSha": "7a1fc208614658202b1782d24d2b4260c351bc1f",
+      "headSha": "16eaa6397979346d08823b8c54ce0bfbe88907c4",
+      "mergeBaseSha": "7a1fc208614658202b1782d24d2b4260c351bc1f",
+      "changedFileCount": 9,
+      "classification": "full",
+      "fullSuite": true,
+      "selectedDomains": [
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
+      ],
+      "fullReasons": [
+        ".github/scripts/fixtures/review-gate-app-scenarios.json:ci-security-boundary",
+        ".github/scripts/record-review-gate-policy.js:ci-security-boundary",
+        ".github/scripts/review-gate-app.js:ci-security-boundary",
+        ".github/scripts/review-gate-app.test.js:ci-security-boundary",
+        ".github/scripts/review-gate-policy.js:ci-security-boundary",
+        ".github/scripts/review-gate-ruleset.js:ci-security-boundary",
+        ".github/workflows/review-gate-app-tests.yml:ci-security-boundary",
+        "docs/runbooks/review-gate-app.md:ci-security-boundary"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
+    },
+    {
+      "number": 106,
+      "title": "Converge issue status reconciliation safely",
+      "mergedAt": "2026-08-25T17:13:32Z",
+      "baseSha": "8a59ae43d6c566f8f6b4884fd74e66ac2cb7f6c8",
+      "headSha": "8c33303eb63b06a61cf51e973ec4d6045327cfd3",
+      "mergeBaseSha": "8a59ae43d6c566f8f6b4884fd74e66ac2cb7f6c8",
+      "changedFileCount": 17,
+      "classification": "full",
+      "fullSuite": true,
+      "selectedDomains": [
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
+      ],
+      "fullReasons": [
+        ".github/scripts/fixtures/issue-status-events.json:ci-security-boundary",
+        ".github/scripts/fixtures/issue-status-linked-prs.json:ci-security-boundary",
+        ".github/scripts/issue-status.js:ci-security-boundary",
+        ".github/scripts/issue-status.test.js:ci-security-boundary",
+        ".github/scripts/run-issue-status.js:ci-security-boundary",
+        ".github/workflows/issue-status-tests.yml:ci-security-boundary",
+        ".github/workflows/issue-status.yml:ci-security-boundary",
+        ".github/workflows/squad-issue-assign.yml:ci-security-boundary",
+        ".squad/templates/copilot-agent.md:squad-governance-boundary",
+        ".squad/templates/issue-lifecycle.md:squad-governance-boundary",
+        ".squad/templates/squad.agent.md.template:squad-governance-boundary",
+        ".squad/templates/workflows/squad-issue-assign.yml:squad-governance-boundary"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
+    },
+    {
+      "number": 113,
+      "title": "docs: reconcile Phase 0 execution status",
+      "mergedAt": "2026-08-25T16:31:11Z",
+      "baseSha": "1e43a50203784b4941079fa022e50d936a7e7a5a",
+      "headSha": "261285295cbd5d2367ddbd93697b7bc32e5f97b8",
+      "mergeBaseSha": "1e43a50203784b4941079fa022e50d936a7e7a5a",
+      "changedFileCount": 13,
+      "classification": "full",
+      "fullSuite": true,
+      "selectedDomains": [
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
+      ],
+      "fullReasons": [
+        ".github/scripts/check_docs_consistency.py:ci-security-boundary",
+        ".github/scripts/check_docs_consistency.test.py:ci-security-boundary",
+        ".github/workflows/docs-consistency.yml:ci-security-boundary",
+        "docs/frameworks/prioritization-launch.md:known-executable-documentation"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
+    },
+    {
+      "number": 103,
+      "title": "docs: decide test framework direction",
+      "mergedAt": "2026-08-25T14:56:26Z",
+      "baseSha": "08cce1d3f0d689bc89d77f99c25ca9c17581006b",
+      "headSha": "a435c5a6c8ea46dc8b5beb22072ee8cf2ce8c04e",
+      "mergeBaseSha": "08cce1d3f0d689bc89d77f99c25ca9c17581006b",
+      "changedFileCount": 1,
+      "classification": "docs-only",
+      "fullSuite": false,
+      "selectedDomains": [
+        "docs"
+      ],
+      "fullReasons": [],
+      "estimatedSelectiveRoundedMinutes": 3
+    },
+    {
+      "number": 111,
+      "title": "Harden Phase 0 public website evidence",
+      "mergedAt": "2026-08-25T14:53:23Z",
+      "baseSha": "f2b1fe15a8156d3dacd1a33320766e6bcdfc4799",
+      "headSha": "1bd709686fc7c9911669ad41c2a2df8fdac6f4e2",
+      "mergeBaseSha": "f2b1fe15a8156d3dacd1a33320766e6bcdfc4799",
+      "changedFileCount": 8,
+      "classification": "full",
+      "fullSuite": true,
+      "selectedDomains": [
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
+      ],
+      "fullReasons": [
+        "DESIGN.md:ambiguous-removed",
+        "DESIGN.md:unclassified-path",
+        "PRODUCT.md:ambiguous-removed",
+        "PRODUCT.md:unclassified-path",
+        "docs/adr/0008-public-website-artifact-boundary.md:ambiguous-renamed",
+        "docs/public-website/claims-inventory.md:known-executable-documentation",
+        "docs/public-website/prototype/README.md:known-executable-documentation"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
+    },
+    {
+      "number": 107,
+      "title": "docs: correct architecture diagram review findings",
+      "mergedAt": "2026-08-25T14:50:37Z",
+      "baseSha": "e93a538c8cbbe80eb86103904b1292a4b957efec",
+      "headSha": "da5edf37ae191b81413157e095e3ff3febbad8bb",
+      "mergeBaseSha": "e93a538c8cbbe80eb86103904b1292a4b957efec",
+      "changedFileCount": 10,
+      "classification": "full",
+      "fullSuite": true,
+      "selectedDomains": [
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
+      ],
+      "fullReasons": [
+        ".github/workflows/docs-consistency.yml:ci-security-boundary",
+        "docs/architecture/andreja-high-level.md:known-executable-documentation"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
+    },
+    {
+      "number": 105,
+      "title": "Define public website design and hosting boundary",
+      "mergedAt": "2026-08-25T05:23:09Z",
+      "baseSha": "c88e0572fd7c2c9759a00dada8c0fd640479b3ab",
+      "headSha": "ce75ed4e9f0047979afc14937ee0cec914afd5fa",
+      "mergeBaseSha": "c88e0572fd7c2c9759a00dada8c0fd640479b3ab",
+      "changedFileCount": 9,
+      "classification": "full",
+      "fullSuite": true,
+      "selectedDomains": [
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
+      ],
+      "fullReasons": [
+        "DESIGN.md:unclassified-path",
+        "PRODUCT.md:unclassified-path",
+        "docs/public-website/claims-inventory.md:known-executable-documentation",
+        "docs/public-website/design-hosting-matrix.md:known-executable-documentation",
+        "docs/public-website/prototype/README.md:known-executable-documentation"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
+    },
+    {
+      "number": 100,
+      "title": "docs: add Andreja high-level architecture diagram",
+      "mergedAt": "2026-08-25T04:44:26Z",
+      "baseSha": "6588dcc9acdeeb0a5370003106eeb4d7e1768d89",
+      "headSha": "739ef547a6d916e97d8fbdb82be41a1163c31a52",
+      "mergeBaseSha": "6588dcc9acdeeb0a5370003106eeb4d7e1768d89",
+      "changedFileCount": 7,
+      "classification": "full",
+      "fullSuite": true,
+      "selectedDomains": [
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
+      ],
+      "fullReasons": [
+        "README.md:known-executable-documentation",
+        "docs/adr/0001-phase-1a-modular-boundaries.md:known-executable-documentation",
+        "docs/architecture/andreja-high-level.md:known-executable-documentation"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
+    },
+    {
+      "number": 101,
+      "title": "Automate unambiguous issue status tracking",
+      "mergedAt": "2026-08-25T04:40:27Z",
+      "baseSha": "51b4eb46225fa80047216117d22b5aadba079ff9",
+      "headSha": "12447a1aec7f72420ac044cdd60fab1d978bb44c",
+      "mergeBaseSha": "51b4eb46225fa80047216117d22b5aadba079ff9",
+      "changedFileCount": 19,
+      "classification": "full",
+      "fullSuite": true,
+      "selectedDomains": [
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
+      ],
+      "fullReasons": [
+        ".github/scripts/fixtures/issue-status-events.json:ci-security-boundary",
+        ".github/scripts/issue-status.js:ci-security-boundary",
+        ".github/scripts/issue-status.test.js:ci-security-boundary",
+        ".github/scripts/run-issue-status.js:ci-security-boundary",
+        ".github/workflows/issue-status-tests.yml:ci-security-boundary",
+        ".github/workflows/issue-status.yml:ci-security-boundary",
+        ".github/workflows/sync-squad-labels.yml:ci-security-boundary",
+        ".squad/templates/issue-lifecycle.md:squad-governance-boundary",
+        ".squad/templates/skills/git-workflow/SKILL.md:squad-governance-boundary",
+        ".squad/templates/skills/iterative-retrieval/SKILL.md:squad-governance-boundary",
+        ".squad/templates/skills/ralph-two-pass-scan/SKILL.md:squad-governance-boundary",
+        ".squad/templates/skills/session-recovery/SKILL.md:squad-governance-boundary",
+        ".squad/templates/workflows/sync-squad-labels.yml:squad-governance-boundary",
+        "README.md:known-executable-documentation"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
+    },
+    {
+      "number": 98,
+      "title": "docs: add end-to-end developer setup",
+      "mergedAt": "2026-08-25T04:14:35Z",
+      "baseSha": "5b7325dedd9a3cc59a6db72cb1cc6f76501eee93",
+      "headSha": "0f087c9269aaf19c676f6eb88246e84f287cfb0c",
+      "mergeBaseSha": "5b7325dedd9a3cc59a6db72cb1cc6f76501eee93",
+      "changedFileCount": 2,
+      "classification": "full",
+      "fullSuite": true,
+      "selectedDomains": [
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
+      ],
+      "fullReasons": [
+        "README.md:known-executable-documentation",
+        "docs/operations/self-hosting.md:known-executable-documentation"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
+    },
+    {
+      "number": 89,
+      "title": "Implement clean-instance application portability",
+      "mergedAt": "2026-08-25T03:17:28Z",
+      "baseSha": "8b5c4e5f146d8fe06c177a816aa2a9e5ff2703b4",
+      "headSha": "53d907a26d6f968fa843efd1ed26053181a804d3",
+      "mergeBaseSha": "8b5c4e5f146d8fe06c177a816aa2a9e5ff2703b4",
+      "changedFileCount": 21,
+      "classification": "full",
+      "fullSuite": true,
+      "selectedDomains": [
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
+      ],
+      "fullReasons": [
+        "Andreja.slnx:central-build-dependency-sdk",
+        "docs/operations/application-export-v1.schema.json:generated-schema",
+        "docs/operations/portability.md:known-executable-documentation",
+        "docs/phase-1a/evidence-44.md:known-executable-documentation",
+        "src/Andreja.Portability.Cli/Andreja.Portability.Cli.csproj:central-build-dependency-sdk",
+        "tests/Andreja.UnitTests/Andreja.UnitTests.csproj:central-build-dependency-sdk"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
+    },
+    {
+      "number": 95,
+      "title": "docs: track public website roadmap issues",
+      "mergedAt": "2026-08-25T03:03:08Z",
+      "baseSha": "27a702c9a6308aa7be41ec9930829b417a6d5e3e",
+      "headSha": "2eec6167ad986f275f2eb7baba3d0cf5d3a911d3",
+      "mergeBaseSha": "27a702c9a6308aa7be41ec9930829b417a6d5e3e",
+      "changedFileCount": 2,
+      "classification": "docs-only",
+      "fullSuite": false,
+      "selectedDomains": [
+        "docs"
+      ],
+      "fullReasons": [],
+      "estimatedSelectiveRoundedMinutes": 3
+    },
+    {
+      "number": 83,
+      "title": "Implement semantic profile and provenance contracts",
+      "mergedAt": "2026-08-24T18:59:43Z",
+      "baseSha": "1056d138c94bb75955e7f8acc92737600d62481d",
+      "headSha": "420d78ee2f7c8b83acfd60024e8e90e4a0488784",
+      "mergeBaseSha": "1056d138c94bb75955e7f8acc92737600d62481d",
+      "changedFileCount": 16,
+      "classification": "full",
+      "fullSuite": true,
+      "selectedDomains": [
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
+      ],
+      "fullReasons": [
+        "docs/development.md:known-executable-documentation",
+        "docs/operations/application-export-v1.schema.json:generated-schema",
+        "docs/phase-1a/evidence-gates.md:known-executable-documentation",
+        "docs/semantic-graph.md:known-executable-documentation",
+        "tests/Andreja.UnitTests/Andreja.UnitTests.csproj:central-build-dependency-sdk"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
+    },
+    {
+      "number": 86,
+      "title": "Fix PostgreSQL proposal and passkey regressions",
+      "mergedAt": "2026-08-24T22:35:16Z",
+      "baseSha": "2f538c434e2b539b028a1ec756a780969048c40c",
+      "headSha": "09f18da62e4e74104b177085a26763be44271d67",
+      "mergeBaseSha": "2f538c434e2b539b028a1ec756a780969048c40c",
+      "changedFileCount": 5,
+      "classification": "partial",
+      "fullSuite": false,
+      "selectedDomains": [
+        "docs",
+        "dotnet",
+        "postgres",
+        "oci"
+      ],
+      "fullReasons": [],
+      "estimatedSelectiveRoundedMinutes": 14
+    },
+    {
+      "number": 81,
+      "title": "Complete Phase 1A skill and channel contracts",
+      "mergedAt": "2026-08-24T16:43:22Z",
+      "baseSha": "f123a48efc47d5fee96e13bc3bbc83782e9ceec0",
+      "headSha": "c00b8253d8961a55cdb56f3893fc4e93486ab464",
+      "mergeBaseSha": "f123a48efc47d5fee96e13bc3bbc83782e9ceec0",
+      "changedFileCount": 21,
+      "classification": "full",
+      "fullSuite": true,
+      "selectedDomains": [
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
+      ],
+      "fullReasons": [
+        "docs/development.md:known-executable-documentation",
+        "docs/phase-1a/evidence-gates.md:known-executable-documentation"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
+    },
+    {
+      "number": 80,
+      "title": "Make proposal confirmation crash-consistent",
+      "mergedAt": "2026-08-24T16:02:16Z",
+      "baseSha": "9a1c1edd49ba010281209a50a2c6cf300e8b268b",
+      "headSha": "a3e047155840f1d7e4651d3b0652fc567443061b",
+      "mergeBaseSha": "9a1c1edd49ba010281209a50a2c6cf300e8b268b",
+      "changedFileCount": 18,
+      "classification": "full",
+      "fullSuite": true,
+      "selectedDomains": [
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
+      ],
+      "fullReasons": [
+        "docs/operations/self-hosting.md:known-executable-documentation",
+        "docs/phase-1a/evidence-gates.md:known-executable-documentation"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
+    },
+    {
+      "number": 84,
+      "title": "Add fail-closed OCI supply-chain gates",
+      "mergedAt": "2026-08-24T21:14:13Z",
+      "baseSha": "c5669ef225e7b4e50289399d4e511748135441f0",
+      "headSha": "0144f22f849ff9c9509b5664c0e1aa14c175f8db",
+      "mergeBaseSha": "c5669ef225e7b4e50289399d4e511748135441f0",
+      "changedFileCount": 14,
+      "classification": "full",
+      "fullSuite": true,
+      "selectedDomains": [
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
+      ],
+      "fullReasons": [
+        ".github/workflows/oci-supply-chain.yml:ci-security-boundary",
+        "docs/development.md:known-executable-documentation",
+        "docs/operations/oci-supply-chain-evidence-v1.schema.json:generated-schema",
+        "docs/operations/self-hosting.md:known-executable-documentation",
+        "docs/phase-1a/evidence-gates.md:known-executable-documentation",
+        "supply-chain-policy.json:ci-security-boundary"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
+    },
+    {
+      "number": 88,
+      "title": "Record Phase 1A evidence and remaining blockers",
+      "mergedAt": "2026-08-25T00:32:47Z",
+      "baseSha": "4cf532ef763a1709589ac8d0cf004b7404b8b5b4",
+      "headSha": "fab72025988c1f3d98c712b3cfb36b588fd6bf57",
+      "mergeBaseSha": "4cf532ef763a1709589ac8d0cf004b7404b8b5b4",
+      "changedFileCount": 15,
+      "classification": "full",
+      "fullSuite": true,
+      "selectedDomains": [
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
+      ],
+      "fullReasons": [
+        "docs/operations/self-hosting.md:known-executable-documentation",
+        "docs/phase-1a/evidence-44.md:known-executable-documentation",
+        "docs/phase-1a/evidence-gates.md:known-executable-documentation"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
+    },
+    {
+      "number": 82,
+      "title": "Implement Phase 1A OpenAI-compatible BYOK transport",
+      "mergedAt": "2026-08-24T17:57:22Z",
+      "baseSha": "e94fc042840af8131f9096f8606dd7b3348a9206",
+      "headSha": "562d420ebc356f8c254ac57f17e08e7a0198567b",
+      "mergeBaseSha": "e94fc042840af8131f9096f8606dd7b3348a9206",
+      "changedFileCount": 21,
+      "classification": "full",
+      "fullSuite": true,
+      "selectedDomains": [
+        "docs",
+        "dotnet",
+        "postgres",
+        "powershell",
+        "javascript",
+        "oci"
+      ],
+      "fullReasons": [
+        "README.md:known-executable-documentation",
+        "SECURITY.md:ci-security-boundary",
+        "docs/development.md:known-executable-documentation",
+        "docs/operations/self-hosting.md:known-executable-documentation"
+      ],
+      "estimatedSelectiveRoundedMinutes": 16
+    }
+  ]
+}

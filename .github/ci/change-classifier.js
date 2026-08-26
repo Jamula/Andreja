@@ -5,7 +5,7 @@ const path = require('node:path');
 
 const ALL_DOMAINS = ['docs', 'dotnet', 'postgres', 'powershell', 'javascript', 'oci'];
 const AMBIGUOUS_STATUSES = new Set(['removed', 'renamed']);
-const EXECUTABLE_FENCE = /^\s*[+-]\s*```(?:bash|console|csharp|cs|dockerfile|javascript|js|powershell|pwsh|sh|shell|sql|typescript|ts|yaml|yml)?\s*$/im;
+const MARKDOWN_FENCE = /^\s*(`{3,}|~{3,})(.*)$/;
 
 function loadPolicy(policyPath) {
   const policy = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
@@ -31,6 +31,166 @@ function normalizeFile(file) {
     return { ...file, filename, invalid: true };
   }
   return { ...file, filename, status: String(file.status ?? 'unknown').toLowerCase() };
+}
+
+function fenceDelimiter(line) {
+  const match = String(line).match(MARKDOWN_FENCE);
+  if (!match) return null;
+  return { marker: match[1][0], length: match[1].length, suffix: match[2].trim() };
+}
+
+function transitionFence(state, line) {
+  const delimiter = fenceDelimiter(line);
+  if (!delimiter) return state;
+  if (!state) return { marker: delimiter.marker, length: delimiter.length };
+  if (
+    delimiter.marker === state.marker &&
+    delimiter.length >= state.length &&
+    delimiter.suffix === ''
+  ) {
+    return null;
+  }
+  return state;
+}
+
+function markdownFenceStates(baseContent) {
+  const lines = String(baseContent).split('\n');
+  const before = new Array(lines.length + 2).fill(false);
+  const after = new Array(lines.length + 2).fill(false);
+  let state = null;
+  for (let index = 0; index < lines.length; index += 1) {
+    const lineNumber = index + 1;
+    before[lineNumber] = state !== null;
+    state = transitionFence(state, lines[index].replace(/\r$/, ''));
+    after[lineNumber] = state !== null;
+  }
+  before[lines.length + 1] = state !== null;
+  after[lines.length + 1] = state !== null;
+  return { before, after, lines, lineCount: lines.length };
+}
+
+function inspectMarkdownPatch(file) {
+  const patch = file.patch;
+  if (typeof patch !== 'string') return { uncertain: 'markdown-patch-unavailable' };
+
+  const changedLineCount = patch
+    .split('\n')
+    .filter((line) => line.startsWith('+') || line.startsWith('-')).length;
+  if (Number.isInteger(file.changes) && file.changes !== changedLineCount) {
+    return { uncertain: 'markdown-patch-change-count-mismatch', changedLineCount };
+  }
+
+  const isAdded = file.status === 'added';
+  if (!isAdded && typeof file.baseContent !== 'string') {
+    return { uncertain: 'markdown-base-unavailable', changedLineCount };
+  }
+
+  const base = markdownFenceStates(file.baseContent ?? '');
+  let oldLine = 0;
+  let state = null;
+  let sawHunk = false;
+  let hunkAligned = isAdded;
+  let executable = false;
+
+  for (const patchLine of patch.split('\n')) {
+    const hunk = patchLine.match(/^@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@/);
+    if (hunk) {
+      if (sawHunk && !hunkAligned) {
+        return { uncertain: 'markdown-hunk-base-unaligned', changedLineCount };
+      }
+      oldLine = Number(hunk[1]);
+      if (!Number.isSafeInteger(oldLine) || oldLine < 0) {
+        return { uncertain: 'markdown-hunk-invalid', changedLineCount };
+      }
+      state = oldLine === 0 ? null : base.before[oldLine] ? { marker: '?', length: 0 } : null;
+      sawHunk = true;
+      hunkAligned = isAdded;
+      continue;
+    }
+    if (!sawHunk || patchLine === '\\ No newline at end of file') continue;
+
+    const prefix = patchLine[0];
+    const content = patchLine.slice(1).replace(/\r$/, '');
+    if (prefix === ' ') {
+      if (!isAdded && (oldLine < 1 || oldLine > base.lineCount + 1)) {
+        return { uncertain: 'markdown-hunk-out-of-range', changedLineCount };
+      }
+      if (!isAdded && base.lines[oldLine - 1]?.replace(/\r$/, '') !== content) {
+        return { uncertain: 'markdown-base-patch-mismatch', changedLineCount };
+      }
+      hunkAligned = true;
+      state = !isAdded && base.after[oldLine] ? { marker: '?', length: 0 } : null;
+      oldLine += 1;
+      continue;
+    }
+    if (prefix === '-') {
+      if (!isAdded && base.lines[oldLine - 1]?.replace(/\r$/, '') !== content) {
+        return { uncertain: 'markdown-base-patch-mismatch', changedLineCount };
+      }
+      hunkAligned = true;
+      if (fenceDelimiter(content) || (!isAdded && base.before[oldLine])) {
+        executable = true;
+      }
+      oldLine += 1;
+      continue;
+    }
+    if (prefix === '+') {
+      if (state || fenceDelimiter(content)) {
+        executable = true;
+      }
+      state = transitionFence(state, content);
+      continue;
+    }
+    return { uncertain: 'markdown-hunk-line-invalid', changedLineCount };
+  }
+
+  if (!sawHunk) return { uncertain: 'markdown-hunk-unavailable', changedLineCount };
+  if (!hunkAligned) return { uncertain: 'markdown-hunk-base-unaligned', changedLineCount };
+  return { executable, changedLineCount };
+}
+
+async function attachTrustedMarkdownBase(
+  files,
+  repository,
+  trustedContentSha,
+  token,
+  fetchImpl = fetch,
+) {
+  return Promise.all(files.map(async (rawFile) => {
+    const file = normalizeFile(rawFile);
+    if (
+      file.invalid ||
+      !/\.md$/i.test(file.filename) ||
+      file.status === 'added' ||
+      typeof file.baseContent === 'string'
+    ) {
+      return rawFile;
+    }
+
+    if (!trustedContentSha) return rawFile;
+    const sourcePath = file.previous_filename ?? file.filename;
+    const encodedPath = sourcePath.split('/').map(encodeURIComponent).join('/');
+    try {
+      const { body } = await getJson(
+        `${process.env.GITHUB_API_URL || 'https://api.github.com'}/repos/${repository}/contents/${encodedPath}?ref=${encodeURIComponent(trustedContentSha)}`,
+        token,
+        fetchImpl,
+      );
+      if (
+        body.type !== 'file' ||
+        body.encoding !== 'base64' ||
+        typeof body.content !== 'string'
+      ) {
+        return rawFile;
+      }
+      return {
+        ...rawFile,
+        baseContent: Buffer.from(body.content.replace(/\s/g, ''), 'base64').toString('utf8'),
+      };
+    } catch {
+      return rawFile;
+    }
+  }));
 }
 
 function classifyFiles(files, policy, options = {}) {
@@ -61,15 +221,10 @@ function classifyFiles(files, policy, options = {}) {
     }
 
     if (match?.inspectMarkdownPatch && /\.md$/i.test(file.filename)) {
-      if (typeof file.patch !== 'string') {
-        reasons.push('markdown-patch-unavailable');
-      } else if (
-        Number.isInteger(file.changes) &&
-        file.changes >
-          file.patch.split('\n').filter((line) => /^[+-](?![+-])/.test(line)).length
-      ) {
-        reasons.push('markdown-patch-truncated');
-      } else if (EXECUTABLE_FENCE.test(file.patch)) {
+      const inspection = inspectMarkdownPatch(file);
+      if (inspection.uncertain) {
+        reasons.push(inspection.uncertain);
+      } else if (inspection.executable) {
         reasons.push('executable-documentation');
       }
     }
@@ -150,7 +305,8 @@ async function getJson(url, token, fetchImpl) {
   if (!response.ok) {
     throw new Error(`GitHub metadata request failed: ${response.status} ${response.statusText}`);
   }
-  return { body: await response.json(), next: parseNext(response.headers.get('link')) };
+  const link = response.headers.get('link');
+  return { body: await response.json(), next: parseNext(link), link };
 }
 
 async function paginatedFiles(initialUrl, token, fetchImpl = fetch) {
@@ -184,20 +340,47 @@ async function acquireChanges(eventName, event, repository, token, fetchImpl = f
       Number.isInteger(expectedCount) && expectedCount === files.length
         ? []
         : ['pull-request-file-count-mismatch'];
-    return { files, forcedFullReasons: reasons };
+    if (files.length >= 3000) reasons.push('pull-request-file-limit');
+    if (
+      files.filter(
+        (file) => file.status !== 'added' && /\.md$/i.test(String(file.filename ?? '')),
+      ).length > 100
+    ) {
+      reasons.push('markdown-base-fetch-limit');
+    }
+    const base = event.pull_request?.base?.sha;
+    const head = event.pull_request?.head?.sha;
+    if (!base || !head) reasons.push('pull-request-compare-sha-unavailable');
+    let trustedContentSha = null;
+    if (base && head) {
+      const { body } = await getJson(
+        `${api}/repos/${repository}/compare/${encodeURIComponent(base)}...${encodeURIComponent(head)}?per_page=1`,
+        token,
+        fetchImpl,
+      );
+      trustedContentSha = body.merge_base_commit?.sha ?? null;
+      if (!trustedContentSha) reasons.push('pull-request-merge-base-unavailable');
+    }
+    return { files, forcedFullReasons: reasons, trustedContentSha };
   }
 
   if (eventName === 'merge_group') {
     const base = event.merge_group?.base_sha;
     const head = event.merge_group?.head_sha;
     if (!base || !head) throw new Error('Merge group event omitted base or head SHA.');
-    const files = await paginatedFiles(
+    const { body, next, link } = await getJson(
       `${api}/repos/${repository}/compare/${encodeURIComponent(base)}...${encodeURIComponent(head)}?per_page=100`,
       token,
       fetchImpl,
     );
-    const reasons = files.length >= 300 ? ['merge-group-compare-file-limit'] : [];
-    return { files, forcedFullReasons: reasons };
+    if (!Array.isArray(body.files)) throw new Error('GitHub compare response omitted files.');
+    const files = body.files;
+    const reasons = [];
+    if (files.length >= 300) reasons.push('merge-group-compare-file-limit');
+    if (next || link) reasons.push('merge-group-compare-link-uncertainty');
+    const trustedContentSha = body.merge_base_commit?.sha ?? null;
+    if (!trustedContentSha) reasons.push('merge-group-merge-base-unavailable');
+    return { files, forcedFullReasons: reasons, trustedContentSha };
   }
 
   if (eventName === 'push') {
@@ -236,7 +419,16 @@ async function main() {
     changes = { files: [], forcedFullReasons: [`metadata-error:${error.message}`] };
   }
 
-  const decision = classifyFiles(changes.files, policy, {
+  const files =
+    changes.forcedFullReasons.length > 0
+      ? changes.files
+      : await attachTrustedMarkdownBase(
+          changes.files,
+          process.env.GITHUB_REPOSITORY,
+          changes.trustedContentSha,
+          process.env.GITHUB_TOKEN,
+        );
+  const decision = classifyFiles(files, policy, {
     eventName,
     trustedPolicySha: process.env.TRUSTED_POLICY_SHA,
     forcedFullReasons: changes.forcedFullReasons,
@@ -257,7 +449,9 @@ if (require.main === module) {
 module.exports = {
   ALL_DOMAINS,
   acquireChanges,
+  attachTrustedMarkdownBase,
   classifyFiles,
+  inspectMarkdownPatch,
   loadPolicy,
   paginatedFiles,
   parseNext,

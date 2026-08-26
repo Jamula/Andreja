@@ -1,7 +1,13 @@
 [
   {
     "name": "docs-only prose",
-    "files": [{"filename": "docs/charter.md", "status": "modified", "patch": "@@\n-old words\n+new words"}],
+    "files": [{"filename": "docs/charter.md", "status": "modified", "changes": 2, "baseContent": "old words\n", "patch": "@@ -1 +1 @@\n-old words\n+new words"}],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
+    "name": "docs-only bullet replacement counts both body lines",
+    "files": [{"filename": "docs/charter.md", "status": "modified", "changes": 2, "baseContent": "# List\n- old item\n", "patch": "@@ -1,2 +1,2 @@\n # List\n-- old item\n+- new item"}],
     "selected": ["docs"],
     "fullSuite": false
   },
@@ -68,7 +74,7 @@
   {
     "name": "mixed docs and PowerShell",
     "files": [
-      {"filename": "docs/charter.md", "status": "modified", "patch": "@@\n-old\n+new"},
+      {"filename": "docs/charter.md", "status": "modified", "changes": 2, "baseContent": "old\n", "patch": "@@ -1 +1 @@\n-old\n+new"},
       {"filename": "scripts/example.ps1", "status": "modified"}
     ],
     "selected": ["docs", "powershell"],
@@ -112,7 +118,37 @@
   },
   {
     "name": "executable documentation",
-    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "patch": "@@\n+```powershell\n+dotnet run\n+```"}],
+    "files": [{"filename": "docs/help/local-identity.md", "status": "added", "changes": 3, "patch": "@@ -0,0 +1,3 @@\n+```powershell\n+dotnet run\n+```"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "changed line inside unchanged executable fence",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 2, "baseContent": "```powershell\none\ntwo\nthree\nfour\nfive\nsix\n```\n", "patch": "@@ -4,3 +4,3 @@\n three\n-four\n+changed\n five"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "addition inside unchanged executable fence",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "```sql\nselect 1;\nselect 2;\n```\n", "patch": "@@ -2,2 +2,3 @@\n select 1;\n+select now();\n select 2;"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "deletion inside unchanged tilde fence",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "~~~unknown-language\ncommand\n~~~\n", "patch": "@@ -1,3 +1,2 @@\n ~~~unknown-language\n-command\n ~~~"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "prose change outside unchanged fence stays docs-only",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 2, "baseContent": "```text\nnot executed\n```\nold prose\n", "patch": "@@ -3,2 +3,2 @@\n ```\n-old prose\n+new prose"}],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
+    "name": "base drift against patch context fails closed",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 2, "baseContent": "different base line\n", "patch": "@@ -1 +1 @@\n-old prose\n+new prose"}],
     "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
     "fullSuite": true
   },
@@ -124,13 +160,19 @@
   },
   {
     "name": "truncated Markdown patch",
-    "files": [{"filename": "docs/charter.md", "status": "modified", "changes": 8, "patch": "@@\n-old\n+new"}],
+    "files": [{"filename": "docs/charter.md", "status": "modified", "changes": 8, "baseContent": "old\n", "patch": "@@ -1 +1 @@\n-old\n+new"}],
     "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
     "fullSuite": true
   },
   {
     "name": "unavailable markdown patch",
     "files": [{"filename": "docs/help/local-identity.md", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "dependency update configuration",
+    "files": [{"filename": ".github/dependabot.yml", "status": "modified"}],
     "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
     "fullSuite": true
   }
