@@ -56,6 +56,15 @@
     "fullSuite": true
   },
   {
+    "name": "case-variant docs media fails closed",
+    "files": [
+      {"filename": "docs/architecture/Andreja-high-level.png", "status": "modified"},
+      {"filename": "docs/architecture/andreja-high-level.SVG", "status": "modified"}
+    ],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
     "name": "public website prototype HTML fails closed",
     "files": [{"filename": "docs/public-website/prototype/index.html", "status": "modified"}],
     "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],

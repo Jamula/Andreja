@@ -65,9 +65,10 @@ The generic documentation rule matches only `docs/**/*.md` and root `LICENSE`
 (with known executable Markdown rules taking precedence). The explicit inert
 artifact allowlist is limited to the tracked
 `docs/architecture/andreja-high-level` `.png`, `.svg`, `.excalidraw`, and
-`.png.sha256` outputs. New media paths and arbitrary docs HTML, Python, shell,
-JSON, YAML, SVG, or unknown extensions remain unclassified and therefore select
-the full suite unless an earlier executable/domain/security rule handles them. In particular,
+`.png.sha256` outputs with exact case-sensitive path matching. Case variants,
+new media paths, and arbitrary docs HTML, Python, shell, JSON, YAML, SVG, or
+unknown extensions remain unclassified and therefore select the full suite
+unless an earlier executable/domain/security rule handles them. In particular,
 `docs/public-website/prototype/**` is an explicit full-suite executable boundary,
 so its tracked HTML cannot be misclassified as prose documentation.
 

@@ -118,6 +118,7 @@
     {
       "id": "documentation-artifact",
       "pattern": "^docs/architecture/andreja-high-level\\.(png|svg|excalidraw|png\\.sha256)$",
+      "caseSensitive": true,
       "domains": ["docs"]
     },
     {

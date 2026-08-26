@@ -218,6 +218,7 @@ test('generic documentation is Markdown-only with explicit inert artifacts', () 
     artifacts.pattern,
     '^docs/architecture/andreja-high-level\\.(png|svg|excalidraw|png\\.sha256)$',
   );
+  assert.equal(artifacts.caseSensitive, true);
   for (const filename of [
     'docs/example.html',
     'docs/example.py',
@@ -226,6 +227,8 @@ test('generic documentation is Markdown-only with explicit inert artifacts', () 
     'docs/example.yaml',
     'docs/example.png',
     'docs/example.svg',
+    'docs/architecture/Andreja-high-level.png',
+    'docs/architecture/andreja-high-level.SVG',
     'docs/example.unknown',
   ]) {
     const result = classifyFiles([{ filename, status: 'modified' }], policy);

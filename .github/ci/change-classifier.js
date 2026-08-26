@@ -20,7 +20,10 @@ function loadPolicy(policyPath) {
 
   return {
     ...policy,
-    rules: policy.rules.map((rule) => ({ ...rule, expression: new RegExp(rule.pattern, 'i') })),
+    rules: policy.rules.map((rule) => ({
+      ...rule,
+      expression: new RegExp(rule.pattern, rule.caseSensitive ? '' : 'i'),
+    })),
   };
 }
 
