@@ -140,6 +140,34 @@ for (const fixture of fixtures) {
   });
 }
 
+test('Markdown patch change metadata must be a positive integer', () => {
+  const baseFile = {
+    filename: 'docs/charter.md',
+    status: 'modified',
+    additions: 1,
+    deletions: 1,
+    baseContent: 'old\n',
+    patch: '@@ -1 +1 @@\n-old\n+new',
+  };
+  for (const changes of [undefined, null, 0, -1, 1.5, '2', NaN, Infinity, {}, []]) {
+    const inspection = inspectMarkdownPatch({ ...baseFile, changes });
+    assert.equal(
+      inspection.uncertain,
+      'markdown-patch-change-count-invalid',
+      `changes=${String(changes)} must fail closed`,
+    );
+  }
+  assert.equal(
+    inspectMarkdownPatch({ ...baseFile, changes: 3 }).uncertain,
+    'markdown-patch-change-count-mismatch',
+  );
+  assert.equal(
+    inspectMarkdownPatch({ ...baseFile, changes: 1 }).uncertain,
+    'markdown-patch-change-count-mismatch',
+  );
+  assert.equal(inspectMarkdownPatch({ ...baseFile, changes: 2 }).uncertain, undefined);
+});
+
 test('all tracked paths have an explicit policy rule', () => {
   const files = execFileSync('git', ['ls-files', '-z'], { cwd: root })
     .toString('utf8')
@@ -537,7 +565,53 @@ test('sample label validates current test-merge parents within the API budget', 
   assert.equal(budgetedFetch.observation().limit, 132);
 });
 
-test('sample label rejects a test-merge parent mismatch', async () => {
+test('sample label rejects missing or extra test-merge parents before file acquisition', async () => {
+  const base = 'a'.repeat(40);
+  const head = 'b'.repeat(40);
+  const merge = 'd'.repeat(40);
+  const event = {
+    number: 118,
+    action: 'labeled',
+    label: { name: 'ci:selective-shadow-sample' },
+    pull_request: {
+      number: 118,
+      changed_files: 1,
+      base: { sha: base },
+      head: { sha: head },
+      merge_commit_sha: merge,
+      labels: [{ name: 'ci:selective-shadow-sample' }],
+    },
+  };
+  for (const parents of [
+    [{ sha: base }],
+    [{ sha: base }, { sha: head }, { sha: 'c'.repeat(40) }],
+  ]) {
+    const requestedUrls = [];
+    const changes = await acquireChanges(
+      'pull_request_target',
+      event,
+      'Jamula/Andreja',
+      'token',
+      async (url) => {
+        requestedUrls.push(url);
+        return url.includes('/git/commits/')
+          ? githubResponse({ sha: merge, parents })
+          : githubResponse({
+              mergeable: true,
+              merge_commit_sha: merge,
+              base: { sha: base },
+              head: { sha: head },
+            });
+      },
+    );
+    assert.equal(changes.classificationFailure, 'pull-request-merge-integrity-unavailable');
+    assert.equal(changes.mergeCommitProof.reason, 'pull-request-test-merge-commit-invalid');
+    assert.equal(requestedUrls.length, 2);
+    assert.equal(requestedUrls.some((url) => /\/files|\/compare\//.test(url)), false);
+  }
+});
+
+test('sample label rejects reordered test-merge parents', async () => {
   const base = 'a'.repeat(40);
   const head = 'b'.repeat(40);
   const merge = 'd'.repeat(40);
@@ -563,7 +637,7 @@ test('sample label rejects a test-merge parent mismatch', async () => {
       url.includes('/git/commits/')
         ? githubResponse({
             sha: merge,
-            parents: [{ sha: 'c'.repeat(40) }, { sha: head }],
+            parents: [{ sha: head }, { sha: base }],
           })
         : githubResponse({
             mergeable: true,
@@ -1731,6 +1805,16 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.match(runbook, /Record `merged_at` as\s+`<START>` before any workflow action/);
   assert.match(runbook, /every labeled event and labeled\s+workflow run at or after `<START>` counts against `N`/);
   assert.match(runbook, /Immediately before dispatch[\s\S]+zero\s+labeled workflow runs and zero label events/);
+  assert.match(runbook, /@?\(\$commit\.parents\)\.Count -ne 2/);
+  assert.doesNotMatch(runbook, /@?\(\$commit\.parents\)\.Count -lt 2/);
+  assert.match(
+    runbook,
+    /\$reference = \[regex\]::new\([\s\S]+RegexOptions\]::IgnoreCase\)/,
+  );
+  assert.match(
+    runbook,
+    /\$match\.Groups\['owner'\]\.Success[\s\S]+-ine 'Jamula'[\s\S]+-ine 'Andreja'[\s\S]+continue/,
+  );
   assert.match(runbook, /waits for that[\s\S]+does not remove, reapply, or apply it elsewhere/);
   assert.match(runbook, /gh workflow disable selective-ci-shadow\.yml/);
   assert.match(runbook, /positive\s+docs and full evidence[\s\S]+separate FinOps approval/);

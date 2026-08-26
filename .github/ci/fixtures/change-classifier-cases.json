@@ -78,7 +78,7 @@
   },
   {
     "name": "docs-only bullet replacement counts both body lines",
-    "files": [{"filename": "docs/charter.md", "status": "modified", "changes": 2, "baseContent": "# List\n- old item\n", "patch": "@@ -1,2 +1,2 @@\n # List\n-- old item\n+- new item"}],
+    "files": [{"filename": "docs/charter.md", "status": "modified", "additions": 1, "deletions": 1, "changes": 2, "baseContent": "# List\n- old item\n", "patch": "@@ -1,2 +1,2 @@\n # List\n-- old item\n+- new item"}],
     "selected": ["docs"],
     "fullSuite": false
   },
@@ -411,7 +411,50 @@
     "name": "truncated Markdown patch",
     "files": [{"filename": "docs/charter.md", "status": "modified", "changes": 8, "baseContent": "old\n", "patch": "@@ -1 +1 @@\n-old\n+new"}],
     "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
-    "fullSuite": true
+    "fullSuite": true,
+    "reasons": ["markdown-patch-change-count-mismatch"]
+  },
+  {
+    "name": "Markdown patch with underreported change count fails closed",
+    "files": [{"filename": "docs/charter.md", "status": "modified", "changes": 1, "baseContent": "old\n", "patch": "@@ -1 +1 @@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["markdown-patch-change-count-mismatch"]
+  },
+  {
+    "name": "Markdown patch with missing change count fails closed",
+    "files": [{"filename": "docs/charter.md", "status": "modified", "baseContent": "old\n", "patch": "@@ -1 +1 @@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["markdown-patch-change-count-invalid"]
+  },
+  {
+    "name": "Markdown patch with non-integer change count fails closed",
+    "files": [{"filename": "docs/charter.md", "status": "modified", "changes": 1.5, "baseContent": "old\n", "patch": "@@ -1 +1 @@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["markdown-patch-change-count-invalid"]
+  },
+  {
+    "name": "Markdown patch with zero change count fails closed",
+    "files": [{"filename": "docs/charter.md", "status": "modified", "changes": 0, "baseContent": "prose\n", "patch": "@@ -1 +1 @@\n prose"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["markdown-patch-change-count-invalid"]
+  },
+  {
+    "name": "Markdown patch with negative change count fails closed",
+    "files": [{"filename": "docs/charter.md", "status": "modified", "changes": -2, "baseContent": "old\n", "patch": "@@ -1 +1 @@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["markdown-patch-change-count-invalid"]
+  },
+  {
+    "name": "Markdown patch with malformed change count fails closed",
+    "files": [{"filename": "docs/charter.md", "status": "modified", "changes": "2", "baseContent": "old\n", "patch": "@@ -1 +1 @@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["markdown-patch-change-count-invalid"]
   },
   {
     "name": "unavailable markdown patch",

@@ -40,10 +40,10 @@ count, statistics, or patch mismatch indicates a moving-head race and forces
 the full suite. Before an event can be a labeled sample, the classifier also
 reads the live PR and requires `mergeable=true` plus exact 40-hex event/live
 base, head, and `merge_commit_sha` identities. It reads that test merge through
-the Git commit API and requires parent 0 to equal the live base and parent 1 to
-equal the live head. It re-reads the live PR after file/compare acquisition and
-again after trusted Markdown Contents reads. A null, malformed, stale, raced,
-or parent-mismatched test merge records
+the Git commit API and requires exactly two parents: parent 0 equals the live
+base and parent 1 equals the live head. It re-reads the live PR after
+file/compare acquisition and again after trusted Markdown Contents reads. A
+null, malformed, stale, raced, or parent-mismatched test merge records
 `pull-request-merge-integrity-unavailable`, sets
 `trustedClassifierAvailable=false`, and fails classification before any domain
 job. Classification evidence includes the event/live identities, mergeability,
@@ -84,11 +84,14 @@ copy selects the full suite. Rename and delete ambiguity remains unchanged.
 
 GitHub Markdown patches
 contain hunk bodies without `+++`/`---` file headers, so every `+` or `-` body
-line counts, including `+- bullet` and `-- bullet`. The count must exactly equal
-GitHub's `changes` value. The classifier reads only the trusted base Markdown to
-establish fence state at each hunk. For pull requests and merge groups it
-requires the REST compare `merge_base_commit` and reads the old file through the
-read-only Contents API at that exact SHA; it does not assume the moving
+line counts, including `+- bullet` and `-- bullet`. A present patch requires
+GitHub's `changes` value to be a positive integer exactly equal to that count.
+Missing, fractional, zero, negative, or otherwise malformed change statistics
+fail closed rather than bypassing patch-completeness validation. The classifier
+reads only the trusted base Markdown to establish fence state at each hunk. For
+pull requests and merge groups it requires the REST compare `merge_base_commit`
+and reads the old file through the read-only Contents API at that exact SHA; it
+does not assume the moving
 base-branch tip matches the patch. Context and deleted lines must also match the
 merge-base blob. Contents reads use at most eight concurrent requests; the
 absolute 132-request budget still applies across merge proof, pagination,
@@ -499,7 +502,9 @@ continuation.
    every body's closing references and the exact label names/actors. Resolve
    each referenced number through the Issues API; a response containing
    `pull_request` proves the body closes a PR rather than an issue and is a
-   terminal blocker:
+   terminal blocker. Match qualified `Jamula/Andreja#N` references
+   case-insensitively, in parity with the reconciler, while capturing and
+   skipping qualifiers for every unrelated repository:
 
    ```powershell
    $pullPages = gh api --paginate --slurp `
@@ -507,7 +512,9 @@ continuation.
      ConvertFrom-Json
    $openPulls = @($pullPages | ForEach-Object { $_ })
    $closingLine = [regex]'(?im)^.*\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\b.*$'
-   $reference = [regex]'(?:Jamula/Andreja)?#(?<number>\d+)'
+   $reference = [regex]::new(
+     '(?<![a-z0-9_.\-/])(?:(?<owner>[a-z0-9_.-]+)/(?<repo>[a-z0-9_.-]+))?#(?<number>\d+)\b',
+     [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
    foreach ($pull in $openPulls) {
      [pscustomobject]@{
        pull = $pull.number
@@ -515,6 +522,11 @@ continuation.
      }
      foreach ($line in $closingLine.Matches([string]$pull.body)) {
        foreach ($match in $reference.Matches($line.Value)) {
+         if ($match.Groups['owner'].Success -and
+             ($match.Groups['owner'].Value -ine 'Jamula' -or
+              $match.Groups['repo'].Value -ine 'Andreja')) {
+           continue
+         }
          $target = gh api "repos/Jamula/Andreja/issues/$($match.Groups['number'].Value)" |
            ConvertFrom-Json
          if ($null -ne $target.pull_request) {
@@ -538,10 +550,10 @@ continuation.
    is not a collection trigger, that update does not run shadow CI. Before
    applying the label, poll the live PR a bounded six times (ten seconds apart)
    until `mergeable` is non-null/true and `merge_commit_sha` is exact 40-hex.
-   Read that SHA through `GET /git/commits/{sha}`; require exactly the recorded
-   live base/head as parent 0/parent 1 and record the PR snapshot plus parent
-   proof. A null, false, stale, malformed, or mismatched result terminally
-   disables without labeling:
+   Read that SHA through `GET /git/commits/{sha}`; require exactly two parents,
+   with the recorded live base/head as parent 0/parent 1, and record the PR
+   snapshot plus parent proof. A null, false, stale, malformed, or mismatched
+   result terminally disables without labeling:
 
    ```powershell
    $pr = $null
@@ -557,7 +569,7 @@ continuation.
    }
    $commit = gh api "repos/Jamula/Andreja/git/commits/$($pr.merge_commit_sha)" |
      ConvertFrom-Json
-   if (@($commit.parents).Count -lt 2 -or
+   if (@($commit.parents).Count -ne 2 -or
        $commit.parents[0].sha -cne $pr.base.sha -or
        $commit.parents[1].sha -cne $pr.head.sha) {
      throw 'Current test merge parent proof mismatch'

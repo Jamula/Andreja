@@ -182,7 +182,10 @@ function inspectMarkdownPatch(file) {
   const changedLineCount = patch
     .split('\n')
     .filter((line) => line.startsWith('+') || line.startsWith('-')).length;
-  if (Number.isInteger(file.changes) && file.changes !== changedLineCount) {
+  if (!Number.isInteger(file.changes) || file.changes <= 0) {
+    return { uncertain: 'markdown-patch-change-count-invalid', changedLineCount };
+  }
+  if (file.changes !== changedLineCount) {
     return { uncertain: 'markdown-patch-change-count-mismatch', changedLineCount };
   }
 
@@ -643,7 +646,7 @@ function mergeIntegritySnapshot(eventPull, livePull, commit) {
   } else if (
     !EXACT_SHA.test(String(commit?.sha ?? '')) ||
     commit.sha !== liveMerge ||
-    parentShas.length < 2
+    parentShas.length !== 2
   ) {
     proof.reason = 'pull-request-test-merge-commit-invalid';
   } else if (parentShas[0] !== liveBase || parentShas[1] !== liveHead) {
