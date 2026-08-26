@@ -20,10 +20,20 @@ def plan_table(artifacts: dict[str, str]) -> str:
         "| Artifact | Source and current SHA-256 | Current authority |",
         "|---|---|---|",
     ]
-    rows.extend(
-        f"| [`{path}`]({path.removeprefix('docs/')}) | `{digest}` | Draft |"
-        for path, digest in artifacts.items()
-    )
+    for path, digest in artifacts.items():
+        if path in DOCS_CHECK.CANONICAL_BASELINE_REQUIREMENTS:
+            challenger = DOCS_CHECK.CANONICAL_BASELINE_REQUIREMENTS[path]
+            rows.append(
+                f"| [`{path}`]({path.removeprefix('docs/')}) | "
+                f"Issue [#116](issue), PR [#117](pr); `{digest}` | "
+                "**Canonical descriptive baseline; not ratified.** "
+                f"{challenger} challenge and Cyrus residual-risk acceptance remain pending. |"
+            )
+        else:
+            rows.append(
+                f"| [`{path}`]({path.removeprefix('docs/')}) | "
+                f"`{digest}` | Draft |"
+            )
     return "\n".join(rows)
 
 
@@ -39,8 +49,33 @@ class StatusArtifactHashTests(unittest.TestCase):
         return hashlib.sha256(path.encode("utf-8")).hexdigest()
 
     def test_complete_current_inventory_passes(self) -> None:
-        parsed = DOCS_CHECK.extract_status_artifact_hashes(plan_table(self.actual))
+        plan = plan_table(self.actual)
+        parsed = DOCS_CHECK.extract_status_artifact_hashes(plan)
         DOCS_CHECK.validate_status_artifact_hashes(parsed, self.expected, self.digest)
+        DOCS_CHECK.validate_canonical_baseline_rows(plan)
+
+    def test_canonical_baseline_requires_issue_and_pr(self) -> None:
+        plan = plan_table(self.actual).replace("PR [#117](pr)", "PR pending", 1)
+        with self.assertRaisesRegex(ValueError, "authority drifted"):
+            DOCS_CHECK.validate_canonical_baseline_rows(plan)
+
+    def test_canonical_baseline_requires_not_ratified_authority(self) -> None:
+        plan = plan_table(self.actual).replace(
+            "Canonical descriptive baseline; not ratified",
+            "Canonical descriptive baseline",
+            1,
+        )
+        with self.assertRaisesRegex(ValueError, "authority drifted"):
+            DOCS_CHECK.validate_canonical_baseline_rows(plan)
+
+    def test_canonical_baseline_requires_challenge_and_residual_acceptance(self) -> None:
+        plan = plan_table(self.actual).replace(
+            "Deanna Troi challenge and Cyrus residual-risk acceptance",
+            "Review complete",
+            1,
+        )
+        with self.assertRaisesRegex(ValueError, "authority drifted"):
+            DOCS_CHECK.validate_canonical_baseline_rows(plan)
 
     def test_missing_artifact_is_rejected(self) -> None:
         artifacts = dict(self.actual)

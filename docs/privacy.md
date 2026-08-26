@@ -1,10 +1,13 @@
 # Privacy baseline
 
-- **Status:** Canonical descriptive baseline
+- **Status:** Canonical descriptive baseline; not ratified
 - **Scope:** Current Phase 1A implementation, contract-only seams, blocked evidence,
   and explicitly gated future capabilities
-- **Owner:** Trust, Security, Privacy and Legal workstream
-- **Decision owner:** Cyrus
+- **Owner:** Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek
+- **Required challenge:** Deanna Troi (privacy) and Tuvok (security); pending
+- **Residual-risk acceptance:** Cyrus; pending
+- **Classification/impact assessment:** Open; this inventory does not satisfy that
+  gate without an explicitly approved assessment and cited evidence
 - **Tracking:** [Issue #116](https://github.com/Jamula/Andreja/issues/116)
 - **Last reviewed:** 2026-08-25
 
@@ -15,13 +18,17 @@ or a legal/compliance claim. The ratified [platform plan](plan.md) governs.
 [ADRs 0001–0005](adr/0001-phase-1a-modular-boundaries.md) and
 [ADR 0008](adr/0008-public-website-artifact-boundary.md) remain **Proposed**.
 Implemented code and passing tests are evidence, not acceptance of those ADRs or
-Phase 1A exit.
+Phase 1A exit. The proposed [company charter](charter.md#commitments) supplies
+the data-dignity and human-agency commitments used here but is not itself ratified.
 
 The companion [threat model](threat-model.md) covers adversaries, abuse, controls,
 and residual risk. Phase-specific overlays remain useful evidence inputs:
 [identity privacy](phase-1a/identity-privacy.md),
 [BYOK security/privacy](phase-1a/byok-security-privacy.md), and the
-[Phase 1A evidence record](phase-1a/evidence-44.md).
+[Phase 1A evidence record](phase-1a/evidence-44.md). The
+[semantic-graph contract](semantic-graph.md) supplies the detailed provenance,
+non-user, sensitive-inference, and lifecycle rules summarized below; the
+[testing matrix](testing-matrix.md) owns the current test/evidence inventory.
 
 ## Status vocabulary
 
@@ -202,7 +209,10 @@ incident handling must also be proven.
 
 ## Provenance, audit, consent, and sharing
 
-Provenance records who or what produced a proposal/assertion, when, for which
+The detailed [semantic provenance and sharing
+rules](semantic-graph.md#provenance-time-review-and-sharing-rules) govern the
+contract-only semantic seam. Provenance records who or what produced a
+proposal/assertion, when, for which
 purpose, and by which method/version. It uses stable references and digests rather
 than duplicating raw prompts, connector payloads, or deleted source content.
 Unverified, user-stated, observed, and inferred information remain distinct.

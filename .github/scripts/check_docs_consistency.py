@@ -31,11 +31,17 @@ CONNECTORS_PATH = REPO_ROOT / "docs" / "roadmap" / "channel-connectors.md"
 EXPECTED_STATUS_ARTIFACTS = {
     "docs/operating-model.md",
     "docs/cost-model.md",
+    "docs/privacy.md",
+    "docs/threat-model.md",
     "docs/frameworks/feedback-support.md",
     "docs/frameworks/prioritization-launch.md",
     "docs/charter.md",
     "docs/legal/license-evaluation.md",
     "docs/legal/regulatory-applicability.md",
+}
+CANONICAL_BASELINE_REQUIREMENTS = {
+    "docs/privacy.md": "Deanna Troi",
+    "docs/threat-model.md": "Tuvok",
 }
 
 
@@ -132,6 +138,48 @@ def extract_status_artifact_hashes(plan_text: str) -> dict[str, str]:
     return artifacts
 
 
+def extract_status_artifact_cells(plan_text: str) -> dict[str, list[str]]:
+    rows = extract_table_rows(
+        plan_text,
+        "#### Phase 0 policy and governance artifact classification",
+        "| Artifact | Source and current SHA-256 | Current authority |",
+    )
+    artifacts: dict[str, list[str]] = {}
+    for row in rows:
+        if len(row) != 3:
+            raise ValueError(f"Malformed status-artifact row: {' | '.join(row)}")
+        path_match = re.search(r"\[`([^`]+)`\]\([^)]+\)", row[0])
+        if not path_match:
+            raise ValueError(f"Malformed status-artifact row: {' | '.join(row)}")
+        artifacts[path_match.group(1)] = row
+    return artifacts
+
+
+def validate_canonical_baseline_rows(plan_text: str) -> None:
+    rows = extract_status_artifact_cells(plan_text)
+    for path, challenger in CANONICAL_BASELINE_REQUIREMENTS.items():
+        if path not in rows:
+            raise ValueError(f"Missing canonical baseline status row: {path}")
+        _, source, authority = rows[path]
+        required_source_parts = ("Issue [#116]", "PR [#117]")
+        missing_source = [part for part in required_source_parts if part not in source]
+        required_authority_parts = (
+            "Canonical descriptive baseline; not ratified",
+            challenger,
+            "Cyrus",
+            "residual-risk acceptance",
+        )
+        missing_authority = [
+            part for part in required_authority_parts if part not in authority
+        ]
+        if missing_source or missing_authority:
+            raise ValueError(
+                f"Canonical baseline authority drifted for {path}.\n"
+                f"  Missing source text: {missing_source}\n"
+                f"  Missing authority text: {missing_authority}"
+            )
+
+
 def validate_status_artifact_hashes(
     artifacts: dict[str, str],
     expected_paths: set[str],
@@ -156,12 +204,14 @@ def validate_status_artifact_hashes(
 
 def check_status_artifact_hashes() -> None:
     try:
-        artifacts = extract_status_artifact_hashes(read(PLAN_PATH))
+        plan_text = read(PLAN_PATH)
+        artifacts = extract_status_artifact_hashes(plan_text)
         validate_status_artifact_hashes(
             artifacts,
             EXPECTED_STATUS_ARTIFACTS,
             lambda path: hashlib.sha256((REPO_ROOT / path).read_bytes()).hexdigest(),
         )
+        validate_canonical_baseline_rows(plan_text)
     except (OSError, ValueError) as error:
         fail(str(error))
     print(f"OK: {len(artifacts)} status-artifact hashes match.")

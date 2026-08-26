@@ -51,6 +51,8 @@ explicit Cyrus decision.
 | [`docs/frameworks/feedback-support.md`](frameworks/feedback-support.md) | Issue [#10](https://github.com/Jamula/Andreja/issues/10), PR [#16](https://github.com/Jamula/Andreja/pull/16); `758ed2eedf765d8a6a875b53af21b72fc0af4212fc06e06d54876c076ccb83ed` | **Review-ready draft.** The source PR merged, but issue #10 and explicit Cyrus approval remain open; no intake deployment or support commitment is authorized. |
 | [`docs/frameworks/prioritization-launch.md`](frameworks/prioritization-launch.md) | Issue [#5](https://github.com/Jamula/Andreja/issues/5), PR [#19](https://github.com/Jamula/Andreja/pull/19); `7ba4d30a901e881cf167afe8964c9c2e6ba2584ac94151f2e4f8bc9b2e79104c` | **Review-ready draft.** Its operational mechanics are advisory until explicitly ratified; the plan owns phased scope and exits. |
 | [`docs/charter.md`](charter.md) | Issue [#3](https://github.com/Jamula/Andreja/issues/3), PRs [#15](https://github.com/Jamula/Andreja/pull/15) and [#27](https://github.com/Jamula/Andreja/pull/27); `aeeb83acda01c8c50c71f276d1959cfc929eea1e32e15a15a754590ea50441f1` | **Proposed; not authoritative.** Issue #3 remains open and the file becomes effective only after Cyrus explicitly ratifies it. The charter section in this ratified plan remains the seed summary. |
+| [`docs/privacy.md`](privacy.md) | Issue [#116](https://github.com/Jamula/Andreja/issues/116), PR [#117](https://github.com/Jamula/Andreja/pull/117); `46f8717409677ecb3cfd33f5e123ef1f4a8be712ec1d031cc4c06751d81c2781` | **Canonical descriptive baseline; not ratified.** Deanna Troi privacy challenge, Tuvok security challenge, and Cyrus residual-risk acceptance remain pending. The classification/impact assessment remains open unless explicitly approved with cited evidence. |
+| [`docs/threat-model.md`](threat-model.md) | Issue [#116](https://github.com/Jamula/Andreja/issues/116), PR [#117](https://github.com/Jamula/Andreja/pull/117); `a8625313c547f0b3922b88d7084dfd21f05541492d54e55385049a5ab4b38852` | **Canonical descriptive baseline; not ratified.** Tuvok security challenge, Deanna Troi privacy challenge, and Cyrus residual-risk acceptance remain pending. The classification/impact assessment remains open unless explicitly approved with cited evidence. |
 | [`docs/legal/license-evaluation.md`](legal/license-evaluation.md) | Issue [#6](https://github.com/Jamula/Andreja/issues/6), merged source PR [#12](https://github.com/Jamula/Andreja/pull/12); `4b8f325941e79a3d802bd03ef1472d55d69540efddced54853acda43f801d5e2` | **Counsel-ready research; not approved policy.** Issue #6 remains open; qualified counsel and Cyrus approval are still required. It authorizes no visibility, contribution, license, trademark, domain, or publication change. |
 | [`docs/legal/regulatory-applicability.md`](legal/regulatory-applicability.md) | Issue [#8](https://github.com/Jamula/Andreja/issues/8), PRs [#21](https://github.com/Jamula/Andreja/pull/21) and [#28](https://github.com/Jamula/Andreja/pull/28); `60e5bec8ce1c991f72446c16374dd27962ea9698374a2105fbd7edc837394d23` | **Draft legal-research/governance artifact.** Issue #8 remains open; qualified counsel and Cyrus approval are required before it is authoritative or supports a legal/compliance claim. |
 
@@ -105,11 +107,13 @@ rows do not weaken these exits.
 
 The canonical [`docs/privacy.md`](privacy.md) and
 [`docs/threat-model.md`](threat-model.md) now provide descriptive cross-phase
-baselines under [#116](https://github.com/Jamula/Andreja/issues/116). They do not
-accept a Proposed ADR, approve a final residual risk, authorize production or a
-future integration, or close the retention, residency, model-provider, and
-evidence decisions they identify. The narrower files under `docs/phase-1a/`
-remain evidence inputs and do not replace them.
+baselines under [#116](https://github.com/Jamula/Andreja/issues/116), but are not
+ratified. Tuvok's security challenge, Deanna Troi's privacy challenge, Cyrus's
+explicit residual-risk acceptance, and the classification/impact assessment remain
+open. They do not accept a Proposed ADR, authorize production or a future
+integration, or close the retention, residency, model-provider, and evidence
+decisions they identify. The narrower files under `docs/phase-1a/` remain evidence
+inputs and do not replace them.
 
 Pages containment is the completed prerequisite under
 [#114](https://github.com/Jamula/Andreja/issues/114). The next safe execution
@@ -1324,7 +1328,7 @@ Before installation, review source/publisher provenance, immutable digest/versio
 - Built-in ASP.NET Core Identity/passkeys and local recovery flows are implemented; encrypted PostgreSQL-plus-Data-Protection-key clean restore with sign-in, genuine approved update/rollback, final support boundary, linked providers, and any optional control plane remain open.
 - CIAM provider/migration path and pricing.
 - Numeric budget, unit-cost model, Copilot token budgets, and numeric SLOs.
-- Canonical `docs/threat-model.md` and `docs/privacy.md` descriptive baselines are present; final residual-risk acceptance, numeric retention, residency, production export/purge, and model-provider decisions remain open.
+- Canonical `docs/threat-model.md` and `docs/privacy.md` descriptive baselines are present but not ratified; Tuvok/Deanna Troi challenge, Cyrus residual-risk acceptance, classification/impact assessment, numeric retention, residency, production export/purge, and model-provider decisions remain open.
 - Federation standards comparison, identity/trust/discovery, versioning, reference/copy semantics, and conformance scope.
 - Skill/channel manifest, host, capability, grant, peer-envelope, and minimal semantic contracts are implemented; UI isolation, signing, third-party execution, and authoring compatibility remain open.
 - OneDrive, Google Drive, GitHub, and Box API scopes, terms, limits, delta/webhook behavior, and connector security/privacy.

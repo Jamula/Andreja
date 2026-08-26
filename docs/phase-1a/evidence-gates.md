@@ -18,11 +18,13 @@ does not approve launch or close this proposed packet.
 |---|---|---|
 | Threat | The canonical [`docs/threat-model.md`](../threat-model.md) reconciles current, contract-only, evidence-blocked, and future/gated threats and controls. Tuvok owns challenge; the plan remains governing. | The threat rows below index Phase 1A controls and proof into that canonical model. |
 | Privacy | The canonical [`docs/privacy.md`](../privacy.md) owns the inventory and handling baseline; the plan and [charter](../charter.md#ethics-and-sustainability-impact-assessment) remain governing. Deanna Troi owns challenge. | The privacy gate below is a Phase 1A field/test overlay, not a second data inventory. |
-| Testing | The plan requires [`docs/testing-matrix.md`](../plan.md#documentation-structure) and defines the [validation strategy](../plan.md#validation-and-regression-strategy). Data owns challenge. | The table below supplies Phase 1A rows/test IDs to the canonical matrix. |
-| Cost | [PR #20](https://github.com/Jamula/Andreja/pull/20) proposes `docs/cost-model.md` as Quark's canonical ledger/budget source; until merged, the [plan's Cost and FinOps rules](../plan.md#cost-and-finops) govern. | This file only links the Phase 1A usage query and stop checks. It neither duplicates price/SKU figures nor changes PR #20's ledgers or authority. |
+| Testing | The canonical [`docs/testing-matrix.md`](../testing-matrix.md) records current local evidence and exclusions. Data owns challenge; the plan defines the governing [validation strategy](../plan.md#validation-and-regression-strategy). | The table below supplies Phase 1A rows/test IDs to that canonical matrix. |
+| Cost | The canonical [`docs/cost-model.md`](../cost-model.md) is Quark's cost-model and ledger source. It remains **Draft for ratification**, authorizes no spend, and the plan's [Cost and FinOps rules](../plan.md#cost-and-finops) remain governing. | This file only links the Phase 1A usage query and stop checks. It neither duplicates price/SKU figures nor changes the cost model's authority. |
 
-Conflicts resolve in favor of the governing plan/charter and canonical owner; this
-index must then be corrected.
+These links are self-correcting pointers: the same change that makes a canonical
+path, status, owner, or evidence mapping stale must correct this index. Conflicts
+resolve in favor of the governing plan/charter and canonical owner; this index must
+then be corrected.
 
 ## Threat gate
 

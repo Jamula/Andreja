@@ -4,7 +4,7 @@
 - **Date:** 2026-08-23
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
-- **Plan SHA-256:** `82561ec20433db7a5ebb4621fee5483759d0ab8ad20c0dbc813e71177d9f8ade`
+- **Plan SHA-256:** `cf16bdd551943eb1d57eb9763d85e57e6d65417fb7098acac86b719daccbd5b4`
 
 ## Decision
 
@@ -104,15 +104,17 @@ not match the merged `docs/plan.md`.
 
 - **Tracking issue:** [#116](https://github.com/Jamula/Andreja/issues/116)
 - **Pull request:** [#117](https://github.com/Jamula/Andreja/pull/117)
-- **Plan SHA-256:** `82561ec20433db7a5ebb4621fee5483759d0ab8ad20c0dbc813e71177d9f8ade`
+- **Plan SHA-256:** `cf16bdd551943eb1d57eb9763d85e57e6d65417fb7098acac86b719daccbd5b4`
 - **Approver:** Cyrus Jamula
 - **Approver status:** Cyrus directed creation and review of the canonical
   artifacts on 2026-08-25 and kept merge through the protected pull request as
-  final acceptance. This entry does not claim a separate pre-merge decision.
+  final acceptance of this status amendment, not ratification of the artifacts.
+  This entry does not claim a separate pre-merge decision.
 - **Classification:** Logged documentation/status amendment; no re-ratification.
 - **Scope:** Record that `docs/privacy.md` and `docs/threat-model.md` now provide
-  canonical descriptive baselines while final residual-risk acceptance, numeric
-  retention, residency, production export/purge, model-provider choices, and
-  evidence exits remain open. No Proposed ADR is accepted and no production,
+  canonical descriptive baselines but are not ratified. Tuvok/Deanna Troi
+  challenge, Cyrus residual-risk acceptance, classification/impact assessment,
+  numeric retention, residency, production export/purge, model-provider choices,
+  and evidence exits remain open. No Proposed ADR is accepted and no production,
   provider, connector, federation, managed-hosting, public-site, or support-intake
   activation is authorized.

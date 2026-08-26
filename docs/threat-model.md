@@ -1,10 +1,13 @@
 # Threat model
 
-- **Status:** Canonical descriptive baseline
+- **Status:** Canonical descriptive baseline; not ratified
 - **Scope:** Current Phase 1A implementation, contract-only seams, blocked evidence,
   and explicitly gated future capabilities
-- **Owner:** Trust, Security, Privacy and Legal workstream
-- **Decision owner:** Cyrus
+- **Owner:** Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek
+- **Required challenge:** Tuvok (security) and Deanna Troi (privacy); pending
+- **Residual-risk acceptance:** Cyrus; pending
+- **Classification/impact assessment:** Open; this model does not satisfy that gate
+  without an explicitly approved assessment and cited evidence
 - **Tracking:** [Issue #116](https://github.com/Jamula/Andreja/issues/116)
 - **Last reviewed:** 2026-08-25
 
@@ -16,6 +19,11 @@ Proposed ADRs, implementation, tests, and
 certification, compliance claim, production authorization, or acceptance of
 [ADRs 0001–0005](adr/0001-phase-1a-modular-boundaries.md). The companion
 [privacy baseline](privacy.md) owns data classification, handling, and lifecycle.
+The proposed [company charter](charter.md#human-and-agent-authority) supplies the
+human/agent authority constraints used here but is not itself ratified. The
+[semantic-graph contract](semantic-graph.md) supplies detailed semantic/provenance
+threat rules, and the [testing matrix](testing-matrix.md) owns the current
+test/evidence inventory.
 
 ## Status vocabulary and method
 
@@ -125,6 +133,23 @@ The architecture defines six named boundaries:
 | **TB5 — local operator custody** | PostgreSQL, key history, config/secrets, exports, backups, telemetry, images, and runbooks. Operator compromise is not solved by application policy. |
 | **TB6 — external/peer** | Model providers, future connectors/peers/support/public hosting/backup destinations. Inbound content is untrusted; external retention and authority are separate. |
 
+### Phase 1A identity overlay and precedence
+
+The [Phase 1A local identity threat-model
+overlay](phase-1a/identity-threat-model.md) is subordinate detail, not a competing
+canonical model. Its browser/authenticator boundary maps to **TB1**; ASP.NET Core
+Identity and the application process map to **TB2**; tenant/principal context and
+PostgreSQL isolation controls map to **TB3**; the identity adapter maps to **TB4**;
+the TLS proxy, PostgreSQL, Data Protection history, and host-mounted secret/key
+storage map to **TB5**; and any future external OIDC/identity provider would cross
+**TB6**. HTTPS termination spans the TB1/TB2 traffic boundary while its proxy and
+key custody remain TB5 operator responsibilities.
+
+The ratified plan and this canonical model take precedence. The overlay narrows
+identity abuse cases and evidence only. If it conflicts with TB1–TB6, status, or a
+stop condition, the same change must correct the overlay; it cannot weaken or
+silently redefine the canonical boundary.
+
 ## Assumptions and non-assumptions
 
 Current controls assume a patched and access-controlled host/browser/authenticator,
@@ -144,22 +169,22 @@ informed, voluntary, accessible, or uncoerced consent.
 
 | Threat | Scenario | Current mitigation and evidence | Residual / status / owner |
 |---|---|---|---|
-| **Spoofing — bootstrap/recovery** | Stolen or replayed bootstrap/recovery material creates or takes over the owner | 256-bit read-only bootstrap file, exact HTTPS origin/RP, built-in WebAuthn verification, protected one-time state, bounded input, rate limits, transaction/advisory locks, generic failures, recovery rotation and session invalidation; browser/PostgreSQL negative tests | Host/browser theft and lost recovery set remain. **Implemented/current**; Identity owner. Stop on origin/proxy uncertainty or secret exposure |
-| **Spoofing — session/recent auth** | Stolen long-lived cookie adds/removes a passkey or survives recovery | Secure/HttpOnly/SameSite=Strict cookies, Data Protection, zero-interval security-stamp validation, antiforgery on mutations, short-lived audience/user/stamp-bound recent-auth marker and one-time nonce | Shared/unlocked or compromised device remains. **Implemented/current**; Identity owner |
-| **Spoofing — tenant/principal** | Caller substitutes an ID, worker context, or external identity to access another tenant | Authenticated scoped tenant/app-user/principal context; policy and access projections; composite tenant foreign keys/uniqueness; external subject not a domain FK; two-tenant tests | New queries/background work can regress. **Implemented/current**; Core Platform. Any isolation failure is a release stop |
-| **Tampering — proposal** | Provider/client changes proposal payload, version, actor, or expiry before confirmation | Canonical payload/digest, durable proposal state, expected version, actor/tenant binding, expiry, policy re-evaluation, transactionally coupled task/audit/idempotency | User may confirm deceptive content or confirmation UI may regress. **Implemented/current**; Proposals/Open Loops |
-| **Tampering — manifest/tool call** | Prompt injection or publisher changes tool name/schema/capability/digest | Exact typed-tool allowlist, strict JSON/name/field/type validation, manifest version/digest, shared fail-closed evaluator, no ambient secrets/network/`DbContext`; adversarial unit tests | First-party in-process code shares process trust. Third-party execution is not isolated. **Implemented/current first-party; future/gated third-party**; Skills/Channels |
-| **Tampering — database/migration** | Implicit or malicious schema change corrupts state or weakens isolation | Explicit reviewed forward migrations, no startup migration, backup-before-update, empty/prior schema and constraint tests | Trusted administrator or malicious migration can still alter data. Genuine update/rollback proof is missing. **Evidence-blocked**; Operations/Persistence |
-| **Tampering — import/export** | Archive path traversal, checksum substitution, duplicate/conflicting import, or malicious semantic extension changes state | Authenticated encrypted archive, safe relative paths, SHA-256/length checks, schema/version/exclusion validation, clean-instance requirement, write-free dry run, serialized import ID, atomic commit, no remote context fetch or secrets | Archive key/distribution and exporter authenticity depend on operator custody. **Implemented/current portability**; Portability |
-| **Repudiation** | Actor denies confirmation, recovery, deletion, sharing, or import | Content-minimized identity/task/proposal audit, version, actor, source, outcome, occurrence time, import ledger, idempotency evidence; share/semantic audit contracts | Audit is not non-repudiation, legal proof, or permission for indefinite retention; operator can alter DB. **Current plus contract-only**; Audit/Privacy |
-| **Information disclosure — BYOK** | Credential, prompt, task, error body, or provider endpoint details leak | Exact endpoint allowlist, non-loopback budget stop before credential resolution, file-only credential value, no redirects/decompression, bounded response, content-free errors/metrics, UI recipient/retention disclosure, rotate/revoke path | Provider receives the deliberately sent request/schema and may retain it; operator disclosure may be stale. No paid live evidence. **Current seam; gated external activation**; Assistant/operator |
-| **Information disclosure — telemetry** | Auto-instrumentation exports URL/user/task/prompt/secret content | Attribute allowlist processor, no formatted/scoped/state logging, prohibited-key counters, synthetic canaries, local collector evidence | Values under allowed route/method/status fields and new instruments require review; remote collector is unapproved. **Implemented/current local; future/gated remote**; Observability/operator |
-| **Information disclosure — backup/export** | Dump, archive, key history, or restore manifest leaks user data/secrets | Encryption, separate keys, declared exclusions, least-privilege destinations, checksum and clean-instance verification, no secret values in manifests | Combined encrypted recovery custody is unproven; operators may mishandle copies. **Application export current; recovery evidence-blocked**; Operations |
-| **Information disclosure — public/support** | Private docs, product data, preview, issue, screenshot, or feedback payload becomes public | Product/public-site separation contract, loopback/private-review-only prototype, no analytics/intake, secret/content prohibition in repository artifacts | Historical Pages bytes/provider logs/caches may remain; future host logs IPs. **Contained history; future/gated site/support**; Public Site/Support |
-| **Denial of service — identity/provider** | Recovery guessing, oversized input, provider stall/429/5xx, response flood, or retry storm exhausts resources | Bounded inputs before allocation/hash, per-client plus global limits, timeout/cancellation/kill, bounded buffer, capped retries/backoff, nonretryable 3xx/4xx, health/readiness | Distributed abuse and local resource exhaustion remain; no production SLOs. **Implemented/current; objectives blocked**; Identity/Assistant/Operations |
-| **Denial of service — database/offline** | PostgreSQL/key loss, hidden egress dependency, bad migration, or unavailable registry prevents use | Durable volume, health/readiness, preloaded digest images, internal networks, `--pull never`, local fake, dump/restore tools, explicit migration, offline/no-egress evidence | Database-plus-key sign-in recovery and genuine rollback missing. **Evidence-blocked**; Operations |
-| **Elevation of privilege — direct mutation** | Model, skill, client, or replay writes without confirmation/policy | Provider can call only propose tool; skill returns proposal; durable confirm binds actor/tenant/version/idempotency; domain rechecks policy; direct UI actions remain server-authorized/audited | Confirmation fatigue/coercion or compromised app process remains. **Implemented/current**; Proposals/Open Loops |
-| **Elevation of privilege — grant/share** | Manifest, stale consent, disclosure request, or imported grant expands access | Policy intersects residency/principal/bilateral consent/active grant/purpose/operation/data class/sensitivity and reduces ordered disclosure; expiry/revocation; imported grants inactive; adverse fixtures | No live transport or persistent revocation proof. **Contract-only**; Sharing/Federation |
+| **Spoofing — bootstrap/recovery** | Stolen or replayed bootstrap/recovery material creates or takes over the owner | 256-bit read-only bootstrap file, exact HTTPS origin/RP, built-in WebAuthn verification, protected one-time state, bounded input, rate limits, transaction/advisory locks, generic failures, recovery rotation and session invalidation; browser/PostgreSQL negative tests | Host/browser theft and lost recovery set remain. **Implemented/current**. **Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Trust, Security, Privacy and Legal challenge — Tuvok, Deanna Troi, Sarek.** Stop on origin/proxy uncertainty or secret exposure |
+| **Spoofing — session/recent auth** | Stolen long-lived cookie adds/removes a passkey or survives recovery | Secure/HttpOnly/SameSite=Strict cookies, Data Protection, zero-interval security-stamp validation, antiforgery on mutations, short-lived audience/user/stamp-bound recent-auth marker and one-time nonce | Shared/unlocked or compromised device remains. **Implemented/current. Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Trust, Security, Privacy and Legal challenge — Tuvok, Deanna Troi, Sarek.** |
+| **Spoofing — tenant/principal** | Caller substitutes an ID, worker context, or external identity to access another tenant | Authenticated scoped tenant/app-user/principal context; policy and access projections; composite tenant foreign keys/uniqueness; external subject not a domain FK; two-tenant tests | New queries/background work can regress. **Implemented/current. Core Platform and Architecture — Spock, T'Pol, Seven of Nine.** Any isolation failure is a release stop |
+| **Tampering — proposal** | Provider/client changes proposal payload, version, actor, or expiry before confirmation | Canonical payload/digest, durable proposal state, expected version, actor/tenant binding, expiry, policy re-evaluation, transactionally coupled task/audit/idempotency | User may confirm deceptive content or confirmation UI may regress. **Implemented/current. Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Web, Public Site and User Experience — Jadzia Dax, Neelix, Guinan.** |
+| **Tampering — manifest/tool call** | Prompt injection or publisher changes tool name/schema/capability/digest | Exact typed-tool allowlist, strict JSON/name/field/type validation, manifest version/digest, shared fail-closed evaluator, no ambient secrets/network/`DbContext`; adversarial unit tests | First-party in-process code shares process trust. Third-party execution is not isolated. **Implemented/current first-party; future/gated third-party. First-party Skills and Developer Ecosystem — Seven of Nine + domain leads; Channels and Connectors — Jett Reno, Seven of Nine, Tuvok.** |
+| **Tampering — database/migration** | Implicit or malicious schema change corrupts state or weakens isolation | Explicit reviewed forward migrations, no startup migration, backup-before-update, empty/prior schema and constraint tests | Trusted administrator or malicious migration can still alter data. Genuine update/rollback proof is missing. **Evidence-blocked. Platform Operations, Hosting and FinOps — Jett Reno, Quark; Core Platform and Architecture — Spock, T'Pol, Seven of Nine.** |
+| **Tampering — import/export** | Archive path traversal, checksum substitution, duplicate/conflicting import, or malicious semantic extension changes state | Authenticated encrypted archive, safe relative paths, SHA-256/length checks, schema/version/exclusion validation, clean-instance requirement, write-free dry run, serialized import ID, atomic commit, no remote context fetch or secrets | Archive key/distribution and exporter authenticity depend on operator custody. **Implemented/current portability. Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Platform Operations, Hosting and FinOps — Jett Reno, Quark.** |
+| **Repudiation** | Actor denies confirmation, recovery, deletion, sharing, or import | Content-minimized identity/task/proposal audit, version, actor, source, outcome, occurrence time, import ledger, idempotency evidence; share/semantic audit contracts | Audit is not non-repudiation, legal proof, or permission for indefinite retention; operator can alter DB. **Current plus contract-only. Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek.** |
+| **Information disclosure — BYOK** | Credential, prompt, task, error body, or provider endpoint details leak | Exact endpoint allowlist, non-loopback budget stop before credential resolution, file-only credential value, no redirects/decompression, bounded response, content-free errors/metrics, UI recipient/retention disclosure, rotate/revoke path | Provider receives the deliberately sent request/schema and may retain it; operator disclosure may be stale. No paid live evidence. **Current seam; gated external activation. Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Platform Operations, Hosting and FinOps — Jett Reno, Quark.** |
+| **Information disclosure — telemetry** | Auto-instrumentation exports URL/user/task/prompt/secret content | Attribute allowlist processor, no formatted/scoped/state logging, prohibited-key counters, synthetic canaries, local collector evidence | Values under allowed route/method/status fields and new instruments require review; remote collector is unapproved. **Implemented/current local; future/gated remote. Platform Operations, Hosting and FinOps — Jett Reno, Quark.** |
+| **Information disclosure — backup/export** | Dump, archive, key history, or restore manifest leaks user data/secrets | Encryption, separate keys, declared exclusions, least-privilege destinations, checksum and clean-instance verification, no secret values in manifests | Combined encrypted recovery custody is unproven; operators may mishandle copies. **Application export current; recovery evidence-blocked. Platform Operations, Hosting and FinOps — Jett Reno, Quark.** |
+| **Information disclosure — public/support** | Private docs, product data, preview, issue, screenshot, or feedback payload becomes public | Product/public-site separation contract, loopback/private-review-only prototype, no analytics/intake, secret/content prohibition in repository artifacts | Historical Pages bytes/provider logs/caches may remain; future host logs IPs. **Contained history; future/gated site/support. Web, Public Site and User Experience — Jadzia Dax, Neelix, Guinan; Customer Success, Feedback and Support — Guinan.** |
+| **Denial of service — identity/provider** | Recovery guessing, oversized input, provider stall/429/5xx, response flood, or retry storm exhausts resources | Bounded inputs before allocation/hash, per-client plus global limits, timeout/cancellation/kill, bounded buffer, capped retries/backoff, nonretryable 3xx/4xx, health/readiness | Distributed abuse and local resource exhaustion remain; no production SLOs. **Implemented/current; objectives blocked. Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Platform Operations, Hosting and FinOps — Jett Reno, Quark.** |
+| **Denial of service — database/offline** | PostgreSQL/key loss, hidden egress dependency, bad migration, or unavailable registry prevents use | Durable volume, health/readiness, preloaded digest images, internal networks, `--pull never`, local fake, dump/restore tools, explicit migration, offline/no-egress evidence | Database-plus-key sign-in recovery and genuine rollback missing. **Evidence-blocked. Platform Operations, Hosting and FinOps — Jett Reno, Quark.** |
+| **Elevation of privilege — direct mutation** | Model, skill, client, or replay writes without confirmation/policy | Provider can call only propose tool; skill returns proposal; durable confirm binds actor/tenant/version/idempotency; domain rechecks policy; direct UI actions remain server-authorized/audited | Confirmation fatigue/coercion or compromised app process remains. **Implemented/current. Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Web, Public Site and User Experience — Jadzia Dax, Neelix, Guinan.** |
+| **Elevation of privilege — grant/share** | Manifest, stale consent, disclosure request, or imported grant expands access | Policy intersects residency/principal/bilateral consent/active grant/purpose/operation/data class/sensitivity and reduces ordered disclosure; expiry/revocation; imported grants inactive; adverse fixtures | No live transport or persistent revocation proof. **Contract-only. Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek; Core Platform and Architecture — Spock, T'Pol, Seven of Nine.** |
 
 ## LINDDUN privacy-threat analysis
 
@@ -224,7 +249,9 @@ not benign behavior.
 
 ## Provenance and semantic integrity
 
-Current semantic contracts pin an embedded JSON-LD context/version, validate safe
+The detailed [semantic threat/privacy questions and
+controls](semantic-graph.md#threat-and-privacy-questions) govern this contract-only
+seam. Current semantic contracts pin an embedded JSON-LD context/version, validate safe
 predicates, distinguish observed/user-stated/inferred and verification/review state,
 bind sources by digest, and track correction/supersession/retraction/deletion.
 Remote context retrieval is forbidden during import. Unknown versions/classes and
@@ -310,6 +337,9 @@ regulated-adjacent data gets a separate gate; roadmap inclusion is not approval.
 
 ## Evidence map
 
+The canonical [testing matrix](testing-matrix.md) owns the full current evidence
+inventory and exclusions; this table maps only threat-model controls.
+
 | Control area | Primary repository evidence | Status |
 |---|---|---|
 | Architecture boundaries | `Andreja.ArchitectureTests`, typed API contracts, dependency tests, [architecture companion](architecture/andreja-high-level.md) | **Implemented/current** |
@@ -332,16 +362,16 @@ acceptance.
 
 | Residual risk | Owner | Stop / acceptance condition |
 |---|---|---|
-| Compromised self-host, browser, authenticator, TLS proxy, database admin, or recovery destination | Operator + Identity/Operations | Stop on suspected compromise; isolate, revoke/rotate, restore trusted artifacts, and re-evidence. Application policy cannot accept root compromise |
-| Missing trusted OCI signature or genuine rollback proof | Supply Chain/Operations; decision owner Cyrus | No Phase 1A exit until independent trust-anchor and second-revision evidence pass |
-| Database restored without encrypted matching key/config history and passkey sign-in | Operations/Identity | Treat as unrecovered; no exit until combined clean-instance proof passes |
-| No approved retention, SLO, RPO/RTO, spend, or high/critical residual-risk decision | Privacy/Operations/Cost; Cyrus | No exit, external paid call, or public commitment |
-| Provider retains disclosed request or changes terms | Assistant/operator | Disable endpoint/profile until disclosure, purpose, terms, budget, and revocation are current |
-| New query/instrumentation leaks content or crosses tenants | Core Platform/Observability | Immediately stop release/telemetry, contain, rotate if needed, correct and add negative evidence |
-| Confirmation becomes bypassable, deceptive, inaccessible, or replayable | Proposals/UX/Security | Stop consequential actions until exact review, binding, policy, idempotency, and accessibility pass |
-| Non-user/child/household harm or sensitive inference lacks lawful/ethical purpose and consent | Privacy/Safety/Legal; Cyrus | Do not activate; dedicated decision and abuse evidence required |
-| Self-host operator is also a coercive or abusive household actor | Privacy/Safety/Operations; Cyrus | App-layer controls are insufficient. No multi-person household feature until an operator-independent safety, access, revocation, export, and recovery design is approved and tested |
-| Connector, federation, public site, managed hosting, remote telemetry/support, or third-party skill activates without its gate | Owning workstream; Cyrus | Disable/contain immediately; no grandfathering from contracts, roadmap, or prior exposure |
+| Compromised self-host, browser, authenticator, TLS proxy, database admin, or recovery destination | Platform Operations, Hosting and FinOps — Jett Reno, Quark; Core Platform and Architecture — Spock, T'Pol, Seven of Nine | Stop on suspected compromise; isolate, revoke/rotate, restore trusted artifacts, and re-evidence. Application policy cannot accept root compromise |
+| Missing trusted OCI signature or genuine rollback proof | Platform Operations, Hosting and FinOps — Jett Reno, Quark; Cyrus accepts residual risk | No Phase 1A exit until independent trust-anchor and second-revision evidence pass |
+| Database restored without encrypted matching key/config history and passkey sign-in | Platform Operations, Hosting and FinOps — Jett Reno, Quark; Core Platform and Architecture — Spock, T'Pol, Seven of Nine | Treat as unrecovered; no exit until combined clean-instance proof passes |
+| No approved retention, SLO, RPO/RTO, spend, or high/critical residual-risk decision | Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek; Platform Operations, Hosting and FinOps — Jett Reno, Quark; Cyrus decides | No exit, external paid call, or public commitment |
+| Provider retains disclosed request or changes terms | Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Platform Operations, Hosting and FinOps — Jett Reno, Quark | Disable endpoint/profile until disclosure, purpose, terms, budget, and revocation are current |
+| New query/instrumentation leaks content or crosses tenants | Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Platform Operations, Hosting and FinOps — Jett Reno, Quark | Immediately stop release/telemetry, contain, rotate if needed, correct and add negative evidence |
+| Confirmation becomes bypassable, deceptive, inaccessible, or replayable | Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Web, Public Site and User Experience — Jadzia Dax, Neelix, Guinan; Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek | Stop consequential actions until exact review, binding, policy, idempotency, and accessibility pass |
+| Non-user/child/household harm or sensitive inference lacks lawful/ethical purpose and consent | Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek; Cyrus decides | Do not activate; dedicated decision and abuse evidence required |
+| Self-host operator is also a coercive or abusive household actor | Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek; Platform Operations, Hosting and FinOps — Jett Reno, Quark; Cyrus decides | App-layer controls are insufficient. No multi-person household feature until an operator-independent safety, access, revocation, export, and recovery design is approved and tested |
+| Connector, federation, public site, managed hosting, remote telemetry/support, or third-party skill activates without its gate | Channels and Connectors — Jett Reno, Seven of Nine, Tuvok; First-party Skills and Developer Ecosystem — Seven of Nine + domain leads; Web, Public Site and User Experience — Jadzia Dax, Neelix, Guinan; Platform Operations, Hosting and FinOps — Jett Reno, Quark; Cyrus decides | Disable/contain immediately; no grandfathering from contracts, roadmap, or prior exposure |
 
 Any unresolved high/critical threat, tenant-isolation failure, reusable-secret leak,
 prohibited telemetry content, unexplained outbound call, untrusted artifact,
