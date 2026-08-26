@@ -9,6 +9,8 @@ const MARKDOWN_FENCE = /^\s*(`{3,}|~{3,})(.*)$/;
 const MARKDOWN_INDENTED_CODE = /^(?: {4}|\t).*\S/;
 const SHADOW_SAMPLE_LABEL = 'ci:selective-shadow-sample';
 const API_REQUEST_LIMIT = 132;
+const MARKDOWN_FETCH_CONCURRENCY = 8;
+const EXACT_SHA = /^[0-9a-f]{40}$/;
 
 function loadPolicy(policyPath) {
   const policy = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
@@ -298,43 +300,67 @@ async function attachTrustedMarkdownBase(
   trustedContentSha,
   token,
   fetchImpl = fetch,
+  concurrency = MARKDOWN_FETCH_CONCURRENCY,
 ) {
-  return Promise.all(files.map(async (rawFile) => {
-    const file = normalizeFile(rawFile);
-    if (
-      file.invalid ||
-      !/\.md$/i.test(file.filename) ||
-      file.status === 'added' ||
-      typeof file.baseContent === 'string'
-    ) {
-      return rawFile;
-    }
-
-    if (!trustedContentSha) return rawFile;
-    const sourcePath = file.previous_filename ?? file.filename;
-    const encodedPath = sourcePath.split('/').map(encodeURIComponent).join('/');
-    try {
-      const { body } = await getJson(
-        `${process.env.GITHUB_API_URL || 'https://api.github.com'}/repos/${repository}/contents/${encodedPath}?ref=${encodeURIComponent(trustedContentSha)}`,
-        token,
-        fetchImpl,
-      );
+  if (!Number.isSafeInteger(concurrency) || concurrency < 1) {
+    throw new Error('Markdown fetch concurrency must be a positive integer.');
+  }
+  const results = new Array(files.length);
+  let cursor = 0;
+  let terminalError = null;
+  async function worker() {
+    while (cursor < files.length && terminalError === null) {
+      const index = cursor;
+      cursor += 1;
+      const rawFile = files[index];
+      const file = normalizeFile(rawFile);
       if (
-        body.type !== 'file' ||
-        body.encoding !== 'base64' ||
-        typeof body.content !== 'string'
+        file.invalid ||
+        !/\.md$/i.test(file.filename) ||
+        file.status === 'added' ||
+        typeof file.baseContent === 'string' ||
+        !trustedContentSha
       ) {
-        return rawFile;
+        results[index] = rawFile;
+        continue;
       }
-      return {
-        ...rawFile,
-        baseContent: Buffer.from(body.content.replace(/\s/g, ''), 'base64').toString('utf8'),
-      };
-    } catch (error) {
-      if (/rate limit exhausted|request budget exceeded/i.test(error.message)) throw error;
-      return rawFile;
+
+      const sourcePath = file.previous_filename ?? file.filename;
+      const encodedPath = sourcePath.split('/').map(encodeURIComponent).join('/');
+      try {
+        const { body } = await getJson(
+          `${process.env.GITHUB_API_URL || 'https://api.github.com'}/repos/${repository}/contents/${encodedPath}?ref=${encodeURIComponent(trustedContentSha)}`,
+          token,
+          fetchImpl,
+        );
+        if (
+          body.type !== 'file' ||
+          body.encoding !== 'base64' ||
+          typeof body.content !== 'string'
+        ) {
+          throw new Error('GitHub Contents metadata response was not a base64 file.');
+        }
+        results[index] = {
+          ...rawFile,
+          baseContent: Buffer.from(
+            body.content.replace(/\s/g, ''),
+            'base64',
+          ).toString('utf8'),
+        };
+      } catch (error) {
+        terminalError ??= error;
+        break;
+      }
     }
-  }));
+  }
+  await Promise.all(
+    Array.from(
+      { length: Math.min(files.length, concurrency) },
+      () => worker(),
+    ),
+  );
+  if (terminalError) throw terminalError;
+  return results;
 }
 
 function classifyFiles(files, policy, options = {}) {
@@ -423,6 +449,7 @@ function classifyFiles(files, policy, options = {}) {
     trustedClassifierAvailable: options.trustedClassifierAvailable ?? true,
     apiRequestBudget: options.apiRequestBudget ?? null,
     classificationFailure: options.classificationFailure ?? null,
+    mergeCommitProof: options.mergeCommitProof ?? null,
     shadowSample: {
       label: SHADOW_SAMPLE_LABEL,
       sampled: options.shadowSampled ?? true,
@@ -464,7 +491,7 @@ function shadowSample(eventName, event, expectedOperator) {
   const operatorMatches =
     observedActor !== null &&
     configuredOperator !== null &&
-    observedActor.toLowerCase() === configuredOperator.toLowerCase();
+    observedActor === configuredOperator;
   const sampled = sampleLabelEvent && operatorMatches;
   const reason = sampled
     ? 'authorized-sample-label-event'
@@ -566,11 +593,97 @@ async function paginatedFiles(initialUrl, token, fetchImpl = fetch) {
   return files;
 }
 
+function isSampleLabelEvent(eventName, event) {
+  if (eventName !== 'pull_request_target') return false;
+  const labels = Array.isArray(event.pull_request?.labels) ? event.pull_request.labels : [];
+  return (
+    event.action === 'labeled' &&
+    event.label?.name === SHADOW_SAMPLE_LABEL &&
+    labels.some((label) => label?.name === SHADOW_SAMPLE_LABEL)
+  );
+}
+
+function mergeIntegritySnapshot(eventPull, livePull, commit) {
+  const eventBase = eventPull?.base?.sha;
+  const eventHead = eventPull?.head?.sha;
+  const eventMerge = eventPull?.merge_commit_sha;
+  const liveBase = livePull?.base?.sha;
+  const liveHead = livePull?.head?.sha;
+  const liveMerge = livePull?.merge_commit_sha;
+  const parentShas = Array.isArray(commit?.parents)
+    ? commit.parents.map((parent) => parent?.sha ?? null)
+    : [];
+  const proof = {
+    verified: false,
+    eventBaseSha: eventBase ?? null,
+    eventHeadSha: eventHead ?? null,
+    eventMergeCommitSha: eventMerge ?? null,
+    liveBaseSha: liveBase ?? null,
+    liveHeadSha: liveHead ?? null,
+    liveMergeCommitSha: liveMerge ?? null,
+    mergeable: livePull?.mergeable ?? null,
+    commitSha: commit?.sha ?? null,
+    parentShas,
+    reason: null,
+  };
+  const requiredShas = [eventBase, eventHead, eventMerge, liveBase, liveHead, liveMerge];
+  if (requiredShas.some((sha) => !EXACT_SHA.test(String(sha ?? '')))) {
+    proof.reason = 'pull-request-merge-identity-invalid';
+  } else if (livePull.mergeable !== true) {
+    proof.reason = 'pull-request-test-merge-unavailable';
+  } else if (
+    eventBase !== liveBase ||
+    eventHead !== liveHead ||
+    eventMerge !== liveMerge
+  ) {
+    proof.reason = 'pull-request-test-merge-stale';
+  } else if (
+    !EXACT_SHA.test(String(commit?.sha ?? '')) ||
+    commit.sha !== liveMerge ||
+    parentShas.length < 2
+  ) {
+    proof.reason = 'pull-request-test-merge-commit-invalid';
+  } else if (parentShas[0] !== liveBase || parentShas[1] !== liveHead) {
+    proof.reason = 'pull-request-test-merge-parent-mismatch';
+  } else {
+    proof.verified = true;
+  }
+  return proof;
+}
+
 async function acquireChanges(eventName, event, repository, token, fetchImpl = fetch) {
   const api = process.env.GITHUB_API_URL || 'https://api.github.com';
   if (eventName === 'pull_request' || eventName === 'pull_request_target') {
     const number = event.pull_request?.number ?? event.number;
     if (!number) throw new Error('Pull request event omitted its number.');
+    let mergeCommitProof = null;
+    let mergeCommit = null;
+    if (isSampleLabelEvent(eventName, event)) {
+      const { body: livePull } = await getJson(
+        `${api}/repos/${repository}/pulls/${number}`,
+        token,
+        fetchImpl,
+      );
+      const liveMerge = livePull?.merge_commit_sha;
+      if (EXACT_SHA.test(String(liveMerge ?? ''))) {
+        const { body } = await getJson(
+          `${api}/repos/${repository}/git/commits/${liveMerge}`,
+          token,
+          fetchImpl,
+        );
+        mergeCommit = body;
+      }
+      mergeCommitProof = mergeIntegritySnapshot(event.pull_request, livePull, mergeCommit);
+      if (!mergeCommitProof.verified) {
+        return {
+          files: [],
+          forcedFullReasons: [mergeCommitProof.reason],
+          trustedContentSha: null,
+          classificationFailure: 'pull-request-merge-integrity-unavailable',
+          mergeCommitProof,
+        };
+      }
+    }
     const files = await paginatedFiles(
       `${api}/repos/${repository}/pulls/${number}/files?per_page=100`,
       token,
@@ -628,7 +741,32 @@ async function acquireChanges(eventName, event, repository, token, fetchImpl = f
     if (!Number.isInteger(expectedCount) || expectedCount !== snapshotFiles.length) {
       reasons.push('pull-request-file-count-mismatch');
     }
-    return { files: snapshotFiles, forcedFullReasons: reasons, trustedContentSha };
+    if (mergeCommitProof) {
+      const { body: finalPull } = await getJson(
+        `${api}/repos/${repository}/pulls/${number}`,
+        token,
+        fetchImpl,
+      );
+      const finalProof = mergeIntegritySnapshot(event.pull_request, finalPull, mergeCommit);
+      if (!finalProof.verified) {
+        reasons.push(finalProof.reason);
+        return {
+          files: snapshotFiles,
+          forcedFullReasons: reasons,
+          trustedContentSha,
+          classificationFailure: 'pull-request-merge-integrity-unavailable',
+          mergeCommitProof: finalProof,
+        };
+      }
+      mergeCommitProof = finalProof;
+    }
+    return {
+      files: snapshotFiles,
+      forcedFullReasons: reasons,
+      trustedContentSha,
+      classificationFailure: null,
+      mergeCommitProof,
+    };
   }
 
   if (eventName === 'merge_group') {
@@ -692,10 +830,24 @@ async function main(fetchImpl = fetch) {
       process.env.GITHUB_TOKEN,
       budgetedFetch,
     );
+    classificationFailure = changes.classificationFailure ?? null;
   } catch (error) {
-    changes = { files: [], forcedFullReasons: [`metadata-error:${error.message}`] };
+    const mergeProofRequired = isSampleLabelEvent(eventName, event);
+    changes = {
+      files: [],
+      forcedFullReasons: [`metadata-error:${error.message}`],
+      mergeCommitProof: mergeProofRequired
+        ? {
+            ...mergeIntegritySnapshot(event.pull_request, {}, null),
+            reason: 'pull-request-test-merge-metadata-unavailable',
+            error: error.message,
+          }
+        : null,
+    };
     if (/rate limit exhausted|request budget exceeded/i.test(error.message)) {
       classificationFailure = 'github-metadata-rate-limit-or-budget';
+    } else if (mergeProofRequired) {
+      classificationFailure = 'pull-request-merge-integrity-unavailable';
     }
   }
 
@@ -713,7 +865,52 @@ async function main(fetchImpl = fetch) {
       changes.forcedFullReasons.push(`trusted-markdown-base-error:${error.message}`);
       if (/rate limit exhausted|request budget exceeded/i.test(error.message)) {
         classificationFailure = 'github-metadata-rate-limit-or-budget';
+      } else {
+        classificationFailure = 'github-metadata-unavailable';
       }
+      if (changes.mergeCommitProof) {
+        changes.mergeCommitProof = {
+          ...changes.mergeCommitProof,
+          verified: false,
+          reason: 'pull-request-test-merge-recheck-unavailable',
+          error: error.message,
+        };
+      }
+    }
+  }
+  if (changes.mergeCommitProof?.verified) {
+    try {
+      const number = event.pull_request?.number ?? event.number;
+      const api = process.env.GITHUB_API_URL || 'https://api.github.com';
+      const { body: finalPull } = await getJson(
+        `${api}/repos/${process.env.GITHUB_REPOSITORY}/pulls/${number}`,
+        process.env.GITHUB_TOKEN,
+        budgetedFetch,
+      );
+      const finalProof = mergeIntegritySnapshot(
+        event.pull_request,
+        finalPull,
+        {
+          sha: changes.mergeCommitProof.commitSha,
+          parents: changes.mergeCommitProof.parentShas.map((sha) => ({ sha })),
+        },
+      );
+      changes.mergeCommitProof = finalProof;
+      if (!finalProof.verified) {
+        changes.forcedFullReasons.push(finalProof.reason);
+        classificationFailure = 'pull-request-merge-integrity-unavailable';
+      }
+    } catch (error) {
+      changes.forcedFullReasons.push(`merge-integrity-recheck-error:${error.message}`);
+      classificationFailure = /rate limit exhausted|request budget exceeded/i.test(error.message)
+        ? 'github-metadata-rate-limit-or-budget'
+        : 'pull-request-merge-integrity-unavailable';
+      changes.mergeCommitProof = {
+        ...changes.mergeCommitProof,
+        verified: false,
+        reason: 'pull-request-test-merge-recheck-unavailable',
+        error: error.message,
+      };
     }
   }
   const apiRequestBudget = budgetedFetch.observation();
@@ -732,9 +929,12 @@ async function main(fetchImpl = fetch) {
     shadowSampleReason: sample.reason,
     shadowSampleObservedActor: sample.observedActor,
     shadowSampleExpectedOperator: sample.expectedOperator,
-    trustedClassifierAvailable: true,
+    trustedClassifierAvailable:
+      classificationFailure === null &&
+      (!isSampleLabelEvent(eventName, event) || changes.mergeCommitProof?.verified === true),
     apiRequestBudget,
     classificationFailure,
+    mergeCommitProof: changes.mergeCommitProof ?? null,
   });
   fs.mkdirSync(path.dirname(outputFile), { recursive: true });
   fs.writeFileSync(outputFile, `${JSON.stringify(decision, null, 2)}\n`);

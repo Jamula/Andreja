@@ -32,8 +32,18 @@ compare limit all select every domain.
 For PR events, the classifier compares the paginated current PR-file response
 with the immutable event base/head compare snapshot. Any filename, status,
 count, statistics, or patch mismatch indicates a moving-head race and forces
-the full suite. Domain jobs validate only the event's captured merge-commit SHA,
-never a moving PR ref.
+the full suite. Before an event can be a labeled sample, the classifier also
+reads the live PR and requires `mergeable=true` plus exact 40-hex event/live
+base, head, and `merge_commit_sha` identities. It reads that test merge through
+the Git commit API and requires parent 0 to equal the live base and parent 1 to
+equal the live head. It re-reads the live PR after file/compare acquisition and
+again after trusted Markdown Contents reads. A null, malformed, stale, raced,
+or parent-mismatched test merge records
+`pull-request-merge-integrity-unavailable`, sets
+`trustedClassifierAvailable=false`, and fails classification before any domain
+job. Classification evidence includes the event/live identities, mergeability,
+commit SHA, both parent SHAs, and verification reason. Domain jobs validate
+only the proven event merge-commit SHA, never a moving PR ref.
 
 Changed workflow, classifier, repository automation script, ruleset/security
 policy, dependency-update configuration (including `.github/dependabot.yml`),
@@ -53,7 +63,9 @@ establish fence state at each hunk. For pull requests and merge groups it
 requires the REST compare `merge_base_commit` and reads the old file through the
 read-only Contents API at that exact SHA; it does not assume the moving
 base-branch tip matches the patch. Context and deleted lines must also match the
-merge-base blob.
+merge-base blob. Contents reads use at most eight concurrent requests; the
+absolute 132-request budget still applies across merge proof, pagination,
+compare, and Contents calls.
 The scan treats additions, deletions, fence starts/ends, changed lines inside
 unchanged backtick or tilde fences, and four-space/tab-indented code as
 executable, including those constructs nested in Markdown blockquotes.
@@ -78,9 +90,10 @@ only `contents: read` and `pull-requests: read`. A repository-owned
 `SELECTIVE_CI_SAMPLE_OPERATOR` Actions variable supplies the expected operator
 login to default-branch `pull_request_target` orchestration; pull-request code
 and event fields cannot override it. The classifier requires the trusted event
-sender login to equal that operator before sampling and records both
+sender login to equal that operator with exact canonical GitHub login casing
+before sampling and records both
 `observedActor` and `expectedOperator` in classification JSON. An unset variable
-or mismatched sender records `sample-operator-unconfigured` or
+or differently cased/mismatched sender records `sample-operator-unconfigured` or
 `sample-operator-mismatch`, keeps `sampled=false`, and schedules no domain job.
 An operator-authorized sampled domain job receives only `contents: read`, checks out the immutable
 `pull_request.merge_commit_sha` captured by the labeled event on a fresh runner,
@@ -101,8 +114,14 @@ If classification fails, every domain is `unavailable` rather than
 `sample-pr-<number>` concurrency group with cancellation disabled, serializing
 duplicate authorized events. Ordinary PR topology events use a separate
 `topology-pull_request_target-<number>` group with cancellation enabled, so an
-unrelated label cannot cancel a running authorized sample. Manual safety runs
-never cancel each other. Aggregate revision evidence records the event base and
+unrelated label cannot cancel a running authorized sample. That separation and
+unsampled topology are **static workflow-expression and fixture assertions
+only** during this two-slot window; never emit an unrelated live label event to
+test them because it consumes `N` and terminally disables collection. GitHub
+expression string equality is only a scheduling prefilter; the repository
+classifier's exact-case comparison is authoritative, so a differently cased
+login schedules no domain. Manual safety runs never cancel each other.
+Aggregate revision evidence records the event base and
 head SHAs separately from the revision used by domain jobs. A valid PR sample
 records its immutable merge SHA as both the validated ref and SHA; merge-group
 jobs record the group head, and workflow-dispatch jobs record the exact
@@ -121,16 +140,23 @@ does not yet contain `.github/ci/change-classifier.js`, bootstrap evidence
 contains `trusted-classifier-unavailable-on-base`, every aggregate domain is
 `unavailable`, `samplePreconditionFailed=true`, no domain job runs, and the
 aggregate fails. This is a precondition failure, not a sample. An ordinary
-unlabelled bootstrap still succeeds with `shadow-not-sampled`/`not-applicable`
-topology evidence because it never attempts domain sampling.
+non-sample labeled event, if one unexpectedly occurs, produces
+`shadow-not-sampled` evidence with no heavy domain work, consumes `N`, and
+terminally disables this window.
 
-Trusted classification enforces a 132-request metadata budget: at most 30 PR
-file pages, one compare request, and 100 Markdown base-content requests plus one
-guard slot. Classification JSON records the limit, requests used, exhaustion,
+Trusted classification enforces an absolute 132-request metadata budget.
+A labeled sample uses four merge-integrity requests (initial live PR, Git
+commit parents, post-snapshot live PR, and post-Contents live PR), plus PR-file
+pages, one compare request, and up to 100 Markdown base-content requests.
+Combinations that cannot fit fail closed before the 132nd request rather than
+relaxing the cap. Classification JSON records the limit, requests used, exhaustion,
 minimum observed `X-RateLimit-Remaining`, and reset epoch. Evidence verification
 requires `exhausted=false`, `used<=132`, and enough observed remaining budget for
 the same path to finish. HTTP 429, or HTTP 403 with zero remaining, becomes an
 explicit metadata rate-limit failure and therefore a fail-closed red aggregate.
+Any other PR, commit, compare, file-page, or Markdown Contents HTTP failure also
+records unavailable metadata, invalidates labeled-sample merge proof, and
+prevents every domain job; it is never downgraded to a full-suite sample.
 That red result is an environmental/request-budget outcome, not automatically a
 classifier logic defect; preserve the artifact/headers, wait for reset, and
 re-run only under the fixed slot protocol.
@@ -227,8 +253,10 @@ per-PR outcomes, policy and classifier digests, and assumptions are in
 
 The normalized planning model uses the measured 16-minute full baseline,
 a provisional 2 fixed minutes for classification/aggregate, and measured rounded
-domain minutes from bootstrap run 32924008713. After changed inline code spans
-were classified fail closed, it estimates 320 rounded minutes across the sample:
+domain minutes from run 32924008713 at `fab046f6608fc93b032ed7e618b57f2547c88bdc`.
+Those domain timings predate the trusted-classifier gate and are historical
+planning inputs only, not trusted sample evidence. After changed inline code
+spans were classified fail closed, the model estimates 320 rounded minutes across the sample:
 zero minutes and USD 0 saved, or **0% portfolio savings**. The historical sample
 contains no eligible prose-only or partial change, so it provides no portfolio
 savings evidence. The **81.25% per-run** target remains only a target for a
@@ -248,7 +276,10 @@ Until then, both this shadow and any additive promotion increase runner cost.
 
 Bootstrap run 32927691826 measured 14 seconds for classification plus 5 seconds
 for aggregation. That bootstrap is not trusted-classifier pricing. To cover
-measurement uncertainty, this feasibility window uses pre-approved `F=3`.
+measurement uncertainty, this feasibility window uses pre-approved `F=3` as a
+budget ceiling. The performance target remains modeled `F=2`: one rounded
+classifier minute, one rounded aggregate minute, and one docs minute produce
+the 3-minute / USD 0.024 / 81.25%-saving docs-only target.
 
 This window is a **small feasibility gate**, not a savings collection:
 
@@ -273,6 +304,13 @@ docs minute plus fourteen full-suite domain minutes; fixed overhead for both PR
 samples is already included in `N`. The 28-minute ceiling assumes both labeled
 PRs select all domains.
 
+Budget acceptance is not savings-target acceptance. A 4-minute total docs run
+can pass feasibility parity and remain below the 6-minute duration tripwire,
+but it misses the modeled 3-minute / 81.25% savings target. Such evidence does
+not authorize promotion. Separate owner and FinOps approval may authorize only
+a new evidence window to establish the target; it cannot waive the target or
+directly authorize promotion.
+
 For the smoke, docs sample, and full sample, compute
 `F_i = ceil(classification seconds/60) + ceil(aggregate seconds/60)` from the
 completed Jobs API records. Record the **maximum of the smoke, docs, and full
@@ -294,8 +332,13 @@ There is no cadence-based run monitoring. Immediately before each of the two
 serialized sample-label applications, query Actions and issue events from the
 recorded UTC window start. Require zero prior labeled runs before the docs label
 and exactly one before the full label. Any unexpected label event or actor
-terminally disables the workflow; no PR-label automation may run during the
-window.
+terminally disables the workflow. Do not claim repository automation is unable
+to label PRs: `.github/workflows/issue-status.yml` is a known residual because a
+PR body with a closing reference to a PR number can cause automated PR status
+labels. Before the window and again before each sample, audit every open PR body
+and its resolved closing references, plus every open PR's current labels. Any
+PR-to-PR closing reference, automation-applied label, or non-sample label event
+after `<START>` terminally disables the workflow.
 
 ```powershell
 $pages = gh api --paginate --slurp `
@@ -314,7 +357,9 @@ last run ID, and verify that no later run was created. Re-enable is not allowed
 under this window; a new approved budget/window must start with its own charged
 smoke.
 
-Live PR run 32924008713 remains duration/artifact evidence only. Run 32931733394
+Live PR run 32924008713 at
+`fab046f6608fc93b032ed7e618b57f2547c88bdc` remains historical
+pre-trusted-classifier-gate domain timing/artifact evidence only. Run 32931733394
 remains prior unsampled topology evidence only. After merge, record the exact
 squash-merged controller SHA. It is the only trusted controller revision, and
 the first post-merge dispatch smoke must record it as its validated revision.
@@ -336,9 +381,11 @@ continuation.
 ## Shadow rollout and promotion hold
 
 1. Merge only this shadow workflow while existing required checks continue.
-   Before merge, inventory repository Apps/workflows and confirm that none can
-   apply any PR label; keep that no-automation precondition in force through
-   terminal shutdown. Do not count any pre-merge run as controller-trust
+   Before merge, inventory repository Apps/workflows that can apply PR labels
+   and audit every open PR body, closing reference, and current label. Explicitly
+   include the `issue-status.yml` PR-to-PR closing-reference residual; do not
+   assert that automation cannot label PRs. Keep the audited no-unexpected-label
+   precondition in force through terminal shutdown. Do not count any pre-merge run as controller-trust
    evidence. Immediately after merge, read the PR's authoritative `merged_at`
    timestamp and exact squash-merged controller SHA. Record `merged_at` as
    `<START>` before any workflow action; every labeled event and labeled
@@ -358,9 +405,10 @@ continuation.
    only dispatch (`S=1`). A failed
    smoke, `F_i >= 4`, more than 32 rounded minutes, or insufficient headroom
    terminally disables the workflow; do not provision the label.
-3. Reverify the monitored no-automation precondition. Jett Reno is the named
+3. Reverify the monitored no-unexpected-label precondition. Jett Reno is the named
    sample operator; record his exact GitHub login before collection, then have an
-   authorized repository administrator store that login in the repository-owned
+   authorized repository administrator store that exact canonical-cased login
+   in the repository-owned
    Actions variable:
 
    ```powershell
@@ -371,11 +419,12 @@ continuation.
    ```
 
    Do not provision or change this setting merely by editing the runbook. Treat
-   an absent or mismatched variable as a fail-closed setup blocker. The value is
+   an absent, differently cased, or mismatched variable as a fail-closed setup blocker. The value is
    an operator login, not a secret; repository settings, rather than pull-request
-   code or event input, own it. Inventory
-   repository Apps/workflows and confirm none can apply any PR label during the
-   serialized sample window. Immediately before each sample, query paginated
+   code or event input, own it. GitHub expression equality is a prefilter; the
+   classifier's exact-case equality is authoritative and is covered by fixtures.
+   Inventory label-capable repository Apps/workflows, including
+   `issue-status.yml`. Immediately before each sample, query paginated
    issue events from the recorded UTC start and require no unexpected label
    event or actor. Any unexpected event terminally disables this window. The
    supported audit source is `GET /repos/Jamula/Andreja/issues/events`:
@@ -393,6 +442,40 @@ continuation.
        @{Name='pull'; Expression={$_.issue.number}}
    ```
 
+   Also paginate all open PRs before the window and before each sample. Record
+   every body's closing references and the exact label names/actors. Resolve
+   each referenced number through the Issues API; a response containing
+   `pull_request` proves the body closes a PR rather than an issue and is a
+   terminal blocker:
+
+   ```powershell
+   $pullPages = gh api --paginate --slurp `
+     "repos/Jamula/Andreja/pulls?state=open&per_page=100" |
+     ConvertFrom-Json
+   $openPulls = @($pullPages | ForEach-Object { $_ })
+   $closingLine = [regex]'(?im)^.*\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\b.*$'
+   $reference = [regex]'(?:Jamula/Andreja)?#(?<number>\d+)'
+   foreach ($pull in $openPulls) {
+     [pscustomobject]@{
+       pull = $pull.number
+       labels = @($pull.labels | ForEach-Object name)
+     }
+     foreach ($line in $closingLine.Matches([string]$pull.body)) {
+       foreach ($match in $reference.Matches($line.Value)) {
+         $target = gh api "repos/Jamula/Andreja/issues/$($match.Groups['number'].Value)" |
+           ConvertFrom-Json
+         if ($null -ne $target.pull_request) {
+           throw "PR #$($pull.number) has a PR-to-PR closing reference"
+         }
+       }
+     }
+   }
+   ```
+
+   Preserve the pre-window label inventory and compare it with paginated issue
+   events before each sample. Any label added by automation, or any non-sample
+   label event after `<START>`, consumes a slot and terminally disables.
+
    The maintainer then provisions the sample label once:
    `gh label create ci:selective-shadow-sample --repo Jamula/Andreja --color 5319e7 --description "Maintainer-authorized bounded selective-CI sample"`.
    Confirm the repository role policy still prevents fork authors from applying
@@ -408,16 +491,52 @@ continuation.
    candidate is available, feasibility fails and promotion remains blocked.
 5. On a quiescent head, first update each candidate branch so
    `pull_request.base.sha` contains the merged classifier. Because `synchronize`
-   is not a collection trigger, that update does not run shadow CI. The named
-   maintainer applies the label with
+   is not a collection trigger, that update does not run shadow CI. Before
+   applying the label, poll the live PR a bounded six times (ten seconds apart)
+   until `mergeable` is non-null/true and `merge_commit_sha` is exact 40-hex.
+   Read that SHA through `GET /git/commits/{sha}`; require exactly the recorded
+   live base/head as parent 0/parent 1 and record the PR snapshot plus parent
+   proof. A null, false, stale, malformed, or mismatched result terminally
+   disables without labeling:
+
+   ```powershell
+   $pr = $null
+   foreach ($attempt in 1..6) {
+     $pr = gh api "repos/Jamula/Andreja/pulls/<NUMBER>" | ConvertFrom-Json
+     if ($pr.mergeable -eq $true -and
+         [regex]::IsMatch([string]$pr.merge_commit_sha, '^[0-9a-f]{40}$')) { break }
+     if ($attempt -lt 6) { Start-Sleep -Seconds 10 }
+   }
+   if ($pr.mergeable -ne $true -or
+       -not [regex]::IsMatch([string]$pr.merge_commit_sha, '^[0-9a-f]{40}$')) {
+     throw 'Current test merge unavailable'
+   }
+   $commit = gh api "repos/Jamula/Andreja/git/commits/$($pr.merge_commit_sha)" |
+     ConvertFrom-Json
+   if (@($commit.parents).Count -lt 2 -or
+       $commit.parents[0].sha -cne $pr.base.sha -or
+       $commit.parents[1].sha -cne $pr.head.sha) {
+     throw 'Current test merge parent proof mismatch'
+   }
+   [pscustomobject]@{
+     base = $pr.base.sha
+     head = $pr.head.sha
+     merge = $pr.merge_commit_sha
+     parents = @($commit.parents | ForEach-Object sha)
+   } | ConvertTo-Json -Depth 4
+   ```
+
+   The named maintainer then applies the label with
    `gh pr edit <number> --add-label ci:selective-shadow-sample`, waits for that
    `labeled` run to finish, and does not remove, reapply, or apply it elsewhere
    while a sample is in progress. Count it only if classification JSON has
    `trustedClassifierAvailable=true`, `shadowSample.sampled=true`,
    `shadowSample.observedActor` and `shadowSample.expectedOperator` equal the
    configured login, no bootstrap reason, and an acceptable API request-budget
-   observation. Confirm an unrelated label event uses the ordinary topology
-   concurrency group and cannot cancel the authorized sample group. The
+   observation. Require `mergeCommitProof.verified=true` and exact equality with
+   the pre-label base/head/merge/parent proof. Verify unrelated-label concurrency
+   and unsampled topology only from the static workflow-expression/fixture
+   tests; never emit a live unrelated label to test them. The
    maintainer records Jobs/artifact API evidence,
    then immediately removes the label with
    `gh pr edit <number> --remove-label ci:selective-shadow-sample`.
@@ -425,8 +544,9 @@ continuation.
    collection. A non-sample label event may emit lightweight
    `shadow-not-sampled` contexts but consumes one of the two `N` slots; because
    no replacement is allowed, treat it as terminal.
-6. Confirm unsampled PRs emit `shadow-not-sampled` and skipped domain jobs,
-   sampled docs/full runs have correct dispositions, no fork gets write
+6. Confirm from static fixtures that a non-sample labeled event would emit
+   `shadow-not-sampled` with no heavy domain work; do not create such an event.
+   Confirm sampled docs/full runs have correct dispositions, no fork gets write
    permission or secrets, and classification failure reports every domain
    `unavailable`. Treat a labeled bootstrap failure as invalid evidence that
    still consumes `N`; it does not create a replacement slot. After smoke, docs,

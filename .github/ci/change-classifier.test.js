@@ -29,6 +29,16 @@ const {
 } = require('./replay-merged-prs');
 let aggregateArtifactSequence = 0;
 
+function githubResponse(body, link = null) {
+  return {
+    ok: true,
+    status: 200,
+    statusText: 'OK',
+    headers: { get: (name) => name === 'link' ? link : null },
+    json: async () => body,
+  };
+}
+
 function runAggregateArtifact(overrides) {
   const workflow = fs.readFileSync(
     path.join(root, '.github/workflows/selective-ci-shadow.yml'),
@@ -292,6 +302,238 @@ test('PR target metadata without an immutable merge commit fails closed', async 
   );
 });
 
+test('sample label rejects a null live test-merge SHA before file acquisition', async () => {
+  const calls = [];
+  const event = {
+    number: 118,
+    action: 'labeled',
+    label: { name: 'ci:selective-shadow-sample' },
+    pull_request: {
+      number: 118,
+      changed_files: 1,
+      base: { sha: 'a'.repeat(40) },
+      head: { sha: 'b'.repeat(40) },
+      merge_commit_sha: null,
+      labels: [{ name: 'ci:selective-shadow-sample' }],
+    },
+  };
+  const changes = await acquireChanges(
+    'pull_request_target',
+    event,
+    'Jamula/Andreja',
+    'token',
+    async (url) => {
+      calls.push(url);
+      return githubResponse({
+        mergeable: null,
+        merge_commit_sha: null,
+        base: { sha: 'a'.repeat(40) },
+        head: { sha: 'b'.repeat(40) },
+      });
+    },
+  );
+  assert.equal(changes.classificationFailure, 'pull-request-merge-integrity-unavailable');
+  assert.equal(changes.mergeCommitProof.verified, false);
+  assert.equal(changes.mergeCommitProof.reason, 'pull-request-merge-identity-invalid');
+  assert.equal(calls.length, 1);
+  assert.match(calls[0], /\/pulls\/118$/);
+});
+
+test('sample label rejects stale live test-merge metadata', async () => {
+  const event = {
+    number: 118,
+    action: 'labeled',
+    label: { name: 'ci:selective-shadow-sample' },
+    pull_request: {
+      number: 118,
+      changed_files: 1,
+      base: { sha: 'a'.repeat(40) },
+      head: { sha: 'b'.repeat(40) },
+      merge_commit_sha: 'd'.repeat(40),
+      labels: [{ name: 'ci:selective-shadow-sample' }],
+    },
+  };
+  const changes = await acquireChanges(
+    'pull_request_target',
+    event,
+    'Jamula/Andreja',
+    'token',
+    async (url) =>
+      url.includes('/git/commits/')
+        ? githubResponse({
+            sha: 'e'.repeat(40),
+            parents: [{ sha: 'a'.repeat(40) }, { sha: 'b'.repeat(40) }],
+          })
+        : githubResponse({
+            mergeable: true,
+            merge_commit_sha: 'e'.repeat(40),
+            base: { sha: 'a'.repeat(40) },
+            head: { sha: 'b'.repeat(40) },
+          }),
+  );
+  assert.equal(changes.classificationFailure, 'pull-request-merge-integrity-unavailable');
+  assert.equal(changes.mergeCommitProof.reason, 'pull-request-test-merge-stale');
+});
+
+test('sample label validates current test-merge parents within the API budget', async () => {
+  const base = 'a'.repeat(40);
+  const head = 'b'.repeat(40);
+  const merge = 'd'.repeat(40);
+  const file = {
+    filename: 'docs/current.md',
+    status: 'added',
+    changes: 1,
+    patch: '@@ -0,0 +1 @@\n+prose',
+  };
+  const event = {
+    number: 118,
+    action: 'labeled',
+    label: { name: 'ci:selective-shadow-sample' },
+    pull_request: {
+      number: 118,
+      changed_files: 1,
+      base: { sha: base },
+      head: { sha: head },
+      merge_commit_sha: merge,
+      labels: [{ name: 'ci:selective-shadow-sample' }],
+    },
+  };
+  const budgetedFetch = createBudgetedFetch(async (url) => {
+    if (url.endsWith('/pulls/118')) {
+      return githubResponse({
+        mergeable: true,
+        merge_commit_sha: merge,
+        base: { sha: base },
+        head: { sha: head },
+      });
+    }
+    if (url.includes('/git/commits/')) {
+      return githubResponse({
+        sha: merge,
+        parents: [{ sha: base }, { sha: head }],
+      });
+    }
+    if (url.includes('/compare/')) {
+      return githubResponse({
+        merge_base_commit: { sha: 'c'.repeat(40) },
+        files: [file],
+      });
+    }
+    return githubResponse([file]);
+  });
+  const changes = await acquireChanges(
+    'pull_request_target',
+    event,
+    'Jamula/Andreja',
+    'token',
+    budgetedFetch,
+  );
+  assert.deepEqual(changes.forcedFullReasons, []);
+  assert.equal(changes.classificationFailure, null);
+  assert.equal(changes.mergeCommitProof.verified, true);
+  assert.deepEqual(changes.mergeCommitProof.parentShas, [base, head]);
+  assert.equal(budgetedFetch.observation().used, 5);
+  assert.equal(budgetedFetch.observation().limit, 132);
+});
+
+test('sample label rejects a test-merge parent mismatch', async () => {
+  const base = 'a'.repeat(40);
+  const head = 'b'.repeat(40);
+  const merge = 'd'.repeat(40);
+  const event = {
+    number: 118,
+    action: 'labeled',
+    label: { name: 'ci:selective-shadow-sample' },
+    pull_request: {
+      number: 118,
+      changed_files: 1,
+      base: { sha: base },
+      head: { sha: head },
+      merge_commit_sha: merge,
+      labels: [{ name: 'ci:selective-shadow-sample' }],
+    },
+  };
+  const changes = await acquireChanges(
+    'pull_request_target',
+    event,
+    'Jamula/Andreja',
+    'token',
+    async (url) =>
+      url.includes('/git/commits/')
+        ? githubResponse({
+            sha: merge,
+            parents: [{ sha: 'c'.repeat(40) }, { sha: head }],
+          })
+        : githubResponse({
+            mergeable: true,
+            merge_commit_sha: merge,
+            base: { sha: base },
+            head: { sha: head },
+          }),
+  );
+  assert.equal(changes.classificationFailure, 'pull-request-merge-integrity-unavailable');
+  assert.equal(
+    changes.mergeCommitProof.reason,
+    'pull-request-test-merge-parent-mismatch',
+  );
+});
+
+test('sample label detects a base/head race after file acquisition', async () => {
+  const base = 'a'.repeat(40);
+  const head = 'b'.repeat(40);
+  const merge = 'd'.repeat(40);
+  const racedHead = 'e'.repeat(40);
+  const racedMerge = 'f'.repeat(40);
+  const file = { filename: 'src/App.cs', status: 'modified', changes: 1 };
+  let pullReads = 0;
+  const event = {
+    number: 118,
+    action: 'labeled',
+    label: { name: 'ci:selective-shadow-sample' },
+    pull_request: {
+      number: 118,
+      changed_files: 1,
+      base: { sha: base },
+      head: { sha: head },
+      merge_commit_sha: merge,
+      labels: [{ name: 'ci:selective-shadow-sample' }],
+    },
+  };
+  const changes = await acquireChanges(
+    'pull_request_target',
+    event,
+    'Jamula/Andreja',
+    'token',
+    async (url) => {
+      if (url.endsWith('/pulls/118')) {
+        pullReads += 1;
+        return githubResponse({
+          mergeable: true,
+          merge_commit_sha: pullReads === 1 ? merge : racedMerge,
+          base: { sha: base },
+          head: { sha: pullReads === 1 ? head : racedHead },
+        });
+      }
+      if (url.includes('/git/commits/')) {
+        return githubResponse({
+          sha: merge,
+          parents: [{ sha: base }, { sha: head }],
+        });
+      }
+      if (url.includes('/compare/')) {
+        return githubResponse({
+          merge_base_commit: { sha: 'c'.repeat(40) },
+          files: [file],
+        });
+      }
+      return githubResponse([file]);
+    },
+  );
+  assert.equal(changes.classificationFailure, 'pull-request-merge-integrity-unavailable');
+  assert.equal(changes.mergeCommitProof.reason, 'pull-request-test-merge-stale');
+  assert.equal(pullReads, 2);
+});
+
 test('PR metadata snapshot races fail closed against the event head', async () => {
   const fetchImpl = async (url) => ({
     ok: true,
@@ -389,6 +631,70 @@ test('trusted Markdown base is loaded from the merge-base contents API', async (
   assert.match(calls[0], /docs\/help\/example%20file\.md\?ref=c{40}$/);
 });
 
+test('trusted Markdown Contents requests are bounded to eight concurrent fetches', async () => {
+  let active = 0;
+  let maximumActive = 0;
+  let calls = 0;
+  const files = Array.from({ length: 25 }, (_, index) => ({
+    filename: `docs/concurrency-${index}.md`,
+    status: 'modified',
+  }));
+  const loaded = await attachTrustedMarkdownBase(
+    files,
+    'Jamula/Andreja',
+    'c'.repeat(40),
+    'token',
+    async () => {
+      calls += 1;
+      active += 1;
+      maximumActive = Math.max(maximumActive, active);
+      await new Promise((resolve) => setTimeout(resolve, 2));
+      active -= 1;
+      return githubResponse({
+        type: 'file',
+        encoding: 'base64',
+        content: Buffer.from('trusted base\n').toString('base64'),
+      });
+    },
+  );
+  assert.equal(calls, 25);
+  assert.equal(maximumActive, 8);
+  assert.ok(loaded.every((file) => file.baseContent === 'trusted base\n'));
+});
+
+test('Markdown fetch workers settle and stop scheduling after a rate-limit failure', async () => {
+  let active = 0;
+  let calls = 0;
+  const files = Array.from({ length: 25 }, (_, index) => ({
+    filename: `docs/rate-concurrency-${index}.md`,
+    status: 'modified',
+  }));
+  await assert.rejects(
+    attachTrustedMarkdownBase(
+      files,
+      'Jamula/Andreja',
+      'c'.repeat(40),
+      'token',
+      async () => {
+        calls += 1;
+        active += 1;
+        await new Promise((resolve) => setTimeout(resolve, 2));
+        active -= 1;
+        return {
+          ok: false,
+          status: 429,
+          statusText: 'Too Many Requests',
+          headers: { get: (name) => name === 'x-ratelimit-remaining' ? '0' : null },
+          json: async () => ({}),
+        };
+      },
+    ),
+    /metadata rate limit exhausted/,
+  );
+  assert.equal(active, 0);
+  assert.equal(calls, 8);
+});
+
 test('pagination failures reject rather than returning partial metadata', async () => {
   const fetchImpl = async () => ({
     ok: false,
@@ -450,6 +756,149 @@ test('rate-limit responses fail classification metadata acquisition closed', asy
   );
 });
 
+test('stale sample test-merge proof emits unavailable evidence before domains', async () => {
+  const directory = path.join(root, 'artifacts/selective-ci');
+  const eventPath = path.join(directory, `stale-merge-event-${process.pid}.json`);
+  const decisionPath = path.join(directory, `stale-merge-decision-${process.pid}.json`);
+  fs.mkdirSync(directory, { recursive: true });
+  fs.writeFileSync(eventPath, JSON.stringify({
+    number: 118,
+    action: 'labeled',
+    label: { name: 'ci:selective-shadow-sample' },
+    sender: { login: 'Jett-Reno' },
+    pull_request: {
+      number: 118,
+      changed_files: 1,
+      base: { sha: 'a'.repeat(40) },
+      head: { sha: 'b'.repeat(40) },
+      merge_commit_sha: 'd'.repeat(40),
+      labels: [{ name: 'ci:selective-shadow-sample' }],
+    },
+  }));
+  const originalEnvironment = { ...process.env };
+  const originalExitCode = process.exitCode;
+  process.env.GITHUB_EVENT_NAME = 'pull_request_target';
+  process.env.GITHUB_EVENT_PATH = eventPath;
+  process.env.GITHUB_REPOSITORY = 'Jamula/Andreja';
+  process.env.GITHUB_TOKEN = 'read-only-token';
+  process.env.SELECTIVE_CI_SAMPLE_OPERATOR = 'Jett-Reno';
+  process.env.CHANGE_POLICY_PATH = path.join(__dirname, 'change-policy.v1.json');
+  process.env.CHANGE_DECISION_PATH = decisionPath;
+  delete process.env.GITHUB_OUTPUT;
+  try {
+    await main(async (url) =>
+      url.includes('/git/commits/')
+        ? githubResponse({
+            sha: 'e'.repeat(40),
+            parents: [
+              { sha: 'a'.repeat(40) },
+              { sha: 'b'.repeat(40) },
+            ],
+          })
+        : githubResponse({
+            mergeable: true,
+            base: { sha: 'a'.repeat(40) },
+            head: { sha: 'b'.repeat(40) },
+            merge_commit_sha: 'e'.repeat(40),
+          }),
+    );
+    const decision = JSON.parse(fs.readFileSync(decisionPath, 'utf8'));
+    assert.equal(
+      decision.classificationFailure,
+      'pull-request-merge-integrity-unavailable',
+    );
+    assert.equal(decision.trustedClassifierAvailable, false);
+    assert.equal(decision.shadowSample.sampled, true);
+    assert.equal(decision.mergeCommitProof.verified, false);
+    assert.equal(decision.mergeCommitProof.reason, 'pull-request-test-merge-stale');
+    assert.equal(decision.apiRequestBudget.used, 2);
+    assert.equal(process.exitCode, 1);
+  } finally {
+    process.env = originalEnvironment;
+    process.exitCode = originalExitCode;
+    fs.rmSync(eventPath, { force: true });
+    fs.rmSync(decisionPath, { force: true });
+  }
+});
+
+test('sample metadata errors preserve failed proof and disable trusted domains', async () => {
+  const directory = path.join(root, 'artifacts/selective-ci');
+  const eventPath = path.join(directory, `merge-error-event-${process.pid}.json`);
+  const decisionPath = path.join(directory, `merge-error-decision-${process.pid}.json`);
+  fs.mkdirSync(directory, { recursive: true });
+  fs.writeFileSync(eventPath, JSON.stringify({
+    number: 118,
+    action: 'labeled',
+    label: { name: 'ci:selective-shadow-sample' },
+    sender: { login: 'Jett-Reno' },
+    pull_request: {
+      number: 118,
+      changed_files: 1,
+      base: { sha: 'a'.repeat(40) },
+      head: { sha: 'b'.repeat(40) },
+      merge_commit_sha: 'd'.repeat(40),
+      labels: [{ name: 'ci:selective-shadow-sample' }],
+    },
+  }));
+  const originalEnvironment = { ...process.env };
+  const originalExitCode = process.exitCode;
+  process.env.GITHUB_EVENT_NAME = 'pull_request_target';
+  process.env.GITHUB_EVENT_PATH = eventPath;
+  process.env.GITHUB_REPOSITORY = 'Jamula/Andreja';
+  process.env.GITHUB_TOKEN = 'read-only-token';
+  process.env.SELECTIVE_CI_SAMPLE_OPERATOR = 'Jett-Reno';
+  process.env.CHANGE_POLICY_PATH = path.join(__dirname, 'change-policy.v1.json');
+  process.env.CHANGE_DECISION_PATH = decisionPath;
+  delete process.env.GITHUB_OUTPUT;
+  try {
+    await main(async (url) => {
+      if (url.endsWith('/pulls/118')) {
+        return githubResponse({
+          mergeable: true,
+          base: { sha: 'a'.repeat(40) },
+          head: { sha: 'b'.repeat(40) },
+          merge_commit_sha: 'd'.repeat(40),
+        });
+      }
+      if (url.includes('/git/commits/')) {
+        return githubResponse({
+          sha: 'd'.repeat(40),
+          parents: [
+            { sha: 'a'.repeat(40) },
+            { sha: 'b'.repeat(40) },
+          ],
+        });
+      }
+      return {
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        headers: { get: () => null },
+        json: async () => ({}),
+      };
+    });
+    const decision = JSON.parse(fs.readFileSync(decisionPath, 'utf8'));
+    assert.equal(
+      decision.classificationFailure,
+      'pull-request-merge-integrity-unavailable',
+    );
+    assert.equal(decision.trustedClassifierAvailable, false);
+    assert.equal(decision.mergeCommitProof.verified, false);
+    assert.equal(
+      decision.mergeCommitProof.reason,
+      'pull-request-test-merge-metadata-unavailable',
+    );
+    assert.match(decision.mergeCommitProof.error, /500 Internal Server Error/);
+    assert.equal(decision.apiRequestBudget.used, 3);
+    assert.equal(process.exitCode, 1);
+  } finally {
+    process.env = originalEnvironment;
+    process.exitCode = originalExitCode;
+    fs.rmSync(eventPath, { force: true });
+    fs.rmSync(decisionPath, { force: true });
+  }
+});
+
 test('Markdown metadata rate limits persist unavailable classification evidence', async () => {
   const directory = path.join(root, 'artifacts/selective-ci');
   const eventPath = path.join(directory, `rate-limit-event-${process.pid}.json`);
@@ -487,9 +936,24 @@ test('Markdown metadata rate limits persist unavailable classification evidence'
   };
   const fetchImpl = async (url) => {
     const limited = url.includes('/contents/');
-    const body = url.includes('/compare/')
-      ? { merge_base_commit: { sha: 'c'.repeat(40) }, files: [file] }
-      : [file];
+    let body;
+    if (url.endsWith('/pulls/118')) {
+      body = {
+        mergeable: true,
+        base: { sha: 'a'.repeat(40) },
+        head: { sha: 'b'.repeat(40) },
+        merge_commit_sha: 'd'.repeat(40),
+      };
+    } else if (url.includes('/git/commits/')) {
+      body = {
+        sha: 'd'.repeat(40),
+        parents: [{ sha: 'a'.repeat(40) }, { sha: 'b'.repeat(40) }],
+      };
+    } else if (url.includes('/compare/')) {
+      body = { merge_base_commit: { sha: 'c'.repeat(40) }, files: [file] };
+    } else {
+      body = [file];
+    }
     return {
       ok: !limited,
       status: limited ? 429 : 200,
@@ -506,7 +970,14 @@ test('Markdown metadata rate limits persist unavailable classification evidence'
     await main(fetchImpl);
     const decision = JSON.parse(fs.readFileSync(decisionPath, 'utf8'));
     assert.equal(decision.classificationFailure, 'github-metadata-rate-limit-or-budget');
+    assert.equal(decision.trustedClassifierAvailable, false);
+    assert.equal(decision.mergeCommitProof.verified, false);
+    assert.equal(
+      decision.mergeCommitProof.reason,
+      'pull-request-test-merge-recheck-unavailable',
+    );
     assert.equal(decision.apiRequestBudget.rateLimitResponseObserved, true);
+    assert.equal(decision.apiRequestBudget.used, 6);
     assert.equal(decision.fullSuite, true);
     assert.ok(
       decision.fullReasons.some((reason) =>
@@ -518,6 +989,218 @@ test('Markdown metadata rate limits persist unavailable classification evidence'
     process.exitCode = originalExitCode;
     fs.rmSync(eventPath, { force: true });
     fs.rmSync(decisionPath, { force: true });
+  }
+});
+
+test('Markdown Contents HTTP errors disable sampled domains and merge proof', async () => {
+  const directory = path.join(root, 'artifacts/selective-ci');
+  const eventPath = path.join(directory, `contents-error-event-${process.pid}.json`);
+  const decisionPath = path.join(directory, `contents-error-decision-${process.pid}.json`);
+  fs.mkdirSync(directory, { recursive: true });
+  fs.writeFileSync(eventPath, JSON.stringify({
+    number: 118,
+    action: 'labeled',
+    label: { name: 'ci:selective-shadow-sample' },
+    sender: { login: 'Jett-Reno' },
+    pull_request: {
+      number: 118,
+      changed_files: 1,
+      base: { sha: 'a'.repeat(40) },
+      head: { sha: 'b'.repeat(40) },
+      merge_commit_sha: 'd'.repeat(40),
+      labels: [{ name: 'ci:selective-shadow-sample' }],
+    },
+  }));
+  const originalEnvironment = { ...process.env };
+  const originalExitCode = process.exitCode;
+  process.env.GITHUB_EVENT_NAME = 'pull_request_target';
+  process.env.GITHUB_EVENT_PATH = eventPath;
+  process.env.GITHUB_REPOSITORY = 'Jamula/Andreja';
+  process.env.GITHUB_TOKEN = 'read-only-token';
+  process.env.SELECTIVE_CI_SAMPLE_OPERATOR = 'Jett-Reno';
+  process.env.CHANGE_POLICY_PATH = path.join(__dirname, 'change-policy.v1.json');
+  process.env.CHANGE_DECISION_PATH = decisionPath;
+  delete process.env.GITHUB_OUTPUT;
+  const file = {
+    filename: 'docs/contents-error.md',
+    status: 'modified',
+    additions: 1,
+    deletions: 1,
+    changes: 2,
+    patch: '@@ -1 +1 @@\n-old\n+new',
+  };
+  try {
+    await main(async (url) => {
+      if (url.endsWith('/pulls/118')) {
+        return githubResponse({
+          mergeable: true,
+          base: { sha: 'a'.repeat(40) },
+          head: { sha: 'b'.repeat(40) },
+          merge_commit_sha: 'd'.repeat(40),
+        });
+      }
+      if (url.includes('/git/commits/')) {
+        return githubResponse({
+          sha: 'd'.repeat(40),
+          parents: [
+            { sha: 'a'.repeat(40) },
+            { sha: 'b'.repeat(40) },
+          ],
+        });
+      }
+      if (url.includes('/compare/')) {
+        return githubResponse({
+          merge_base_commit: { sha: 'c'.repeat(40) },
+          files: [file],
+        });
+      }
+      if (url.includes('/contents/')) {
+        return {
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+          headers: { get: () => null },
+          json: async () => ({}),
+        };
+      }
+      return githubResponse([file]);
+    });
+    const decision = JSON.parse(fs.readFileSync(decisionPath, 'utf8'));
+    assert.equal(decision.classificationFailure, 'github-metadata-unavailable');
+    assert.equal(decision.trustedClassifierAvailable, false);
+    assert.equal(decision.mergeCommitProof.verified, false);
+    assert.equal(
+      decision.mergeCommitProof.reason,
+      'pull-request-test-merge-recheck-unavailable',
+    );
+    assert.match(decision.mergeCommitProof.error, /500 Internal Server Error/);
+    assert.equal(decision.apiRequestBudget.used, 6);
+    assert.equal(process.exitCode, 1);
+  } finally {
+    process.env = originalEnvironment;
+    process.exitCode = originalExitCode;
+    fs.rmSync(eventPath, { force: true });
+    fs.rmSync(decisionPath, { force: true });
+  }
+});
+
+test('final test-merge recheck preserves HTTP and rate-limit errors', async () => {
+  const cases = [
+    {
+      status: 500,
+      statusText: 'Internal Server Error',
+      expectedFailure: 'pull-request-merge-integrity-unavailable',
+    },
+    {
+      status: 429,
+      statusText: 'Too Many Requests',
+      expectedFailure: 'github-metadata-rate-limit-or-budget',
+    },
+  ];
+  for (const fixture of cases) {
+    const directory = path.join(root, 'artifacts/selective-ci');
+    const eventPath = path.join(
+      directory,
+      `final-merge-${fixture.status}-event-${process.pid}.json`,
+    );
+    const decisionPath = path.join(
+      directory,
+      `final-merge-${fixture.status}-decision-${process.pid}.json`,
+    );
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(eventPath, JSON.stringify({
+      number: 118,
+      action: 'labeled',
+      label: { name: 'ci:selective-shadow-sample' },
+      sender: { login: 'Jett-Reno' },
+      pull_request: {
+        number: 118,
+        changed_files: 1,
+        base: { sha: 'a'.repeat(40) },
+        head: { sha: 'b'.repeat(40) },
+        merge_commit_sha: 'd'.repeat(40),
+        labels: [{ name: 'ci:selective-shadow-sample' }],
+      },
+    }));
+    const originalEnvironment = { ...process.env };
+    const originalExitCode = process.exitCode;
+    process.env.GITHUB_EVENT_NAME = 'pull_request_target';
+    process.env.GITHUB_EVENT_PATH = eventPath;
+    process.env.GITHUB_REPOSITORY = 'Jamula/Andreja';
+    process.env.GITHUB_TOKEN = 'read-only-token';
+    process.env.SELECTIVE_CI_SAMPLE_OPERATOR = 'Jett-Reno';
+    process.env.CHANGE_POLICY_PATH = path.join(__dirname, 'change-policy.v1.json');
+    process.env.CHANGE_DECISION_PATH = decisionPath;
+    delete process.env.GITHUB_OUTPUT;
+    let pullReads = 0;
+    const file = {
+      filename: 'docs/added.md',
+      status: 'added',
+      changes: 1,
+      patch: '@@ -0,0 +1 @@\n+prose',
+    };
+    try {
+      await main(async (url) => {
+        if (url.endsWith('/pulls/118')) {
+          pullReads += 1;
+          if (pullReads === 3) {
+            return {
+              ok: false,
+              status: fixture.status,
+              statusText: fixture.statusText,
+              headers: {
+                get: (name) =>
+                  name === 'x-ratelimit-remaining' && fixture.status === 429
+                    ? '0'
+                    : null,
+              },
+              json: async () => ({}),
+            };
+          }
+          return githubResponse({
+            mergeable: true,
+            base: { sha: 'a'.repeat(40) },
+            head: { sha: 'b'.repeat(40) },
+            merge_commit_sha: 'd'.repeat(40),
+          });
+        }
+        if (url.includes('/git/commits/')) {
+          return githubResponse({
+            sha: 'd'.repeat(40),
+            parents: [
+              { sha: 'a'.repeat(40) },
+              { sha: 'b'.repeat(40) },
+            ],
+          });
+        }
+        if (url.includes('/compare/')) {
+          return githubResponse({
+            merge_base_commit: { sha: 'c'.repeat(40) },
+            files: [file],
+          });
+        }
+        return githubResponse([file]);
+      });
+      const decision = JSON.parse(fs.readFileSync(decisionPath, 'utf8'));
+      assert.equal(decision.classificationFailure, fixture.expectedFailure);
+      assert.equal(decision.trustedClassifierAvailable, false);
+      assert.equal(decision.mergeCommitProof.verified, false);
+      assert.equal(
+        decision.mergeCommitProof.reason,
+        'pull-request-test-merge-recheck-unavailable',
+      );
+      assert.match(
+        decision.mergeCommitProof.error,
+        new RegExp(`${fixture.status} ${fixture.statusText}`),
+      );
+      assert.equal(decision.apiRequestBudget.used, 6);
+      assert.equal(process.exitCode, 1);
+    } finally {
+      process.env = originalEnvironment;
+      process.exitCode = originalExitCode;
+      fs.rmSync(eventPath, { force: true });
+      fs.rmSync(decisionPath, { force: true });
+    }
   }
 });
 
@@ -699,31 +1382,44 @@ test('only an authorized operator sample-label event enables PR shadow work', ()
     action: 'labeled',
     label: { name: 'ci:selective-shadow-sample' },
     pull_request: { labels: [{ name: 'ci:selective-shadow-sample' }] },
-    sender: { login: 'jett-reno' },
+    sender: { login: 'Jett-Reno' },
   };
   assert.deepEqual(shadowSample('pull_request_target', labeled, 'Jett-Reno'), {
     sampled: true,
     reason: 'authorized-sample-label-event',
-    observedActor: 'jett-reno',
+    observedActor: 'Jett-Reno',
     expectedOperator: 'Jett-Reno',
   });
+  assert.deepEqual(
+    shadowSample(
+      'pull_request_target',
+      { ...labeled, sender: { login: 'jett-reno' } },
+      'Jett-Reno',
+    ),
+    {
+      sampled: false,
+      reason: 'sample-operator-mismatch',
+      observedActor: 'jett-reno',
+      expectedOperator: 'Jett-Reno',
+    },
+  );
   assert.deepEqual(shadowSample('pull_request_target', labeled, 'other-operator'), {
     sampled: false,
     reason: 'sample-operator-mismatch',
-    observedActor: 'jett-reno',
+    observedActor: 'Jett-Reno',
     expectedOperator: 'other-operator',
   });
   assert.deepEqual(shadowSample('pull_request_target', labeled), {
     sampled: false,
     reason: 'sample-operator-unconfigured',
-    observedActor: 'jett-reno',
+    observedActor: 'Jett-Reno',
     expectedOperator: null,
   });
   assert.equal(
     shadowSample(
       'pull_request_target',
       { ...labeled, action: 'synchronize' },
-      'jett-reno',
+      'Jett-Reno',
     ).sampled,
     false,
   );
@@ -731,7 +1427,7 @@ test('only an authorized operator sample-label event enables PR shadow work', ()
     shadowSample('pull_request_target', {
       ...labeled,
       label: { name: 'untrusted-lookalike' },
-    }, 'jett-reno').sampled,
+    }, 'Jett-Reno').sampled,
     false,
   );
   assert.deepEqual(shadowSample('schedule', {}, 'jett-reno'), {
@@ -745,6 +1441,12 @@ test('only an authorized operator sample-label event enables PR shadow work', ()
       .trustedClassifierAvailable,
     true,
   );
+  const classifierSource = fs.readFileSync(
+    path.join(root, '.github/ci/change-classifier.js'),
+    'utf8',
+  );
+  assert.match(classifierSource, /observedActor === configuredOperator/);
+  assert.doesNotMatch(classifierSource, /observedActor\.toLowerCase\(\)/);
 });
 
 test('aggregate artifact marks every domain unavailable when classification fails', () => {
@@ -884,6 +1586,10 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.match(runbook, /N <= 2/);
   assert.match(runbook, /S=1/);
   assert.match(runbook, /pre-approved `F=3`/);
+  assert.match(runbook, /`F=3` as a\s+budget ceiling/);
+  assert.match(runbook, /target remains modeled `F=2`/);
+  assert.match(runbook, /4-minute total docs run[\s\S]+misses the modeled 3-minute \/ 81\.25% savings target/);
+  assert.match(runbook, /approval may authorize only\s+a new evidence window[\s\S]+cannot waive the target/);
   assert.match(runbook, /38 minutes \/ USD 0\.304/);
   assert.match(runbook, /51 minutes \/ USD 0\.408/);
   assert.match(runbook, /64 minutes \/ USD 0\.512/);
@@ -900,8 +1606,11 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.match(runbook, /locally classify each candidate with the exact merged\s+classifier/);
   assert.match(runbook, /workflow_dispatch.*Charge it against `S`/s);
   assert.match(runbook, /schemaVersion: 2/);
-  assert.match(runbook, /no-automation precondition/);
-  assert.match(runbook, /Before merge[\s\S]+none can\s+apply any PR label/);
+  assert.match(runbook, /no-unexpected-label precondition/);
+  assert.match(runbook, /issue-status\.yml[\s\S]+PR-to-PR closing-reference residual/);
+  assert.match(runbook, /Before the window and again before each sample[\s\S]+every open PR body/);
+  assert.match(runbook, /every open PR body, closing reference, and current label/);
+  assert.doesNotMatch(runbook, /confirm that none can\s+apply any PR label/);
   assert.match(runbook, /Record `merged_at` as\s+`<START>` before any workflow action/);
   assert.match(runbook, /every labeled event and labeled\s+workflow run at or after `<START>` counts against `N`/);
   assert.match(runbook, /Immediately before dispatch[\s\S]+zero\s+labeled workflow runs and zero label events/);
@@ -916,12 +1625,22 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.doesNotMatch(runbook, /--slurp[\s\S]{0,250}--jq/);
   assert.match(runbook, /exact\s+squash-merged controller SHA[\s\S]+only trusted controller revision/);
   assert.match(runbook, /GET \/repos\/Jamula\/Andreja\/issues\/events/);
-  assert.doesNotMatch(runbook, /cb7a434|95d7450|F=2|N <= 25|N >= 20|81 minutes|94 minutes|118 minutes|1,060|every 12 hours|remaining seven|five eligible docs|five full/);
+  assert.match(runbook, /mergeable` is non-null\/true[\s\S]+parent 0\/parent 1/);
+  assert.match(runbook, /mergeCommitProof\.verified=true/);
+  assert.match(runbook, /at most eight concurrent requests/);
+  assert.match(runbook, /exact canonical GitHub login casing/);
+  assert.match(runbook, /static workflow-expression and fixture assertions\s+only/);
+  assert.match(runbook, /32924008713[\s\S]+fab046f6608fc93b032ed7e618b57f2547c88bdc[\s\S]+pre-trusted-classifier-gate/);
+  assert.doesNotMatch(runbook, /ordinary\s+unlabelled bootstrap/);
+  assert.doesNotMatch(runbook, /cb7a434|95d7450|N <= 25|N >= 20|81 minutes|94 minutes|118 minutes|1,060|every 12 hours|remaining seven|five eligible docs|five full/);
   assert.match(testingMatrix, /maximum of smoke, docs, and full trusted runs/);
   assert.match(testingMatrix, /only `labeled` and `workflow_dispatch`/);
   assert.match(testingMatrix, /38 planned \/ 51 fail-closed ceiling \/ 64 with 25% headroom/);
   assert.match(testingMatrix, /N<=2/);
   assert.match(testingMatrix, /timeout-derived full-run bound is 200 job-minutes/);
+  assert.match(testingMatrix, /issue-status\.yml` can label PRs/);
+  assert.match(testingMatrix, /`F=3` is an uncertainty budget ceiling/);
+  assert.match(testingMatrix, /eight-concurrent Markdown Contents cap/);
   assert.doesNotMatch(testingMatrix, /opened|N<=25|81 planned|94 fail-closed|remaining seven|5 docs \+ 5 full/);
 });
 
