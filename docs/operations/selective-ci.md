@@ -8,10 +8,9 @@ remain unchanged. Auto-merge remains disabled.
 `.github/ci/change-policy.v1.json` is the versioned path policy and
 `.github/ci/change-classifier.js` is its repository-owned implementation. The
 `Selective CI (Shadow)` workflow has no path filter and listens only for
-read-only `pull_request_target` `opened`/`labeled` and `workflow_dispatch`.
-There is no current `schedule`, `merge_group`, `synchronize`, `reopened`, or
-automatic `push` trigger. The existing required workflows remain the `main`
-push safety net.
+read-only `pull_request_target` `labeled` and `workflow_dispatch`. There is no
+current `opened`, `push`, `schedule`, `merge_group`, `synchronize`, or `reopened`
+trigger. The existing required workflows remain the `main` push safety net.
 
 `pull_request_target` is deliberate: GitHub loads the controller YAML from the
 default branch rather than from the pull request. For a pull request, the
@@ -91,9 +90,10 @@ branch. The job receives no secrets and uses no cache. Thus default-branch code
 owns orchestration and classification, while validation of pull-request code is
 confined to unprivileged jobs. External actions and service images are immutable
 SHA/digest pins. The classification job uploads the decision, including each
-file's rule and reasons. The stable `Change classification` and `Aggregate gate`
-contexts are emitted by default-branch-owned orchestration; `Aggregate gate`
-always runs. Its JSON and summary enumerate `passed`, `not-applicable`,
+file's rule and reasons. `Change classification` and `Aggregate gate` are emitted only for labeled and
+manual feasibility events; ordinary PRs emit no shadow contexts. Stable
+every-PR contexts are future promotion scope. For a triggered event,
+`Aggregate gate` always runs. Its JSON and summary enumerate `passed`, `not-applicable`,
 `unavailable`, and `failed` dispositions and fail if classification or any
 selected domain did not pass.
 If classification fails, every domain is `unavailable` rather than
@@ -138,9 +138,9 @@ Preflight observation on 2026-08-26 was core `14987/15000` remaining and search
 `30/30`; this is a point-in-time capacity observation, not a guaranteed budget
 for later runs.
 
-Opened and labeled `pull_request_target` events emit `Change classification` and
-`Aggregate gate`; synchronizing or reopening does not run this shadow workflow
-during collection. Domain jobs run only for the single `labeled` event that applies
+Only labeled `pull_request_target` events emit `Change classification` and
+`Aggregate gate`; opening, synchronizing, or reopening does not run this shadow
+workflow during feasibility. Domain jobs run only for a `labeled` event that applies
 `ci:selective-shadow-sample` when its trusted sender equals
 `vars.SELECTIVE_CI_SAMPLE_OPERATOR`. Merely retaining the label across a
 synchronize event does not sample again. An ordinary unsampled PR records
@@ -170,7 +170,8 @@ The selective .NET domain deliberately invokes the advisory scan with
 `-SkipPostgreSql`; PostgreSQL dependencies are scanned by the separately selected
 PostgreSQL domain. A partial .NET-only decision therefore has less immediate
 PostgreSQL advisory coverage than the existing `NuGet vulnerability audit`
-context. Weekly/manual full-safety runs cover dependency drift, but this is a
+context. The dispatch smoke and existing always-heavy required workflows cover dependency
+drift, but this is a
 recorded residual risk, not parity. The current vulnerability context cannot be
 retired until live selective evidence demonstrates equivalent coverage and the
 security/risk owner explicitly approves that residual.
@@ -246,13 +247,13 @@ evidence and an independently reviewed ruleset change after parity is proven.
 Until then, both this shadow and any additive promotion increase runner cost.
 
 Bootstrap run 32927691826 measured 14 seconds for classification plus 5 seconds
-for aggregation. Independent per-job rounding gives provisional fixed overhead
-`F=2` Linux minutes / USD 0.016. This is bootstrap-only pricing, not trusted
-classifier pricing.
+for aggregation. That bootstrap is not trusted-classifier pricing. To cover
+measurement uncertainty, this feasibility window uses pre-approved `F=3`.
 
 This window is a **small feasibility gate**, not a savings collection:
 
-- `N <= 25` counts every `opened`/`labeled` pull-request-target run.
+- `N <= 2` counts all labeled events, including lightweight non-sample label
+  events. Both slots are reserved for the intended docs and full samples.
 - `S=1` is the single full-safety `workflow_dispatch` smoke.
 - At most one pre-identified, naturally useful prose-only PR and one full-suite
   PR may receive the sample label.
@@ -264,19 +265,19 @@ Docker, and Compose boundary. Its changed Markdown must contain no code spans,
 fences, or indented commands. If no qualifying prose candidate exists before a
 cap or tripwire, feasibility fails and promotion remains blocked.
 
-At provisional `F=2`, planned use is
-`F*N + 15 + (F+14)*S = 81 minutes / USD 0.648`. The fail-closed ceiling is
-`F*N + 28 + (F+14)*S = 94 minutes / USD 0.752`. Do not start without 25%
-headroom: **118 minutes / USD 0.944**. The 15 planned domain minutes are one
+At pre-approved `F=3`, planned use is
+`F*N + 15 + (F+14)*S = 38 minutes / USD 0.304`. The fail-closed ceiling is
+`F*N + 28 + (F+14)*S = 51 minutes / USD 0.408`. Do not start without 25%
+headroom: **64 minutes / USD 0.512**. The 15 planned domain minutes are one
 docs minute plus fourteen full-suite domain minutes; fixed overhead for both PR
 samples is already included in `N`. The 28-minute ceiling assumes both labeled
 PRs select all domains.
 
 For the smoke, docs sample, and full sample, compute
 `F_i = ceil(classification seconds/60) + ceil(aggregate seconds/60)` from the
-completed Jobs API records. Retain `F=2` provisionally and then set `F` to the
-**maximum of the smoke, docs, and full trusted runs**. Any observed `F_i >= 4`,
-a recomputed ceiling above the approved 118-minute headroom, exhausted API or
+completed Jobs API records. Record the **maximum of the smoke, docs, and full
+trusted runs**. Any observed `F_i >= 4`, a recomputed ceiling above the approved
+64-minute headroom, exhausted API or
 runner headroom, or an unavailable required Jobs/artifact observation
 terminally disables this workflow and requires a separately approved new
 window. There is no routine pause/re-enable path in this feasibility window.
@@ -284,14 +285,17 @@ window. There is no routine pause/re-enable path in this feasibility window.
 Workflow job timeouts sum to **200 job-minutes for one full run**: classifier
 10, docs 15, .NET 45, PostgreSQL 30, PowerShell 15, JavaScript 15, OCI 60, and
 aggregate 10. The whole-window timeout-derived bound is
-`20*N + 180*2 + 200*S = 1,060 job-minutes / USD 8.480`. This is a fail-safe
+`20*N + 180*2 + 200*S = 600 job-minutes / USD 4.800`. This is a fail-safe
 exposure bound, not approved spend. Terminally disable if completed Jobs API
 rounded time for the docs sample exceeds 6 minutes or the smoke or full sample
 exceeds 32 minutes (twice modeled duration).
 
-The rate baseline observed 60 PR openings over roughly two days. This makes the
-small cap intentionally short-lived, not a forecast. Jett Reno owns checks
-every 12 hours and before each label. Using the recorded UTC bounds, run:
+There is no cadence-based run monitoring. Immediately before each of the two
+serialized sample-label applications, query Actions and issue events from the
+recorded UTC window start. Require zero prior labeled runs before the docs label
+and exactly one before the full label. Any unexpected label event or actor
+terminally disables the workflow; no PR-label automation may run during the
+window.
 
 ```powershell
 $pages = gh api --paginate --slurp `
@@ -301,29 +305,27 @@ $runs = @($pages | ForEach-Object { $_.workflow_runs })
 $runs.Count
 ```
 
-At `N >= 20`, terminally disable proactively to preserve five-run headroom.
-`N=25` is the hard cap. The same terminal action applies after the one dispatch,
-the two valid labeled samples, any tripwire, exhausted headroom, or failure to
-find the prose candidate before a cap. Use
+`N=2` is the hard cap. The same terminal action applies after the one dispatch,
+the two labeled samples, any unexpected label event/actor, tripwire, exhausted
+headroom, or failure to find the prose candidate before the first intended
+label. Use
 `gh workflow disable selective-ci-shadow.yml`, record the UTC shutdown time and
 last run ID, and verify that no later run was created. Re-enable is not allowed
 under this window; a new approved budget/window must start with its own charged
 smoke.
 
 Live PR run 32924008713 remains duration/artifact evidence only. Run 32931733394
-remains prior unsampled topology evidence only. The first default-branch-owned
-`pull_request_target` controller revision at `cb7a434` has never executed, and
-the later trigger-reduced workflow revision at `95d7450` has likewise never
-executed. The **current PR workflow has never executed from the default branch**;
-only the exact merged revision can become trusted controller evidence.
+remains prior unsampled topology evidence only. After merge, record the exact
+squash-merged controller SHA. It is the only trusted controller revision, and
+the first post-merge dispatch smoke must record it as its validated revision.
 
 Every aggregate artifact records diagnostic timings, rounded-minute/cost lower
 bounds, exact serialized JSON bytes, API request-budget observations, revisions,
 and domain dispositions. Authoritative pricing uses Jobs API
 `started_at`/`completed_at`; verify actual artifact `expires_at`. A labeled
 bootstrap failure consumes `N` overhead but is not a valid sample. A failed or
-canceled trusted sample consumes the single applicable slot and cannot be
-replaced under this window.
+canceled trusted sample consumes the applicable labeled-event slot and cannot
+be replaced under this window.
 
 The gate's value is fail-closed parity and candidate discovery. Only positive
 docs and full evidence, the charged smoke, and separate FinOps approval may
@@ -334,16 +336,29 @@ continuation.
 ## Shadow rollout and promotion hold
 
 1. Merge only this shadow workflow while existing required checks continue.
-   Do not count any pre-merge run as controller-trust evidence. Only the exact
-   merged revision can execute as trusted default-branch orchestration.
+   Before merge, inventory repository Apps/workflows and confirm that none can
+   apply any PR label; keep that no-automation precondition in force through
+   terminal shutdown. Do not count any pre-merge run as controller-trust
+   evidence. Immediately after merge, read the PR's authoritative `merged_at`
+   timestamp and exact squash-merged controller SHA. Record `merged_at` as
+   `<START>` before any workflow action; every labeled event and labeled
+   workflow run at or after `<START>` counts against `N`, including any run
+   between merge and the dispatch smoke. The squash-merged SHA is the only
+   trusted controller revision. Any unexpected label event or actor after
+   `<START>` terminally disables the workflow before the smoke.
 2. Before provisioning any label, run one `workflow_dispatch` full-safety smoke
-   from the merged default-branch workflow. Charge it against `S`, and require
+   from the merged default-branch workflow. Immediately before dispatch, run
+   the paginated Actions-run and repository issue-event audits documented in
+   this section from `<START>` through the current UTC time. Require zero
+   labeled workflow runs and zero label events; any result terminally disables
+   the workflow, and the smoke must not run. Charge it against `S`, and require
    successful stable contexts, aggregate `schemaVersion: 2`, exact revision
-   attribution, request-budget evidence, both vulnerability JSON artifacts, and
-   acceptable Jobs API duration. This is the only dispatch (`S=1`). A failed
+   attribution to that squash-merged SHA, request-budget evidence, both
+   vulnerability JSON artifacts, and acceptable Jobs API duration. This is the
+   only dispatch (`S=1`). A failed
    smoke, `F_i >= 4`, more than 32 rounded minutes, or insufficient headroom
    terminally disables the workflow; do not provision the label.
-3. Establish the monitored no-automation precondition. Jett Reno is the named
+3. Reverify the monitored no-automation precondition. Jett Reno is the named
    sample operator; record his exact GitHub login before collection, then have an
    authorized repository administrator store that login in the repository-owned
    Actions variable:
@@ -359,14 +374,11 @@ continuation.
    an absent or mismatched variable as a fail-closed setup blocker. The value is
    an operator login, not a secret; repository settings, rather than pull-request
    code or event input, own it. Inventory
-   repository Apps/workflows and confirm none can apply
-   `ci:selective-shadow-sample`. At every 12-hour checkpoint and before each
-   sample, query paginated issue events and require every application actor for
-   that label to equal the recorded login. Any other actor terminally disables
-   this window. The supported audit source is
-   `GET /repos/Jamula/Andreja/issues/events`. Audit with paginated
-   `GET /repos/Jamula/Andreja/issues/events` from the recorded UTC start bound.
-   Use the recorded UTC start bound:
+   repository Apps/workflows and confirm none can apply any PR label during the
+   serialized sample window. Immediately before each sample, query paginated
+   issue events from the recorded UTC start and require no unexpected label
+   event or actor. Any unexpected event terminally disables this window. The
+   supported audit source is `GET /repos/Jamula/Andreja/issues/events`:
 
    ```powershell
    $pages = gh api --paginate --slurp `
@@ -375,7 +387,6 @@ continuation.
    @($pages | ForEach-Object { $_ }) |
      Where-Object {
        $_.event -eq 'labeled' -and
-       $_.label.name -eq 'ci:selective-shadow-sample' -and
        [datetime]$_.created_at -ge [datetime]'<START>'
      } |
      Select-Object created_at, @{Name='actor'; Expression={$_.actor.login}},
@@ -389,9 +400,12 @@ continuation.
 4. Before collection starts, identify at most one naturally useful prose-only
    candidate and one naturally useful full-suite candidate. The prose candidate
    must satisfy the boundaries above and contain no changed inline code,
-   fences, or indented commands. Do not create a synthetic/no-op PR. If no
-   qualifying prose candidate appears before `N >= 20`, `N=25`, or another
-   terminal condition, feasibility fails and promotion remains blocked.
+   fences, or indented commands. Do not create a synthetic/no-op PR. Before
+   applying either label, locally classify each candidate with the exact merged
+   classifier against current read-only PR metadata; record the squash-merged
+   classifier SHA, policy digest, candidate head/base, and decision. If either
+   decision is not the expected docs-only/full result, or no qualifying prose
+   candidate is available, feasibility fails and promotion remains blocked.
 5. On a quiescent head, first update each candidate branch so
    `pull_request.base.sha` contains the merged classifier. Because `synchronize`
    is not a collection trigger, that update does not run shadow CI. The named
@@ -407,14 +421,16 @@ continuation.
    maintainer records Jobs/artifact API evidence,
    then immediately removes the label with
    `gh pr edit <number> --remove-label ci:selective-shadow-sample`.
-   Branch updates, retained labels, and reopened PRs do not trigger collection.
+   Branch updates, retained labels, opened PRs, and reopened PRs do not trigger
+   collection. A non-sample label event may emit lightweight
+   `shadow-not-sampled` contexts but consumes one of the two `N` slots; because
+   no replacement is allowed, treat it as terminal.
 6. Confirm unsampled PRs emit `shadow-not-sampled` and skipped domain jobs,
    sampled docs/full runs have correct dispositions, no fork gets write
    permission or secrets, and classification failure reports every domain
    `unavailable`. Treat a labeled bootstrap failure as invalid evidence that
    still consumes `N`; it does not create a replacement slot. After smoke, docs,
-   and full finish, set `F` to their maximum independently rounded fixed
-   overhead and publish the repriced result.
+   and full finish, publish their maximum independently rounded fixed overhead.
 7. Do not enable merge queue for this collection. Complete the named
    **Merge Queue Activation and Merge-Group Evidence** prerequisite as a separate
    future ruleset decision with its own approved budget before collecting any

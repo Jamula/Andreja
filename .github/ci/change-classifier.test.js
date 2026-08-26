@@ -656,8 +656,8 @@ test('workflow isolates authorized samples from cancelable topology runs', () =>
     /cancel-in-progress: >-[\s\S]+github\.event_name == 'pull_request_target' &&[\s\S]+!\([\s\S]+vars\.SELECTIVE_CI_SAMPLE_OPERATOR != ''[\s\S]+github\.event\.sender\.login == vars\.SELECTIVE_CI_SAMPLE_OPERATOR[\s\S]+\)/,
   );
   assert.doesNotMatch(workflow, /^\s+push:\s*$/m);
-  assert.match(workflow, /types: \[opened, labeled\]/);
-  assert.doesNotMatch(workflow, /types: \[[^\]]*(synchronize|reopened)/);
+  assert.match(workflow, /types: \[labeled\]/);
+  assert.doesNotMatch(workflow, /types: \[[^\]]*(opened|synchronize|reopened)/);
   assert.equal(
     workflow.match(/if: needs\.classify\.outputs\.shadow_sampled == 'true' && needs\.classify\.outputs\.trusted_classifier == 'true' && needs\.classify\.outputs\.[a-z]+ == 'true'/g)?.length,
     ALL_DOMAINS.length,
@@ -880,23 +880,31 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.match(runbook, /one pre-identified, naturally useful prose-only PR/);
   assert.match(runbook, /one full-suite\s+PR/);
   assert.match(runbook, /No synthetic or no-op change/);
-  assert.match(runbook, /maximum of the smoke, docs, and full trusted runs/);
-  assert.match(runbook, /N <= 25/);
+  assert.match(runbook, /maximum of the smoke, docs, and full\s+trusted runs/);
+  assert.match(runbook, /N <= 2/);
   assert.match(runbook, /S=1/);
-  assert.match(runbook, /81 minutes \/ USD 0\.648/);
-  assert.match(runbook, /94 minutes \/ USD 0\.752/);
-  assert.match(runbook, /118 minutes \/ USD 0\.944/);
+  assert.match(runbook, /pre-approved `F=3`/);
+  assert.match(runbook, /38 minutes \/ USD 0\.304/);
+  assert.match(runbook, /51 minutes \/ USD 0\.408/);
+  assert.match(runbook, /64 minutes \/ USD 0\.512/);
   assert.match(runbook, /200 job-minutes for one full run/);
-  assert.match(runbook, /1,060 job-minutes \/ USD 8\.480/);
+  assert.match(runbook, /600 job-minutes \/ USD 4\.800/);
   assert.match(runbook, /exceeds 6 minutes.*exceeds 32 minutes/s);
   assert.match(runbook, /[Aa]ny observed `F_i >= 4`/);
-  assert.match(runbook, /N >= 20/);
-  assert.match(runbook, /N=25` is the hard cap/);
+  assert.match(runbook, /N=2` is the hard cap/);
+  assert.match(runbook, /all labeled events/);
   assert.match(runbook, /terminally disable/);
   assert.match(runbook, /no routine pause\/re-enable path/);
+  assert.match(runbook, /ordinary PRs emit no shadow contexts/);
+  assert.match(runbook, /[Ss]table\s+every-PR contexts are future promotion scope/);
+  assert.match(runbook, /locally classify each candidate with the exact merged\s+classifier/);
   assert.match(runbook, /workflow_dispatch.*Charge it against `S`/s);
   assert.match(runbook, /schemaVersion: 2/);
   assert.match(runbook, /no-automation precondition/);
+  assert.match(runbook, /Before merge[\s\S]+none can\s+apply any PR label/);
+  assert.match(runbook, /Record `merged_at` as\s+`<START>` before any workflow action/);
+  assert.match(runbook, /every labeled event and labeled\s+workflow run at or after `<START>` counts against `N`/);
+  assert.match(runbook, /Immediately before dispatch[\s\S]+zero\s+labeled workflow runs and zero label events/);
   assert.match(runbook, /waits for that[\s\S]+does not remove, reapply, or apply it elsewhere/);
   assert.match(runbook, /gh workflow disable selective-ci-shadow\.yml/);
   assert.match(runbook, /positive\s+docs and full evidence[\s\S]+separate FinOps approval/);
@@ -906,18 +914,15 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.match(runbook, /sample-pr-<number>.*cancellation disabled/s);
   assert.match(runbook, /\$pages = gh api --paginate --slurp[\s\S]+ConvertFrom-Json/);
   assert.doesNotMatch(runbook, /--slurp[\s\S]{0,250}--jq/);
-  assert.match(
-    runbook,
-    /first default-branch-owned\s+`pull_request_target` controller revision at `cb7a434` has never executed,[\s\S]+`95d7450` has likewise never\s+executed/,
-  );
+  assert.match(runbook, /exact\s+squash-merged controller SHA[\s\S]+only trusted controller revision/);
   assert.match(runbook, /GET \/repos\/Jamula\/Andreja\/issues\/events/);
-  assert.doesNotMatch(runbook, /323 minutes|388 minutes|485 rounded minutes|4,400|remaining seven|five eligible docs|five full/);
+  assert.doesNotMatch(runbook, /cb7a434|95d7450|F=2|N <= 25|N >= 20|81 minutes|94 minutes|118 minutes|1,060|every 12 hours|remaining seven|five eligible docs|five full/);
   assert.match(testingMatrix, /maximum of smoke, docs, and full trusted runs/);
-  assert.match(testingMatrix, /no `schedule` or `merge_group` trigger/);
-  assert.match(testingMatrix, /81 planned \/ 94 fail-closed ceiling \/ 118 with 25% headroom/);
-  assert.match(testingMatrix, /N<=25/);
+  assert.match(testingMatrix, /only `labeled` and `workflow_dispatch`/);
+  assert.match(testingMatrix, /38 planned \/ 51 fail-closed ceiling \/ 64 with 25% headroom/);
+  assert.match(testingMatrix, /N<=2/);
   assert.match(testingMatrix, /timeout-derived full-run bound is 200 job-minutes/);
-  assert.doesNotMatch(testingMatrix, /323 planned|388 fail-closed|remaining seven|5 docs \+ 5 full/);
+  assert.doesNotMatch(testingMatrix, /opened|N<=25|81 planned|94 fail-closed|remaining seven|5 docs \+ 5 full/);
 });
 
 test('historical replay economics use the documented per-domain model', () => {

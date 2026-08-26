@@ -3,7 +3,7 @@ name: Selective CI (Shadow)
 on:
   pull_request_target:
     branches: [main]
-    types: [opened, labeled]
+    types: [labeled]
   workflow_dispatch:
 
 permissions: {}
