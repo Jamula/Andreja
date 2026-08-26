@@ -4,7 +4,7 @@
 - **Date:** 2026-08-23
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
-- **Plan SHA-256:** `f6827de9267fd786e1bae1f47bca9db95c7e019f9a91b042be01c2b620c897f9`
+- **Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
 
 ## Decision
 
@@ -104,7 +104,7 @@ not match the merged `docs/plan.md`.
 
 - **Tracking issue:** [#116](https://github.com/Jamula/Andreja/issues/116)
 - **Pull request:** [#117](https://github.com/Jamula/Andreja/pull/117)
-- **Plan SHA-256:** `f6827de9267fd786e1bae1f47bca9db95c7e019f9a91b042be01c2b620c897f9`
+- **Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
 - **Approver:** Cyrus Jamula
 - **Approver status:** Cyrus directed creation and review of the canonical
   artifacts on 2026-08-25 and kept merge through the protected pull request as

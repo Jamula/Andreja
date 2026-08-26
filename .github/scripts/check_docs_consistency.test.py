@@ -26,7 +26,8 @@ def plan_table(artifacts: dict[str, str]) -> str:
             challenge_text = ", ".join(challengers[:-1])
             rows.append(
                 f"| [`{path}`]({path.removeprefix('docs/')}) | "
-                f"Issue [#116](issue), PR [#117](pr); `{digest}` | "
+                f"{DOCS_CHECK.CANONICAL_ISSUE_SOURCE}, "
+                f"{DOCS_CHECK.CANONICAL_PR_SOURCE}; `{digest}` | "
                 "**Canonical descriptive baseline; not ratified.** "
                 f"{challenge_text}, {challengers[-1]}. "
                 "Cyrus residual-risk acceptance remains pending. "
@@ -47,9 +48,11 @@ def canonical_documents() -> dict[str, str]:
                 "# Baseline",
                 "",
                 "- **Status:** Canonical descriptive baseline; not ratified",
+                "- **Owner:** Trust — Tuvok, Deanna Troi, Rai",
                 f"- **Required challenge:** {', '.join(challengers)}",
                 "- **Residual-risk acceptance:** Cyrus; pending",
-                f"- {DOCS_CHECK.CANONICAL_DOCUMENT_OPEN_ASSESSMENTS[path]}",
+                "- **Classification/impact assessment:** "
+                f"{DOCS_CHECK.CANONICAL_DOCUMENT_OPEN_ASSESSMENTS[path]}",
                 "",
                 "Baseline body.",
             )
@@ -76,10 +79,21 @@ class StatusArtifactHashTests(unittest.TestCase):
         DOCS_CHECK.validate_canonical_baseline_rows(plan)
         DOCS_CHECK.validate_canonical_baseline_documents(canonical_documents())
 
-    def test_canonical_baseline_requires_issue_and_pr(self) -> None:
-        plan = plan_table(self.actual).replace("PR [#117](pr)", "PR pending", 1)
-        with self.assertRaisesRegex(ValueError, "authority drifted"):
-            DOCS_CHECK.validate_canonical_baseline_rows(plan)
+    def test_canonical_baseline_requires_exact_issue_and_pr_destinations(self) -> None:
+        for expected, replacement in (
+            (
+                "https://github.com/Jamula/Andreja/issues/116",
+                "https://github.com/Other/Repository/issues/116",
+            ),
+            (
+                "https://github.com/Jamula/Andreja/pull/117",
+                "https://github.com/Jamula/Andreja/pull/999",
+            ),
+        ):
+            with self.subTest(replacement=replacement):
+                plan = plan_table(self.actual).replace(expected, replacement, 1)
+                with self.assertRaisesRegex(ValueError, "authority drifted"):
+                    DOCS_CHECK.validate_canonical_baseline_rows(plan)
 
     def test_canonical_baseline_requires_not_ratified_authority(self) -> None:
         plan = plan_table(self.actual).replace(
@@ -129,7 +143,7 @@ class StatusArtifactHashTests(unittest.TestCase):
     def test_canonical_baseline_header_requires_open_assessment(self) -> None:
         for path, required in DOCS_CHECK.CANONICAL_DOCUMENT_OPEN_ASSESSMENTS.items():
             for replacement in (
-                "**Classification/impact assessment:** Completed",
+                "Completed",
                 "",
             ):
                 with self.subTest(path=path, replacement=replacement or "omitted"):
@@ -142,21 +156,21 @@ class StatusArtifactHashTests(unittest.TestCase):
                         )
                     else:
                         documents[path] = documents[path].replace(
-                            f"- {required}\n",
+                            "- **Classification/impact assessment:** "
+                            f"{required}\n",
                             "",
                             1,
                         )
                     with self.assertRaisesRegex(ValueError, "header drifted"):
                         DOCS_CHECK.validate_canonical_baseline_documents(documents)
 
-    def test_canonical_baseline_header_requires_status_challenge_and_acceptance(
+    def test_canonical_baseline_header_requires_status_and_acceptance(
         self,
     ) -> None:
-        for path, challengers in DOCS_CHECK.CANONICAL_BASELINE_REQUIREMENTS.items():
+        for path in DOCS_CHECK.CANONICAL_BASELINE_REQUIREMENTS:
             required_parts = (
                 "**Status:** Canonical descriptive baseline; not ratified",
                 "**Required challenge:**",
-                *challengers,
                 "**Residual-risk acceptance:** Cyrus; pending",
             )
             for requirement in required_parts:
@@ -168,6 +182,27 @@ class StatusArtifactHashTests(unittest.TestCase):
                         1,
                     )
                     with self.assertRaises(ValueError):
+                        DOCS_CHECK.validate_canonical_baseline_documents(documents)
+
+    def test_challengers_must_be_in_required_challenge_not_owner(self) -> None:
+        for path, challengers in DOCS_CHECK.CANONICAL_BASELINE_REQUIREMENTS.items():
+            challenge_line = f"- **Required challenge:** {', '.join(challengers)}"
+            for challenger in ("Deanna Troi", "Tuvok", "Rai"):
+                with self.subTest(path=path, challenger=challenger):
+                    documents = canonical_documents()
+                    documents[path] = documents[path].replace(
+                        challenge_line,
+                        challenge_line.replace(challenger, "omitted", 1),
+                        1,
+                    )
+                    self.assertIn(
+                        "- **Owner:** Trust — Tuvok, Deanna Troi, Rai",
+                        documents[path],
+                    )
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "Missing required challengers",
+                    ):
                         DOCS_CHECK.validate_canonical_baseline_documents(documents)
 
     def test_canonical_baseline_metadata_block_boundaries(self) -> None:
@@ -186,9 +221,13 @@ class StatusArtifactHashTests(unittest.TestCase):
         for placement in ("missing", "outside"):
             with self.subTest(placement=placement):
                 documents = canonical_documents()
-                documents[path] = documents[path].replace(f"- {required}\n", "", 1)
+                field_line = (
+                    "- **Classification/impact assessment:** "
+                    f"{required}"
+                )
+                documents[path] = documents[path].replace(f"{field_line}\n", "", 1)
                 if placement == "outside":
-                    documents[path] += f"\n- {required}\n"
+                    documents[path] += f"\n{field_line}\n"
                 with self.assertRaisesRegex(ValueError, "header drifted"):
                     DOCS_CHECK.validate_canonical_baseline_documents(documents)
 

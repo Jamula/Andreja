@@ -49,14 +49,18 @@ CANONICAL_OPEN_ASSESSMENT = (
 )
 CANONICAL_DOCUMENT_OPEN_ASSESSMENTS = {
     "docs/privacy.md": (
-        "**Classification/impact assessment:** Open; this inventory does not satisfy "
+        "Open; this inventory does not satisfy "
         "that gate without an explicitly approved assessment and cited evidence"
     ),
     "docs/threat-model.md": (
-        "**Classification/impact assessment:** Open; this model does not satisfy "
+        "Open; this model does not satisfy "
         "that gate without an explicitly approved assessment and cited evidence"
     ),
 }
+CANONICAL_ISSUE_SOURCE = (
+    "Issue [#116](https://github.com/Jamula/Andreja/issues/116)"
+)
+CANONICAL_PR_SOURCE = "PR [#117](https://github.com/Jamula/Andreja/pull/117)"
 
 
 def fail(message: str) -> None:
@@ -175,7 +179,7 @@ def validate_canonical_baseline_rows(plan_text: str) -> None:
         if path not in rows:
             raise ValueError(f"Missing canonical baseline status row: {path}")
         _, source, authority = rows[path]
-        required_source_parts = ("Issue [#116]", "PR [#117]")
+        required_source_parts = (CANONICAL_ISSUE_SOURCE, CANONICAL_PR_SOURCE)
         missing_source = [part for part in required_source_parts if part not in source]
         required_authority_parts = (
             "Canonical descriptive baseline; not ratified",
@@ -194,23 +198,33 @@ def validate_canonical_baseline_rows(plan_text: str) -> None:
             )
 
 
-def extract_initial_metadata_block(document_text: str, path: str) -> str:
+def parse_initial_metadata_block(document_text: str, path: str) -> dict[str, str]:
     lines = document_text.splitlines()
     if len(lines) < 4 or not lines[0].startswith("# ") or lines[1].strip():
         raise ValueError(f"Canonical baseline metadata block malformed for {path}.")
 
-    block: list[str] = []
+    metadata: dict[str, str] = {}
+    current_field: str | None = None
     for line in lines[2:]:
         if not line.strip():
-            if not block:
+            if not metadata:
                 raise ValueError(
                     f"Canonical baseline metadata block absent for {path}."
                 )
-            return " ".join(" ".join(block).split())
-        if re.match(r"^- \*\*[^*]+:\*\*\s+\S", line):
-            block.append(line)
-        elif block and line.startswith(("  ", "\t")) and line.strip():
-            block.append(line)
+            return metadata
+        field_match = re.match(r"^- \*\*([^*]+):\*\*\s+(\S.*)$", line)
+        if field_match:
+            current_field, value = field_match.groups()
+            if current_field in metadata:
+                raise ValueError(
+                    f"Duplicate canonical baseline metadata field "
+                    f"{current_field!r} for {path}."
+                )
+            metadata[current_field] = value.strip()
+        elif current_field and line.startswith(("  ", "\t")) and line.strip():
+            metadata[current_field] = " ".join(
+                f"{metadata[current_field]} {line.strip()}".split()
+            )
         else:
             raise ValueError(
                 f"Canonical baseline metadata block malformed for {path}."
@@ -223,21 +237,28 @@ def extract_initial_metadata_block(document_text: str, path: str) -> str:
 
 def validate_canonical_baseline_documents(document_texts: dict[str, str]) -> None:
     for path, challengers in CANONICAL_BASELINE_REQUIREMENTS.items():
-        header = extract_initial_metadata_block(document_texts[path], path)
-        required_header_parts = (
-            "**Status:** Canonical descriptive baseline; not ratified",
-            "**Required challenge:**",
-            *challengers,
-            "**Residual-risk acceptance:** Cyrus; pending",
-            CANONICAL_DOCUMENT_OPEN_ASSESSMENTS[path],
-        )
-        missing_header = [
-            part for part in required_header_parts if part not in header
+        metadata = parse_initial_metadata_block(document_texts[path], path)
+        required_fields = {
+            "Status": "Canonical descriptive baseline; not ratified",
+            "Residual-risk acceptance": "Cyrus; pending",
+            "Classification/impact assessment": (
+                CANONICAL_DOCUMENT_OPEN_ASSESSMENTS[path]
+            ),
+        }
+        drifted_fields = [
+            field
+            for field, expected in required_fields.items()
+            if metadata.get(field) != expected
         ]
-        if missing_header:
+        challenge = metadata.get("Required challenge", "")
+        missing_challengers = [
+            challenger for challenger in challengers if challenger not in challenge
+        ]
+        if drifted_fields or missing_challengers:
             raise ValueError(
                 f"Canonical baseline header drifted for {path}.\n"
-                f"  Missing header text: {missing_header}"
+                f"  Missing or drifted fields: {drifted_fields}\n"
+                f"  Missing required challengers: {missing_challengers}"
             )
 
 
