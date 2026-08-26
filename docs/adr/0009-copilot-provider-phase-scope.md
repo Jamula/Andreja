@@ -3,6 +3,8 @@
 - **Status:** Proposed
 - **Date:** 2026-08-26
 - **Issue:** [#74](https://github.com/Jamula/Andreja/issues/74)
+- **Requested outcome:** Cyrus's
+  [durable direction comment](https://github.com/Jamula/Andreja/issues/74#issuecomment-5427814163)
 - **Governing:** [Platform plan](../plan.md#assistant-and-ai-architecture),
   [ADR 0000](0000-plan-ratification.md), and
   [ADR 0004](0004-phase-1a-assistant-skill-channel-contracts.md)
@@ -16,6 +18,13 @@ This ADR is the explicit **recommended resolution** of #74, not an accepted
 decision and not evidence of Cyrus approval. Merge records reviewed proposal
 text only. Activation remains prohibited until Cyrus accepts this ADR and every
 applicable entry gate below has current evidence.
+
+The durable direction from Cyrus requests the outcome “integrate Copilot SDK
+into the toolchain so I can use Copilot to interact with the tools.” The linked
+comment expressly does not decide phase placement or authorize a real
+provider/account/model call, spend, or waiver of any gate. This ADR evaluates
+how to satisfy that requested outcome; it must not be cited as Cyrus's approval
+of the recommendation or activation.
 
 The recommendation is:
 
@@ -41,14 +50,18 @@ The recommendation is:
    and published artifact contain no Copilot dependency. “Credential-free” is a
    tested property, not an instruction to developers.
 3. **A limited real Copilot provider is Phase 1B at the earliest.** It begins
-   only after all entry gates below pass. Start with synthetic content, one
-   consenting authorized adult/test identity, an explicit typed-tool allowlist,
-   hard budget, short retention/cleanup window, and a reversible canary. It is
-   not the default provider and does not replace BYOK or the deterministic fake.
+   only after the pre-canary requirements below pass. Start with synthetic
+   content, one dedicated non-user test identity, an explicit typed-tool
+   allowlist, hard budget, short retention/cleanup window, and a reversible
+   canary. It is not the default provider and does not replace BYOK or the
+   deterministic fake. A consenting authorized adult identity is permitted only
+   in the later user canary after every gate's evidence is complete.
 4. **Defer beyond Phase 1B when a gate is unanswered or fails.** Phase 1B may
-   continue with BYOK/fake where its separately approved outcomes permit.
-   Schedule pressure, SDK availability, a successful compile, documentation, or
-   an existing Copilot subscription is not a waiver.
+   continue with BYOK/fake where its separately approved outcomes permit. It
+   must run the same assistant/skill scenario on deterministic fake and BYOK,
+   demonstrate provider switching, and record Copilot deferred. Schedule
+   pressure, SDK availability, a successful compile, documentation, or an
+   existing Copilot subscription is not a waiver.
 
 ## Why this scope
 
@@ -120,19 +133,23 @@ operable.
 
 ## Provider entry gates
 
-Every row is blocking before user/content activation. A synthetic runtime canary
-is itself real-provider activation, but it generates rather than precedes some
-live evidence. Before that canary, Cyrus must accept this ADR and explicitly
-authorize only the synthetic canary after the SDK/support, entitlement, synthetic
-data-flow/recipient, isolation design, runtime-channel, auth-custody,
-retention/residency/training/abuse terms, hard-budget, offline/fallback,
-deterministic-test, legal/privacy/security, and rollback preconditions below are
-documented. No user content or user/cohort identity is permitted until the
-synthetic canary passes and every row is complete. Evidence must identify the SDK
-and CLI/runtime versions, account/plan, model, authentication path, topology,
+Every row's complete evidence is blocking before any user content or
+user/cohort identity activation. A synthetic runtime canary is itself
+real-provider activation and may generate the live portion of that evidence; it
+does not need to precede itself. Before the synthetic canary, every row must
+have its pre-canary design, known documentary evidence, planned live proof,
+owner, expiry/re-review trigger, and stop criteria documented. Cyrus must accept
+this ADR and explicitly authorize only the synthetic canary after the
+SDK/support, entitlement, synthetic data-flow/recipient, isolation design,
+runtime-channel, auth-custody, retention/residency/training/abuse terms,
+hard-budget, offline/fallback, deterministic-test, legal/privacy/security, and
+rollback preconditions are documented. No user content or user/cohort identity
+is permitted until the synthetic canary passes and every row's live and
+documentary evidence is complete. Evidence must identify the SDK and
+CLI/runtime versions, account/plan, model, authentication path, topology,
 region, and review date.
 
-| Gate | Required evidence before any real provider activation | Stop / rollback trigger |
+| Gate | Complete evidence required before user/content activation; document the pre-canary packet before the synthetic canary | Stop / rollback trigger |
 |---|---|---|
 | SDK/version/support | Pin compatible GA SDK and CLI/runtime versions; compile the adapter; archive generated-schema/conformance results; record support channel, deprecation/update policy, dependency license and vulnerabilities; prohibit experimental APIs from release-critical accounting unless separately accepted. | Unsupported/incompatible version, schema drift, unresolved critical dependency issue, or no support path |
 | Entitlement and billing | Written mapping for per-user subscription, organization server-to-server, or BYOK; confirm who is licensed, attributed, charged, rate-limited, and permitted to serve the scenario; no pooled or silently transferred user entitlement. | Unknown entitlement, attribution, invoice owner, quota behavior, or redistribution right |
@@ -141,10 +158,10 @@ region, and review date.
 | Retention, residency, training, and abuse monitoring | Account-, model-, feature-, host-, and region-specific current terms; GitHub/runtime local persistence map; numeric Andreja TTL; delete/purge verification; training/opt-out and abuse/safety-review disclosure. Do not generalize one model's terms. | Unknown or changed terms, unavailable required region/deletion, inaccurate disclosure, or retention beyond approved TTL |
 | Authentication and credential custody | Separate GitHub assistant grant from app identity, GitHub content, and feedback/publishing; least scopes; encrypted token/refresh-token custody; no CLI-login fallback; rotation, revocation, expiry, reauthentication, incident, and break-glass tests. | Token/session crossover, plaintext or logged secret, fallback to another identity, failed revocation, or unclear custodian |
 | Runtime control channel | Keep SDK-to-CLI traffic on loopback or an isolated same-pod/sidecar boundary. Any cross-process/container-host path requires mutually authenticated encryption, strict workload/network policy, connection-secret rotation, and a negative test proving unauthorized workloads cannot reach, observe, resume, delete, or invoke the runtime. Never expose the headless RPC listener publicly. | Unauthenticated or cleartext reachable RPC, failed workload identity, unexpected listener, or unauthorized session/tool operation |
-| Budgets and cost | Approved numeric per-session/user/tenant/day/spike limits; pre-call reservation and hard stop; quota/premium-request behavior; content-free usage ledger; anomaly alert; funded-versus-user-funded disclosure. Reconcile Andreja/organization-funded use to its provider statement/invoice. For user-funded subscriptions, reconcile Andreja session metrics to account quota/attribution and explicitly record that Andreja has no currency invoice; do not collect a personal billing statement without a separate purpose/privacy approval. | Unmeasured usage, unenforceable stop, experimental-only accounting, unexpected charge, missing funding-mode evidence, or envelope exhaustion |
+| Budgets and cost | For every activated provider, including BYOK, approve numeric per-session/user/tenant/day/spike limits; pre-call reservation and hard stop; quota/premium-request behavior; content-free usage ledger; anomaly alert; and funding-mode disclosure. Reconcile Andreja/organization-funded use to its provider statement/invoice. For user-funded subscriptions or keys, reconcile Andreja session metrics to account quota/attribution and explicitly record whether Andreja has a currency invoice; do not collect a personal billing statement without a separate purpose/privacy approval. Record every non-activated funding mode as deferred, never “not applicable.” | Unmeasured usage, unenforceable stop, experimental-only accounting, unexpected charge, missing funding-mode evidence, or envelope exhaustion |
 | Availability, fallback, and offline | Timeouts, cancellation, backpressure, rate-limit/outage behavior, health/readiness, bounded retries, cleanup, capacity, support/runbook, and SLO evidence. Fake and BYOK remain independently selectable; offline startup makes no Copilot call. | Startup dependency, runaway retry, leaked partial work, unavailable kill, or fallback mutates semantics/data unsafely |
 | Consent and disclosure | Before enablement, identify recipient(s), account/billing owner, model, purpose, data classes, tools, persistence/retention, training/abuse handling, cost, limitations, and disconnect/delete effects. Require affirmative opt-in and provider-specific re-consent on material change. | Missing/stale/inaccurate disclosure, coerced/default consent, or affected person lacks authority |
-| Audit and provenance | Content-minimized records bind tenant, principal, purpose, provider/model/version, auth mode, policy/tool set, request/result IDs, usage, consent/disclosure version, timestamps, deletion, and rollback without storing prompts, responses, tokens, or tool arguments in the usage ledger. | Cannot attribute a call/action/cost, audit leaks content, or provenance can be forged/crossed |
+| Audit and provenance | Content-minimized records bind tenant, principal, purpose, provider/model/version, auth mode, policy/tool set, request/result IDs, content-free usage-unit/token counts, consent/disclosure version, timestamps, deletion, and rollback without storing prompt/response content, authentication/refresh tokens, or tool arguments in the usage ledger. | Cannot attribute a call/action/cost, audit leaks content, or provenance can be forged/crossed |
 | Tests and canaries | Before a synthetic canary: deterministic contract, SDK fixture/schema, no-egress/tool-deny, and shipping-graph exclusion tests. Before any user/content activation: the capped synthetic live canary plus prompt-injection, cancellation, timeout, quota, token-expiry, retention/delete, crash/restart, unauthorized-runtime-access, and two-tenant tests. Non-deterministic live smoke is supplemental only. | Canary leakage/crossing, flaky live test becomes sole gate, missing negative test, or cleanup cannot be proved |
 | Legal, privacy, security, and abuse approval | Qualified counsel/vendor review of then-current agreements, commercial/customer-facing use, acceptable use, IP/content, funded allowance, subprocessors and notices; named privacy/security/abuse review; classification/impact assessment; Cyrus accepts documented residual risk. | Reviewer no-go, unresolved high/critical issue, terms change, prohibited use, or approval/evidence expires |
 | Rollback and exit | Feature flag default off; provider pause/kill; revoke credentials; stop runtime/egress; drain/cancel; delete approved local/provider state where supported; preserve minimized audit; switch to fake/BYOK; notify affected users; rehearse rollback and define owner/time objective. | Kill or deletion fails, provider remains reachable, data/action diverges, or fallback/notification is unavailable |
@@ -165,8 +182,11 @@ region, and review date.
    short TTL, and a hard budget. Its evidence completes the remaining live gates
    before any user/content activation.
 4. **Limited Phase 1B user canary:** only after the local canary passes, obtain
-   informed opt-in, run the Open Loops proposal-only scenario, reconcile usage,
-   verify purge/revocation, and exercise rollback.
+   informed opt-in, run the Open Loops proposal-only scenario on deterministic
+   fake and BYOK as well as Copilot, demonstrate switching among every activated
+   provider, reconcile usage, verify purge/revocation, and exercise rollback. If
+   Copilot remains deferred, run the same scenario on fake and BYOK, demonstrate
+   switching, and record the deferral.
 5. **Topology decision:** shared runtime remains disallowed unless its adversarial
    evidence is at least as strong as the approved isolation target. Otherwise
    retain per-user runtime isolation or defer.
@@ -243,10 +263,11 @@ provider to become a de facto release dependency without passing a named gate.
 ### Defer all Copilot work until after Phase 1B
 
 Not selected. A bounded non-runtime compile/conformance spike is reversible
-evidence that can reduce SDK drift risk and satisfy the toolchain requirement
-without activation, but its development/CI cost must be estimated and capped as
-described above. If the spike cannot remain isolated from shipping or
-network/auth behavior, defer it too.
+evidence that can reduce SDK drift risk and advance the requested toolchain
+outcome without activation; it does not provide usable Copilot interaction. Its
+development/CI cost must be estimated and capped as described above. If the
+spike cannot remain isolated from shipping or network/auth behavior, defer it
+too.
 
 ## Primary sources
 

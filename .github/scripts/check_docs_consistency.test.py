@@ -80,6 +80,7 @@ class StatusArtifactHashTests(unittest.TestCase):
                 "### 2026-08-25 — accepted status",
                 f"- **Plan SHA-256:** `{accepted}`",
                 "- **Approver:** Cyrus Jamula",
+                "- **Classification:** Logged status amendment",
                 "### 2026-08-26 — proposed assistant-provider phase scope",
                 f"- **Plan SHA-256:** `{proposed}`",
                 "- **Approver:** Cyrus Jamula; **pending**",
@@ -101,6 +102,7 @@ class StatusArtifactHashTests(unittest.TestCase):
                 "### 2026-08-25 — accepted status",
                 f"- **Plan SHA-256:** `{'a' * 64}`",
                 "- **Approver:** Cyrus Jamula",
+                "- **Classification:** Logged status amendment",
             )
         )
 
@@ -116,6 +118,7 @@ class StatusArtifactHashTests(unittest.TestCase):
                 "### 2026-08-25 — accepted status",
                 f"- **Plan SHA-256:** `{'a' * 64}`",
                 "- **Approver:** Cyrus Jamula",
+                "- **Classification:** Logged status amendment",
                 "### 2026-08-26 — proposed assistant-provider phase scope",
                 f"- **Plan SHA-256:** `{'b' * 64}`",
                 "- **Approver:** Cyrus Jamula; **pending**",
@@ -134,12 +137,83 @@ class StatusArtifactHashTests(unittest.TestCase):
                 "## Decision",
                 "### accepted status",
                 f"- **Plan SHA-256:** `{digest}`",
-                "- **Approver:** Cyrus Jamula; pending",
+                "- **Approver:** Cyrus Jamula; **pending**",
+                "- **Classification:** Proposed status amendment",
             )
         )
 
         with self.assertRaisesRegex(ValueError, "explicitly approved amendment"):
             DOCS_CHECK.parse_plan_hash_metadata(adr)
+
+    def test_legacy_plan_hash_accepts_latest_approved_amendment(self) -> None:
+        digest = "a" * 64
+        adr = "\n".join(
+            (
+                f"- **Plan SHA-256:** `{digest}`",
+                "## Decision",
+                "### accepted status",
+                f"- **Plan SHA-256:** `{digest}`",
+                "- **Approver:** Cyrus Jamula",
+                "- **Classification:** Logged status amendment",
+            )
+        )
+
+        self.assertEqual(
+            (digest, "legacy"),
+            DOCS_CHECK.parse_plan_hash_metadata(adr),
+        )
+
+    def test_current_plan_hash_accepts_latest_approved_amendment(self) -> None:
+        digest = "b" * 64
+        adr = "\n".join(
+            (
+                f"- **Current Plan SHA-256:** `{digest}`",
+                "## Decision",
+                "### older accepted status",
+                f"- **Plan SHA-256:** `{'a' * 64}`",
+                "- **Approver:** Cyrus Jamula",
+                "- **Classification:** Logged status amendment",
+                "### current accepted status",
+                f"- **Plan SHA-256:** `{digest}`",
+                "- **Approver:** Cyrus Jamula",
+                "- **Classification:** Logged editorial amendment",
+            )
+        )
+
+        self.assertEqual(
+            (digest, "current"),
+            DOCS_CHECK.parse_plan_hash_metadata(adr),
+        )
+
+    def test_proposed_hash_finds_latest_pending_amendment_with_later_record(
+        self,
+    ) -> None:
+        accepted = "a" * 64
+        proposed = "b" * 64
+        adr = "\n".join(
+            (
+                f"- **Accepted Plan SHA-256:** `{accepted}`",
+                f"- **Current proposed Plan SHA-256:** `{proposed}`",
+                "## Decision",
+                "### accepted status",
+                f"- **Plan SHA-256:** `{accepted}`",
+                "- **Approver:** Cyrus Jamula",
+                "- **Classification:** Logged status amendment",
+                "### proposed provider scope",
+                f"- **Plan SHA-256:** `{proposed}`",
+                "- **Approver:** Cyrus Jamula; **pending**",
+                "- **Classification:** Proposed editorial/status amendment",
+                "### later accepted record",
+                f"- **Plan SHA-256:** `{accepted}`",
+                "- **Approver:** Cyrus Jamula",
+                "- **Classification:** Logged evidence-pointer amendment",
+            )
+        )
+
+        self.assertEqual(
+            (proposed, "proposed"),
+            DOCS_CHECK.parse_plan_hash_metadata(adr),
+        )
 
     def digest(self, path: str) -> str:
         return hashlib.sha256(path.encode("utf-8")).hexdigest()

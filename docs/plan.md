@@ -20,7 +20,12 @@ Proposed ADR, waive an exit gate, authorize spend or publication, or redesign an
 architecture or trust boundary.
 
 Issue [#74](https://github.com/Jamula/Andreja/issues/74) remains the
-provider-scope decision of record. [Proposed ADR
+provider-scope decision of record. Cyrus's
+[durable direction comment](https://github.com/Jamula/Andreja/issues/74#issuecomment-5427814163)
+requests the outcome “integrate Copilot SDK into the toolchain so I can use
+Copilot to interact with the tools.” That comment records the requested outcome;
+it does not select a phase, accept this mapping, or authorize provider activation,
+an account/model call, content disclosure, or spend. [Proposed ADR
 0009](adr/0009-copilot-provider-phase-scope.md) now recommends the explicit
 resolution: Phase 1A runtime remains deterministic fake plus optional
 Andreja-native OpenAI-compatible BYOK; Phase 1A may perform only a non-shipping,
@@ -52,7 +57,7 @@ explicit Cyrus decision.
 | Artifact | Source and current SHA-256 | Current authority |
 |---|---|---|
 | [`docs/operating-model.md`](operating-model.md) | Issue [#14](https://github.com/Jamula/Andreja/issues/14), PR [#17](https://github.com/Jamula/Andreja/pull/17); `1e33fcb736a916a6b191c9b36a8bd984e1fdc1f42ad251121df4ac7227a0c7e5` | **Draft for ratification.** The issue and PR merged/closed, but no separate explicit Cyrus ratification record was found; it is advisory and the plan remains authoritative. |
-| [`docs/cost-model.md`](cost-model.md) | Issue [#11](https://github.com/Jamula/Andreja/issues/11), PR [#20](https://github.com/Jamula/Andreja/pull/20); provider-allowance proposal [#74](https://github.com/Jamula/Andreja/issues/74), PR [#119](https://github.com/Jamula/Andreja/pull/119); `da9273aad0eafd084bfc2fcb193fc988459a82c2bed60c4040c3ef3f64a56ced` | **Draft for ratification.** It recommends controls but authorizes no spend; issue closure and merge are not approval. |
+| [`docs/cost-model.md`](cost-model.md) | Issue [#11](https://github.com/Jamula/Andreja/issues/11), PR [#20](https://github.com/Jamula/Andreja/pull/20); provider-allowance proposal [#74](https://github.com/Jamula/Andreja/issues/74), PR [#119](https://github.com/Jamula/Andreja/pull/119); `8f7c708d63d389481c1e88964dba883ae6dc3ad7a73215ac5317471e55e1f13c` | **Draft for ratification.** It recommends controls but authorizes no spend; issue closure and merge are not approval. |
 | [`docs/frameworks/feedback-support.md`](frameworks/feedback-support.md) | Issue [#10](https://github.com/Jamula/Andreja/issues/10), PR [#16](https://github.com/Jamula/Andreja/pull/16); `758ed2eedf765d8a6a875b53af21b72fc0af4212fc06e06d54876c076ccb83ed` | **Review-ready draft.** The source PR merged, but issue #10 and explicit Cyrus approval remain open; no intake deployment or support commitment is authorized. |
 | [`docs/frameworks/prioritization-launch.md`](frameworks/prioritization-launch.md) | Issue [#5](https://github.com/Jamula/Andreja/issues/5), PR [#19](https://github.com/Jamula/Andreja/pull/19); `7ba4d30a901e881cf167afe8964c9c2e6ba2584ac94151f2e4f8bc9b2e79104c` | **Review-ready draft.** Its operational mechanics are advisory until explicitly ratified; the plan owns phased scope and exits. |
 | [`docs/charter.md`](charter.md) | Issue [#3](https://github.com/Jamula/Andreja/issues/3), PRs [#15](https://github.com/Jamula/Andreja/pull/15) and [#27](https://github.com/Jamula/Andreja/pull/27); `aeeb83acda01c8c50c71f276d1959cfc929eea1e32e15a15a754590ea50441f1` | **Proposed; not authoritative.** Issue #3 remains open and the file becomes effective only after Cyrus explicitly ratifies it. The charter section in this ratified plan remains the seed summary. |
@@ -146,16 +151,20 @@ connectors remain deferred to their later phases and explicit gates.
 
 ### Provider-scope proposal — 2026-08-26
 
-Issue [#74](https://github.com/Jamula/Andreja/issues/74) is resolved at proposal
-level by [ADR 0009](adr/0009-copilot-provider-phase-scope.md):
+Issue [#74](https://github.com/Jamula/Andreja/issues/74) is addressed at proposal
+level by [ADR 0009](adr/0009-copilot-provider-phase-scope.md). Cyrus's
+[direction comment](https://github.com/Jamula/Andreja/issues/74#issuecomment-5427814163)
+is the durable source for the requested SDK-toolchain outcome, not approval of
+the recommended phase placement or any activation:
 
 - Phase 1A runtime is deterministic fake plus optional Andreja-native
   OpenAI-compatible BYOK. It does not include a real Copilot provider.
-- The requested SDK-toolchain objective is satisfied before runtime only by a pinned,
-  isolated, non-shipping, credential-free compile/conformance adapter and
-  developer checks. It is absent from the app dependency graph, container,
-  startup, service registration, UI/configuration, auth, egress, model usage,
-  account provisioning, spend, and product claims. CI scrubs ambient
+- Before runtime, the requested outcome is advanced only by a pinned, isolated,
+  non-shipping, credential-free compile/conformance adapter and developer checks;
+  usable Copilot interaction remains unsatisfied until a separately approved
+  provider activation. The spike is absent from the app dependency graph,
+  container, startup, service registration, UI/configuration, auth, egress, model
+  usage, account provisioning, spend, and product claims. CI scrubs ambient
   Copilot/GitHub credentials and stores, removes Copilot/GitHub executables,
   denies egress, prohibits runtime-start/session APIs, and proves the shipping
   graph/artifact remains Copilot-free.
@@ -1568,8 +1577,9 @@ Deliverables:
 - After a separate budget approval, one capped Azure managed reference deployment using the Phase 0-selected relational provider—PostgreSQL is the provisional reference—through OpenTofu with pinned providers, locked/encrypted state, CI workload identity, quotas, TTL/teardown, secrets, backups, health, OTel export, and cost evidence.
 - After Proposed ADR 0009 is accepted and every entry gate has current approval
   and evidence, a limited real Copilot 1.0.x provider canary using synthetic
-  content and one consenting authorized adult/test identity. Start with per-user
-  runtime isolation. Use a shared runtime only after adversarial evidence proves
+  content and one dedicated non-user test identity. A consenting adult identity
+  is allowed only after that synthetic canary completes every required live gate.
+  Start with per-user runtime isolation. Use a shared runtime only after adversarial evidence proves
   filesystem/session/tool/credential/concurrency/cleanup/cost isolation and
   Cyrus accepts the residual risk. Keep separate credentials/tools/session
   state, usage reconciliation, hard budgets, provider pause/kill, and an optional
@@ -1598,16 +1608,17 @@ Exit gate checklist:
 1. Use the managed deployment from a phone through a dedicated test identity.
 2. If and only if ADR 0009 and every provider gate are accepted, complete the
    same assistant/skill task scenario with the limited Copilot canary and switch
-   to BYOK; otherwise record Copilot as deferred without weakening fake/BYOK or
-   offline behavior.
+   between Copilot, deterministic fake, and BYOK. Otherwise run that same scenario
+   on deterministic fake and BYOK, demonstrate switching between those providers,
+   and record Copilot as deferred without weakening offline behavior.
 3. Inspect trace and Quark reconciled usage/cost evidence without content leakage.
 4. Verify WebSocket reconnect, rolling revision, cold-start and circuit behavior.
 5. Submit public and in-app feedback, receive an opaque tracking update, and verify privacy/abuse controls.
 6. Onboard the invite cohort, prove each tenant cannot read/write/infer/enumerate another tenant's data, and complete deterministic tenant cleanup.
-7. If Copilot is activated, demonstrate only the funding mode(s) approved under
-   ADR 0009, quota enforcement, attribution/reconciliation, and budget stop
-   behavior; record every other funding mode as deferred. If Copilot is
-   deferred, this gate is not applicable and fake/BYOK evidence remains required.
+7. For every activated provider, including BYOK at minimum, demonstrate the
+   approved funding mode, quota enforcement, attribution/reconciliation, and
+   budget-stop behavior. Record each non-activated funding mode as deferred,
+   never “not applicable”; Copilot deferral does not waive fake/BYOK evidence.
 8. Demonstrate managed backup/PITR, PostgreSQL logical restore, cloud-neutral Andreja export/import and teardown within the approved spike envelope.
 9. Pass all six Email Triage MVP acceptance scenarios for Gmail plus Outlook.com or Microsoft 365.
 10. Pass all five Group Travel MVP acceptance scenarios across three separate dogfood tenants.

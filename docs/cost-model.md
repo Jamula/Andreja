@@ -195,7 +195,11 @@ Before a real Phase 1B Copilot/provider call:
    records that Andreja receives no currency invoice. Andreja does not request or
    retain personal billing statements without a separate approved purpose,
    privacy notice, access rule, and retention schedule.
-4. Exhaustion, unknown attribution, unmeasured usage, a terms/price change, or a
+4. These controls are provider-agnostic: every activated provider, including
+   Phase 1A BYOK at minimum, requires approved quota enforcement,
+   attribution/reconciliation, and budget stops. Every non-activated funding mode
+   is recorded as deferred, never “not applicable.”
+5. Exhaustion, unknown attribution, unmeasured usage, a terms/price change, or a
    failed hard stop disables the provider and falls back to fake/BYOK.
 
 This allowance does not authorize cloud infrastructure and cannot borrow from
@@ -235,9 +239,9 @@ figure against its authoritative financial or quota/attribution source:
   reconciles against cloud/model-provider invoices to compute accurate unit
   economics. User-funded subscription usage has no Andreja currency invoice:
   it reconciles content-free session usage to the user's account quota and
-  attribution evidence, marks currency reconciliation not applicable, and does
-  not collect a personal billing statement without separate purpose/privacy
-  approval.
+  attribution evidence and records that no Andreja currency invoice exists. This
+  does not make the activated funding mode “not applicable.” Andreja does not
+  collect a personal billing statement without separate purpose/privacy approval.
 - **Company financial burn/income** reconciles against vendor invoices, payment
   processor statements, and (once accepted) sponsor payment records.
 
@@ -255,6 +259,15 @@ recommendation.
 
 ## Open items
 
+- **Phase 1A no-egress Copilot SDK toolchain spike:** Seven of Nine owns the
+  technical spike; Quark owns its FinOps record and Cyrus owns envelope approval.
+  The estimate units are engineering hours, development AI credits, CI minutes,
+  and dependency/license-review hours. Numeric estimates and a separately
+  approved development envelope are pending. Numeric stop thresholds for
+  elapsed/engineering time, AI credits, and CI minutes are each pending approval
+  and must be recorded before implementation; reaching any threshold stops the
+  spike. No runtime/model/provider spend, account, credential, or egress is
+  authorized.
 - Steady-state Phase 1B production budget: pending spike-budget evidence above.
 - Phase 1B product-provider/model allowance: pending accepted provider scope,
   selected funding mode/model/topology, numeric hard stops, and reconciliation

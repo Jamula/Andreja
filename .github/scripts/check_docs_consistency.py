@@ -118,6 +118,33 @@ def parse_plan_hash_metadata(adr_text: str) -> tuple[str, str]:
     if not hashed_sections:
         raise ValueError("ADR 0000 has no hashed amendment record.")
 
+    classified_sections = []
+    for section, digest, approver, classification in hashed_sections:
+        if not approver or not classification:
+            raise ValueError(
+                "Every hashed ADR 0000 amendment requires Approver and "
+                "Classification fields."
+            )
+        is_proposed = classification.lower().startswith("proposed")
+        has_pending = "pending" in approver.lower()
+        has_pending_grammar = re.fullmatch(
+            r".+;\s*\*\*pending\*\*\s*",
+            approver,
+            flags=re.IGNORECASE,
+        )
+        if is_proposed and not has_pending_grammar:
+            raise ValueError(
+                "A Proposed amendment Approver must use '<name>; **pending**'."
+            )
+        if not is_proposed and has_pending:
+            raise ValueError(
+                "A pending Approver requires a Classification beginning "
+                "with 'Proposed'."
+            )
+        classified_sections.append(
+            (section, digest, approver, classification, is_proposed)
+        )
+
     if state == "proposed":
         accepted_match = re.search(
             r"\*\*Accepted Plan SHA-256:\*\*\s*`([0-9a-fA-F]{64})`",
@@ -127,24 +154,24 @@ def parse_plan_hash_metadata(adr_text: str) -> tuple[str, str]:
             raise ValueError(
                 "A current-proposed plan hash requires a separate accepted hash."
             )
-        proposed_section, proposed_hash, proposed_approver, proposed_classification = (
-            hashed_sections[-1]
-        )
-        if (
-            proposed_hash != match.group(1).lower()
-            or "pending" not in proposed_approver.lower()
-            or not proposed_classification.lower().startswith("proposed")
-        ):
+        proposed_sections = [
+            record for record in classified_sections if record[4]
+        ]
+        if not proposed_sections:
+            raise ValueError(
+                "The current-proposed plan hash must be backed by the latest "
+                "pending, Proposed amendment with the same hash."
+            )
+        _, proposed_hash, _, _, _ = proposed_sections[-1]
+        if proposed_hash != match.group(1).lower():
             raise ValueError(
                 "The current-proposed plan hash must be backed by the latest "
                 "pending, Proposed amendment with the same hash."
             )
         accepted_sections = [
             (section, digest)
-            for section, digest, approver, classification in hashed_sections[:-1]
-            if approver
-            and "pending" not in approver.lower()
-            and not classification.lower().startswith("proposed")
+            for section, digest, _, _, is_proposed in classified_sections
+            if not is_proposed
         ]
         if (
             not accepted_sections
@@ -152,16 +179,13 @@ def parse_plan_hash_metadata(adr_text: str) -> tuple[str, str]:
         ):
             raise ValueError(
                 "The accepted plan hash must match the latest accepted "
-                "amendment before the pending proposal."
+                "amendment."
             )
     else:
-        _, latest_hash, latest_approver, latest_classification = hashed_sections[-1]
-        if (
-            latest_hash != match.group(1).lower()
-            or not latest_approver
-            or "pending" in latest_approver.lower()
-            or latest_classification.lower().startswith("proposed")
-        ):
+        accepted_sections = [
+            record for record in classified_sections if not record[4]
+        ]
+        if not accepted_sections or accepted_sections[-1][1] != match.group(1).lower():
             raise ValueError(
                 "The current/legacy plan hash must match the latest explicitly "
                 "approved amendment."
