@@ -31,6 +31,7 @@ jobs:
     outputs:
       full_suite: ${{ steps.classify.outputs.full_suite }}
       shadow_sampled: ${{ steps.classify.outputs.shadow_sampled }}
+      trusted_classifier: ${{ steps.classify.outputs.trusted_classifier }}
       docs: ${{ steps.classify.outputs.docs }}
       dotnet: ${{ steps.classify.outputs.dotnet }}
       postgres: ${{ steps.classify.outputs.postgres }}
@@ -74,6 +75,7 @@ jobs:
           {
             "schemaVersion": 1,
             "eventName": "bootstrap",
+            "trustedClassifierAvailable": false,
             "fullSuite": true,
             "fullReasons": ["trusted-classifier-unavailable-on-base"],
             "shadowSample": {
@@ -102,6 +104,7 @@ jobs:
             {
               echo "full_suite=true"
               echo "shadow_sampled=$SHADOW_SAMPLED"
+              echo "trusted_classifier=false"
               echo "docs=true"
               echo "dotnet=true"
               echo "postgres=true"
@@ -127,7 +130,7 @@ jobs:
 
   docs:
     name: Docs domain
-    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.docs == 'true'
+    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.trusted_classifier == 'true' && needs.classify.outputs.docs == 'true'
     needs: classify
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -152,7 +155,7 @@ jobs:
 
   dotnet:
     name: .NET domain
-    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.dotnet == 'true'
+    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.trusted_classifier == 'true' && needs.classify.outputs.dotnet == 'true'
     needs: classify
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -197,7 +200,7 @@ jobs:
 
   postgres:
     name: PostgreSQL domain
-    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.postgres == 'true'
+    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.trusted_classifier == 'true' && needs.classify.outputs.postgres == 'true'
     needs: classify
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -241,7 +244,7 @@ jobs:
 
   powershell:
     name: PowerShell domain
-    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.powershell == 'true'
+    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.trusted_classifier == 'true' && needs.classify.outputs.powershell == 'true'
     needs: classify
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -272,7 +275,7 @@ jobs:
 
   javascript:
     name: JavaScript and browser harness domain
-    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.javascript == 'true'
+    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.trusted_classifier == 'true' && needs.classify.outputs.javascript == 'true'
     needs: classify
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -304,7 +307,7 @@ jobs:
 
   oci:
     name: Docker and OCI supply-chain domain
-    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.oci == 'true'
+    if: needs.classify.outputs.shadow_sampled == 'true' && needs.classify.outputs.trusted_classifier == 'true' && needs.classify.outputs.oci == 'true'
     needs: classify
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -354,6 +357,7 @@ jobs:
           CLASSIFY_RESULT: ${{ needs.classify.result }}
           CLASSIFY_SECONDS: ${{ needs.classify.outputs.duration_seconds }}
           SHADOW_SAMPLED: ${{ needs.classify.outputs.shadow_sampled }}
+          TRUSTED_CLASSIFIER: ${{ needs.classify.outputs.trusted_classifier }}
           DOCS_SELECTED: ${{ needs.classify.outputs.docs }}
           DOCS_RESULT: ${{ needs.docs.result }}
           DOCS_SECONDS: ${{ needs.docs.outputs.duration_seconds }}
@@ -385,13 +389,15 @@ jobs:
           };
           const classificationAvailable = process.env.CLASSIFY_RESULT === 'success';
           const shadowSampled = process.env.SHADOW_SAMPLED === 'true';
+          const trustedClassifierAvailable = process.env.TRUSTED_CLASSIFIER === 'true';
+          const samplePreconditionFailed = shadowSampled && !trustedClassifierAvailable;
           for (const name of names) {
             const prefix = name.toUpperCase();
             const selected = process.env[`${prefix}_SELECTED`] === 'true';
-            const scheduled = shadowSampled && selected;
+            const scheduled = shadowSampled && trustedClassifierAvailable && selected;
             const result = process.env[`${prefix}_RESULT`] || 'skipped';
             const durationSeconds = Number(process.env[`${prefix}_SECONDS`] || 0);
-            const disposition = !classificationAvailable
+            const disposition = !classificationAvailable || samplePreconditionFailed
               ? 'unavailable'
               : !shadowSampled
                 ? 'not-applicable'
@@ -400,11 +406,13 @@ jobs:
                   : 'not-applicable';
             const reason = !classificationAvailable
               ? 'classification-unavailable'
-              : !shadowSampled
-                ? 'shadow-not-sampled'
-                : selected
-                  ? (disposition === 'passed' ? 'selected-domain-passed' : 'selected-domain-unavailable-or-failed')
-                  : 'no-affected-input';
+              : samplePreconditionFailed
+                ? 'trusted-classifier-unavailable-on-base'
+                : !shadowSampled
+                  ? 'shadow-not-sampled'
+                  : selected
+                    ? (disposition === 'passed' ? 'selected-domain-passed' : 'selected-domain-unavailable-or-failed')
+                    : 'no-affected-input';
             domains[name] = { selected, scheduled, disposition, reason, jobResult: result, durationSeconds };
           }
           const diagnosticSeconds = timings.classify + timings.aggregateAtEvidenceWrite +
@@ -423,7 +431,13 @@ jobs:
             sha: process.env.GITHUB_SHA,
             classificationResult: process.env.CLASSIFY_RESULT,
             shadowSampled,
-            samplingReason: shadowSampled ? 'sampled-or-non-pull-request' : 'shadow-not-sampled',
+            trustedClassifierAvailable,
+            samplePreconditionFailed,
+            samplingReason: samplePreconditionFailed
+              ? 'trusted-classifier-unavailable-on-base'
+              : shadowSampled
+                ? 'sampled-or-non-pull-request'
+                : 'shadow-not-sampled',
             domains,
             usage: {
               method: 'diagnostic-step-wall-clock; authoritative billing requires completed-run Jobs API',
@@ -460,6 +474,7 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n\`\`\`json\n${JSON.stringify(evidence, null, 2)}\n\`\`\`\n`);
           }
           const failed = process.env.CLASSIFY_RESULT !== 'success' ||
+            samplePreconditionFailed ||
             Object.values(domains).some((item) => item.scheduled && item.disposition !== 'passed');
           if (failed) process.exitCode = 1;
           NODE

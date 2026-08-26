@@ -60,6 +60,14 @@ If classification fails, every domain is `unavailable` rather than
 enabled only for superseded pull-request runs, and weekly/manual safety runs
 never cancel each other.
 
+The classifier also emits `trustedClassifierAvailable`. If a labeled PR's base
+does not yet contain `.github/ci/change-classifier.js`, bootstrap evidence
+contains `trusted-classifier-unavailable-on-base`, every aggregate domain is
+`unavailable`, `samplePreconditionFailed=true`, no domain job runs, and the
+aggregate fails. This is a precondition failure, not a sample. An ordinary
+unlabelled bootstrap still succeeds with `shadow-not-sampled`/`not-applicable`
+topology evidence because it never attempts domain sampling.
+
 Pull requests always emit `Change classification` and `Aggregate gate`, but
 domain jobs run only for the single `labeled` event that applies
 `ci:selective-shadow-sample`. Merely retaining the label across a synchronize
@@ -83,6 +91,15 @@ repository permission, so a fork author cannot self-sample.
 
 Schedules and manual dispatches always select all domains. The existing required
 workflows remain the `main` push drift/safety net during collection.
+
+The selective .NET domain deliberately invokes the advisory scan with
+`-SkipPostgreSql`; PostgreSQL dependencies are scanned by the separately selected
+PostgreSQL domain. A partial .NET-only decision therefore has less immediate
+PostgreSQL advisory coverage than the existing `NuGet vulnerability audit`
+context. Weekly/manual full-safety runs cover dependency drift, but this is a
+recorded residual risk, not parity. The current vulnerability context cannot be
+retired until live selective evidence demonstrates equivalent coverage and the
+security/risk owner explicitly approves that residual.
 
 ## Measured baseline and target
 
@@ -128,8 +145,8 @@ per-PR outcomes, policy and classifier digests, and assumptions are in
 | Fail-closed full suite | 17 | 85% |
 
 The normalized planning model uses the measured 16-minute full baseline,
-2 fixed minutes for classification/aggregate, and measured rounded domain
-minutes from bootstrap run 32924008713. It estimates 292 rather than 320 rounded
+a provisional 2 fixed minutes for classification/aggregate, and measured rounded
+domain minutes from bootstrap run 32924008713. It estimates 292 rather than 320 rounded
 minutes across the sample: 28 minutes and USD 0.224 list rate saved, or **8.75%
 portfolio savings**. This sits next to, and is deliberately much lower than,
 the **81.25% per-run** target for an eligible docs-only PR. It is a historical
@@ -146,28 +163,50 @@ independently reviewed ruleset change retires those five contexts after parity
 is proven**. Until then, both this shadow and any additive promotion increase
 runner cost.
 
-Run 32927691826 measured fixed shadow overhead at 14 seconds for classification
+Bootstrap run 32927691826 measured fixed shadow overhead at 14 seconds for classification
 plus 5 seconds for aggregation. Independent per-job rounding makes that 2 Linux
 minutes / USD 0.016 for every pull-request event run. Its classification and
 aggregate archives were 337 and 597 bytes (934 bytes total), and the API applied
-the observed 10-day retention cap. Sampled pricing includes that fixed charge:
+the observed 10-day retention cap. **This is bootstrap-only pricing, not trusted
+classifier pricing.** The first valid labeled run must use a PR base containing
+the merged classifier. Immediately after that run, use the completed Jobs API to
+reprice classification and aggregate; do not start any of the remaining nine
+samples until FinOps approves the new fixed rounded overhead and every formula,
+ceiling, and headroom number below is refreshed if it differs from 2 minutes.
+
+Provisional sampled pricing includes that fixed charge:
 a modeled docs sample is 3 minutes / USD 0.024 and a full sample is 16 minutes /
 USD 0.128. Exactly five eligible docs and five full samples therefore plan at
 95 minutes / USD 0.760; if all intended docs samples fail closed to full, their
 conservative ceiling is 160 minutes / USD 1.280.
 
-The weekly Tuesday 03:17 UTC full-safety schedule costs at most 16 minutes /
-USD 0.128 per run. A 14-day window can intersect at most three weekly
-occurrences: 48 minutes / USD 0.384. Let `N` be all pull-request event runs,
-including the ten sampled runs, and `S <= 3` be scheduled runs. The planned
-window is `2N + 75 + 16S` rounded minutes; the fail-closed sampled ceiling is
-`2N + 140 + 16S`. There is no truthful finite total without bounding `N`.
-Operations must therefore cap collection at `N <= 100`, ten sample-label
-applications, and 14 calendar days, pausing the workflow at the first limit.
-At `N=100, S=3`, planned use is 323 minutes / USD 2.584 and the fail-closed
-ceiling is 388 minutes / USD 3.104. Do not start the window without at least 25%
-headroom over that ceiling: 485 rounded minutes / USD 3.880. Re-price from the
-completed-run Jobs API if measured overhead changes.
+The weekly Tuesday 03:17 UTC full-safety schedule costs provisionally 16 minutes
+/ USD 0.128 per run. A 14-day window can intersect at most three weekly
+occurrences. Let `S <= 3` cover scheduled and manual full-safety runs combined:
+a manual dispatch consumes the same cap, and collection must pause before a
+later weekly run would exceed it. Before a merge-queue rollout, budget at most three real
+`merge_group` canaries. Let `F` be the trusted fixed rounded overhead (provisionally
+2), `N <= 100` all PR event runs, and `M <= 3`
+merge-group canaries. With current domain estimates, the planned window is
+`F*N + 75 + (F+14)*(S+M)` and the fail-closed sampled ceiling is
+`F*N + 140 + (F+14)*(S+M)`. At provisional `F=2`, `N=100`, `S=3`, and `M=3`,
+planned use is 371 minutes / USD 2.968 and the ceiling is 436 minutes /
+USD 3.488. Do not start the window without 25% headroom: 545 rounded minutes /
+USD 4.360. `N <= 100` is expected to bind before 14 days; the time limit is a
+secondary backstop, not the primary bound.
+
+Jett Reno owns run-count and headroom checkpoints on collection day 3 and day 6.
+Using the recorded UTC window bounds, run this exact paginated Actions query:
+
+```powershell
+gh api --paginate --slurp `
+  "repos/Jamula/Andreja/actions/workflows/selective-ci-shadow.yml/runs?event=pull_request&created=<START>..<END>&per_page=100" `
+  --jq '[.[].workflow_runs[]] | length'
+```
+
+Jett records the result with Jobs API spend, recomputes remaining headroom using
+the approved `F`, and pauses the workflow immediately at `N=100`, exhausted
+headroom, ten valid samples, `S=3`, or `M=3`.
 
 Live PR run
 [32924008713](https://github.com/Jamula/Andreja/actions/runs/32924008713)
@@ -188,12 +227,17 @@ after their timing step and the aggregate job's final upload. Therefore
 authoritative post-change comparisons must use completed-run Jobs API
 `started_at`/`completed_at`, the same method as the baseline. Verify actual
 artifact `expires_at` rather than assuming requested retention. Apply the label
-exactly ten times: five eligible docs-only candidates and five full candidates.
-A failed or canceled labeled run consumes its application and cost slot but is
-not evidence; no replacement is permitted within this window, so incomplete
-evidence remains a promotion blocker. Stop at 14 calendar days, ten label
-applications, 100 PR event runs, or the cost ceiling, whichever happens first;
-if blockers remain, keep the ruleset unchanged and pause the shadow workflow.
+for exactly ten **valid** runs: five eligible docs-only candidates and five full
+candidates. A bootstrap precondition failure is invalid, consumes only its
+ordinary `N` overhead, and does not consume a valid sample slot. Update the PR
+branch so its base includes the merged trusted classifier, run unlabelled first,
+and verify `trustedClassifierAvailable=true` and the
+`trusted-classifier-unavailable-on-base` reason is absent before reapplying the
+label or incrementing sample counts. Any later failed/canceled trusted sample
+consumes its valid slot and cost but is not evidence; incomplete evidence remains
+a promotion blocker. Stop at 14 calendar days, ten valid slots, 100 PR event
+runs, or exhausted headroom, whichever happens first; if blockers remain, keep
+the ruleset unchanged and pause the shadow workflow.
 
 ## Shadow rollout and promotion hold
 
@@ -203,20 +247,30 @@ if blockers remain, keep the ruleset unchanged and pause the shadow workflow.
    Confirm the repository role policy still prevents fork authors from applying
    labels.
 3. Select exactly five eligible prose-only and five full-suite PRs. On a
-   quiescent head, a maintainer applies the label with
+   quiescent head, first update the branch so `pull_request.base.sha` contains
+   the merged classifier. Run the PR unlabelled and inspect classification JSON:
+   require `trustedClassifierAvailable=true` and no
+   `trusted-classifier-unavailable-on-base` reason. Only then may a maintainer
+   apply the label with
    `gh pr edit <number> --add-label ci:selective-shadow-sample`, waits for that
    `labeled` run to finish, records Jobs/artifact API evidence, then immediately
    removes it with
    `gh pr edit <number> --remove-label ci:selective-shadow-sample`.
    A synchronize event never qualifies merely because a label remains.
-4. Confirm unsampled PRs emit `shadow-not-sampled` and skipped domain jobs,
+4. Treat a labeled bootstrap aggregate failure as a precondition failure: remove
+   the label, update the branch, repeat the unlabelled trust check, and do not
+   increment the ten-slot counter. After the first valid trusted sample, stop and
+   reprice `F` from the Jobs API; FinOps approval of refreshed formulas/headroom
+   is required before any of the remaining nine.
+5. Confirm unsampled PRs emit `shadow-not-sampled` and skipped domain jobs,
    sampled docs/full runs have correct dispositions, no fork gets write
    permission or secrets, and classification failure reports every domain
    `unavailable`.
-5. Collect a real `merge_group` run with the same stable aggregate context.
-6. Obtain independent workflow correctness, security, and FinOps approvals and
+6. Collect up to three real `merge_group` canaries with the same stable aggregate
+   context, charge each as `F+14`, and stop at `M=3`.
+7. Obtain independent workflow correctness, security, and FinOps approvals and
    resolve every finding.
-7. Only then prepare, review, and execute an atomic ruleset update. At collection
+8. Only then prepare, review, and execute an atomic ruleset update. At collection
    end, remove the label from every PR and delete it only after audit evidence
    confirms no active sample:
    `gh label delete ci:selective-shadow-sample --repo Jamula/Andreja --yes`.

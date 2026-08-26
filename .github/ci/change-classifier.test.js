@@ -384,9 +384,11 @@ test('workflow bounds PR sampling and never cancels scheduled safety runs', () =
   assert.doesNotMatch(workflow, /^\s+push:\s*$/m);
   assert.match(workflow, /types: \[opened, synchronize, reopened, labeled\]/);
   assert.equal(
-    workflow.match(/if: needs\.classify\.outputs\.shadow_sampled == 'true' && needs\.classify\.outputs\.[a-z]+ == 'true'/g)?.length,
+    workflow.match(/if: needs\.classify\.outputs\.shadow_sampled == 'true' && needs\.classify\.outputs\.trusted_classifier == 'true' && needs\.classify\.outputs\.[a-z]+ == 'true'/g)?.length,
     ALL_DOMAINS.length,
   );
+  assert.match(workflow, /echo "trusted_classifier=false"/);
+  assert.match(workflow, /trusted_classifier: \$\{\{ steps\.classify\.outputs\.trusted_classifier \}\}/);
 });
 
 test('only the trusted sample-label event enables PR shadow work', () => {
@@ -411,6 +413,11 @@ test('only the trusted sample-label event enables PR shadow work', () => {
     false,
   );
   assert.equal(shadowSample('schedule', {}).sampled, true);
+  assert.equal(
+    classifyFiles([{ filename: 'src/App.cs', status: 'modified' }], policy)
+      .trustedClassifierAvailable,
+    true,
+  );
 });
 
 test('aggregate artifact marks every domain unavailable when classification fails', () => {
@@ -426,20 +433,59 @@ test('aggregate artifact marks every domain unavailable when classification fail
   }
 });
 
-test('unsampled PR aggregate succeeds with shadow-not-sampled evidence', () => {
+test('labeled bootstrap is an unavailable precondition failure', () => {
+  const { evidence, status } = runAggregateArtifact({
+    CLASSIFY_RESULT: 'success',
+    SHADOW_SAMPLED: 'true',
+    TRUSTED_CLASSIFIER: 'false',
+    DOCS_SELECTED: 'true',
+    DOTNET_SELECTED: 'true',
+  });
+  assert.equal(status, 1);
+  assert.equal(evidence.shadowSampled, true);
+  assert.equal(evidence.trustedClassifierAvailable, false);
+  assert.equal(evidence.samplePreconditionFailed, true);
+  assert.equal(evidence.samplingReason, 'trusted-classifier-unavailable-on-base');
+  for (const domain of Object.values(evidence.domains)) {
+    assert.equal(domain.scheduled, false);
+    assert.equal(domain.disposition, 'unavailable');
+    assert.equal(domain.reason, 'trusted-classifier-unavailable-on-base');
+  }
+});
+
+test('ordinary unsampled bootstrap remains successful topology evidence', () => {
   const { evidence, status } = runAggregateArtifact({
     CLASSIFY_RESULT: 'success',
     SHADOW_SAMPLED: 'false',
+    TRUSTED_CLASSIFIER: 'false',
     DOCS_SELECTED: 'true',
     DOTNET_SELECTED: 'true',
   });
   assert.equal(status, 0);
   assert.equal(evidence.shadowSampled, false);
+  assert.equal(evidence.trustedClassifierAvailable, false);
+  assert.equal(evidence.samplePreconditionFailed, false);
   for (const domain of Object.values(evidence.domains)) {
     assert.equal(domain.scheduled, false);
     assert.equal(domain.disposition, 'not-applicable');
     assert.equal(domain.reason, 'shadow-not-sampled');
   }
+});
+
+test('trusted labeled sample schedules selected domains normally', () => {
+  const { evidence, status } = runAggregateArtifact({
+    CLASSIFY_RESULT: 'success',
+    SHADOW_SAMPLED: 'true',
+    TRUSTED_CLASSIFIER: 'true',
+    DOCS_SELECTED: 'true',
+    DOCS_RESULT: 'success',
+  });
+  assert.equal(status, 0);
+  assert.equal(evidence.samplePreconditionFailed, false);
+  assert.equal(evidence.domains.docs.scheduled, true);
+  assert.equal(evidence.domains.docs.disposition, 'passed');
+  assert.equal(evidence.domains.dotnet.scheduled, false);
+  assert.equal(evidence.domains.dotnet.disposition, 'not-applicable');
 });
 
 test('historical replay economics use the documented per-domain model', () => {

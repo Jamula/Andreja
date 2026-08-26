@@ -277,6 +277,7 @@ function classifyFiles(files, policy, options = {}) {
     policyVersion: policy.schemaVersion,
     eventName: options.eventName ?? 'fixture',
     trustedPolicySha: options.trustedPolicySha ?? null,
+    trustedClassifierAvailable: options.trustedClassifierAvailable ?? true,
     shadowSample: {
       label: SHADOW_SAMPLE_LABEL,
       sampled: options.shadowSampled ?? true,
@@ -418,6 +419,7 @@ function writeOutputs(decision, outputPath) {
   const lines = [
     `full_suite=${decision.fullSuite}`,
     `shadow_sampled=${decision.shadowSample.sampled}`,
+    `trusted_classifier=${decision.trustedClassifierAvailable}`,
     ...ALL_DOMAINS.map((domain) => `${domain}=${decision.domains[domain].selected}`),
   ];
   fs.appendFileSync(outputPath, `${lines.join('\n')}\n`);
@@ -458,6 +460,7 @@ async function main() {
     forcedFullReasons: changes.forcedFullReasons,
     shadowSampled: sample.sampled,
     shadowSampleReason: sample.reason,
+    trustedClassifierAvailable: true,
   });
   fs.mkdirSync(path.dirname(outputFile), { recursive: true });
   fs.writeFileSync(outputFile, `${JSON.stringify(decision, null, 2)}\n`);
