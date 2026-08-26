@@ -6,7 +6,9 @@ Use the [editable Excalidraw source](andreja-high-level.excalidraw) for changes.
 The [PNG export](andreja-high-level.png) is available for viewers that do not
 render SVG. This view summarizes the ratified [platform plan](../plan.md) and
 [ADRs 0001–0005](../adr/0001-phase-1a-modular-boundaries.md); those documents
-remain normative.
+remain normative. The canonical [privacy baseline](../privacy.md) and
+[threat model](../threat-model.md) classify the data, threats, mitigations,
+evidence gaps, residual risks, and stop conditions behind these flows.
 
 ## Scope and notation
 

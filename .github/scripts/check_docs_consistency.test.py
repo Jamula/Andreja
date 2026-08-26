@@ -20,11 +20,45 @@ def plan_table(artifacts: dict[str, str]) -> str:
         "| Artifact | Source and current SHA-256 | Current authority |",
         "|---|---|---|",
     ]
-    rows.extend(
-        f"| [`{path}`]({path.removeprefix('docs/')}) | `{digest}` | Draft |"
-        for path, digest in artifacts.items()
-    )
+    for path, digest in artifacts.items():
+        if path in DOCS_CHECK.CANONICAL_BASELINE_REQUIREMENTS:
+            challengers = DOCS_CHECK.CANONICAL_BASELINE_REQUIREMENTS[path]
+            challenge_text = ", ".join(challengers[:-1])
+            rows.append(
+                f"| [`{path}`]({path.removeprefix('docs/')}) | "
+                f"{DOCS_CHECK.CANONICAL_ISSUE_SOURCE}, "
+                f"{DOCS_CHECK.CANONICAL_PR_SOURCE}; `{digest}` | "
+                "**Canonical descriptive baseline; not ratified.** "
+                f"{challenge_text}, {challengers[-1]}. "
+                "Cyrus residual-risk acceptance remains pending. "
+                f"{DOCS_CHECK.CANONICAL_OPEN_ASSESSMENT} |"
+            )
+        else:
+            rows.append(
+                f"| [`{path}`]({path.removeprefix('docs/')}) | "
+                f"`{digest}` | Draft |"
+            )
     return "\n".join(rows)
+
+
+def canonical_documents() -> dict[str, str]:
+    return {
+        path: "\n".join(
+            (
+                "# Baseline",
+                "",
+                "- **Status:** Canonical descriptive baseline; not ratified",
+                "- **Owner:** Trust — Tuvok, Deanna Troi, Rai",
+                f"- **Required challenge:** {', '.join(challengers)}",
+                "- **Residual-risk acceptance:** Cyrus; pending",
+                "- **Classification/impact assessment:** "
+                f"{DOCS_CHECK.CANONICAL_DOCUMENT_OPEN_ASSESSMENTS[path]}",
+                "",
+                "Baseline body.",
+            )
+        )
+        for path, challengers in DOCS_CHECK.CANONICAL_BASELINE_REQUIREMENTS.items()
+    }
 
 
 class StatusArtifactHashTests(unittest.TestCase):
@@ -39,8 +73,178 @@ class StatusArtifactHashTests(unittest.TestCase):
         return hashlib.sha256(path.encode("utf-8")).hexdigest()
 
     def test_complete_current_inventory_passes(self) -> None:
-        parsed = DOCS_CHECK.extract_status_artifact_hashes(plan_table(self.actual))
+        plan = plan_table(self.actual)
+        parsed = DOCS_CHECK.extract_status_artifact_hashes(plan)
         DOCS_CHECK.validate_status_artifact_hashes(parsed, self.expected, self.digest)
+        DOCS_CHECK.validate_canonical_baseline_rows(plan)
+        DOCS_CHECK.validate_canonical_baseline_documents(canonical_documents())
+
+    def test_canonical_baseline_requires_exact_issue_and_pr_destinations(self) -> None:
+        for expected, replacement in (
+            (
+                "https://github.com/Jamula/Andreja/issues/116",
+                "https://github.com/Other/Repository/issues/116",
+            ),
+            (
+                "https://github.com/Jamula/Andreja/pull/117",
+                "https://github.com/Jamula/Andreja/pull/999",
+            ),
+        ):
+            with self.subTest(replacement=replacement):
+                plan = plan_table(self.actual).replace(expected, replacement, 1)
+                with self.assertRaisesRegex(ValueError, "authority drifted"):
+                    DOCS_CHECK.validate_canonical_baseline_rows(plan)
+
+    def test_canonical_baseline_requires_not_ratified_authority(self) -> None:
+        plan = plan_table(self.actual).replace(
+            "Canonical descriptive baseline; not ratified",
+            "Canonical descriptive baseline",
+            1,
+        )
+        with self.assertRaisesRegex(ValueError, "authority drifted"):
+            DOCS_CHECK.validate_canonical_baseline_rows(plan)
+
+    def test_canonical_baseline_requires_challenge_and_residual_acceptance(self) -> None:
+        for requirement in (
+            "Deanna Troi",
+            "Tuvok",
+            "Rai",
+            "Cyrus",
+            "residual-risk acceptance",
+        ):
+            with self.subTest(requirement=requirement):
+                plan = plan_table(self.actual).replace(requirement, "omitted", 1)
+                with self.assertRaisesRegex(ValueError, "authority drifted"):
+                    DOCS_CHECK.validate_canonical_baseline_rows(plan)
+
+    def test_canonical_baseline_rejects_granted_residual_risk_acceptance(self) -> None:
+        plan = plan_table(self.actual).replace(
+            "Cyrus residual-risk acceptance remains pending",
+            "Cyrus residual-risk acceptance is granted",
+            1,
+        )
+        with self.assertRaisesRegex(ValueError, "authority drifted"):
+            DOCS_CHECK.validate_canonical_baseline_rows(plan)
+
+    def test_canonical_baseline_requires_open_classification_assessment(self) -> None:
+        for replacement in (
+            "The classification/impact assessment is complete.",
+            "",
+        ):
+            with self.subTest(replacement=replacement or "omitted"):
+                plan = plan_table(self.actual).replace(
+                    DOCS_CHECK.CANONICAL_OPEN_ASSESSMENT,
+                    replacement,
+                    1,
+                )
+                with self.assertRaisesRegex(ValueError, "authority drifted"):
+                    DOCS_CHECK.validate_canonical_baseline_rows(plan)
+
+    def test_canonical_baseline_header_requires_open_assessment(self) -> None:
+        for path, required in DOCS_CHECK.CANONICAL_DOCUMENT_OPEN_ASSESSMENTS.items():
+            for replacement in (
+                "Completed",
+                "",
+            ):
+                with self.subTest(path=path, replacement=replacement or "omitted"):
+                    documents = canonical_documents()
+                    if replacement:
+                        documents[path] = documents[path].replace(
+                            required,
+                            replacement,
+                            1,
+                        )
+                    else:
+                        documents[path] = documents[path].replace(
+                            "- **Classification/impact assessment:** "
+                            f"{required}\n",
+                            "",
+                            1,
+                        )
+                    with self.assertRaisesRegex(ValueError, "header drifted"):
+                        DOCS_CHECK.validate_canonical_baseline_documents(documents)
+
+    def test_canonical_baseline_header_requires_status_and_acceptance(
+        self,
+    ) -> None:
+        for path in DOCS_CHECK.CANONICAL_BASELINE_REQUIREMENTS:
+            required_parts = (
+                "**Status:** Canonical descriptive baseline; not ratified",
+                "**Required challenge:**",
+                "**Residual-risk acceptance:** Cyrus; pending",
+            )
+            for requirement in required_parts:
+                with self.subTest(path=path, requirement=requirement):
+                    documents = canonical_documents()
+                    documents[path] = documents[path].replace(
+                        requirement,
+                        "omitted",
+                        1,
+                    )
+                    with self.assertRaises(ValueError):
+                        DOCS_CHECK.validate_canonical_baseline_documents(documents)
+
+    def test_challengers_must_be_in_required_challenge_not_owner(self) -> None:
+        for path, challengers in DOCS_CHECK.CANONICAL_BASELINE_REQUIREMENTS.items():
+            challenge_line = f"- **Required challenge:** {', '.join(challengers)}"
+            for challenger in ("Deanna Troi", "Tuvok", "Rai"):
+                with self.subTest(path=path, challenger=challenger):
+                    documents = canonical_documents()
+                    documents[path] = documents[path].replace(
+                        challenge_line,
+                        challenge_line.replace(challenger, "omitted", 1),
+                        1,
+                    )
+                    self.assertIn(
+                        "- **Owner:** Trust — Tuvok, Deanna Troi, Rai",
+                        documents[path],
+                    )
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "Missing required challengers",
+                    ):
+                        DOCS_CHECK.validate_canonical_baseline_documents(documents)
+
+    def test_canonical_baseline_metadata_block_boundaries(self) -> None:
+        path = "docs/privacy.md"
+        required = DOCS_CHECK.CANONICAL_DOCUMENT_OPEN_ASSESSMENTS[path]
+
+        documents = canonical_documents()
+        documents[path] = documents[path].replace(
+            "- **Residual-risk acceptance:** Cyrus; pending",
+            "- **Additional context:** Legitimate metadata\n"
+            "- **Residual-risk acceptance:** Cyrus; pending",
+            1,
+        )
+        DOCS_CHECK.validate_canonical_baseline_documents(documents)
+
+        for placement in ("missing", "outside"):
+            with self.subTest(placement=placement):
+                documents = canonical_documents()
+                field_line = (
+                    "- **Classification/impact assessment:** "
+                    f"{required}"
+                )
+                documents[path] = documents[path].replace(f"{field_line}\n", "", 1)
+                if placement == "outside":
+                    documents[path] += f"\n{field_line}\n"
+                with self.assertRaisesRegex(ValueError, "header drifted"):
+                    DOCS_CHECK.validate_canonical_baseline_documents(documents)
+
+        for malformed in (
+            "# Baseline\n\n\nBaseline body.",
+            canonical_documents()[path].replace(
+                "- **Residual-risk acceptance:** Cyrus; pending",
+                "not metadata",
+                1,
+            ),
+            canonical_documents()[path].replace("\n\nBaseline body.", ""),
+        ):
+            with self.subTest(malformed=malformed[-30:]):
+                documents = canonical_documents()
+                documents[path] = malformed
+                with self.assertRaisesRegex(ValueError, "metadata block"):
+                    DOCS_CHECK.validate_canonical_baseline_documents(documents)
 
     def test_missing_artifact_is_rejected(self) -> None:
         artifacts = dict(self.actual)

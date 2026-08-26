@@ -70,3 +70,8 @@ particular account/code exists. See the
 Never paste a bootstrap token, recovery code, cookie, passkey response, Data
 Protection key, or database secret into logs, telemetry, exports, support requests,
 issues, or pull requests.
+
+See the canonical
+[privacy baseline](../privacy.md#identity-passkeys-recovery-and-shared-devices)
+and [threat model](../threat-model.md) for data handling, abuse cases, residual
+risks, and stop conditions.

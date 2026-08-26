@@ -31,12 +31,36 @@ CONNECTORS_PATH = REPO_ROOT / "docs" / "roadmap" / "channel-connectors.md"
 EXPECTED_STATUS_ARTIFACTS = {
     "docs/operating-model.md",
     "docs/cost-model.md",
+    "docs/privacy.md",
+    "docs/threat-model.md",
     "docs/frameworks/feedback-support.md",
     "docs/frameworks/prioritization-launch.md",
     "docs/charter.md",
     "docs/legal/license-evaluation.md",
     "docs/legal/regulatory-applicability.md",
 }
+CANONICAL_BASELINE_REQUIREMENTS = {
+    "docs/privacy.md": ("Deanna Troi", "Tuvok", "Rai (AI safety); pending"),
+    "docs/threat-model.md": ("Tuvok", "Deanna Troi", "Rai (AI safety); pending"),
+}
+CANONICAL_OPEN_ASSESSMENT = (
+    "The classification/impact assessment remains open unless explicitly approved "
+    "with cited evidence."
+)
+CANONICAL_DOCUMENT_OPEN_ASSESSMENTS = {
+    "docs/privacy.md": (
+        "Open; this inventory does not satisfy "
+        "that gate without an explicitly approved assessment and cited evidence"
+    ),
+    "docs/threat-model.md": (
+        "Open; this model does not satisfy "
+        "that gate without an explicitly approved assessment and cited evidence"
+    ),
+}
+CANONICAL_ISSUE_SOURCE = (
+    "Issue [#116](https://github.com/Jamula/Andreja/issues/116)"
+)
+CANONICAL_PR_SOURCE = "PR [#117](https://github.com/Jamula/Andreja/pull/117)"
 
 
 def fail(message: str) -> None:
@@ -132,6 +156,112 @@ def extract_status_artifact_hashes(plan_text: str) -> dict[str, str]:
     return artifacts
 
 
+def extract_status_artifact_cells(plan_text: str) -> dict[str, list[str]]:
+    rows = extract_table_rows(
+        plan_text,
+        "#### Phase 0 policy and governance artifact classification",
+        "| Artifact | Source and current SHA-256 | Current authority |",
+    )
+    artifacts: dict[str, list[str]] = {}
+    for row in rows:
+        if len(row) != 3:
+            raise ValueError(f"Malformed status-artifact row: {' | '.join(row)}")
+        path_match = re.search(r"\[`([^`]+)`\]\([^)]+\)", row[0])
+        if not path_match:
+            raise ValueError(f"Malformed status-artifact row: {' | '.join(row)}")
+        artifacts[path_match.group(1)] = row
+    return artifacts
+
+
+def validate_canonical_baseline_rows(plan_text: str) -> None:
+    rows = extract_status_artifact_cells(plan_text)
+    for path, challengers in CANONICAL_BASELINE_REQUIREMENTS.items():
+        if path not in rows:
+            raise ValueError(f"Missing canonical baseline status row: {path}")
+        _, source, authority = rows[path]
+        required_source_parts = (CANONICAL_ISSUE_SOURCE, CANONICAL_PR_SOURCE)
+        missing_source = [part for part in required_source_parts if part not in source]
+        required_authority_parts = (
+            "Canonical descriptive baseline; not ratified",
+            *challengers,
+            "Cyrus residual-risk acceptance remains pending",
+            CANONICAL_OPEN_ASSESSMENT,
+        )
+        missing_authority = [
+            part for part in required_authority_parts if part not in authority
+        ]
+        if missing_source or missing_authority:
+            raise ValueError(
+                f"Canonical baseline authority drifted for {path}.\n"
+                f"  Missing source text: {missing_source}\n"
+                f"  Missing authority text: {missing_authority}"
+            )
+
+
+def parse_initial_metadata_block(document_text: str, path: str) -> dict[str, str]:
+    lines = document_text.splitlines()
+    if len(lines) < 4 or not lines[0].startswith("# ") or lines[1].strip():
+        raise ValueError(f"Canonical baseline metadata block malformed for {path}.")
+
+    metadata: dict[str, str] = {}
+    current_field: str | None = None
+    for line in lines[2:]:
+        if not line.strip():
+            if not metadata:
+                raise ValueError(
+                    f"Canonical baseline metadata block absent for {path}."
+                )
+            return metadata
+        field_match = re.match(r"^- \*\*([^*]+):\*\*\s+(\S.*)$", line)
+        if field_match:
+            current_field, value = field_match.groups()
+            if current_field in metadata:
+                raise ValueError(
+                    f"Duplicate canonical baseline metadata field "
+                    f"{current_field!r} for {path}."
+                )
+            metadata[current_field] = value.strip()
+        elif current_field and line.startswith(("  ", "\t")) and line.strip():
+            metadata[current_field] = " ".join(
+                f"{metadata[current_field]} {line.strip()}".split()
+            )
+        else:
+            raise ValueError(
+                f"Canonical baseline metadata block malformed for {path}."
+            )
+
+    raise ValueError(
+        f"Canonical baseline metadata block has no terminating blank line for {path}."
+    )
+
+
+def validate_canonical_baseline_documents(document_texts: dict[str, str]) -> None:
+    for path, challengers in CANONICAL_BASELINE_REQUIREMENTS.items():
+        metadata = parse_initial_metadata_block(document_texts[path], path)
+        required_fields = {
+            "Status": "Canonical descriptive baseline; not ratified",
+            "Residual-risk acceptance": "Cyrus; pending",
+            "Classification/impact assessment": (
+                CANONICAL_DOCUMENT_OPEN_ASSESSMENTS[path]
+            ),
+        }
+        drifted_fields = [
+            field
+            for field, expected in required_fields.items()
+            if metadata.get(field) != expected
+        ]
+        challenge = metadata.get("Required challenge", "")
+        missing_challengers = [
+            challenger for challenger in challengers if challenger not in challenge
+        ]
+        if drifted_fields or missing_challengers:
+            raise ValueError(
+                f"Canonical baseline header drifted for {path}.\n"
+                f"  Missing or drifted fields: {drifted_fields}\n"
+                f"  Missing required challengers: {missing_challengers}"
+            )
+
+
 def validate_status_artifact_hashes(
     artifacts: dict[str, str],
     expected_paths: set[str],
@@ -156,11 +286,19 @@ def validate_status_artifact_hashes(
 
 def check_status_artifact_hashes() -> None:
     try:
-        artifacts = extract_status_artifact_hashes(read(PLAN_PATH))
+        plan_text = read(PLAN_PATH)
+        artifacts = extract_status_artifact_hashes(plan_text)
         validate_status_artifact_hashes(
             artifacts,
             EXPECTED_STATUS_ARTIFACTS,
             lambda path: hashlib.sha256((REPO_ROOT / path).read_bytes()).hexdigest(),
+        )
+        validate_canonical_baseline_rows(plan_text)
+        validate_canonical_baseline_documents(
+            {
+                path: read(REPO_ROOT / path)
+                for path in CANONICAL_BASELINE_REQUIREMENTS
+            }
         )
     except (OSError, ValueError) as error:
         fail(str(error))

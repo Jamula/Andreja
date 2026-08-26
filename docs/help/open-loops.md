@@ -61,6 +61,10 @@ provider-reported input/output units; the typed usage response also reports retr
 tool counts. Neither contains prompt, response, tool arguments, credential,
 authorization header, or raw user identifier.
 
+The canonical [privacy baseline](../privacy.md) and
+[threat model](../threat-model.md) describe model exposure, task sensitivity,
+confirmation abuse, retention/export limits, evidence gaps, and stop conditions.
+
 ## Current production sign-in limitation
 
 Production passkey bootstrap, sign-in, and recovery remain

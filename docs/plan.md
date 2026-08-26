@@ -32,7 +32,7 @@ decision and may be amended by it.
 | Modular boundaries, PostgreSQL, and passkeys | The Phase 1A modular slices, PostgreSQL reference persistence/migrations, production passkey bootstrap/recovery, and their architecture/integration/browser tests are implemented on `main`. Evidence run [#44](phase-1a/evidence-44.md) records the exact tested boundary. | ADRs 0001–0005 remain **Proposed and unaccepted** pending [#66](https://github.com/Jamula/Andreja/issues/66). Merge and passing tests are implementation evidence, not Cyrus's acceptance or Phase 1A exit. |
 | Skill, channel, and semantic contracts | Application-owned skill/channel manifests and hosts, grants/audit/peer envelopes, and minimal semantic-profile/provenance/export contracts are implemented. | This is contract-seam evidence only: no third-party execution, production connector, federation transport, graph database, universal ontology, or inactive persistence is approved. ADR 0004 and the other Phase 1A ADRs remain Proposed. |
 | Portability and recovery | The application export/import clean-instance round trip passed as supplemental evidence in [evidence run #44](phase-1a/evidence-44.md#supplemental-application-portability-evidence-87). PostgreSQL logical dump/restore was only partial exit evidence. | Portable application data does not substitute for an encrypted database-plus-Data-Protection-key recovery set and restored sign-in. Managed-provider PITR and managed-cloud portability remain deferred. |
-| Architecture diagram and operator README | PR [#100](https://github.com/Jamula/Andreja/pull/100) originated the Excalidraw/SVG/PNG architecture diagram and PR [#107](https://github.com/Jamula/Andreja/pull/107) merged its reviewed correction, PNG hash, and generation/consistency tests. The root README records current local build, test, self-host, and evidence commands. | These are current documentation and reproducibility evidence, not acceptance of the Proposed ADR packet, release authorization, or completion of the still-required canonical threat/privacy artifacts. |
+| Architecture diagram and operator README | PR [#100](https://github.com/Jamula/Andreja/pull/100) originated the Excalidraw/SVG/PNG architecture diagram and PR [#107](https://github.com/Jamula/Andreja/pull/107) merged its reviewed correction, PNG hash, and generation/consistency tests. The root README records current local build, test, self-host, and evidence commands. | These are current documentation and reproducibility evidence, not acceptance of the Proposed ADR packet or release authorization. The canonical privacy/threat artifacts are present but not ratified; Tuvok/Deanna Troi/Rai challenges and Cyrus residual-risk acceptance remain pending. |
 | Website matrix and prototype | PRs [#105](https://github.com/Jamula/Andreja/pull/105) and [#111](https://github.com/Jamula/Andreja/pull/111) merged the Phase 0 matrix, claims inventory, local prototype, validator, and hardened boundary wording. PR #105 initially used ADR number 0006; the current canonical, hardened file is **Proposed ADR 0008**. | The packet remains a recommendation for human decision. It authorizes no deployment, preview, hosting vendor, domain, CDN, DNS, public claim, or public launch. Issue [#93](https://github.com/Jamula/Andreja/issues/93) remains the separately gated Phase 1B public-site proposal. |
 | Test framework | PR [#103](https://github.com/Jamula/Andreja/pull/103) merged a measured xUnit/MSTest investigation. Cyrus later selected MSTest as the long-term direction. | ADR 0007 remains Proposed, and its earlier xUnit-retention recommendation is superseded by its 2026-08-25 amendment. Migration is deliberately deferred to [#112](https://github.com/Jamula/Andreja/issues/112); no test migration occurs in this amendment. |
 
@@ -51,6 +51,8 @@ explicit Cyrus decision.
 | [`docs/frameworks/feedback-support.md`](frameworks/feedback-support.md) | Issue [#10](https://github.com/Jamula/Andreja/issues/10), PR [#16](https://github.com/Jamula/Andreja/pull/16); `758ed2eedf765d8a6a875b53af21b72fc0af4212fc06e06d54876c076ccb83ed` | **Review-ready draft.** The source PR merged, but issue #10 and explicit Cyrus approval remain open; no intake deployment or support commitment is authorized. |
 | [`docs/frameworks/prioritization-launch.md`](frameworks/prioritization-launch.md) | Issue [#5](https://github.com/Jamula/Andreja/issues/5), PR [#19](https://github.com/Jamula/Andreja/pull/19); `7ba4d30a901e881cf167afe8964c9c2e6ba2584ac94151f2e4f8bc9b2e79104c` | **Review-ready draft.** Its operational mechanics are advisory until explicitly ratified; the plan owns phased scope and exits. |
 | [`docs/charter.md`](charter.md) | Issue [#3](https://github.com/Jamula/Andreja/issues/3), PRs [#15](https://github.com/Jamula/Andreja/pull/15) and [#27](https://github.com/Jamula/Andreja/pull/27); `aeeb83acda01c8c50c71f276d1959cfc929eea1e32e15a15a754590ea50441f1` | **Proposed; not authoritative.** Issue #3 remains open and the file becomes effective only after Cyrus explicitly ratifies it. The charter section in this ratified plan remains the seed summary. |
+| [`docs/privacy.md`](privacy.md) | Issue [#116](https://github.com/Jamula/Andreja/issues/116), PR [#117](https://github.com/Jamula/Andreja/pull/117); `03f50c948cf07ee32360944be9c1c3d9ba6274467a02d158960ca4abd6a424a1` | **Canonical descriptive baseline; not ratified.** Required challenge: Deanna Troi (privacy), Tuvok (security), Rai (AI safety); pending. Cyrus residual-risk acceptance remains pending. The classification/impact assessment remains open unless explicitly approved with cited evidence. |
+| [`docs/threat-model.md`](threat-model.md) | Issue [#116](https://github.com/Jamula/Andreja/issues/116), PR [#117](https://github.com/Jamula/Andreja/pull/117); `1b9d73f4328cc89da5046607bdbd34613fde4d4d9e0f92ec3f5e62050d827d29` | **Canonical descriptive baseline; not ratified.** Required challenge: Tuvok (security), Deanna Troi (privacy), Rai (AI safety); pending. Cyrus residual-risk acceptance remains pending. The classification/impact assessment remains open unless explicitly approved with cited evidence. |
 | [`docs/legal/license-evaluation.md`](legal/license-evaluation.md) | Issue [#6](https://github.com/Jamula/Andreja/issues/6), merged source PR [#12](https://github.com/Jamula/Andreja/pull/12); `4b8f325941e79a3d802bd03ef1472d55d69540efddced54853acda43f801d5e2` | **Counsel-ready research; not approved policy.** Issue #6 remains open; qualified counsel and Cyrus approval are still required. It authorizes no visibility, contribution, license, trademark, domain, or publication change. |
 | [`docs/legal/regulatory-applicability.md`](legal/regulatory-applicability.md) | Issue [#8](https://github.com/Jamula/Andreja/issues/8), PRs [#21](https://github.com/Jamula/Andreja/pull/21) and [#28](https://github.com/Jamula/Andreja/pull/28); `60e5bec8ce1c991f72446c16374dd27962ea9698374a2105fbd7edc837394d23` | **Draft legal-research/governance artifact.** Issue #8 remains open; qualified counsel and Cyrus approval are required before it is authoritative or supports a legal/compliance claim. |
 
@@ -103,19 +105,36 @@ rows do not weaken these exits.
 
 #### Required artifacts and next safe order
 
-The canonical `docs/privacy.md` and `docs/threat-model.md` remain open required
-artifacts. The narrower files under `docs/phase-1a/` are evidence inputs and do
-not replace them.
+The canonical [`docs/privacy.md`](privacy.md) and
+[`docs/threat-model.md`](threat-model.md) now provide descriptive cross-phase
+baselines under [#116](https://github.com/Jamula/Andreja/issues/116), but are not
+ratified. Tuvok's security challenge, Deanna Troi's privacy challenge, Rai's
+AI-safety challenge, Cyrus's explicit residual-risk acceptance, and the
+classification/impact assessment remain open. They do not accept a Proposed ADR,
+authorize production or a future
+integration, or close the retention, residency, model-provider, and evidence
+decisions they identify. The narrower files under `docs/phase-1a/` remain evidence
+inputs and do not replace them.
 
 Pages containment is the completed prerequisite under
-[#114](https://github.com/Jamula/Andreja/issues/114). The next safe execution
-order is:
+[#114](https://github.com/Jamula/Andreja/issues/114). PR
+[#106](https://github.com/Jamula/Andreja/pull/106) completed the status
+reconciliation at merge commit `7a1fc20`.
 
-1. refresh, review, and merge PR [#106](https://github.com/Jamula/Andreja/pull/106);
-2. implement the fail-closed asynchronous review-completion gate in
-   [#104](https://github.com/Jamula/Andreja/issues/104); then
-3. implement fail-closed selective CI from
-   [#102](https://github.com/Jamula/Andreja/issues/102).
+The exact premature-auto-merge race in
+[#104](https://github.com/Jamula/Andreja/issues/104) is currently contained because
+repository auto-merge is disabled (`allow_auto_merge=false`). This is containment,
+not the full required outcome: #104 remains open, and merged PR
+[#115](https://github.com/Jamula/Andreja/pull/115) (`c93c6be`) contributed
+human-blocked design evidence only. No external GitHub App/worker or always-present
+review-completion gate exists or is authorized.
+
+The next safe engineering lane is fail-closed selective CI under
+[#102](https://github.com/Jamula/Andreja/issues/102), only while repository
+auto-merge remains disabled. It must keep stable, always-present, fail-closed
+aggregate checks on pull-request, merge-group, and default-branch paths.
+Implementation of #102 must not depend on, substitute for, or weaken #115 or #104;
+unknown or unclassified changes must fail closed into the full relevant suite.
 
 Public launch, a real Copilot provider, managed cloud, federation, and production
 connectors remain deferred to their later phases and explicit gates.
@@ -1320,7 +1339,7 @@ Before installation, review source/publisher provenance, immutable digest/versio
 - Built-in ASP.NET Core Identity/passkeys and local recovery flows are implemented; encrypted PostgreSQL-plus-Data-Protection-key clean restore with sign-in, genuine approved update/rollback, final support boundary, linked providers, and any optional control plane remain open.
 - CIAM provider/migration path and pricing.
 - Numeric budget, unit-cost model, Copilot token budgets, and numeric SLOs.
-- Canonical `docs/threat-model.md` and `docs/privacy.md`, including final residual risk, classification/impact assessment, retention, export, purge, residency, and model-provider rules.
+- Canonical `docs/threat-model.md` and `docs/privacy.md` descriptive baselines are present but not ratified; Tuvok/Deanna Troi/Rai challenge, Cyrus residual-risk acceptance, classification/impact assessment, numeric retention, residency, production export/purge, and model-provider decisions remain open.
 - Federation standards comparison, identity/trust/discovery, versioning, reference/copy semantics, and conformance scope.
 - Skill/channel manifest, host, capability, grant, peer-envelope, and minimal semantic contracts are implemented; UI isolation, signing, third-party execution, and authoring compatibility remain open.
 - OneDrive, Google Drive, GitHub, and Box API scopes, terms, limits, delta/webhook behavior, and connector security/privacy.
