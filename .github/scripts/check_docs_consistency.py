@@ -29,6 +29,7 @@ PLAN_PATH = REPO_ROOT / "docs" / "plan.md"
 ADR_PATH = REPO_ROOT / "docs" / "adr" / "0000-plan-ratification.md"
 CHARTER_PATH = REPO_ROOT / "docs" / "charter.md"
 CHARTER_ADR_PATH = REPO_ROOT / "docs" / "adr" / "0006-charter-ratification.md"
+README_PATH = REPO_ROOT / "README.md"
 DECISION_TEMPLATE_PATH = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "decision.yml"
 PR_TEMPLATE_PATH = REPO_ROOT / ".github" / "pull_request_template.md"
 SKILLS_PATH = REPO_ROOT / "docs" / "roadmap" / "first-party-skills.md"
@@ -234,11 +235,34 @@ def check_pr_template_state(pr_template_text: str, adr_status: str) -> None:
         )
 
 
+def check_readme_atomicity_content(readme_text: str, adr_status: str) -> None:
+    charter_pending = re.search(r"charter[^.]*\bpending\b", readme_text, re.IGNORECASE)
+    charter_ratified = re.search(
+        r"charter[^.]*\bratified\b", readme_text, re.IGNORECASE
+    )
+
+    if adr_status == "Proposed":
+        if not charter_pending or charter_ratified:
+            fail(
+                "While ADR 0006 is Proposed, README.md must describe the "
+                "charter as pending ratification and must not yet call it "
+                "ratified."
+            )
+        return
+
+    if charter_pending or not charter_ratified:
+        fail(
+            "When ADR 0006 is Accepted, README.md must describe the charter "
+            "as ratified and must no longer call it pending."
+        )
+
+
 def check_charter_atomicity_content(
     charter_text: str,
     adr_text: str,
     decision_form_text: str,
     pr_template_text: str,
+    readme_text: str,
 ) -> None:
     adr_status = charter_adr_status(adr_text)
     status_text = charter_status(charter_text)
@@ -260,19 +284,23 @@ def check_charter_atomicity_content(
                 "that change belongs to the atomic acceptance pull request."
             )
         check_pr_template_state(pr_template_text, adr_status)
+        check_readme_atomicity_content(readme_text, adr_status)
         print(
             "OK: Proposed ADR 0006 keeps the charter non-authoritative, the "
-            "decision form optional, and the PR template in its "
-            "pre-ratification state."
+            "decision form optional, README pending, and the PR template in "
+            "its pre-ratification state."
         )
         return
 
-    if says_proposed or says_not_authoritative or not re.search(
-        r"\b(?:accepted|ratified)\b", status_text, re.IGNORECASE
+    if (
+        says_proposed
+        or says_not_authoritative
+        or not re.match(r"(?i)^(?:accepted|ratified)\b", status_text)
     ):
         fail(
-            "When ADR 0006 is Accepted, docs/charter.md status must say Accepted "
-            "or ratified and must no longer say Proposed or not authoritative."
+            "When ADR 0006 is Accepted, docs/charter.md status must start "
+            "with Accepted or Ratified and must no longer say Proposed or "
+            "not authoritative."
         )
     if not issue_form_field_is_required(decision_form_text, "charter"):
         fail(
@@ -281,9 +309,10 @@ def check_charter_atomicity_content(
             "'validations: required: true'."
         )
     check_pr_template_state(pr_template_text, adr_status)
+    check_readme_atomicity_content(readme_text, adr_status)
     print(
-        "OK: Accepted ADR 0006 has atomic charter, decision-form, and "
-        "PR-template state."
+        "OK: Accepted ADR 0006 has atomic charter, decision-form, "
+        "README, and PR-template state."
     )
 
 
@@ -293,16 +322,18 @@ def check_charter_hash_content(charter_text: str, adr_text: str) -> None:
         return
 
     actual_hash = hashlib.sha256(charter_text.encode("utf-8")).hexdigest()
-    hash_match = re.search(
-        r"\*\*Charter SHA-256:\*\*\s*`([0-9a-fA-F]{64})`", adr_text
+    hash_matches = re.findall(
+        r"^- \*\*Charter SHA-256:\*\*\s*`([0-9a-fA-F]{64})`\s*$",
+        adr_text,
+        re.MULTILINE,
     )
-    if not hash_match:
+    if len(hash_matches) != 1:
         fail(
-            "Accepted ADR 0006 must contain a "
-            "'**Charter SHA-256:** `<64-character hash>`' line."
+            "Accepted ADR 0006 must contain exactly one "
+            "'- **Charter SHA-256:** `<64-character hash>`' line."
         )
 
-    recorded_hash = hash_match.group(1).lower()
+    recorded_hash = hash_matches[0].lower()
     if recorded_hash != actual_hash:
         fail(
             "docs/charter.md has changed since ADR 0006 was accepted.\n"
@@ -322,6 +353,7 @@ def check_charter_hash() -> None:
         adr_text,
         read(DECISION_TEMPLATE_PATH),
         read(PR_TEMPLATE_PATH),
+        read(README_PATH),
     )
     check_charter_hash_content(charter_text, adr_text)
 

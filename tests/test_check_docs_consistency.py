@@ -56,6 +56,18 @@ class CharterHashTests(unittest.TestCase):
                     f"- **Charter SHA-256:** `{'0' * 64}`\n",
                 )
 
+    def test_duplicate_charter_hash_lines_are_rejected(self) -> None:
+        charter = "ratified charter\n"
+        digest = hashlib.sha256(charter.encode("utf-8")).hexdigest()
+        with redirect_stdout(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                CHECKS.check_charter_hash_content(
+                    charter,
+                    "- **Status:** Accepted\n"
+                    f"- **Charter SHA-256:** `{digest}`\n"
+                    f"- **Charter SHA-256:** `{'1' * 64}`\n",
+                )
+
 
 class CharterAtomicityTests(unittest.TestCase):
     PROPOSED_ADR = "- **Status:** Proposed\n"
@@ -64,6 +76,10 @@ class CharterAtomicityTests(unittest.TestCase):
         "- **Status:** Proposed for explicit ratification; not yet authoritative\n"
     )
     ACCEPTED_CHARTER = "- **Status:** Ratified and authoritative\n"
+    PROPOSED_README = (
+        "The charter remains pending explicit ratification.\n"
+    )
+    ACCEPTED_README = "The charter is ratified and authoritative.\n"
     REQUIRED_CHARTER_FIELD = """
 body:
   - type: textarea
@@ -113,12 +129,17 @@ This section is optional while ADR 0006 is Proposed and required after it is Acc
 """
 
     def assert_fails(
-        self, charter: str, adr: str, form: str, pr_template: str
+        self,
+        charter: str,
+        adr: str,
+        form: str,
+        pr_template: str,
+        readme: str = PROPOSED_README,
     ) -> None:
         with redirect_stdout(io.StringIO()):
             with self.assertRaises(SystemExit):
                 CHECKS.check_charter_atomicity_content(
-                    charter, adr, form, pr_template
+                    charter, adr, form, pr_template, readme
                 )
 
     def test_proposed_state_accepts_non_authoritative_charter(self) -> None:
@@ -127,6 +148,7 @@ This section is optional while ADR 0006 is Proposed and required after it is Acc
             self.PROPOSED_ADR,
             "body: []\n",
             self.PROPOSED_PR_TEMPLATE,
+            self.PROPOSED_README,
         )
 
     def test_proposed_state_rejects_authoritative_charter(self) -> None:
@@ -161,12 +183,31 @@ This section is optional while ADR 0006 is Proposed and required after it is Acc
             self.PROPOSED_PR_TEMPLATE,
         )
 
+    def test_proposed_state_rejects_ratified_readme(self) -> None:
+        self.assert_fails(
+            self.PROPOSED_CHARTER,
+            self.PROPOSED_ADR,
+            "body: []\n",
+            self.PROPOSED_PR_TEMPLATE,
+            self.ACCEPTED_README,
+        )
+
     def test_accepted_state_accepts_all_atomic_requirements(self) -> None:
         CHECKS.check_charter_atomicity_content(
             self.ACCEPTED_CHARTER,
             self.ACCEPTED_ADR,
             self.REQUIRED_CHARTER_FIELD,
             self.REQUIRED_PR_TEMPLATE,
+            self.ACCEPTED_README,
+        )
+
+    def test_accepted_state_rejects_not_ratified_charter_status(self) -> None:
+        self.assert_fails(
+            "- **Status:** Not ratified\n",
+            self.ACCEPTED_ADR,
+            self.REQUIRED_CHARTER_FIELD,
+            self.REQUIRED_PR_TEMPLATE,
+            self.ACCEPTED_README,
         )
 
     def test_accepted_state_rejects_proposed_charter(self) -> None:
@@ -175,6 +216,15 @@ This section is optional while ADR 0006 is Proposed and required after it is Acc
             self.ACCEPTED_ADR,
             self.REQUIRED_CHARTER_FIELD,
             self.REQUIRED_PR_TEMPLATE,
+        )
+
+    def test_accepted_state_rejects_pending_readme(self) -> None:
+        self.assert_fails(
+            self.ACCEPTED_CHARTER,
+            self.ACCEPTED_ADR,
+            self.REQUIRED_CHARTER_FIELD,
+            self.REQUIRED_PR_TEMPLATE,
+            self.PROPOSED_README,
         )
 
     def test_accepted_state_rejects_optional_charter_field(self) -> None:
