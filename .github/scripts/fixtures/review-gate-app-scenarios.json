@@ -1,0 +1,123 @@
+[
+  {
+    "name": "PR 100 required CI completed before Copilot",
+    "incident": "#100",
+    "mergedAtSeconds": 148,
+    "firstReviewAtSeconds": 237,
+    "events": [
+      { "atSeconds": 0, "kind": "opened", "expected": "pending" },
+      { "atSeconds": 71, "kind": "required-ci-complete", "expected": "pending" },
+      { "atSeconds": 237, "kind": "copilot-review", "expected": "approved" }
+    ]
+  },
+  {
+    "name": "PR 101 required CI completed before Copilot",
+    "incident": "#101",
+    "mergedAtSeconds": 174,
+    "firstReviewAtSeconds": 489,
+    "events": [
+      { "atSeconds": 0, "kind": "opened", "expected": "pending" },
+      { "atSeconds": 87, "kind": "required-ci-complete", "expected": "pending" },
+      { "atSeconds": 489, "kind": "copilot-review", "expected": "approved" }
+    ]
+  },
+  {
+    "name": "PR 105 required CI was already complete when review began",
+    "incident": "#105",
+    "mergedAtSeconds": 78,
+    "firstReviewAtSeconds": 267,
+    "events": [
+      { "atSeconds": 0, "kind": "opened-with-ci-complete", "expected": "pending" },
+      { "atSeconds": 267, "kind": "copilot-review", "expected": "approved" }
+    ]
+  },
+  {
+    "name": "Base advance supersedes every durably mapped PR head",
+    "scenario": "base-advance-enumeration",
+    "events": [
+      { "kind": "prior-head-success", "expected": "approved" },
+      { "kind": "base-push", "expected": "pending-on-every-head-before-read" },
+      { "kind": "current-base-reevaluation", "expected": "rejected-with-stale-evidence" }
+    ]
+  },
+  {
+    "name": "Base push resolves live head before invalidating a reused success",
+    "scenario": "base-push-live-authority",
+    "events": [
+      { "kind": "durable-h1-live-h2-with-prior-h2-success", "expected": "approved-before-delivery" },
+      { "kind": "per-number-live-pr-fetch", "expected": "pending-on-h2-before-cas-or-evaluation" },
+      { "kind": "mapping-page-or-live-api-failure", "expected": "known-heads-and-base-failed-closed" }
+    ]
+  },
+  {
+    "name": "Merge group revalidates constituent policies",
+    "scenario": "merge-group-constituents",
+    "events": [
+      { "kind": "merge-group-checks-requested", "expected": "pending" },
+      { "kind": "one-constituent-draft", "expected": "rejected" },
+      { "kind": "all-current-constituents-complete", "expected": "approved" }
+    ]
+  },
+  {
+    "name": "Reviewer authorization is revoked after success",
+    "scenario": "reviewer-revocation",
+    "events": [
+      { "kind": "authorized-reviewer-success", "expected": "approved" },
+      { "kind": "membership-revoked", "expected": "pending-before-read" },
+      { "kind": "permission-recheck", "expected": "rejected" }
+    ]
+  },
+  {
+    "name": "Dropped delivery is recovered by periodic reconciliation",
+    "scenario": "dropped-delivery-reconciliation",
+    "events": [
+      { "kind": "prior-head-success", "expected": "approved" },
+      { "kind": "thread-reopened-with-delivery-dropped", "expected": "unknown-until-reconciliation" },
+      { "kind": "periodic-full-reconciliation", "expected": "pending-then-rejected" }
+    ]
+  },
+  {
+    "name": "Canary identity is event-path specific",
+    "scenario": "event-specific-canary",
+    "events": [
+      { "kind": "default-base-push", "expected": "not-merge-group-evidence" },
+      { "kind": "real-merge-group", "expected": "constituent-bound-evidence" }
+    ]
+  },
+  {
+    "name": "Durable canonical policy survives comment projection tampering",
+    "scenario": "canonical-policy-projection",
+    "events": [
+      { "kind": "prior-head-success", "expected": "approved" },
+      { "kind": "comment-edited-deleted-or-marker-removed", "expected": "pending-then-rejected" },
+      { "kind": "canonical-projection-restored", "expected": "policy-not-reduced" }
+    ]
+  },
+  {
+    "name": "Push accepts only the current protected base tip",
+    "scenario": "protected-push-identity",
+    "events": [
+      { "kind": "tag-feature-or-deletion", "expected": "rejected-without-check" },
+      { "kind": "stale-protected-tip", "expected": "failed-check" },
+      { "kind": "current-protected-tip", "expected": "base-reconciled-only" }
+    ]
+  },
+  {
+    "name": "Reconciliation refreshes every live exact PR identity",
+    "scenario": "reconciliation-identity-drift",
+    "events": [
+      { "kind": "full-open-pr-pagination", "expected": "all-live-prs-enumerated" },
+      { "kind": "dropped-synchronize-or-retarget", "expected": "pending-on-current-head-before-mapping-update" },
+      { "kind": "previously-successful-commit-reused", "expected": "newest-generation-rejected-until-current-evidence" }
+    ]
+  },
+  {
+    "name": "Reconciliation recovers a dropped reopen from closed durable state",
+    "scenario": "dropped-reopen-reconciliation",
+    "events": [
+      { "kind": "live-open-with-durable-closed-v5", "expected": "pending-then-cas-from-v5" },
+      { "kind": "repeated-full-sweep", "expected": "stable-idempotent-open-state" },
+      { "kind": "mapping-cas-conflict-then-next-sweep", "expected": "failed-closed-then-recovered" }
+    ]
+  }
+]
