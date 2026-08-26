@@ -24,6 +24,7 @@ const {
 const root = path.resolve(__dirname, '../..');
 const policy = loadPolicy(path.join(__dirname, 'change-policy.v1.json'));
 const fixtures = require('./fixtures/change-classifier-cases.json');
+const capturedLabeledRun = require('./fixtures/actions-run-32981189695.sanitized.json');
 const {
   classificationName,
   estimatedMinutes,
@@ -497,19 +498,57 @@ const labelRuntime = (overrides = {}) => ({
   delay: async () => {},
   ...overrides,
 });
-const labeledRun = (overrides = {}) => ({
-  id: 800,
-  event: 'pull_request_target',
-  head_sha: smokeSha,
-  head_branch: 'main',
-  path: '.github/workflows/selective-ci-shadow.yml',
-  head_repository: { full_name: 'Jamula/Andreja' },
-  actor: { login: 'Jett-Reno' },
-  pull_requests: [{ number: 118 }],
-  run_attempt: 1,
-  created_at: '2026-08-26T10:01:00Z',
-  ...overrides,
-});
+const labeledPullRequest = (overrides = {}) => {
+  const { head = {}, base = {}, ...rest } = overrides;
+  return {
+    number: 118,
+    ...rest,
+    head: {
+      sha: 'b'.repeat(40),
+      ref: 'feature/selective-ci-sample',
+      repo: {
+        id: 1342901808,
+        name: 'Andreja',
+        url: 'https://api.github.com/repos/Jamula/Andreja',
+      },
+      ...head,
+    },
+    base: {
+      sha: smokeSha,
+      ref: 'main',
+      repo: {
+        id: 1342901808,
+        name: 'Andreja',
+        url: 'https://api.github.com/repos/Jamula/Andreja',
+      },
+      ...base,
+    },
+  };
+};
+const labeledRun = (overrides = {}) => {
+  const pullRequests = overrides.pull_requests === undefined
+    ? [labeledPullRequest()]
+    : overrides.pull_requests.map(labeledPullRequest);
+  return {
+    id: 800,
+    event: 'pull_request_target',
+    head_sha: 'b'.repeat(40),
+    head_branch: 'feature/selective-ci-sample',
+    path: '.github/workflows/selective-ci-shadow.yml',
+    head_repository: {
+      id: 1342901808,
+      full_name: 'Jamula/Andreja',
+      url: 'https://api.github.com/repos/Jamula/Andreja',
+      fork: false,
+    },
+    actor: { login: 'Jett-Reno' },
+    pull_requests: pullRequests,
+    run_attempt: 1,
+    created_at: '2026-08-26T10:01:00Z',
+    ...overrides,
+    pull_requests: pullRequests,
+  };
+};
 const labelIssueEvent = (run, overrides = {}) => ({
   id: Number(run.id) + 10000,
   event: 'labeled',
@@ -666,6 +705,198 @@ test('first and second labeled workflow runs are authorized within N=2', async (
       [smokeSha, smokeSha],
     );
   }
+});
+
+test('captured pull_request_target run shape binds PR head separately from main controller', async () => {
+  const run = {
+    ...structuredClone(capturedLabeledRun),
+    id: 800,
+    path: '.github/workflows/selective-ci-shadow.yml',
+    actor: { login: 'Jett-Reno' },
+    created_at: '2026-08-26T10:01:00Z',
+  };
+  run.pull_requests[0].base.sha = smokeSha;
+  const budgetedFetch = createBudgetedFetch(labelMetadataFetch({
+    runSnapshots: [[[run]], [[run]]],
+  }));
+  const authorization = await authorizeLabeledRun(
+    labelEvent,
+    'Jamula/Andreja',
+    'token',
+    budgetedFetch,
+    labelRuntime({ requestObservation: budgetedFetch.observation }),
+  );
+  assert.equal(authorization.authorized, true, JSON.stringify(authorization));
+  const record = authorization.historySnapshots[1].runRecords[0];
+  assert.equal(record.runHeadSha, run.pull_requests[0].head.sha);
+  assert.equal(record.runHeadBranch, run.pull_requests[0].head.ref);
+  assert.equal(record.pullRequestBaseSha, smokeSha);
+  assert.equal(record.pullRequestBaseRef, 'main');
+  assert.equal(record.pullRequestIdentityBound, true);
+  assert.notEqual(record.runHeadSha, record.pullRequestBaseSha);
+});
+
+test('labeled run rejects mismatched top-level PR head and base/controller proof', async () => {
+  const cases = [
+    labeledRun({ head_sha: 'c'.repeat(40) }),
+    labeledRun({ head_branch: 'feature/different-head' }),
+    labeledRun({
+      pull_requests: [{ head: { sha: 'c'.repeat(40) } }],
+    }),
+    labeledRun({
+      pull_requests: [{ head: { ref: 'feature/different-head' } }],
+    }),
+    labeledRun({
+      pull_requests: [{ base: { ref: 'develop' } }],
+    }),
+    labeledRun({
+      pull_requests: [{ base: { sha: 'e'.repeat(40) } }],
+    }),
+  ];
+  for (const run of cases) {
+    const budgetedFetch = createBudgetedFetch(labelMetadataFetch({
+      runSnapshots: [[[run]], [[run]]],
+    }));
+    const authorization = await authorizeLabeledRun(
+      labelEvent,
+      'Jamula/Andreja',
+      'token',
+      budgetedFetch,
+      labelRuntime({ requestObservation: budgetedFetch.observation }),
+    );
+    assert.equal(authorization.authorized, false);
+    assert.equal(authorization.reason, 'label-current-run-identity-mismatch');
+    assert.equal(
+      authorization.historySnapshots.at(-1).runRecords[0].pullRequestIdentityBound,
+      false,
+    );
+  }
+});
+
+test('labeled run requires exactly one associated pull request', async () => {
+  for (const pullRequests of [[], [{ number: 118 }, { number: 119 }]]) {
+    const run = labeledRun({ pull_requests: pullRequests });
+    const budgetedFetch = createBudgetedFetch(labelMetadataFetch({
+      runSnapshots: [[[run]]],
+    }));
+    const authorization = await authorizeLabeledRun(
+      labelEvent,
+      'Jamula/Andreja',
+      'token',
+      budgetedFetch,
+      labelRuntime({ requestObservation: budgetedFetch.observation }),
+    );
+    assert.equal(authorization.authorized, false);
+    assert.equal(authorization.reason, 'label-run-pull-request-identity-unavailable');
+    assert.equal(authorization.historySnapshots.length, 1);
+  }
+});
+
+test('labeled run binds fork and target repository identities without assuming same-repo head', async () => {
+  const forkUrl = 'https://api.github.com/repos/example-fork/Andreja';
+  const forkRun = labeledRun({
+    head_repository: {
+      id: 2000000000,
+      full_name: 'example-fork/Andreja',
+      url: forkUrl,
+      fork: true,
+    },
+    pull_requests: [{ head: {
+      repo: { id: 2000000000, name: 'Andreja', url: forkUrl },
+    } }],
+  });
+  const validFetch = createBudgetedFetch(labelMetadataFetch({
+    runSnapshots: [[[forkRun]], [[forkRun]]],
+  }));
+  const valid = await authorizeLabeledRun(
+    labelEvent,
+    'Jamula/Andreja',
+    'token',
+    validFetch,
+    labelRuntime({ requestObservation: validFetch.observation }),
+  );
+  assert.equal(valid.authorized, true, JSON.stringify(valid));
+  assert.equal(
+    valid.historySnapshots[1].runRecords[0].pullRequestHeadRepositoryUrl,
+    forkUrl,
+  );
+
+  const invalidRuns = [
+    labeledRun({
+      head_repository: {
+        full_name: 'example-fork/Andreja',
+        url: forkUrl,
+        fork: true,
+      },
+    }),
+    labeledRun({
+      pull_requests: [{
+        base: { repo: { url: 'https://api.github.com/repos/other/Andreja' } },
+      }],
+    }),
+  ];
+  for (const run of invalidRuns) {
+    const budgetedFetch = createBudgetedFetch(labelMetadataFetch({
+      runSnapshots: [[[run]], [[run]]],
+    }));
+    const authorization = await authorizeLabeledRun(
+      labelEvent,
+      'Jamula/Andreja',
+      'token',
+      budgetedFetch,
+      labelRuntime({ requestObservation: budgetedFetch.observation }),
+    );
+    assert.equal(authorization.authorized, false);
+    assert.equal(authorization.reason, 'label-current-run-identity-mismatch');
+  }
+});
+
+test('labeled run history rejects a prior head mismatch and a current-run identity race', async () => {
+  const unauthorized = labeledRun({
+    id: 799,
+    head_sha: 'c'.repeat(40),
+    pull_requests: [{ number: 117 }],
+    created_at: '2026-08-26T10:00:30Z',
+  });
+  const current = labeledRun();
+  const events = {
+    117: [[labelIssueEvent(unauthorized)]],
+    118: [[labelIssueEvent(current)]],
+  };
+  const historyFetch = createBudgetedFetch(labelMetadataFetch({
+    runSnapshots: [[[unauthorized, current]]],
+    issueEventSnapshots: [events],
+  }));
+  const historyAuthorization = await authorizeLabeledRun(
+    labelEvent,
+    'Jamula/Andreja',
+    'token',
+    historyFetch,
+    labelRuntime({ requestObservation: historyFetch.observation }),
+  );
+  assert.equal(historyAuthorization.authorized, false);
+  assert.equal(
+    historyAuthorization.reason,
+    'label-run-history-contains-unauthorized-record',
+  );
+  assert.deepEqual(
+    historyAuthorization.historySnapshots[0].unauthorizedRunIds,
+    ['799'],
+  );
+
+  const raced = labeledRun({ head_sha: 'c'.repeat(40) });
+  const raceFetch = createBudgetedFetch(labelMetadataFetch({
+    runSnapshots: [[[current]], [[raced]]],
+  }));
+  const raceAuthorization = await authorizeLabeledRun(
+    labelEvent,
+    'Jamula/Andreja',
+    'token',
+    raceFetch,
+    labelRuntime({ requestObservation: raceFetch.observation }),
+  );
+  assert.equal(raceAuthorization.authorized, false);
+  assert.equal(raceAuthorization.reason, 'label-run-history-unstable');
 });
 
 test('labeled authorization binds the live main controller and fails closed on drift', async () => {
@@ -1218,7 +1449,7 @@ test('labeled run binds current PR, workflow, actor, label event, and first atte
     labelRuntime({ requestObservation: rerunFetch.observation }),
   );
   assert.equal(rerun.authorized, false);
-  assert.equal(rerun.reason, 'label-authorized-run-rerun-forbidden');
+  assert.equal(rerun.reason, 'label-run-history-contains-unauthorized-record');
 });
 
 test('labeled run fails closed at Actions and issue-event pagination caps', async () => {

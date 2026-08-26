@@ -37,12 +37,19 @@ first run attempt, and complete paginated `pull_request_target` workflow-run and
 per-PR issue-event history since `SELECTIVE_CI_WINDOW_START`. Each authorization
 pass reads repository metadata, the live `main` head, and history twice around a
 bounded delay. Each read requires `default_branch=main` and live main equal to
-both the configured controller SHA and `GITHUB_SHA`. It binds each run to exactly one
-`labeled` event by PR and a unique bounded event-to-run timestamp, then records
-the event ID/action/label/operator, run ID/attempt/workflow/controller/repository,
+both the configured controller SHA and `GITHUB_SHA`. Separately, it requires
+each Actions run to have exactly one associated PR: the run's top-level head
+SHA/ref must equal that PR's head SHA/ref, the top-level head-repository identity
+must equal the associated head repository (including a coherently identified
+fork), and the associated base must be this repository's exact `main` controller
+SHA. It then binds the run to exactly one `labeled` event by that PR and a unique
+bounded event-to-run timestamp. Evidence records the event
+ID/action/label/operator, run ID/attempt/workflow, PR head/base/repository proof,
 slot, page counts, request/rate-limit observation, and a SHA-256 history
-fingerprint. Every labeled workflow run since the window start consumes the absolute `N`
-cap, including unrelated labels, actors, workflows, and controller revisions.
+fingerprint. The run's top-level head is never treated as the controller; live
+default-branch reads and `GITHUB_SHA` provide controller ownership. Every
+labeled workflow run since the window start consumes the absolute `N` cap,
+including unrelated labels, actors, workflows, and controller revisions.
 Both snapshots and the final authorization pass must remain identical, and no
 historical run record may be unauthorized. Only the first two distinct-PR
 authorized sample runs may proceed. A third raw run, a repeat of a sampled PR,

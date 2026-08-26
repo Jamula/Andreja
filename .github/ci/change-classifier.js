@@ -846,6 +846,58 @@ async function authorizeLabeledRun(
 
   const delay = runtime.delay ?? ((milliseconds) =>
     new Promise((resolve) => setTimeout(resolve, milliseconds)));
+  const api = (process.env.GITHUB_API_URL || 'https://api.github.com').replace(/\/+$/, '');
+  const repositoryApiUrl = `${api}/repos/${repository}`;
+  const runPullRequestIdentity = (run) => {
+    if (
+      !Array.isArray(run.pull_requests) ||
+      run.pull_requests.length !== 1 ||
+      !Number.isSafeInteger(run.pull_requests[0]?.number) ||
+      run.pull_requests[0].number < 1
+    ) {
+      return null;
+    }
+    const pullRequest = run.pull_requests[0];
+    const identity = {
+      number: pullRequest.number,
+      headSha: pullRequest.head?.sha ?? null,
+      headRef: pullRequest.head?.ref ?? null,
+      headRepositoryUrl: pullRequest.head?.repo?.url ?? null,
+      baseSha: pullRequest.base?.sha ?? null,
+      baseRef: pullRequest.base?.ref ?? null,
+      baseRepositoryUrl: pullRequest.base?.repo?.url ?? null,
+      runHeadSha: run.head_sha ?? null,
+      runHeadBranch: run.head_branch ?? null,
+      runHeadRepositoryUrl: run.head_repository?.url ?? null,
+      runHeadRepositoryName: run.head_repository?.full_name ?? null,
+    };
+    const exactRepositoryShape =
+      EXACT_SHA.test(String(identity.headSha ?? '')) &&
+      typeof identity.headRef === 'string' &&
+      identity.headRef.length > 0 &&
+      typeof identity.headRepositoryUrl === 'string' &&
+      identity.headRepositoryUrl.length > 0 &&
+      EXACT_SHA.test(String(identity.baseSha ?? '')) &&
+      typeof identity.baseRef === 'string' &&
+      identity.baseRef.length > 0 &&
+      typeof identity.baseRepositoryUrl === 'string' &&
+      identity.baseRepositoryUrl.length > 0 &&
+      typeof identity.runHeadRepositoryUrl === 'string' &&
+      identity.runHeadRepositoryUrl.length > 0 &&
+      typeof identity.runHeadRepositoryName === 'string' &&
+      identity.runHeadRepositoryName.length > 0;
+    identity.bound =
+      exactRepositoryShape &&
+      identity.runHeadSha === identity.headSha &&
+      identity.runHeadBranch === identity.headRef &&
+      identity.runHeadRepositoryUrl === identity.headRepositoryUrl &&
+      identity.runHeadRepositoryUrl ===
+        `${api}/repos/${identity.runHeadRepositoryName}` &&
+      identity.baseRef === 'main' &&
+      identity.baseSha === expectedControllerSha &&
+      identity.baseRepositoryUrl === repositoryApiUrl;
+    return identity;
+  };
   const readHistory = async (label, liveState) => {
     const history = await readCompleteWorkflowRunHistory({
       repository,
@@ -856,17 +908,10 @@ async function authorizeLabeledRun(
       windowStartMilliseconds,
     });
     evidence.labelRunCount = history.totalCount;
-    const pullRequestNumbers = history.runs.map((run) => {
-      if (
-        !Array.isArray(run.pull_requests) ||
-        run.pull_requests.length !== 1 ||
-        !Number.isSafeInteger(run.pull_requests[0]?.number) ||
-        run.pull_requests[0].number < 1
-      ) {
-        return null;
-      }
-      return run.pull_requests[0].number;
-    });
+    const pullRequestIdentities = history.runs.map(runPullRequestIdentity);
+    const pullRequestNumbers = pullRequestIdentities.map(
+      (identity) => identity?.number ?? null,
+    );
     const currentRun = history.runs.find(
       (run) => String(run.id) === String(runtime.runId),
     );
@@ -877,6 +922,7 @@ async function authorizeLabeledRun(
         pageCount: history.pageCount,
         runIds: history.runIds,
         pullRequestNumbers,
+        pullRequestIdentities,
         defaultBranch: liveState.defaultBranch,
         liveDefaultBranchSha: liveState.liveSha,
         currentRunVisible: currentRun !== undefined,
@@ -888,7 +934,7 @@ async function authorizeLabeledRun(
       return earlyFailure('label-run-limit-exceeded');
     }
     if (pullRequestNumbers.some((number) => number === null)) {
-      throw new Error('Workflow run metadata omitted an exact pull request identity.');
+      return earlyFailure('label-run-pull-request-identity-unavailable');
     }
     if (new Set(pullRequestNumbers).size !== pullRequestNumbers.length) {
       return earlyFailure('label-run-pull-request-repeated');
@@ -914,7 +960,8 @@ async function authorizeLabeledRun(
         Number(left.id) - Number(right.id),
     );
     for (const run of sortedRuns) {
-      const pullRequestNumber = run.pull_requests[0].number;
+      const pullRequestIdentity = runPullRequestIdentity(run);
+      const pullRequestNumber = pullRequestIdentity.number;
       const runCreatedAtMilliseconds = Date.parse(run.created_at);
       const candidates = issueHistories
         .get(pullRequestNumber)
@@ -937,11 +984,10 @@ async function authorizeLabeledRun(
       usedIssueEventIds.add(String(issueEvent.id));
       const controllerOwned =
         run.event === 'pull_request_target' &&
-        run.head_sha === expectedControllerSha &&
-        run.head_branch === 'main' &&
         run.path === `.github/workflows/${SMOKE_WORKFLOW_FILE}` &&
-        run.head_repository?.full_name === repository &&
-        run.actor?.login === expectedOperator;
+        run.actor?.login === expectedOperator &&
+        run.run_attempt === 1 &&
+        pullRequestIdentity.bound;
       const exactSampleEvent =
         issueEvent.event === 'labeled' &&
         issueEvent.label?.name === SHADOW_SAMPLE_LABEL &&
@@ -961,10 +1007,18 @@ async function authorizeLabeledRun(
         pullRequestNumber,
         workflowEvent: run.event ?? null,
         workflowPath: run.path ?? null,
-        workflowSha: run.head_sha ?? null,
-        workflowBranch: run.head_branch ?? null,
+        runHeadSha: run.head_sha ?? null,
+        runHeadBranch: run.head_branch ?? null,
         workflowActor: run.actor?.login ?? null,
-        repository: run.head_repository?.full_name ?? null,
+        runHeadRepositoryName: run.head_repository?.full_name ?? null,
+        pullRequestHeadSha: pullRequestIdentity.headSha,
+        pullRequestHeadRef: pullRequestIdentity.headRef,
+        pullRequestHeadRepositoryUrl: pullRequestIdentity.headRepositoryUrl,
+        pullRequestBaseSha: pullRequestIdentity.baseSha,
+        pullRequestBaseRef: pullRequestIdentity.baseRef,
+        pullRequestBaseRepositoryUrl: pullRequestIdentity.baseRepositoryUrl,
+        runHeadRepositoryUrl: pullRequestIdentity.runHeadRepositoryUrl,
+        pullRequestIdentityBound: pullRequestIdentity.bound,
         controllerOwned,
         authorized,
       });
@@ -1001,6 +1055,7 @@ async function authorizeLabeledRun(
       pageCount: history.pageCount,
       runIds: history.runIds,
       pullRequestNumbers,
+      pullRequestIdentities,
       authorizedRunCount: authorizedRecords.length,
       authorizedRunIds: authorizedRecords.map((record) => record.runId),
       authorizedEventIds: authorizedRecords.map((record) => record.eventId),
@@ -1026,7 +1081,6 @@ async function authorizeLabeledRun(
     return null;
   };
 
-  const api = process.env.GITHUB_API_URL || 'https://api.github.com';
   const readLiveState = async (label, previous = null) => {
     const { body: repositoryMetadata } = await getJson(
       `${api}/repos/${repository}`,
@@ -1115,10 +1169,8 @@ async function authorizeLabeledRun(
     if (String(runtime.runAttempt ?? '') !== '1') return fail('label-rerun-forbidden');
     if (
       currentRecord?.workflowEvent !== 'pull_request_target' ||
-      currentRecord.workflowSha !== expectedControllerSha ||
-      currentRecord.workflowBranch !== 'main' ||
+      currentRecord.pullRequestIdentityBound !== true ||
       currentRecord.workflowPath !== `.github/workflows/${SMOKE_WORKFLOW_FILE}` ||
-      currentRecord.repository !== repository ||
       currentRecord.workflowActor !== expectedOperator ||
       currentRecord.runAttempt !== 1
     ) {
@@ -1131,9 +1183,6 @@ async function authorizeLabeledRun(
       currentRecord.operator !== sender
     ) {
       return fail('label-run-pull-request-identity-unavailable');
-    }
-    if (recheck.runRecords.some((record) => record.authorized && record.runAttempt !== 1)) {
-      return fail('label-authorized-run-rerun-forbidden');
     }
     const requestBudget = requestObservation();
     evidence.requestBudgetAtAuthorization = requestBudget;
