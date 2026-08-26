@@ -17,11 +17,13 @@ GitHub loads `repository_dispatch` workflows from the default branch. The smoke
 controller additionally requires `GITHUB_REF=refs/heads/main`, an exact
 `GITHUB_SHA` equal to the live API-reported default-branch head, exact canonical
 event-sender/actor equality, configured exact 40-hex
-`SELECTIVE_CI_CONTROLLER_SHA` and `SELECTIVE_CI_SAMPLE_OPERATOR`
-repository Actions variables, and exactly one repository-dispatch run at the
-configured controller revision across the complete available workflow history.
-Runs from older controller revisions do not spend the newly reviewed revision's
-one-shot budget. Any missing,
+`SELECTIVE_CI_CONTROLLER_SHA`, `SELECTIVE_CI_SAMPLE_OPERATOR`, and
+`SELECTIVE_CI_WINDOW_START` repository Actions variables, and exactly one
+repository-dispatch run since that window start and at the configured controller
+revision. The smoke command intentionally carries no controller SHA in
+`client_payload`; the repository-owned variable is authoritative. Adding such a
+payload later requires separate review and exact equality with both workflow and
+live-main SHA. Any missing,
 stale, repeated, unauthorized, tag/branch, API, pagination, or rate-limit state
 fails unavailable before domain jobs. The read-only token has only
 `contents`, `pull-requests`, and `actions` read access.
@@ -482,17 +484,22 @@ continuation.
 3. Before provisioning any label, configure the required repository-owned
    Actions variables. Jett Reno is the named sample operator; record his exact
    canonical GitHub login. Set the controller variable to the recorded exact
-   40-hex squash-merged controller SHA before any dispatch:
+   40-hex squash-merged controller SHA and the window start to the recorded
+   `<START>` whole-second UTC timestamp before any dispatch:
 
    ```powershell
    gh variable set SELECTIVE_CI_SAMPLE_OPERATOR --repo Jamula/Andreja --body '<LOGIN>'
    gh variable set SELECTIVE_CI_CONTROLLER_SHA --repo Jamula/Andreja --body '<CONTROLLER_SHA>'
+   gh variable set SELECTIVE_CI_WINDOW_START --repo Jamula/Andreja --body '<START>'
    $expectedOperator = gh variable get SELECTIVE_CI_SAMPLE_OPERATOR `
      --repo Jamula/Andreja --json value --jq '.value'
    $configuredControllerSha = gh variable get SELECTIVE_CI_CONTROLLER_SHA `
      --repo Jamula/Andreja --json value --jq '.value'
+   $windowStart = gh variable get SELECTIVE_CI_WINDOW_START `
+     --repo Jamula/Andreja --json value --jq '.value'
    if ($expectedOperator -cne '<LOGIN>') { throw 'Sample operator configuration mismatch' }
    if ($configuredControllerSha -cne '<CONTROLLER_SHA>') { throw 'Controller configuration mismatch' }
+   if ($windowStart -cne '<START>') { throw 'Sample window-start configuration mismatch' }
    ```
 
    Run the paginated Actions-run and repository issue-event audits from
@@ -512,18 +519,18 @@ continuation.
    Charge this sole dispatch against `S=1`. Require the classification and
    aggregate evidence to record exact event sender and actor, `refs/heads/main`,
    live-main SHA, configured expected-controller SHA, current run
-   ID/attempt, and two history snapshots with total and current-revision smoke
-   count `1`, authorization
+   ID/attempt, window start, and two history snapshots with total and
+   current-revision smoke count `1`, authorization
    reason, and request-budget/rate-limit observations. Actions pagination must
    be complete and below the 1,000-run API cap. Also require successful stable
    contexts, aggregate `schemaVersion: 2`, both vulnerability JSON artifacts,
    and acceptable Jobs API duration. A failed smoke, `F_i >= 4`, more than 32
    rounded minutes, or insufficient headroom terminally disables; no second
    dispatch is authorized.
-4. Reverify the monitored no-unexpected-label precondition and both configured
+4. Reverify the monitored no-unexpected-label precondition and all configured
    variables before labeling.
 
-   Do not provision or change this setting merely by editing the runbook. Treat
+   Do not provision or change these settings merely by editing the runbook. Treat
    an absent, differently cased, stale, or mismatched variable as a fail-closed setup blocker. The operator value is
    an operator login, not a secret; repository settings, rather than pull-request
    code or event input, own it. GitHub expression equality is a prefilter; the

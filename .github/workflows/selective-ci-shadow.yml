@@ -93,6 +93,7 @@ jobs:
           CHANGE_DECISION_PATH: artifacts/selective-ci/classification.json
           SELECTIVE_CI_SAMPLE_OPERATOR: ${{ vars.SELECTIVE_CI_SAMPLE_OPERATOR }}
           SELECTIVE_CI_CONTROLLER_SHA: ${{ vars.SELECTIVE_CI_CONTROLLER_SHA }}
+          SELECTIVE_CI_WINDOW_START: ${{ vars.SELECTIVE_CI_WINDOW_START }}
         run: |
           mkdir -p artifacts/selective-ci
           if [ -f trusted-ci/.github/ci/change-classifier.js ]; then
@@ -133,6 +134,7 @@ jobs:
                 workflowRef: process.env.GITHUB_REF || null,
                 workflowSha: process.env.GITHUB_SHA || null,
                 expectedControllerSha: process.env.SELECTIVE_CI_CONTROLLER_SHA || null,
+                windowStart: process.env.SELECTIVE_CI_WINDOW_START || null,
                 defaultBranch: null,
                 liveDefaultBranchSha: null,
                 currentRunId: process.env.GITHUB_RUN_ID || null,

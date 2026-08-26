@@ -128,6 +128,8 @@ function runBootstrapDecision(actor, operator, options = {}) {
           GITHUB_OUTPUT: outputPath,
           SELECTIVE_CI_SAMPLE_OPERATOR: operator,
           SELECTIVE_CI_CONTROLLER_SHA: options.controllerSha ?? smokeSha,
+          SELECTIVE_CI_WINDOW_START:
+            options.windowStart ?? '2026-08-26T10:00:00Z',
         },
       },
     );
@@ -417,6 +419,8 @@ const smokeRuntime = (overrides = {}) => ({
   actor: 'Jett-Reno',
   expectedOperator: 'Jett-Reno',
   configuredControllerSha: smokeSha,
+  windowStart: '2026-08-26T10:00:00Z',
+  now: '2026-08-26T10:05:00Z',
   workflowRef: 'refs/heads/main',
   workflowSha: smokeSha,
   runId: '700',
@@ -458,7 +462,7 @@ function smokeMetadataFetch(options = {}) {
     if (url.includes('/actions/workflows/')) {
       assert.match(
         url,
-        /event=repository_dispatch&per_page=100/,
+        /event=repository_dispatch&created=%3E%3D2026-08-26T10%3A00%3A00Z&per_page=100/,
       );
     }
     const snapshotMatch = url.match(/[?&]test_snapshot=(\d+)/);
@@ -513,6 +517,19 @@ test('repository dispatch smoke rejects wrong event, operator, controller, and r
     {
       runtime: { configuredControllerSha: 'not-a-sha' },
       reason: 'smoke-controller-sha-unconfigured-or-invalid',
+    },
+    { runtime: { windowStart: '' }, reason: 'smoke-window-start-unconfigured' },
+    {
+      runtime: { windowStart: 'not-a-timestamp' },
+      reason: 'smoke-window-start-invalid',
+    },
+    {
+      runtime: { windowStart: '2026-02-30T10:00:00Z' },
+      reason: 'smoke-window-start-invalid',
+    },
+    {
+      runtime: { windowStart: '2026-08-26T10:06:00Z' },
+      reason: 'smoke-window-start-invalid',
     },
     { runtime: { runAttempt: '2' }, reason: 'smoke-rerun-forbidden' },
   ]) {
@@ -610,7 +627,8 @@ test('repository dispatch smoke pagination enforces the S=1 run limit', async ()
     previousControllerFetch,
     smokeRuntime({ requestObservation: previousControllerFetch.observation }),
   );
-  assert.equal(previousController.authorized, true);
+  assert.equal(previousController.authorized, false);
+  assert.equal(previousController.reason, 'smoke-run-limit-exceeded');
   assert.equal(previousController.historySnapshots[0].totalCount, 2);
   assert.equal(previousController.historySnapshots[0].currentRevisionCount, 1);
 
@@ -705,6 +723,22 @@ test('repository dispatch smoke API and rate-limit ambiguity fail unavailable', 
   );
   assert.equal(ambiguous.authorized, false);
   assert.equal(ambiguous.reason, 'smoke-rate-limit-observation-unavailable');
+
+  const ambiguousChangesFetch = createBudgetedFetch(smokeMetadataFetch({
+    rateLimitRemaining: null,
+  }));
+  const ambiguousChanges = await acquireChanges(
+    'repository_dispatch',
+    smokeEvent,
+    'Jamula/Andreja',
+    'token',
+    ambiguousChangesFetch,
+    smokeRuntime({ requestObservation: ambiguousChangesFetch.observation }),
+  );
+  assert.equal(
+    ambiguousChanges.classificationFailure,
+    'github-metadata-rate-limit-or-budget',
+  );
 
   const exhaustedFetch = createBudgetedFetch(smokeMetadataFetch(), 1);
   const exhausted = await authorizeRepositoryDispatchSmoke(
@@ -1883,7 +1917,8 @@ test('workflow isolates authorized samples from cancelable topology runs', () =>
   assert.match(workflow, /permissions:\s*\{\}/);
   assert.match(workflow, /permissions:\r?\n\s+actions: read\r?\n\s+contents: read\r?\n\s+pull-requests: read/);
   assert.match(workflow, /SELECTIVE_CI_CONTROLLER_SHA: \$\{\{ vars\.SELECTIVE_CI_CONTROLLER_SHA \}\}/);
-  assert.doesNotMatch(workflow, /client_payload|SELECTIVE_CI_WINDOW_START/);
+  assert.match(workflow, /SELECTIVE_CI_WINDOW_START: \$\{\{ vars\.SELECTIVE_CI_WINDOW_START \}\}/);
+  assert.doesNotMatch(workflow, /client_payload/);
   assert.match(workflow, /trusted-classifier-unavailable-on-default-branch/);
   assert.match(workflow, /smoke_authorization: \$\{\{ steps\.classify\.outputs\.smoke_authorization \}\}/);
   assert.match(workflow, /API_REQUEST_BUDGET: \$\{\{ needs\.classify\.outputs\.api_request_budget \}\}/);
@@ -2005,6 +2040,7 @@ test('bootstrap never authorizes repository dispatch without the trusted classif
   assert.equal(decision.smokeAuthorization.workflowRef, 'refs/heads/main');
   assert.equal(decision.smokeAuthorization.workflowSha, smokeSha);
   assert.equal(decision.smokeAuthorization.expectedControllerSha, smokeSha);
+  assert.equal(decision.smokeAuthorization.windowStart, '2026-08-26T10:00:00Z');
   assert.deepEqual(decision.smokeAuthorization.historySnapshots, []);
 });
 
@@ -2274,8 +2310,10 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.match(runbook, /at most eight concurrent requests/);
   assert.match(runbook, /exact canonical GitHub login casing/);
   assert.match(runbook, /SELECTIVE_CI_CONTROLLER_SHA/);
+  assert.match(runbook, /SELECTIVE_CI_WINDOW_START/);
   assert.match(runbook, /gh api --method POST repos\/Jamula\/Andreja\/dispatches/);
-  assert.doesNotMatch(runbook, /client_payload|SELECTIVE_CI_WINDOW_START|workflow_dispatch/);
+  assert.match(runbook, /intentionally carries no controller SHA in\s+`client_payload`/);
+  assert.doesNotMatch(runbook, /workflow_dispatch/);
   assert.match(runbook, /smoke\s+count `1`/);
   assert.match(runbook, /static workflow-expression and fixture assertions\s+only/);
   assert.match(runbook, /32924008713[\s\S]+fab046f6608fc93b032ed7e618b57f2547c88bdc[\s\S]+pre-trusted-classifier-gate/);

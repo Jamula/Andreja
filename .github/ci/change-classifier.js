@@ -634,6 +634,10 @@ async function authorizeRepositoryDispatchSmoke(
     runtime.configuredControllerSha.length > 0
       ? runtime.configuredControllerSha
       : null;
+  const windowStart =
+    typeof runtime.windowStart === 'string' && runtime.windowStart.length > 0
+      ? runtime.windowStart
+      : null;
   const evidence = {
     authorized: false,
     reason: null,
@@ -644,6 +648,7 @@ async function authorizeRepositoryDispatchSmoke(
     workflowRef: runtime.workflowRef ?? null,
     workflowSha: runtime.workflowSha ?? null,
     expectedControllerSha,
+    windowStart,
     defaultBranch: null,
     liveDefaultBranchSha: null,
     currentRunId: runtime.runId ?? null,
@@ -659,6 +664,7 @@ async function authorizeRepositoryDispatchSmoke(
   });
   if (event.action !== SMOKE_EVENT_TYPE) return fail('smoke-event-type-mismatch');
   if (expectedOperator === null) return fail('smoke-operator-unconfigured');
+  if (windowStart === null) return fail('smoke-window-start-unconfigured');
   if (sender === null || actor === null) return fail('smoke-operator-missing');
   if (sender !== expectedOperator || actor !== expectedOperator) {
     return fail('smoke-operator-mismatch');
@@ -668,6 +674,17 @@ async function authorizeRepositoryDispatchSmoke(
   }
   if (!EXACT_SHA.test(String(expectedControllerSha ?? ''))) {
     return fail('smoke-controller-sha-unconfigured-or-invalid');
+  }
+  const windowStartMilliseconds = Date.parse(windowStart);
+  const nowMilliseconds = runtime.now ? Date.parse(runtime.now) : Date.now();
+  if (
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(windowStart) ||
+    !Number.isFinite(windowStartMilliseconds) ||
+    new Date(windowStartMilliseconds).toISOString().replace('.000Z', 'Z') !== windowStart ||
+    !Number.isFinite(nowMilliseconds) ||
+    windowStartMilliseconds > nowMilliseconds
+  ) {
+    return fail('smoke-window-start-invalid');
   }
   if (!/^[1-9]\d*$/.test(String(runtime.runId ?? ''))) {
     return fail('smoke-run-id-invalid');
@@ -685,7 +702,7 @@ async function authorizeRepositoryDispatchSmoke(
     let totalCount = null;
     let url =
       `${api}/repos/${repository}/actions/workflows/${SMOKE_WORKFLOW_FILE}/runs` +
-      '?event=repository_dispatch&per_page=100';
+      `?event=repository_dispatch&created=${encodeURIComponent(`>=${windowStart}`)}&per_page=100`;
     while (url) {
       pageCount += 1;
       if (pageCount > 100) throw new Error('Smoke run pagination exceeded 100 pages.');
@@ -711,9 +728,10 @@ async function authorizeRepositoryDispatchSmoke(
         }
         if (
           typeof run.created_at !== 'string' ||
-          !Number.isFinite(Date.parse(run.created_at))
+          !Number.isFinite(Date.parse(run.created_at)) ||
+          Date.parse(run.created_at) < windowStartMilliseconds
         ) {
-          throw new Error('Smoke run metadata omitted a valid creation timestamp.');
+          throw new Error('Smoke run metadata fell outside the authorized window.');
         }
         ids.add(id);
         runs.push(run);
@@ -749,7 +767,7 @@ async function authorizeRepositoryDispatchSmoke(
     ) {
       return 'smoke-current-run-identity-mismatch';
     }
-    if (revisionRuns.length !== 1) {
+    if (runs.length !== 1 || revisionRuns.length !== 1) {
       return 'smoke-run-limit-exceeded';
     }
     return null;
@@ -1004,9 +1022,11 @@ async function acquireChanges(eventName, event, repository, token, fetchImpl = f
       fetchImpl,
       runtime,
     );
-    const metadataFailure =
-      smokeAuthorization.reason === 'smoke-metadata-unavailable' ||
-      smokeAuthorization.reason.includes('rate-limit');
+    const rateLimitOrBudgetFailure =
+      smokeAuthorization.reason.includes('rate-limit') ||
+      /rate limit exhausted|request budget exceeded/i.test(
+        smokeAuthorization.error ?? '',
+      );
     return {
       files: [],
       forcedFullReasons: [
@@ -1019,9 +1039,7 @@ async function acquireChanges(eventName, event, repository, token, fetchImpl = f
         : null,
       classificationFailure: smokeAuthorization.authorized
         ? null
-        : metadataFailure && /rate limit exhausted|request budget exceeded/i.test(
-          smokeAuthorization.error ?? '',
-        )
+        : rateLimitOrBudgetFailure
           ? 'github-metadata-rate-limit-or-budget'
           : 'repository-dispatch-smoke-unavailable',
       mergeCommitProof: null,
@@ -1090,6 +1108,7 @@ async function main(fetchImpl = fetch) {
         actor: process.env.GITHUB_ACTOR,
         expectedOperator: process.env.SELECTIVE_CI_SAMPLE_OPERATOR,
         configuredControllerSha: process.env.SELECTIVE_CI_CONTROLLER_SHA,
+        windowStart: process.env.SELECTIVE_CI_WINDOW_START,
         workflowRef: process.env.GITHUB_REF,
         workflowSha: process.env.GITHUB_SHA,
         runId: process.env.GITHUB_RUN_ID,
@@ -1120,6 +1139,7 @@ async function main(fetchImpl = fetch) {
             workflowRef: process.env.GITHUB_REF || null,
             workflowSha: process.env.GITHUB_SHA || null,
             expectedControllerSha: process.env.SELECTIVE_CI_CONTROLLER_SHA || null,
+            windowStart: process.env.SELECTIVE_CI_WINDOW_START || null,
             defaultBranch: null,
             liveDefaultBranchSha: null,
             currentRunId: process.env.GITHUB_RUN_ID || null,
