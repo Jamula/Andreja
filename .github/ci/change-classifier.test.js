@@ -325,6 +325,21 @@ test('generic documentation is Markdown-only with explicit inert artifacts', () 
   }
 });
 
+test('policy matching is case-sensitive by default so validator-skipped variants fail closed', () => {
+  assert.ok(policy.rules.every((rule) => rule.caseSensitive !== false));
+  for (const filename of [
+    'docs/example.JS',
+    'scripts/example.PS1',
+    'src/Example.CS',
+    'docs/Example.MD',
+    '.GITHUB/workflows/example.yml',
+  ]) {
+    const result = classifyFiles([{ filename, status: 'modified' }], policy);
+    assert.equal(result.files[0].rule, 'unclassified', filename);
+    assert.equal(result.fullSuite, true, filename);
+  }
+});
+
 test('C sharp and Docker changes can never be docs-only', () => {
   for (const filename of ['src/Andreja.AppHost/Program.cs', 'Dockerfile']) {
     const result = classifyFiles([{ filename, status: 'modified' }], policy);

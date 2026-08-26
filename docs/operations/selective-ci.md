@@ -187,8 +187,7 @@ and waits for completion. Ordinary PR topology events use a separate
 unrelated label cannot cancel a running authorized sample. That separation and
 unsampled topology are **static workflow-expression and fixture assertions
 only** during this two-slot window; never emit an unrelated live label event to
-test them because it violates the operator protocol even though it does not
-consume `N`. GitHub
+test them because it violates the operator protocol and consumes `N`. GitHub
 expression string equality is only a scheduling prefilter; the repository
 classifier's exact-case comparison is authoritative, so a differently cased
 login schedules no domain. Repository-dispatch runs share the
