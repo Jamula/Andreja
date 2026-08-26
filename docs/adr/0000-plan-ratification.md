@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `05dd5948568104c6a6ccab389e14c2e05210566ed9e5938c59f9ed1d391fe3b4`
+- **Current proposed Plan SHA-256:** `6836a8f356ab7bf11d716d639c6e072b934077cc1fe3937a40e4b87358f36c5a`
 
 ## Decision
 
@@ -129,8 +129,8 @@ not match the merged `docs/plan.md`.
 ### 2026-08-26 — proposed assistant-provider phase scope
 
 - **Tracking issue:** [#74](https://github.com/Jamula/Andreja/issues/74)
-- **Pull request:** Pending draft pull request assignment
-- **Plan SHA-256:** `05dd5948568104c6a6ccab389e14c2e05210566ed9e5938c59f9ed1d391fe3b4`
+- **Pull request:** [#119](https://github.com/Jamula/Andreja/pull/119)
+- **Plan SHA-256:** `6836a8f356ab7bf11d716d639c6e072b934077cc1fe3937a40e4b87358f36c5a`
 - **Approver:** Cyrus Jamula; **pending**
 - **Approver status:** No Cyrus acceptance is claimed. Merge, issue closure, SDK
   availability, a compile spike, or prior Copilot access does not substitute for
