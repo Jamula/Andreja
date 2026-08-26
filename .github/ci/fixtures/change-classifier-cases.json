@@ -171,6 +171,66 @@
     "fullSuite": false
   },
   {
+    "name": "addition of executable blockquoted fence",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "added", "changes": 3, "patch": "@@ -0,0 +1,3 @@\n+> ```bash\n+> dotnet test\n+> ```"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "change inside unchanged blockquoted fence",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 2, "baseContent": "> ```powershell\n> dotnet test old\n> ```\n", "patch": "@@ -1,3 +1,3 @@\n > ```powershell\n-> dotnet test old\n+> dotnet test new\n > ```"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "deletion of executable blockquoted fence",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 3, "baseContent": "> ```bash\n> dotnet test\n> ```\nAfter\n", "patch": "@@ -1,4 +1 @@\n-> ```bash\n-> dotnet test\n-> ```\n After"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "blockquoted prose stays docs-only",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "added", "changes": 1, "patch": "@@ -0,0 +1 @@\n+> prose only"}],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
+    "name": "change after deeper blockquote fence-like content stays executable",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 2, "baseContent": "> ```bash\n>> ```\n> dotnet test old\n> ```\n", "patch": "@@ -1,4 +1,4 @@\n > ```bash\n >> ```\n-> dotnet test old\n+> dotnet test new\n > ```"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "addition after deeper blockquote fence-like content stays executable",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "added", "changes": 5, "patch": "@@ -0,0 +1,5 @@\n+> ```bash\n+>> ```\n+> dotnet test\n+> ```\n+> prose"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "deletion after deeper blockquote fence-like content stays executable",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "> ```bash\n>> ```\n> dotnet test\n> ```\n", "patch": "@@ -1,4 +1,3 @@\n > ```bash\n >> ```\n-> dotnet test\n > ```"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "addition with tab-expanded blockquote structure fails closed",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "added", "changes": 3, "patch": "@@ -0,0 +1,3 @@\n+>  \t> ```bash\n+>  \t> dotnet test\n+>  \t> ```"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "change in tab-expanded blockquote structure fails closed",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 2, "baseContent": ">  \t> ```bash\n>  \t> dotnet test old\n>  \t> ```\n", "patch": "@@ -1,3 +1,3 @@\n >  \t> ```bash\n->  \t> dotnet test old\n+>  \t> dotnet test new\n >  \t> ```"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "deletion in tab-expanded blockquote structure fails closed",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": ">  \t> ```bash\n>  \t> dotnet test\n>  \t> ```\n", "patch": "@@ -1,3 +1,2 @@\n >  \t> ```bash\n->  \t> dotnet test\n >  \t> ```"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
     "name": "prose change outside unchanged fence stays docs-only",
     "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 2, "baseContent": "```text\nnot executed\n```\nold prose\n", "patch": "@@ -3,2 +3,2 @@\n ```\n-old prose\n+new prose"}],
     "selected": ["docs"],

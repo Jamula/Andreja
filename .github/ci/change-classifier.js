@@ -36,19 +36,48 @@ function normalizeFile(file) {
   return { ...file, filename, status: String(file.status ?? 'unknown').toLowerCase() };
 }
 
+function markdownStructure(line) {
+  let content = String(line);
+  let quoteDepth = 0;
+  while (true) {
+    const prefix = content.match(/^ {0,3}>[ \t]?/);
+    if (!prefix) break;
+    quoteDepth += 1;
+    content = content.slice(prefix[0].length);
+  }
+  return { content, quoteDepth };
+}
+
+function markdownStructuralContent(line) {
+  return markdownStructure(line).content;
+}
+
 function fenceDelimiter(line) {
-  const match = String(line).match(MARKDOWN_FENCE);
+  const { content, quoteDepth } = markdownStructure(line);
+  const match = content.match(MARKDOWN_FENCE);
   if (!match) return null;
-  return { marker: match[1][0], length: match[1].length, suffix: match[2].trim() };
+  return {
+    marker: match[1][0],
+    length: match[1].length,
+    suffix: match[2].trim(),
+    quoteDepth,
+  };
 }
 
 function transitionFence(state, line) {
   const delimiter = fenceDelimiter(line);
   if (!delimiter) return state;
-  if (!state) return { marker: delimiter.marker, length: delimiter.length };
+  if (!state) {
+    return {
+      marker: delimiter.marker,
+      length: delimiter.length,
+      quoteDepth: delimiter.quoteDepth,
+    };
+  }
   if (
     delimiter.marker === state.marker &&
     delimiter.length >= state.length &&
+    delimiter.quoteDepth === state.quoteDepth &&
     delimiter.suffix === ''
   ) {
     return null;
@@ -57,7 +86,7 @@ function transitionFence(state, line) {
 }
 
 function transitionIndentedCode(state, line) {
-  const value = String(line);
+  const value = markdownStructuralContent(line);
   if (MARKDOWN_INDENTED_CODE.test(value)) return true;
   if (/^\s*$/.test(value)) return state;
   return false;
@@ -107,8 +136,18 @@ function inspectMarkdownPatch(file) {
   }
 
   const isAdded = file.status === 'added';
+  if (
+    patch
+      .split('\n')
+      .some((line) => (line.startsWith('+') || line.startsWith('-')) && line.slice(1).includes('\t'))
+  ) {
+    return { executable: true, changedLineCount };
+  }
   if (!isAdded && typeof file.baseContent !== 'string') {
     return { uncertain: 'markdown-base-unavailable', changedLineCount };
+  }
+  if (!isAdded && file.baseContent.includes('\t')) {
+    return { uncertain: 'markdown-tab-indentation-ambiguous', changedLineCount };
   }
 
   const base = markdownFenceStates(file.baseContent ?? '');
@@ -160,7 +199,7 @@ function inspectMarkdownPatch(file) {
       hunkAligned = true;
       if (
         fenceDelimiter(content) ||
-        MARKDOWN_INDENTED_CODE.test(content) ||
+        MARKDOWN_INDENTED_CODE.test(markdownStructuralContent(content)) ||
         (!isAdded &&
           (base.before[oldLine] ||
             base.indentedBefore[oldLine] ||
@@ -175,7 +214,12 @@ function inspectMarkdownPatch(file) {
       continue;
     }
     if (prefix === '+') {
-      if (fenceState || indentedState || fenceDelimiter(content) || MARKDOWN_INDENTED_CODE.test(content)) {
+      if (
+        fenceState ||
+        indentedState ||
+        fenceDelimiter(content) ||
+        MARKDOWN_INDENTED_CODE.test(markdownStructuralContent(content))
+      ) {
         executable = true;
       }
       fenceState = transitionFence(fenceState, content);

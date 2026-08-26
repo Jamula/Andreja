@@ -54,9 +54,12 @@ base-branch tip matches the patch. Context and deleted lines must also match the
 merge-base blob.
 The scan treats additions, deletions, fence starts/ends, changed lines inside
 unchanged backtick or tilde fences, and four-space/tab-indented code as
-executable. Indented-block state is established from the trusted base and
+executable, including those constructs nested in Markdown blockquotes.
+Indented-block state is established from the trusted base and
 advanced through exact hunk context; indentation ambiguity is treated as
-executable rather than docs-only. Labeled, unlabeled, and unknown-language
+executable rather than docs-only. Tabs in changed lines or the trusted base are
+also treated as executable/ambiguous because Markdown expands them by column.
+Labeled, unlabeled, and unknown-language
 fences are all treated conservatively. Markdown is docs-only only when its
 complete API patch changes prose outside every executable block. Missing or
 misaligned merge-base content, patch, or hunk state fails closed. A deployed
