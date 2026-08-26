@@ -50,6 +50,8 @@ def canonical_documents() -> dict[str, str]:
                 f"- **Required challenge:** {', '.join(challengers)}",
                 "- **Residual-risk acceptance:** Cyrus; pending",
                 f"- {DOCS_CHECK.CANONICAL_DOCUMENT_OPEN_ASSESSMENTS[path]}",
+                "",
+                "Baseline body.",
             )
         )
         for path, challengers in DOCS_CHECK.CANONICAL_BASELINE_REQUIREMENTS.items()
@@ -101,6 +103,15 @@ class StatusArtifactHashTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "authority drifted"):
                     DOCS_CHECK.validate_canonical_baseline_rows(plan)
 
+    def test_canonical_baseline_rejects_granted_residual_risk_acceptance(self) -> None:
+        plan = plan_table(self.actual).replace(
+            "Cyrus residual-risk acceptance remains pending",
+            "Cyrus residual-risk acceptance is granted",
+            1,
+        )
+        with self.assertRaisesRegex(ValueError, "authority drifted"):
+            DOCS_CHECK.validate_canonical_baseline_rows(plan)
+
     def test_canonical_baseline_requires_open_classification_assessment(self) -> None:
         for replacement in (
             "The classification/impact assessment is complete.",
@@ -123,11 +134,18 @@ class StatusArtifactHashTests(unittest.TestCase):
             ):
                 with self.subTest(path=path, replacement=replacement or "omitted"):
                     documents = canonical_documents()
-                    documents[path] = documents[path].replace(
-                        required,
-                        replacement,
-                        1,
-                    )
+                    if replacement:
+                        documents[path] = documents[path].replace(
+                            required,
+                            replacement,
+                            1,
+                        )
+                    else:
+                        documents[path] = documents[path].replace(
+                            f"- {required}\n",
+                            "",
+                            1,
+                        )
                     with self.assertRaisesRegex(ValueError, "header drifted"):
                         DOCS_CHECK.validate_canonical_baseline_documents(documents)
 
@@ -149,8 +167,45 @@ class StatusArtifactHashTests(unittest.TestCase):
                         "omitted",
                         1,
                     )
-                    with self.assertRaisesRegex(ValueError, "header drifted"):
+                    with self.assertRaises(ValueError):
                         DOCS_CHECK.validate_canonical_baseline_documents(documents)
+
+    def test_canonical_baseline_metadata_block_boundaries(self) -> None:
+        path = "docs/privacy.md"
+        required = DOCS_CHECK.CANONICAL_DOCUMENT_OPEN_ASSESSMENTS[path]
+
+        documents = canonical_documents()
+        documents[path] = documents[path].replace(
+            "- **Residual-risk acceptance:** Cyrus; pending",
+            "- **Additional context:** Legitimate metadata\n"
+            "- **Residual-risk acceptance:** Cyrus; pending",
+            1,
+        )
+        DOCS_CHECK.validate_canonical_baseline_documents(documents)
+
+        for placement in ("missing", "outside"):
+            with self.subTest(placement=placement):
+                documents = canonical_documents()
+                documents[path] = documents[path].replace(f"- {required}\n", "", 1)
+                if placement == "outside":
+                    documents[path] += f"\n- {required}\n"
+                with self.assertRaisesRegex(ValueError, "header drifted"):
+                    DOCS_CHECK.validate_canonical_baseline_documents(documents)
+
+        for malformed in (
+            "# Baseline\n\n\nBaseline body.",
+            canonical_documents()[path].replace(
+                "- **Residual-risk acceptance:** Cyrus; pending",
+                "not metadata",
+                1,
+            ),
+            canonical_documents()[path].replace("\n\nBaseline body.", ""),
+        ):
+            with self.subTest(malformed=malformed[-30:]):
+                documents = canonical_documents()
+                documents[path] = malformed
+                with self.assertRaisesRegex(ValueError, "metadata block"):
+                    DOCS_CHECK.validate_canonical_baseline_documents(documents)
 
     def test_missing_artifact_is_rejected(self) -> None:
         artifacts = dict(self.actual)

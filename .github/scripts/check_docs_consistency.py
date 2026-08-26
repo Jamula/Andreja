@@ -180,8 +180,7 @@ def validate_canonical_baseline_rows(plan_text: str) -> None:
         required_authority_parts = (
             "Canonical descriptive baseline; not ratified",
             *challengers,
-            "Cyrus",
-            "residual-risk acceptance",
+            "Cyrus residual-risk acceptance remains pending",
             CANONICAL_OPEN_ASSESSMENT,
         )
         missing_authority = [
@@ -195,9 +194,36 @@ def validate_canonical_baseline_rows(plan_text: str) -> None:
             )
 
 
+def extract_initial_metadata_block(document_text: str, path: str) -> str:
+    lines = document_text.splitlines()
+    if len(lines) < 4 or not lines[0].startswith("# ") or lines[1].strip():
+        raise ValueError(f"Canonical baseline metadata block malformed for {path}.")
+
+    block: list[str] = []
+    for line in lines[2:]:
+        if not line.strip():
+            if not block:
+                raise ValueError(
+                    f"Canonical baseline metadata block absent for {path}."
+                )
+            return " ".join(" ".join(block).split())
+        if re.match(r"^- \*\*[^*]+:\*\*\s+\S", line):
+            block.append(line)
+        elif block and line.startswith(("  ", "\t")) and line.strip():
+            block.append(line)
+        else:
+            raise ValueError(
+                f"Canonical baseline metadata block malformed for {path}."
+            )
+
+    raise ValueError(
+        f"Canonical baseline metadata block has no terminating blank line for {path}."
+    )
+
+
 def validate_canonical_baseline_documents(document_texts: dict[str, str]) -> None:
     for path, challengers in CANONICAL_BASELINE_REQUIREMENTS.items():
-        header = " ".join(" ".join(document_texts[path].splitlines()[:15]).split())
+        header = extract_initial_metadata_block(document_texts[path], path)
         required_header_parts = (
             "**Status:** Canonical descriptive baseline; not ratified",
             "**Required challenge:**",
