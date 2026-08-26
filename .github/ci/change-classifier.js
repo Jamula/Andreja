@@ -801,6 +801,9 @@ async function authorizeLabeledRun(
     workflowSha: runtime.workflowSha ?? null,
     expectedControllerSha,
     windowStart,
+    defaultBranch: null,
+    liveDefaultBranchSha: null,
+    liveStateSnapshots: [],
     currentRunId: runtime.runId ?? null,
     currentRunAttempt: runtime.runAttempt ?? null,
     pullRequestNumber: event.pull_request?.number ?? null,
@@ -843,7 +846,7 @@ async function authorizeLabeledRun(
 
   const delay = runtime.delay ?? ((milliseconds) =>
     new Promise((resolve) => setTimeout(resolve, milliseconds)));
-  const readHistory = async (label) => {
+  const readHistory = async (label, liveState) => {
     const history = await readCompleteWorkflowRunHistory({
       repository,
       token,
@@ -874,6 +877,8 @@ async function authorizeLabeledRun(
         pageCount: history.pageCount,
         runIds: history.runIds,
         pullRequestNumbers,
+        defaultBranch: liveState.defaultBranch,
+        liveDefaultBranchSha: liveState.liveSha,
         currentRunVisible: currentRun !== undefined,
       });
       return reason;
@@ -1001,20 +1006,85 @@ async function authorizeLabeledRun(
       authorizedEventIds: authorizedRecords.map((record) => record.eventId),
       authorizedSlot: evidence.authorizedSlot,
       unrelatedRunCount: runRecords.length - authorizedRecords.length,
+      unauthorizedRunIds: runRecords
+        .filter((record) => !record.authorized)
+        .map((record) => record.runId),
       issueHistories: issueHistoryEvidence,
       runRecords,
       historyFingerprint,
       currentRunVisible: currentRun !== undefined,
     });
+    if (
+      runRecords.some(
+        (record) =>
+          record.runId !== String(runtime.runId) &&
+          record.authorized !== true,
+      )
+    ) {
+      return 'label-run-history-contains-unauthorized-record';
+    }
     return null;
   };
 
+  const api = process.env.GITHUB_API_URL || 'https://api.github.com';
+  const readLiveState = async (label, previous = null) => {
+    const { body: repositoryMetadata } = await getJson(
+      `${api}/repos/${repository}`,
+      token,
+      fetchImpl,
+    );
+    const defaultBranch = repositoryMetadata.default_branch ?? null;
+    const state = {
+      label: `${runtime.snapshotLabelPrefix ?? ''}${label}`,
+      defaultBranch,
+      liveDefaultBranchSha: null,
+    };
+    evidence.defaultBranch = defaultBranch;
+    if (defaultBranch !== 'main') {
+      evidence.liveStateSnapshots.push(state);
+      return { failure: 'label-default-branch-mismatch' };
+    }
+    const { body: branchMetadata } = await getJson(
+      `${api}/repos/${repository}/branches/${encodeURIComponent(defaultBranch)}`,
+      token,
+      fetchImpl,
+    );
+    const liveSha = branchMetadata.commit?.sha ?? null;
+    state.liveDefaultBranchSha = liveSha;
+    evidence.liveStateSnapshots.push(state);
+    evidence.liveDefaultBranchSha = liveSha;
+    if (!EXACT_SHA.test(String(liveSha ?? ''))) {
+      return { failure: 'label-live-default-sha-invalid' };
+    }
+    if (
+      previous &&
+      (previous.defaultBranch !== defaultBranch || previous.liveSha !== liveSha)
+    ) {
+      return { failure: 'label-live-default-raced' };
+    }
+    if (runtime.workflowRef !== `refs/heads/${defaultBranch}`) {
+      return { failure: 'label-workflow-ref-mismatch' };
+    }
+    if (!EXACT_SHA.test(String(runtime.workflowSha ?? ''))) {
+      return { failure: 'label-workflow-sha-invalid' };
+    }
+    if (runtime.workflowSha !== liveSha) {
+      return { failure: 'label-workflow-sha-stale' };
+    }
+    if (expectedControllerSha !== liveSha) {
+      return { failure: 'label-expected-controller-sha-stale' };
+    }
+    const historyFailure = await readHistory(label, { defaultBranch, liveSha });
+    if (historyFailure) return { failure: historyFailure };
+    return { defaultBranch, liveSha };
+  };
+
   try {
-    const initialFailure = await readHistory('initial');
-    if (initialFailure) return fail(initialFailure);
+    const first = await readLiveState('initial');
+    if (first.failure) return fail(first.failure);
     await delay(5000);
-    const recheckFailure = await readHistory('race-recheck');
-    if (recheckFailure) return fail(recheckFailure);
+    const second = await readLiveState('race-recheck', first);
+    if (second.failure) return fail(second.failure);
     const [initial, recheck] = evidence.historySnapshots;
     if (initial.historyFingerprint !== recheck.historyFingerprint) {
       return fail('label-run-history-unstable');
@@ -1628,10 +1698,16 @@ async function main(fetchImpl = fetch, runtimeOverrides = {}) {
               workflowSha: process.env.GITHUB_SHA || null,
               expectedControllerSha: process.env.SELECTIVE_CI_CONTROLLER_SHA || null,
               windowStart: process.env.SELECTIVE_CI_WINDOW_START || null,
+              defaultBranch: null,
+              liveDefaultBranchSha: null,
+              liveStateSnapshots: [],
               currentRunId: process.env.GITHUB_RUN_ID || null,
               currentRunAttempt: process.env.GITHUB_RUN_ATTEMPT || null,
               pullRequestNumber: event.pull_request?.number ?? null,
               labelRunCount: null,
+              authorizedRunCount: null,
+              authorizedSlot: null,
+              historyFingerprint: null,
               historySnapshots: [],
               requestBudgetAtAuthorization: budgetedFetch.observation(),
               error: error.message,
@@ -1731,15 +1807,27 @@ async function main(fetchImpl = fetch, runtimeOverrides = {}) {
     const historyChanged =
       finalAuthorization.authorized === true &&
       initialAuthorization.historyFingerprint !== finalAuthorization.historyFingerprint;
+    const liveDefaultChanged =
+      initialAuthorization.liveDefaultBranchSha !== null &&
+      finalAuthorization.liveDefaultBranchSha !== null &&
+      initialAuthorization.liveDefaultBranchSha !== finalAuthorization.liveDefaultBranchSha;
     labelRunAuthorization = {
       ...finalAuthorization,
-      authorized: finalAuthorization.authorized && !historyChanged,
-      reason: historyChanged
-        ? 'label-run-history-changed-before-domain-scheduling'
-        : finalAuthorization.reason,
+      authorized: finalAuthorization.authorized && !historyChanged && !liveDefaultChanged,
+      reason: liveDefaultChanged
+        ? 'label-live-default-changed-before-domain-scheduling'
+        : historyChanged
+          ? 'label-run-history-changed-before-domain-scheduling'
+          : finalAuthorization.reason,
       authorizationPasses: 2,
+      initialDefaultBranch: initialAuthorization.defaultBranch,
+      initialLiveDefaultBranchSha: initialAuthorization.liveDefaultBranchSha,
       initialRequestBudgetAtAuthorization:
         initialAuthorization.requestBudgetAtAuthorization,
+      liveStateSnapshots: [
+        ...initialAuthorization.liveStateSnapshots,
+        ...finalAuthorization.liveStateSnapshots,
+      ],
       historySnapshots: [
         ...initialAuthorization.historySnapshots,
         ...finalAuthorization.historySnapshots,

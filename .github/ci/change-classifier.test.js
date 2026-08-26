@@ -520,10 +520,39 @@ const labelIssueEvent = (run, overrides = {}) => ({
 });
 function labelMetadataFetch(options = {}) {
   const runSnapshots = options.runSnapshots ?? [[[labeledRun()]], [[labeledRun()]]];
+  const liveStateSnapshots = options.liveStateSnapshots ?? [
+    { defaultBranch: 'main', liveSha: smokeSha },
+    { defaultBranch: 'main', liveSha: smokeSha },
+  ];
   let historyRead = 0;
   let activeSnapshotIndex = 0;
+  let liveStateRead = 0;
+  let activeLiveStateIndex = 0;
   return async (url) => {
     if (options.failure) return options.failure;
+    if (/\/repos\/Jamula\/Andreja$/.test(url)) {
+      if (options.liveFailure) return options.liveFailure;
+      activeLiveStateIndex = liveStateRead++;
+      const state = liveStateSnapshots[
+        Math.min(activeLiveStateIndex, liveStateSnapshots.length - 1)
+      ];
+      return githubResponse(
+        { default_branch: state.defaultBranch },
+        null,
+        options.rateLimitRemaining,
+      );
+    }
+    if (/\/repos\/Jamula\/Andreja\/branches\//.test(url)) {
+      if (options.liveFailure) return options.liveFailure;
+      const state = liveStateSnapshots[
+        Math.min(activeLiveStateIndex, liveStateSnapshots.length - 1)
+      ];
+      return githubResponse(
+        { commit: { sha: state.liveSha } },
+        null,
+        options.rateLimitRemaining,
+      );
+    }
     if (url.includes('/actions/workflows/') && !url.includes('test_snapshot=')) {
       if (url.includes('created=')) {
         assert.match(
@@ -587,7 +616,9 @@ function withAuthorizedLabelHistory(fallback, options = {}) {
   return async (url) =>
     url.includes('/actions/workflows/') ||
     url.includes('/issues/') ||
-    url.includes('/label-events?')
+    url.includes('/label-events?') ||
+    /\/repos\/Jamula\/Andreja$/.test(url) ||
+    /\/repos\/Jamula\/Andreja\/branches\//.test(url)
       ? historyFetch(url)
       : fallback(url);
 }
@@ -628,6 +659,90 @@ test('first and second labeled workflow runs are authorized within N=2', async (
     assert.equal(authorization.labelRunCount, runs.length);
     assert.equal(authorization.authorizedRunCount, runs.length);
     assert.equal(authorization.historySnapshots.length, 2);
+    assert.equal(authorization.defaultBranch, 'main');
+    assert.equal(authorization.liveDefaultBranchSha, smokeSha);
+    assert.deepEqual(
+      authorization.liveStateSnapshots.map((snapshot) => snapshot.liveDefaultBranchSha),
+      [smokeSha, smokeSha],
+    );
+  }
+});
+
+test('labeled authorization binds the live main controller and fails closed on drift', async () => {
+  const cases = [
+    {
+      liveStateSnapshots: [{ defaultBranch: 'develop', liveSha: smokeSha }],
+      reason: 'label-default-branch-mismatch',
+    },
+    {
+      liveStateSnapshots: [{ defaultBranch: 'main', liveSha: 'e'.repeat(40) }],
+      reason: 'label-workflow-sha-stale',
+    },
+    {
+      liveStateSnapshots: [
+        { defaultBranch: 'main', liveSha: smokeSha },
+        { defaultBranch: 'main', liveSha: 'e'.repeat(40) },
+      ],
+      reason: 'label-live-default-raced',
+    },
+  ];
+  for (const fixture of cases) {
+    const budgetedFetch = createBudgetedFetch(labelMetadataFetch({
+      liveStateSnapshots: fixture.liveStateSnapshots,
+    }));
+    const authorization = await authorizeLabeledRun(
+      labelEvent,
+      'Jamula/Andreja',
+      'token',
+      budgetedFetch,
+      labelRuntime({ requestObservation: budgetedFetch.observation }),
+    );
+    assert.equal(authorization.authorized, false);
+    assert.equal(authorization.reason, fixture.reason);
+    assert.equal(
+      authorization.defaultBranch,
+      fixture.liveStateSnapshots.at(-1).defaultBranch,
+    );
+    assert.equal(
+      authorization.liveStateSnapshots.at(-1).defaultBranch,
+      fixture.liveStateSnapshots.at(-1).defaultBranch,
+    );
+    assert.equal(
+      authorization.liveStateSnapshots.at(-1).liveDefaultBranchSha,
+      fixture.liveStateSnapshots.at(-1).defaultBranch === 'main'
+        ? fixture.liveStateSnapshots.at(-1).liveSha
+        : null,
+    );
+  }
+});
+
+test('labeled live-main API and rate-limit failures are unavailable before history', async () => {
+  for (const fixture of [
+    { status: 500, statusText: 'Internal Server Error', remaining: null },
+    { status: 429, statusText: 'Too Many Requests', remaining: '0' },
+  ]) {
+    const budgetedFetch = createBudgetedFetch(labelMetadataFetch({
+      liveFailure: {
+        ok: false,
+        status: fixture.status,
+        statusText: fixture.statusText,
+        headers: {
+          get: (name) => name === 'x-ratelimit-remaining' ? fixture.remaining : null,
+        },
+        json: async () => ({}),
+      },
+    }));
+    const authorization = await authorizeLabeledRun(
+      labelEvent,
+      'Jamula/Andreja',
+      'token',
+      budgetedFetch,
+      labelRuntime({ requestObservation: budgetedFetch.observation }),
+    );
+    assert.equal(authorization.authorized, false);
+    assert.equal(authorization.reason, 'label-metadata-unavailable');
+    assert.match(authorization.error, new RegExp(String(fixture.status)));
+    assert.equal(authorization.historySnapshots.length, 0);
   }
 });
 
@@ -680,7 +795,71 @@ test('every unrelated labeled run consumes the absolute N=2 cap', async () => {
   assert.equal(authorization.authorizedRunCount, null);
   assert.equal(authorization.authorizedSlot, null);
   assert.equal(authorization.historySnapshots.length, 1);
-  assert.equal(budgetedFetch.observation().used, 1);
+  assert.equal(budgetedFetch.observation().used, 3);
+});
+
+test('one unauthorized labeled run terminally blocks the later valid sample', async () => {
+  const unauthorized = labeledRun({
+    id: 799,
+    pull_requests: [{ number: 117 }],
+    actor: { login: 'Other-Operator' },
+    created_at: '2026-08-26T10:00:30Z',
+  });
+  const current = labeledRun();
+  const runs = [unauthorized, current];
+  const events = {
+    117: [[labelIssueEvent(unauthorized, {
+      actor: { login: 'Other-Operator' },
+      label: { name: 'triage' },
+    })]],
+    118: [[labelIssueEvent(current)]],
+  };
+  const budgetedFetch = createBudgetedFetch(labelMetadataFetch({
+    runSnapshots: [[runs], [runs]],
+    issueEventSnapshots: [events, events],
+  }));
+  const authorization = await authorizeLabeledRun(
+    labelEvent,
+    'Jamula/Andreja',
+    'token',
+    budgetedFetch,
+    labelRuntime({ requestObservation: budgetedFetch.observation }),
+  );
+  assert.equal(authorization.authorized, false);
+  assert.equal(authorization.reason, 'label-run-history-contains-unauthorized-record');
+  assert.equal(authorization.labelRunCount, 2);
+  assert.deepEqual(authorization.historySnapshots[0].unauthorizedRunIds, ['799']);
+  assert.equal(authorization.historySnapshots.length, 1);
+});
+
+test('an unauthorized run appearing during the race recheck blocks the sample', async () => {
+  const unauthorized = labeledRun({
+    id: 799,
+    pull_requests: [{ number: 117 }],
+    head_sha: 'e'.repeat(40),
+    created_at: '2026-08-26T10:00:30Z',
+  });
+  const current = labeledRun();
+  const events = {
+    117: [[labelIssueEvent(unauthorized)]],
+    118: [[labelIssueEvent(current)]],
+  };
+  const budgetedFetch = createBudgetedFetch(labelMetadataFetch({
+    runSnapshots: [[[current]], [[unauthorized, current]]],
+    issueEventSnapshots: [{ 118: events[118] }, events],
+  }));
+  const authorization = await authorizeLabeledRun(
+    labelEvent,
+    'Jamula/Andreja',
+    'token',
+    budgetedFetch,
+    labelRuntime({ requestObservation: budgetedFetch.observation }),
+  );
+  assert.equal(authorization.authorized, false);
+  assert.equal(authorization.reason, 'label-run-history-contains-unauthorized-record');
+  assert.equal(authorization.labelRunCount, 2);
+  assert.equal(authorization.historySnapshots.length, 2);
+  assert.deepEqual(authorization.historySnapshots[1].unauthorizedRunIds, ['799']);
 });
 
 test('a repeated PR identity fails before issue-event expansion or domains', async () => {
@@ -702,7 +881,7 @@ test('a repeated PR identity fails before issue-event expansion or domains', asy
   assert.equal(authorization.reason, 'label-run-pull-request-repeated');
   assert.equal(authorization.labelRunCount, 2);
   assert.equal(authorization.historySnapshots.length, 1);
-  assert.equal(budgetedFetch.observation().used, 1);
+  assert.equal(budgetedFetch.observation().used, 3);
 });
 
 test('a non-sample label is counted and emits lightweight unavailable evidence', async () => {
@@ -757,7 +936,7 @@ test('third labeled workflow run exceeds N=2 before domain classification', asyn
   assert.equal(authorization.labelRunCount, 3);
   assert.equal(authorization.authorizedRunCount, null);
   assert.equal(authorization.historySnapshots.length, 1);
-  assert.equal(budgetedFetch.observation().used, 1);
+  assert.equal(budgetedFetch.observation().used, 3);
 });
 
 test('third labeled workflow run emits unavailable classification without PR acquisition', async () => {
@@ -806,9 +985,10 @@ test('third labeled workflow run emits unavailable classification without PR acq
     assert.equal(decision.labelRunAuthorization.labelRunCount, 3);
     assert.equal(decision.mergeCommitProof, null);
     assert.equal(decision.changedFileCount, 0);
-    assert.equal(requestedUrls.length, 1);
+    assert.equal(requestedUrls.length, 3);
     assert.ok(requestedUrls.some((url) => url.includes('/actions/workflows/')));
-    assert.ok(requestedUrls.every((url) => url.includes('/actions/workflows/')));
+    assert.ok(requestedUrls.some((url) => /\/repos\/Jamula\/Andreja$/.test(url)));
+    assert.ok(requestedUrls.some((url) => url.includes('/branches/main')));
     assert.ok(requestedUrls.every((url) => !url.includes('/pulls/')));
     assert.equal(process.exitCode, 1);
   } finally {
@@ -953,7 +1133,7 @@ test('labeled workflow guard requires all variables, exact operator, and control
       reason: 'label-name-or-state-mismatch',
     },
     { runtime: { workflowRef: 'refs/tags/v1' }, reason: 'label-workflow-ref-mismatch' },
-    { runtime: { workflowSha: 'e'.repeat(40) }, reason: 'label-controller-sha-stale' },
+    { runtime: { workflowSha: 'e'.repeat(40) }, reason: 'label-workflow-sha-stale' },
     { runtime: { runAttempt: '2' }, reason: 'label-rerun-forbidden' },
   ]) {
     const budgetedFetch = createBudgetedFetch(labelMetadataFetch());
@@ -1983,7 +2163,7 @@ test('stale sample test-merge proof emits unavailable evidence before domains', 
     assert.equal(decision.shadowSample.sampled, true);
     assert.equal(decision.mergeCommitProof.verified, false);
     assert.equal(decision.mergeCommitProof.reason, 'pull-request-test-merge-stale');
-    assert.equal(decision.apiRequestBudget.used, 6);
+    assert.equal(decision.apiRequestBudget.used, 10);
     assert.equal(process.exitCode, 1);
   } finally {
     process.env = originalEnvironment;
@@ -2064,7 +2244,7 @@ test('sample metadata errors preserve failed proof and disable trusted domains',
       'pull-request-test-merge-metadata-unavailable',
     );
     assert.match(decision.mergeCommitProof.error, /500 Internal Server Error/);
-    assert.equal(decision.apiRequestBudget.used, 7);
+    assert.equal(decision.apiRequestBudget.used, 11);
     assert.equal(process.exitCode, 1);
   } finally {
     process.env = originalEnvironment;
@@ -2154,7 +2334,7 @@ test('Markdown metadata rate limits persist unavailable classification evidence'
       'pull-request-test-merge-recheck-unavailable',
     );
     assert.equal(decision.apiRequestBudget.rateLimitResponseObserved, true);
-    assert.equal(decision.apiRequestBudget.used, 10);
+    assert.equal(decision.apiRequestBudget.used, 14);
     assert.equal(decision.fullSuite, true);
     assert.ok(
       decision.fullReasons.some((reason) =>
@@ -2254,7 +2434,7 @@ test('Markdown Contents HTTP errors disable sampled domains and merge proof', as
       'pull-request-test-merge-recheck-unavailable',
     );
     assert.match(decision.mergeCommitProof.error, /500 Internal Server Error/);
-    assert.equal(decision.apiRequestBudget.used, 10);
+    assert.equal(decision.apiRequestBudget.used, 14);
     assert.equal(process.exitCode, 1);
   } finally {
     process.env = originalEnvironment;
@@ -2373,7 +2553,7 @@ test('final test-merge recheck preserves HTTP and rate-limit errors', async () =
         decision.mergeCommitProof.error,
         new RegExp(`${fixture.status} ${fixture.statusText}`),
       );
-      assert.equal(decision.apiRequestBudget.used, 10);
+      assert.equal(decision.apiRequestBudget.used, 14);
       assert.equal(process.exitCode, 1);
     } finally {
       process.env = originalEnvironment;
@@ -2381,6 +2561,97 @@ test('final test-merge recheck preserves HTTP and rate-limit errors', async () =
       fs.rmSync(eventPath, { force: true });
       fs.rmSync(decisionPath, { force: true });
     }
+  }
+});
+
+test('live main drift after PR metadata proof blocks domains in the final authorization pass', async () => {
+  const directory = path.join(root, 'artifacts/selective-ci');
+  const eventPath = path.join(directory, `final-main-race-event-${process.pid}.json`);
+  const decisionPath = path.join(directory, `final-main-race-decision-${process.pid}.json`);
+  fs.mkdirSync(directory, { recursive: true });
+  fs.writeFileSync(eventPath, JSON.stringify({
+    ...labelEvent,
+    number: 118,
+    pull_request: {
+      number: 118,
+      changed_files: 1,
+      base: { sha: 'a'.repeat(40) },
+      head: { sha: 'b'.repeat(40) },
+      merge_commit_sha: 'd'.repeat(40),
+      labels: [{ name: 'ci:selective-shadow-sample' }],
+    },
+  }));
+  const file = {
+    filename: 'src/browser.js',
+    status: 'added',
+    additions: 1,
+    deletions: 0,
+    changes: 1,
+    patch: '@@ -0,0 +1 @@\n+export {};',
+  };
+  const originalEnvironment = { ...process.env };
+  const originalExitCode = process.exitCode;
+  process.env.GITHUB_EVENT_NAME = 'pull_request_target';
+  process.env.GITHUB_EVENT_PATH = eventPath;
+  process.env.GITHUB_REPOSITORY = 'Jamula/Andreja';
+  process.env.GITHUB_TOKEN = 'read-only-token';
+  process.env.CHANGE_POLICY_PATH = path.join(__dirname, 'change-policy.v1.json');
+  process.env.CHANGE_DECISION_PATH = decisionPath;
+  configureLabeledMainEnvironment();
+  delete process.env.GITHUB_OUTPUT;
+  const fallback = async (url) => {
+    if (url.endsWith('/pulls/118')) {
+      return githubResponse({
+        mergeable: true,
+        base: { sha: 'a'.repeat(40) },
+        head: { sha: 'b'.repeat(40) },
+        merge_commit_sha: 'd'.repeat(40),
+      });
+    }
+    if (url.includes('/git/commits/')) {
+      return githubResponse({
+        sha: 'd'.repeat(40),
+        parents: [{ sha: 'a'.repeat(40) }, { sha: 'b'.repeat(40) }],
+      });
+    }
+    if (url.includes('/pulls/118/files')) return githubResponse([file]);
+    if (url.includes('/compare/')) {
+      return githubResponse({
+        merge_base_commit: { sha: 'c'.repeat(40) },
+        files: [file],
+      });
+    }
+    throw new Error(`Unexpected final-main-race URL: ${url}`);
+  };
+  try {
+    await main(
+      withAuthorizedLabelHistory(fallback, {
+        liveStateSnapshots: [
+          { defaultBranch: 'main', liveSha: smokeSha },
+          { defaultBranch: 'main', liveSha: smokeSha },
+          { defaultBranch: 'main', liveSha: 'e'.repeat(40) },
+        ],
+      }),
+      labelMainRuntime,
+    );
+    const decision = JSON.parse(fs.readFileSync(decisionPath, 'utf8'));
+    assert.equal(decision.classificationFailure, 'labeled-run-window-unavailable');
+    assert.equal(decision.trustedClassifierAvailable, false);
+    assert.equal(decision.shadowSample.sampled, false);
+    assert.equal(
+      decision.labelRunAuthorization.reason,
+      'label-live-default-changed-before-domain-scheduling',
+    );
+    assert.equal(decision.labelRunAuthorization.initialLiveDefaultBranchSha, smokeSha);
+    assert.equal(decision.labelRunAuthorization.liveDefaultBranchSha, 'e'.repeat(40));
+    assert.equal(decision.labelRunAuthorization.liveStateSnapshots.length, 3);
+    assert.equal(decision.mergeCommitProof.verified, true);
+    assert.equal(process.exitCode, 1);
+  } finally {
+    process.env = originalEnvironment;
+    process.exitCode = originalExitCode;
+    fs.rmSync(eventPath, { force: true });
+    fs.rmSync(decisionPath, { force: true });
   }
 });
 

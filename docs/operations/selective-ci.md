@@ -35,15 +35,18 @@ classifier requires all three Actions variables, exact canonical
 sender/runtime-actor equality, the trusted `refs/heads/main` controller SHA, a
 first run attempt, and complete paginated `pull_request_target` workflow-run and
 per-PR issue-event history since `SELECTIVE_CI_WINDOW_START`. Each authorization
-pass reads history twice around a bounded delay. It binds each run to exactly one
+pass reads repository metadata, the live `main` head, and history twice around a
+bounded delay. Each read requires `default_branch=main` and live main equal to
+both the configured controller SHA and `GITHUB_SHA`. It binds each run to exactly one
 `labeled` event by PR and a unique bounded event-to-run timestamp, then records
 the event ID/action/label/operator, run ID/attempt/workflow/controller/repository,
 slot, page counts, request/rate-limit observation, and a SHA-256 history
 fingerprint. Every labeled workflow run since the window start consumes the absolute `N`
 cap, including unrelated labels, actors, workflows, and controller revisions.
-Both snapshots and the final authorization pass must remain identical. Only
-the first two distinct-PR authorized sample runs may proceed. A third raw run,
-a repeat of a sampled PR, any rerun,
+Both snapshots and the final authorization pass must remain identical, and no
+historical run record may be unauthorized. Only the first two distinct-PR
+authorized sample runs may proceed. A third raw run, a repeat of a sampled PR,
+any rerun, stale or racing live main,
 duplicate/ambiguous binding, unstable snapshot, pagination/API/rate-limit
 ambiguity, or unindexed current run fails unavailable before domains.
 
@@ -223,7 +226,10 @@ runs only the lightweight classifier/aggregate path, records
 Trusted classification enforces an absolute 132-request metadata budget.
 A labeled sample uses four merge-integrity requests (initial live PR, Git
 commit parents, post-snapshot live PR, and post-Contents live PR), plus PR-file
-pages, one compare request, and up to 100 Markdown base-content requests.
+pages, one compare request, and up to 100 Markdown base-content requests. Each
+of the two authorization passes also performs two repository/live-main reads,
+two Actions-history reads, and the bounded issue-event reads for every visible
+run PR.
 Combinations that cannot fit fail closed before the 132nd request rather than
 relaxing the cap. Classification JSON records the limit, requests used, exhaustion,
 minimum observed `X-RateLimit-Remaining`, and reset epoch. Evidence verification
@@ -234,8 +240,8 @@ Any other PR, commit, compare, file-page, or Markdown Contents HTTP failure also
 records unavailable metadata, invalidates labeled-sample merge proof, and
 prevents every domain job; it is never downgraded to a full-suite sample.
 That red result is an environmental/request-budget outcome, not automatically a
-classifier logic defect; preserve the artifact/headers, wait for reset, and
-re-run only under the fixed slot protocol.
+classifier logic defect; preserve the artifact/headers and do not retry within
+this window.
 Preflight observation on 2026-08-26 was core `14987/15000` remaining and search
 `30/30`; this is a point-in-time capacity observation, not a guaranteed budget
 for later runs.
@@ -456,10 +462,12 @@ The classifier independently fetches every `pull_request_target` run for this
 workflow since `<START>`, follows every page, then completely paginates issue
 events for every exact run PR. It requires a unique bounded labeled-event
 binding and records raw `labelRunCount`, `authorizedRunCount`, `authorizedSlot`,
-bound records, page/request/rate evidence, history fingerprints, and its explicit
+bound records, default-branch/live-main snapshots, page/request/rate evidence,
+history fingerprints, and its explicit
 authorization or fail-closed reason. Raw history includes sample and non-sample
-labels, and every raw labeled workflow run consumes `N`; only exact
-operator/sample-label/controller bindings can schedule domains.
+labels, and every raw labeled workflow run consumes `N`; any unauthorized
+historical record terminally blocks all later samples. Only exact
+operator/sample-label/controller/live-main bindings can schedule domains.
 Current-run indexing lag fails closed and consumes—and therefore ends—the
 applicable `S` or `N` window; do not retry, rerun, remove/reapply a label, or send
 a replacement dispatch.
@@ -571,11 +579,15 @@ continuation.
    dispatch is authorized.
 4. Reverify the monitored no-unexpected-label precondition and all three
    configured variables before **any** label. Each sample run must record two
-   complete, stable Actions/issue-event snapshots in each of two authorization
-   passes, its visible current run, unique run/event binding,
+   complete, stable repository/default-branch/live-main and Actions/issue-event
+   snapshots in each of two authorization passes, its visible current run,
+   unique run/event binding,
    `authorizedRunCount` and `authorizedSlot` of one or two, and
-   `authorized-labeled-run-slot-<slot>-of-2`. A third raw labeled run, a repeat
-   of a sampled PR, any rerun, duplicate/ambiguous binding, unstable metadata, final-pass fingerprint change,
+   `authorized-labeled-run-slot-<slot>-of-2`. Require `default_branch=main` and
+   live main equal to the configured controller and workflow SHA on every read;
+   any unauthorized prior record, a third raw labeled run, a repeat of a sampled
+   PR, any rerun, live-main/controller race, duplicate/ambiguous binding,
+   unstable metadata, final-pass fingerprint change,
    pagination/API/rate-limit failure, or current-run indexing lag fails
    unavailable before domains and terminally ends the window without retry.
 
