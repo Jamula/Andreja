@@ -142,6 +142,12 @@ No vendor commitment is entered without all five fields populated.
 - The **cloud-infrastructure envelope** remains $0 in Phase 0. A separately approved
   Phase 1B spike budget may replace that cap only for the bounded spike described
   below; it never absorbs development AI or professional-services spend.
+- The **Phase 1B product-provider/model allowance** funds only an accepted,
+  limited real assistant-provider canary. It is distinct from development AI,
+  Phase 1A BYOK/model spend, professional services, and cloud infrastructure.
+  Its funding mode, billable unit, owner, per-session/user/tenant/day hard stops,
+  statement/invoice or user-quota evidence, cancellation path, and lower-cost
+  fake/BYOK fallback require explicit approval before the first live call.
 - The **company financial ledger** records the resulting currency transactions as
   separately classified entries. It does not replace or merge the development usage
   ledger, product metering ledger, professional-services envelope, or
@@ -177,6 +183,28 @@ does not consume the envelope.
 
 ## Phase 1B: cloud-spike approval gate
 
+The product-provider/model allowance is not part of the cloud-spike budget.
+Before a real Phase 1B Copilot/provider call:
+
+1. Proposed ADR 0009 is accepted and its provider gates have current evidence.
+2. For Andreja- or organization-funded use, Quark records the provider
+   statement/invoice owner, billable unit, approved numeric envelope, pre-call
+   reservation/hard stop, anomaly threshold, and reconciliation cadence.
+3. For user-funded subscription use, Quark reconciles Andreja's content-free
+   session usage to the user's account quota/attribution evidence and explicitly
+   records that Andreja receives no currency invoice. Andreja does not request or
+   retain personal billing statements without a separate approved purpose,
+   privacy notice, access rule, and retention schedule.
+4. These controls are provider-agnostic: every activated provider, including
+   Phase 1A BYOK at minimum, requires approved quota enforcement,
+   attribution/reconciliation, and budget stops. Every non-activated funding mode
+   is recorded as deferred, never “not applicable.”
+5. Exhaustion, unknown attribution, unmeasured usage, a terms/price change, or a
+   failed hard stop disables the provider and falls back to fake/BYOK.
+
+This allowance does not authorize cloud infrastructure and cannot borrow from
+another envelope.
+
 Phase 1B (managed reference deployment, invite cohort) is the first phase that may
 provision real cloud infrastructure. Budgets and alerts alone do not cap cloud
 spending, so before any Phase 1B provisioning:
@@ -203,12 +231,17 @@ Phase 0.
 ## Invoice reconciliation
 
 For every ledger and every approved envelope/spike, Quark reconciles the recorded
-ledger figure against the actual invoice or provider statement:
+figure against its authoritative financial or quota/attribution source:
 
 - **Development AI/session usage** reconciles against the AI-credit provider's
   billing statement.
-- **Product tenant/provider metering** reconciles against cloud/model-provider
-  invoices to compute accurate unit economics.
+- **Product tenant/provider metering** for Andreja/organization-funded usage
+  reconciles against cloud/model-provider invoices to compute accurate unit
+  economics. User-funded subscription usage has no Andreja currency invoice:
+  it reconciles content-free session usage to the user's account quota and
+  attribution evidence and records that no Andreja currency invoice exists. This
+  does not make the activated funding mode “not applicable.” Andreja does not
+  collect a personal billing statement without separate purpose/privacy approval.
 - **Company financial burn/income** reconciles against vendor invoices, payment
   processor statements, and (once accepted) sponsor payment records.
 
@@ -226,7 +259,19 @@ recommendation.
 
 ## Open items
 
+- **Phase 1A no-egress Copilot SDK toolchain spike:** Seven of Nine owns the
+  technical spike; Quark owns its FinOps record and Cyrus owns envelope approval.
+  The estimate units are engineering hours, development AI credits, CI minutes,
+  and dependency/license-review hours. Numeric estimates and a separately
+  approved development envelope are pending. Numeric stop thresholds for
+  elapsed/engineering time, AI credits, and CI minutes are each pending approval
+  and must be recorded before implementation; reaching any threshold stops the
+  spike. No runtime/model/provider spend, account, credential, or egress is
+  authorized.
 - Steady-state Phase 1B production budget: pending spike-budget evidence above.
+- Phase 1B product-provider/model allowance: pending accepted provider scope,
+  selected funding mode/model/topology, numeric hard stops, and reconciliation
+  evidence above.
 - Company legal entity, accounting system, and statutory retention schedule: pending
   Sarek's counsel-reviewed legal/regulatory work (`docs/legal/regulatory-applicability.md`,
   once ratified).
