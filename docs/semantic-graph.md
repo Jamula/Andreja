@@ -13,6 +13,18 @@ Phase 1A walking skeleton. It does not amend the plan, select production
 infrastructure, publish a vocabulary, authorize cloud resources, or authorize
 new collection, inference, sharing, or federation.
 
+### Phase 1A implementation boundary
+
+Issue [#63](https://github.com/Jamula/Andreja/issues/63) implements the narrow
+contract and conformance boundary described here. `Andreja.Platform.Contracts`
+now carries versioned, immutable profile assertion, typed ownership, provenance,
+review, handling, lifecycle, retention, and export records.
+`InMemorySemanticAssertionLedger` and the pinned JSON-LD fixture are deterministic
+conformance aids only. They add no production persistence, inference engine,
+graph database, model call, sharing authority, or migration. Relational domain
+records remain the intended source of truth; this document's pending decision
+status and open decisions are unchanged.
+
 ## Decision summary
 
 Adopt a **versioned JSON-LD export and projection contract over ordinary
@@ -480,23 +492,27 @@ transmit.
 
 ### Phase 1A conformance evidence
 
-1. A task assertion and one inferred proposal round-trip through JSON-LD without
+1. A user-stated profile assertion and a sensitive inferred hypothesis round-trip
+   through the pinned JSON-LD/serialization fixtures without
    losing ID, type, source, status, time, confidence, sensitivity, purpose, or
    review state.
 2. Unknown namespaced extension data round-trips unchanged but remains inert.
 3. Import performs no network fetch and activates no grants.
-4. Two-tenant tests reject cross-tenant node, claim, source, derivation, and
-   grant references at both application and database boundaries.
+4. In-memory conformance tests reject wrong tenant, app user, principal, purpose,
+   source digest, record digest, version, and data class. Database-boundary proof
+   remains deferred until an approved active slice adds persistence.
 5. Correct/reject/expire/delete invalidates downstream claims and immediately
    excludes them from all supported reads.
-6. Delete and consent/grant revocation purge each registered derived store and
-   survive backup/restore verification.
+6. The in-memory contract proves content removal, configured tombstones, and
+   content-minimized audit. Derived-store purge and backup/restore proof remain
+   deferred because this slice introduces no derived store or persistence.
 7. Sensitive inference, cross-domain access, unrestricted skill traversal, and
    non-user identity merging fail closed.
 8. The deterministic fake inference provider produces reproducible lineage;
    external models are not required.
-9. Export/import works between clean instances using only the portable package
-   and documented schema version.
+9. The application-export manifest now requires separately versioned semantic
+   and provenance areas and excludes sensitive inference by default. Clean-instance
+   semantic import remains future work.
 10. Accessibility tests cover provenance explanation and every review/lifecycle
     control.
 

@@ -1,0 +1,555 @@
+[
+  {
+    "name": "docs-only prose",
+    "files": [{"filename": "docs/charter.md", "status": "modified", "changes": 2, "baseContent": "old words\n", "patch": "@@ -1 +1 @@\n-old words\n+new words"}],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
+    "name": "trailing newline in current filename fails closed",
+    "files": [{"filename": "docs/charter.md\n", "status": "modified", "changes": 2, "baseContent": "old words\n", "patch": "@@ -1 +1 @@\n-old words\n+new words"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["invalid-path"]
+  },
+  {
+    "name": "tab in current filename fails closed",
+    "files": [{"filename": "docs/\tcharter.md", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["invalid-path"]
+  },
+  {
+    "name": "carriage return in current filename fails closed",
+    "files": [{"filename": "docs/charter.md\r", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["invalid-path"]
+  },
+  {
+    "name": "unit separator in current filename fails closed",
+    "files": [{"filename": "docs/charter\u001f.md", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["invalid-path"]
+  },
+  {
+    "name": "DEL in current filename fails closed",
+    "files": [{"filename": "docs/charter\u007f.md", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["invalid-path"]
+  },
+  {
+    "name": "control character in previous filename fails closed",
+    "files": [{"filename": "docs/renamed.md", "previous_filename": "docs/old\u0001.md", "status": "renamed"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["invalid-path", "ambiguous-renamed"]
+  },
+  {
+    "name": "legitimate Unicode filename remains supported",
+    "files": [{"filename": "docs/résumé-東京.md", "status": "modified", "changes": 2, "baseContent": "old words\n", "patch": "@@ -1 +1 @@\n-old words\n+new words"}],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
+    "name": "arbitrary docs HTML fails closed",
+    "files": [{"filename": "docs/example.html", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "arbitrary docs Python fails closed",
+    "files": [{"filename": "docs/example.py", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "arbitrary docs shell fails closed",
+    "files": [{"filename": "docs/example.sh", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "arbitrary docs JavaScript uses explicit browser domain",
+    "files": [{"filename": "docs/example.js", "status": "modified"}],
+    "selected": ["javascript"],
+    "fullSuite": false
+  },
+  {
+    "name": "arbitrary docs data files fail closed",
+    "files": [
+      {"filename": "docs/example.json", "status": "modified"},
+      {"filename": "docs/example.yaml", "status": "modified"}
+    ],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "explicit inert docs media and digest artifacts remain docs-only",
+    "files": [
+      {"filename": "docs/architecture/andreja-high-level.png", "status": "modified"},
+      {"filename": "docs/architecture/andreja-high-level.svg", "status": "modified"},
+      {"filename": "docs/architecture/andreja-high-level.excalidraw", "status": "modified"},
+      {"filename": "docs/architecture/andreja-high-level.png.sha256", "status": "modified"}
+    ],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
+    "name": "unlisted docs media fails closed",
+    "files": [{"filename": "docs/example.png", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "case-variant docs media fails closed",
+    "files": [
+      {"filename": "docs/architecture/Andreja-high-level.png", "status": "modified"},
+      {"filename": "docs/architecture/andreja-high-level.SVG", "status": "modified"}
+    ],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "public website prototype HTML fails closed",
+    "files": [{"filename": "docs/public-website/prototype/index.html", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "public website prototype JavaScript fails closed",
+    "files": [{"filename": "docs/public-website/prototype/app.js", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "docs-only bullet replacement counts both body lines",
+    "files": [{"filename": "docs/charter.md", "status": "modified", "additions": 1, "deletions": 1, "changes": 2, "baseContent": "# List\n- old item\n", "patch": "@@ -1,2 +1,2 @@\n # List\n-- old item\n+- new item"}],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
+    "name": "benign non-code Markdown text stays docs-only",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 2, "baseContent": "Use the local development environment.\n", "patch": "@@ -1 +1 @@\n-Use the local development environment.\n+Use the local test environment."}],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
+    "name": "inline command addition is executable documentation",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "Run the test suite.\n", "patch": "@@ -1 +1,2 @@\n Run the test suite.\n+Use `dotnet test` before pushing."}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "inline command deletion is executable documentation",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "Use `dotnet test` before pushing.\nKeep the result.\n", "patch": "@@ -1,2 +1 @@\n-Use `dotnet test` before pushing.\n Keep the result."}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "escaped backticks remain benign Markdown text",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "Explain punctuation.\n", "patch": "@@ -1 +1,2 @@\n Explain punctuation.\n+Use \\`literal\\` backticks in prose."}],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
+    "name": "multi-backtick inline command delimiter is executable documentation",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "added", "changes": 1, "patch": "@@ -0,0 +1 @@\n+Run ``echo `value` `` locally."}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "ambiguous unmatched inline backtick fails closed",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "added", "changes": 1, "patch": "@@ -0,0 +1 @@\n+Run `dotnet test before pushing."}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "addition inside trusted multiline inline code span fails closed",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "Use `dotnet\nnow` locally.\n", "patch": "@@ -1,2 +1,3 @@\n Use `dotnet\n+test\n now` locally."}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "deletion inside trusted multiline inline code span fails closed",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "Use `dotnet\ntest\nnow` locally.\n", "patch": "@@ -1,3 +1,2 @@\n Use `dotnet\n-test\n now` locally."}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "C sharp source",
+    "files": [{"filename": "src/Modules/Andreja.Modules/OpenLoops/OpenLoopTask.cs", "status": "modified"}],
+    "selected": ["dotnet", "oci"],
+    "fullSuite": false
+  },
+  {
+    "name": "project package fanout",
+    "files": [{"filename": "src/Modules/Andreja.Modules/Andreja.Modules.csproj", "status": "modified"}],
+    "selected": ["dotnet", "postgres", "powershell", "javascript", "oci", "docs"],
+    "fullSuite": true
+  },
+  {
+    "name": "global SDK fanout",
+    "files": [{"filename": "global.json", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "migration",
+    "files": [{"filename": "src/Adapters/Andreja.Adapters/PostgreSql/Migrations/New.cs", "status": "added"}],
+    "selected": ["dotnet", "postgres", "oci"],
+    "fullSuite": false
+  },
+  {
+    "name": "PowerShell",
+    "files": [{"filename": "scripts/example.ps1", "status": "modified"}],
+    "selected": ["powershell"],
+    "fullSuite": false
+  },
+  {
+    "name": "workflow security boundary",
+    "files": [{"filename": ".github/workflows/new.yml", "status": "added"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "JavaScript browser",
+    "files": [{"filename": "src/Andreja.AppHost/wwwroot/identity-passkeys.js", "status": "modified"}],
+    "selected": ["dotnet", "javascript", "oci"],
+    "fullSuite": false
+  },
+  {
+    "name": "unsupported TypeScript fails closed",
+    "files": [{"filename": "src/Andreja.AppHost/wwwroot/new-client.ts", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["unclassified-path"]
+  },
+  {
+    "name": "unsupported TSX fails closed",
+    "files": [{"filename": "src/Andreja.AppHost/wwwroot/new-component.tsx", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["unclassified-path"]
+  },
+  {
+    "name": "unsupported JSX fails closed",
+    "files": [{"filename": "src/Andreja.AppHost/wwwroot/new-component.jsx", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["unclassified-path"]
+  },
+  {
+    "name": "Docker",
+    "files": [{"filename": "Dockerfile", "status": "modified"}],
+    "selected": ["dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": false
+  },
+  {
+    "name": "Compose",
+    "files": [{"filename": "deploy/compose.evidence.yaml", "status": "modified"}],
+    "selected": ["dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": false
+  },
+  {
+    "name": "supply chain",
+    "files": [{"filename": "scripts/supply-chain/New-OciEvidence.ps1", "status": "modified"}],
+    "selected": ["dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": false
+  },
+  {
+    "name": "mixed docs and PowerShell",
+    "files": [
+      {"filename": "docs/charter.md", "status": "modified", "changes": 2, "baseContent": "old\n", "patch": "@@ -1 +1 @@\n-old\n+new"},
+      {"filename": "scripts/example.ps1", "status": "modified"}
+    ],
+    "selected": ["docs", "powershell"],
+    "fullSuite": false
+  },
+  {
+    "name": "rename ambiguity",
+    "files": [{"filename": "docs/renamed.md", "previous_filename": "docs/old.md", "status": "renamed", "patch": "@@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "copied Markdown with pre-existing executable content fails closed",
+    "files": [{"filename": "docs/help/copied-runbook.md", "previous_filename": "docs/help/source-runbook.md", "status": "copied", "changes": 2, "baseContent": "```powershell\ndotnet test\n```\nold prose\n", "patch": "@@ -4 +4 @@\n-old prose\n+new prose"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["ambiguous-copied"]
+  },
+  {
+    "name": "delete ambiguity",
+    "files": [{"filename": "docs/old.md", "status": "removed"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "generated schema",
+    "files": [{"filename": "docs/operations/application-export-v1.schema.json", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "unknown path",
+    "files": [{"filename": "new-area/opaque.xyz", "status": "added"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "classifier boundary",
+    "files": [{"filename": ".github/ci/change-policy.v1.json", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "selective CI governance runbook",
+    "files": [{"filename": "docs/operations/selective-ci.md", "status": "modified", "changes": 2, "baseContent": "old governance\n", "patch": "@@ -1 +1 @@\n-old governance\n+new governance"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "security policy",
+    "files": [{"filename": "SECURITY.md", "status": "modified", "patch": "@@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "MCP runtime configuration",
+    "files": [{"filename": ".mcp.json", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "Git attributes repository behavior",
+    "files": [{"filename": ".gitattributes", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "executable documentation",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "added", "changes": 3, "patch": "@@ -0,0 +1,3 @@\n+```powershell\n+dotnet run\n+```"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "changed line inside unchanged executable fence",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 2, "baseContent": "```powershell\none\ntwo\nthree\nfour\nfive\nsix\n```\n", "patch": "@@ -4,3 +4,3 @@\n three\n-four\n+changed\n five"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "addition inside unchanged executable fence",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "```sql\nselect 1;\nselect 2;\n```\n", "patch": "@@ -2,2 +2,3 @@\n select 1;\n+select now();\n select 2;"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "deletion inside unchanged tilde fence",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "~~~unknown-language\ncommand\n~~~\n", "patch": "@@ -1,3 +1,2 @@\n ~~~unknown-language\n-command\n ~~~"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "addition of Markdown indented code",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "# Run\n\nAfter\n", "patch": "@@ -1,3 +1,4 @@\n # Run\n \n+\t  dotnet test\n After"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "deletion of Markdown indented code",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "# Run\n\n    dotnet test\n\nAfter\n", "patch": "@@ -1,5 +1,4 @@\n # Run\n \n-    dotnet test\n \n After"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "addition of three-space Markdown prose stays docs-only",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "# Note\n\nAfter\n", "patch": "@@ -1,3 +1,4 @@\n # Note\n \n+   prose\n After"}],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
+    "name": "deletion of three-space Markdown prose stays docs-only",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "# Note\n\n   prose\nAfter\n", "patch": "@@ -1,4 +1,3 @@\n # Note\n \n-   prose\n After"}],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
+    "name": "addition of executable blockquoted fence",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "added", "changes": 3, "patch": "@@ -0,0 +1,3 @@\n+> ```bash\n+> dotnet test\n+> ```"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "change inside unchanged blockquoted fence",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 2, "baseContent": "> ```powershell\n> dotnet test old\n> ```\n", "patch": "@@ -1,3 +1,3 @@\n > ```powershell\n-> dotnet test old\n+> dotnet test new\n > ```"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "deletion of executable blockquoted fence",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 3, "baseContent": "> ```bash\n> dotnet test\n> ```\nAfter\n", "patch": "@@ -1,4 +1 @@\n-> ```bash\n-> dotnet test\n-> ```\n After"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "blockquoted prose stays docs-only",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "added", "changes": 1, "patch": "@@ -0,0 +1 @@\n+> prose only"}],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
+    "name": "change after deeper blockquote fence-like content stays executable",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 2, "baseContent": "> ```bash\n>> ```\n> dotnet test old\n> ```\n", "patch": "@@ -1,4 +1,4 @@\n > ```bash\n >> ```\n-> dotnet test old\n+> dotnet test new\n > ```"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "addition after deeper blockquote fence-like content stays executable",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "added", "changes": 5, "patch": "@@ -0,0 +1,5 @@\n+> ```bash\n+>> ```\n+> dotnet test\n+> ```\n+> prose"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "deletion after deeper blockquote fence-like content stays executable",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": "> ```bash\n>> ```\n> dotnet test\n> ```\n", "patch": "@@ -1,4 +1,3 @@\n > ```bash\n >> ```\n-> dotnet test\n > ```"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "addition with tab-expanded blockquote structure fails closed",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "added", "changes": 3, "patch": "@@ -0,0 +1,3 @@\n+>  \t> ```bash\n+>  \t> dotnet test\n+>  \t> ```"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "change in tab-expanded blockquote structure fails closed",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 2, "baseContent": ">  \t> ```bash\n>  \t> dotnet test old\n>  \t> ```\n", "patch": "@@ -1,3 +1,3 @@\n >  \t> ```bash\n->  \t> dotnet test old\n+>  \t> dotnet test new\n >  \t> ```"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "deletion in tab-expanded blockquote structure fails closed",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 1, "baseContent": ">  \t> ```bash\n>  \t> dotnet test\n>  \t> ```\n", "patch": "@@ -1,3 +1,2 @@\n >  \t> ```bash\n->  \t> dotnet test\n >  \t> ```"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "prose change outside unchanged fence stays docs-only",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 2, "baseContent": "```text\nnot executed\n```\nold prose\n", "patch": "@@ -3,2 +3,2 @@\n ```\n-old prose\n+new prose"}],
+    "selected": ["docs"],
+    "fullSuite": false
+  },
+  {
+    "name": "base drift against patch context fails closed",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified", "changes": 2, "baseContent": "different base line\n", "patch": "@@ -1 +1 @@\n-old prose\n+new prose"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "known executable documentation command edit",
+    "files": [{"filename": "docs/development.md", "status": "modified", "patch": "@@\n-old command\n+new command"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "truncated Markdown patch",
+    "files": [{"filename": "docs/charter.md", "status": "modified", "changes": 8, "baseContent": "old\n", "patch": "@@ -1 +1 @@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["markdown-patch-change-count-mismatch"]
+  },
+  {
+    "name": "Markdown patch with underreported change count fails closed",
+    "files": [{"filename": "docs/charter.md", "status": "modified", "changes": 1, "baseContent": "old\n", "patch": "@@ -1 +1 @@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["markdown-patch-change-count-mismatch"]
+  },
+  {
+    "name": "Markdown patch with missing change count fails closed",
+    "files": [{"filename": "docs/charter.md", "status": "modified", "baseContent": "old\n", "patch": "@@ -1 +1 @@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["markdown-patch-change-count-invalid"]
+  },
+  {
+    "name": "Markdown patch with non-integer change count fails closed",
+    "files": [{"filename": "docs/charter.md", "status": "modified", "changes": 1.5, "baseContent": "old\n", "patch": "@@ -1 +1 @@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["markdown-patch-change-count-invalid"]
+  },
+  {
+    "name": "Markdown patch with zero change count fails closed",
+    "files": [{"filename": "docs/charter.md", "status": "modified", "changes": 0, "baseContent": "prose\n", "patch": "@@ -1 +1 @@\n prose"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["markdown-patch-change-count-invalid"]
+  },
+  {
+    "name": "Markdown patch with negative change count fails closed",
+    "files": [{"filename": "docs/charter.md", "status": "modified", "changes": -2, "baseContent": "old\n", "patch": "@@ -1 +1 @@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["markdown-patch-change-count-invalid"]
+  },
+  {
+    "name": "Markdown patch with malformed change count fails closed",
+    "files": [{"filename": "docs/charter.md", "status": "modified", "changes": "2", "baseContent": "old\n", "patch": "@@ -1 +1 @@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true,
+    "reasons": ["markdown-patch-change-count-invalid"]
+  },
+  {
+    "name": "unavailable markdown patch",
+    "files": [{"filename": "docs/help/local-identity.md", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "dependency update configuration",
+    "files": [{"filename": ".github/dependabot.yml", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "repository action governance",
+    "files": [{"filename": ".github/actions/setup/action.yml", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "CODEOWNERS governance",
+    "files": [{"filename": ".github/CODEOWNERS", "status": "modified"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "agent governance",
+    "files": [{"filename": ".github/agents/reviewer.agent.md", "status": "modified", "changes": 2, "patch": "@@ -1 +1 @@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "skill governance",
+    "files": [{"filename": ".github/skills/reviewer/SKILL.md", "status": "modified", "changes": 2, "patch": "@@ -1 +1 @@\n-old\n+new"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "unknown future GitHub metadata",
+    "files": [{"filename": ".github/future-policy.yml", "status": "added"}],
+    "selected": ["docs", "dotnet", "postgres", "powershell", "javascript", "oci"],
+    "fullSuite": true
+  },
+  {
+    "name": "explicit inert issue template",
+    "files": [{"filename": ".github/ISSUE_TEMPLATE/bug.yml", "status": "modified"}],
+    "selected": ["docs"],
+    "fullSuite": false
+  }
+]

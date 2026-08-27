@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://andreja.local/schemas/oci-supply-chain-evidence-v1.schema.json",
+  "title": "Andreja OCI supply-chain evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "policy",
+    "source",
+    "image",
+    "build",
+    "tools",
+    "sboms",
+    "scans",
+    "migrationNotes",
+    "provenance",
+    "signing",
+    "artifacts"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "policy": { "$ref": "#/$defs/checksummedFile" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit", "tree"],
+      "properties": {
+        "repository": { "type": "string", "format": "uri" },
+        "commit": { "$ref": "#/$defs/gitObject" },
+        "tree": { "$ref": "#/$defs/gitObject" }
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "digest", "configDigest", "immutableReference", "platform", "archive"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/sha256Digest" },
+        "configDigest": { "$ref": "#/$defs/sha256Digest" },
+        "immutableReference": { "type": "string", "pattern": "@sha256:[0-9a-f]{64}$" },
+        "platform": { "type": "string", "pattern": "^linux/(amd64|arm64)$" },
+        "archive": { "$ref": "#/$defs/checksummedFile" }
+      }
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceDateEpoch", "firstDigest", "secondDigest", "reproducible", "baseImages"],
+      "properties": {
+        "sourceDateEpoch": { "type": "integer", "minimum": 1 },
+        "firstDigest": { "$ref": "#/$defs/sha256Digest" },
+        "secondDigest": { "$ref": "#/$defs/sha256Digest" },
+        "reproducible": { "const": true },
+        "baseImages": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "type": "string", "pattern": "@sha256:[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "tools": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "version"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "version": { "type": "string", "minLength": 1 },
+          "image": { "type": ["string", "null"], "pattern": "@sha256:[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "sboms": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "allOf": [
+          { "$ref": "#/$defs/checksummedFile" },
+          {
+            "type": "object",
+            "required": ["format"],
+            "properties": { "format": { "enum": ["SPDX-2.3", "CycloneDX-1.6"] } }
+          }
+        ]
+      }
+    },
+    "scans": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "allOf": [
+          { "$ref": "#/$defs/checksummedFile" },
+          {
+            "type": "object",
+            "required": ["scope", "scanner", "forbiddenFindings", "passed"],
+            "properties": {
+              "scope": { "enum": ["dependencies", "final-image", "container-iac"] },
+              "scanner": { "type": "string", "minLength": 1 },
+              "forbiddenFindings": { "type": "integer", "minimum": 0 },
+              "passed": { "const": true }
+            }
+          }
+        ]
+      }
+    },
+    "migrationNotes": { "$ref": "#/$defs/checksummedFile" },
+    "provenance": { "$ref": "#/$defs/checksummedFile" },
+    "signing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "status", "trustedPublicKeySha256", "signature", "hostedDeferral"],
+      "properties": {
+        "mode": { "enum": ["operator-held-key", "hosted-deferred"] },
+        "status": { "enum": ["signed", "unsigned"] },
+        "trustedPublicKeySha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "signature": {
+          "oneOf": [
+            { "$ref": "#/$defs/checksummedFile" },
+            { "type": "null" }
+          ]
+        },
+        "hostedDeferral": { "type": ["string", "null"] }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 9,
+      "items": { "$ref": "#/$defs/checksummedFile" }
+    }
+  },
+  "$defs": {
+    "gitObject": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256Digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "checksummedFile": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    }
+  }
+}

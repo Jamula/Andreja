@@ -11,6 +11,180 @@ After the documentation PR, create repository roadmap issues and milestones and 
 
 ADR 0000 stores the initial hash plus an append-only amendment log containing issue, PR, new hash, approver, and decision. Documentation CI verifies that the recorded hash matches merged `docs/plan.md`; a mismatch fails the build. Editorial clarifications and phase evidence are logged amendments; changes to vision, data ownership, trust boundaries, Phase 0 envelope, public claims, legal posture, or non-negotiable architecture require explicit re-ratification.
 
+### Execution and decision status amendment — 2026-08-25
+
+This narrow status amendment is tracked by
+[#73](https://github.com/Jamula/Andreja/issues/73). It reconciles merged
+implementation and investigation evidence with the plan; it does not accept a
+Proposed ADR, waive an exit gate, authorize spend or publication, or redesign an
+architecture or trust boundary.
+
+Issue [#74](https://github.com/Jamula/Andreja/issues/74) remains the
+provider-scope decision of record. Cyrus's
+[durable direction comment](https://github.com/Jamula/Andreja/issues/74#issuecomment-5427814163)
+requests the outcome “integrate Copilot SDK into the toolchain so I can use
+Copilot to interact with the tools.” That comment records the requested outcome;
+it does not select a phase, accept this mapping, or authorize provider activation,
+an account/model call, content disclosure, or spend. [Proposed ADR
+0009](adr/0009-copilot-provider-phase-scope.md) now recommends the explicit
+resolution: Phase 1A runtime remains deterministic fake plus optional
+Andreja-native OpenAI-compatible BYOK; Phase 1A may perform only a non-shipping,
+credential-free Copilot SDK compile/conformance toolchain spike; a limited real
+Copilot provider begins no earlier than Phase 1B after every provider entry gate
+passes. ADR 0009 and this mapping still require Cyrus's explicit approval. They
+do not record his acceptance or authorize runtime activation, spend, an account,
+or content disclosure.
+
+#### Current artifact and implementation status
+
+| Area | Current evidence | Decision or remaining boundary |
+|---|---|---|
+| Modular boundaries, PostgreSQL, and passkeys | The Phase 1A modular slices, PostgreSQL reference persistence/migrations, production passkey bootstrap/recovery, and their architecture/integration/browser tests are implemented on `main`. Evidence run [#44](phase-1a/evidence-44.md) records the exact tested boundary. | ADRs 0001–0005 remain **Proposed and unaccepted** pending [#66](https://github.com/Jamula/Andreja/issues/66). Merge and passing tests are implementation evidence, not Cyrus's acceptance or Phase 1A exit. |
+| Skill, channel, and semantic contracts | Application-owned skill/channel manifests and hosts, grants/audit/peer envelopes, and minimal semantic-profile/provenance/export contracts are implemented. | This is contract-seam evidence only: no third-party execution, production connector, federation transport, graph database, universal ontology, or inactive persistence is approved. ADR 0004 and the other Phase 1A ADRs remain Proposed. |
+| Portability and recovery | The application export/import clean-instance round trip passed as supplemental evidence in [evidence run #44](phase-1a/evidence-44.md#supplemental-application-portability-evidence-87). PostgreSQL logical dump/restore was only partial exit evidence. | Portable application data does not substitute for an encrypted database-plus-Data-Protection-key recovery set and restored sign-in. Managed-provider PITR and managed-cloud portability remain deferred. |
+| Architecture diagram and operator README | PR [#100](https://github.com/Jamula/Andreja/pull/100) originated the Excalidraw/SVG/PNG architecture diagram and PR [#107](https://github.com/Jamula/Andreja/pull/107) merged its reviewed correction, PNG hash, and generation/consistency tests. The root README records current local build, test, self-host, and evidence commands. | These are current documentation and reproducibility evidence, not acceptance of the Proposed ADR packet or release authorization. The canonical privacy/threat artifacts are present but not ratified; Tuvok/Deanna Troi/Rai challenges and Cyrus residual-risk acceptance remain pending. |
+| Website matrix and prototype | PRs [#105](https://github.com/Jamula/Andreja/pull/105) and [#111](https://github.com/Jamula/Andreja/pull/111) merged the Phase 0 matrix, claims inventory, local prototype, validator, and hardened boundary wording. PR #105 initially used ADR number 0006; the current canonical, hardened file is **Proposed ADR 0008**. | The packet remains a recommendation for human decision. It authorizes no deployment, preview, hosting vendor, domain, CDN, DNS, public claim, or public launch. Issue [#93](https://github.com/Jamula/Andreja/issues/93) remains the separately gated Phase 1B public-site proposal. |
+| Test framework | PR [#103](https://github.com/Jamula/Andreja/pull/103) merged a measured xUnit/MSTest investigation. Cyrus later selected MSTest as the long-term direction. | ADR 0007 remains Proposed, and its earlier xUnit-retention recommendation is superseded by its 2026-08-25 amendment. Migration is deliberately deferred to [#112](https://github.com/Jamula/Andreja/issues/112); no test migration occurs in this amendment. |
+
+#### Phase 0 policy and governance artifact classification
+
+These hashes classify the files in this amendment's source tree and are enforced
+by `.github/scripts/check_docs_consistency.py`; missing, added, malformed, or
+stale rows fail documentation CI. A closed issue, merged PR, title containing
+“ratify,” or downstream description of an artifact as authoritative is not an
+explicit Cyrus decision.
+
+| Artifact | Source and current SHA-256 | Current authority |
+|---|---|---|
+| [`docs/operating-model.md`](operating-model.md) | Issue [#14](https://github.com/Jamula/Andreja/issues/14), PR [#17](https://github.com/Jamula/Andreja/pull/17); `1e33fcb736a916a6b191c9b36a8bd984e1fdc1f42ad251121df4ac7227a0c7e5` | **Draft for ratification.** The issue and PR merged/closed, but no separate explicit Cyrus ratification record was found; it is advisory and the plan remains authoritative. |
+| [`docs/cost-model.md`](cost-model.md) | Issue [#11](https://github.com/Jamula/Andreja/issues/11), PR [#20](https://github.com/Jamula/Andreja/pull/20); provider-allowance proposal [#74](https://github.com/Jamula/Andreja/issues/74), PR [#119](https://github.com/Jamula/Andreja/pull/119); `8f7c708d63d389481c1e88964dba883ae6dc3ad7a73215ac5317471e55e1f13c` | **Draft for ratification.** It recommends controls but authorizes no spend; issue closure and merge are not approval. |
+| [`docs/frameworks/feedback-support.md`](frameworks/feedback-support.md) | Issue [#10](https://github.com/Jamula/Andreja/issues/10), PR [#16](https://github.com/Jamula/Andreja/pull/16); `758ed2eedf765d8a6a875b53af21b72fc0af4212fc06e06d54876c076ccb83ed` | **Review-ready draft.** The source PR merged, but issue #10 and explicit Cyrus approval remain open; no intake deployment or support commitment is authorized. |
+| [`docs/frameworks/prioritization-launch.md`](frameworks/prioritization-launch.md) | Issue [#5](https://github.com/Jamula/Andreja/issues/5), PR [#19](https://github.com/Jamula/Andreja/pull/19); `7ba4d30a901e881cf167afe8964c9c2e6ba2584ac94151f2e4f8bc9b2e79104c` | **Review-ready draft.** Its operational mechanics are advisory until explicitly ratified; the plan owns phased scope and exits. |
+| [`docs/charter.md`](charter.md) | Issue [#3](https://github.com/Jamula/Andreja/issues/3), PRs [#15](https://github.com/Jamula/Andreja/pull/15), [#27](https://github.com/Jamula/Andreja/pull/27), and the [ADR 0006 ratification instrument](adr/0006-charter-ratification.md); `d030d985c5de8260035eb83b17bc3be74876700487575408cf9679a05b4fa843` | **Proposed; not authoritative.** Issue #3 remains open and the file becomes effective only after Cyrus explicitly ratifies it through Proposed ADR 0006. The charter section in this ratified plan remains the seed summary. |
+| [`docs/privacy.md`](privacy.md) | Issue [#116](https://github.com/Jamula/Andreja/issues/116), PR [#117](https://github.com/Jamula/Andreja/pull/117); `03f50c948cf07ee32360944be9c1c3d9ba6274467a02d158960ca4abd6a424a1` | **Canonical descriptive baseline; not ratified.** Required challenge: Deanna Troi (privacy), Tuvok (security), Rai (AI safety); pending. Cyrus residual-risk acceptance remains pending. The classification/impact assessment remains open unless explicitly approved with cited evidence. |
+| [`docs/threat-model.md`](threat-model.md) | Issue [#116](https://github.com/Jamula/Andreja/issues/116), PR [#117](https://github.com/Jamula/Andreja/pull/117); `1b9d73f4328cc89da5046607bdbd34613fde4d4d9e0f92ec3f5e62050d827d29` | **Canonical descriptive baseline; not ratified.** Required challenge: Tuvok (security), Deanna Troi (privacy), Rai (AI safety); pending. Cyrus residual-risk acceptance remains pending. The classification/impact assessment remains open unless explicitly approved with cited evidence. |
+| [`docs/legal/license-evaluation.md`](legal/license-evaluation.md) | Issue [#6](https://github.com/Jamula/Andreja/issues/6), merged source PR [#12](https://github.com/Jamula/Andreja/pull/12); `4b8f325941e79a3d802bd03ef1472d55d69540efddced54853acda43f801d5e2` | **Counsel-ready research; not approved policy.** Issue #6 remains open; qualified counsel and Cyrus approval are still required. It authorizes no visibility, contribution, license, trademark, domain, or publication change. |
+| [`docs/legal/regulatory-applicability.md`](legal/regulatory-applicability.md) | Issue [#8](https://github.com/Jamula/Andreja/issues/8), PRs [#21](https://github.com/Jamula/Andreja/pull/21) and [#28](https://github.com/Jamula/Andreja/pull/28); `60e5bec8ce1c991f72446c16374dd27962ea9698374a2105fbd7edc837394d23` | **Draft legal-research/governance artifact.** Issue #8 remains open; qualified counsel and Cyrus approval are required before it is authoritative or supports a legal/compliance claim. |
+
+#### Phase 0 website containment
+
+Phase 0 website artifacts may be opened only on loopback or in a private,
+access-controlled review boundary. GitHub Pages, public previews, CDN delivery,
+DNS publication, and any other public endpoint must be disabled; if a private
+preview is later explicitly approved, it must enforce authorization and expiry.
+`noindex`, robots directives, and `X-Robots-Tag` are defense in depth and are
+never authorization.
+
+Earlier on 2026-08-25, GitHub Pages publicly served
+`https://jamula.github.io/Andreja/` from `main:/docs`. Unauthenticated requests
+returned `200` for `/plan`, `/public-website/prototype/`,
+`/phase-1a/evidence-44`, and `/legal/regulatory-applicability`. The whole
+`docs/` tree was in the Pages source with no `_config.yml` or `.nojekyll`
+exclusion. That was an unapproved Phase 0 nonconformance.
+
+Containment evidence is recorded in closed issue
+[#114](https://github.com/Jamula/Andreja/issues/114). The Pages `DELETE`
+returned `204` at `2026-08-25T15:55:36Z`; the Pages API then returned `404`.
+The four routes above reached stable `404` at `2026-08-25T16:06:55Z` after
+bounded CDN expiry and were independently reconfirmed `404`. Issue #114 closed
+with no repository changes. The Pages-specific merge hold on PR
+[#113](https://github.com/Jamula/Andreja/pull/113) is therefore lifted; normal
+draft, review, and merge gates still apply.
+
+This contained current state does not recall third-party/client caches, search
+engine copies, previously downloaded bytes, or provider-retained request logs.
+Those residual copies and logs are outside repository control and require their
+own authorized provider/privacy process if further action is required.
+
+#### Current Phase 1A evidence status
+
+[Evidence run #44](phase-1a/evidence-44.md) is useful local evidence, but Phase
+1A exit is not claimed. The following gates remain blocking without waiver:
+
+1. a separately trusted operator reruns OCI evidence with an approved external
+   signing key and trust anchor;
+2. encrypted PostgreSQL data and recoverable Data Protection keys restore into a
+   clean instance and complete restored passkey sign-in;
+3. a genuine second, separately approved and signed revision completes both
+   update and rollback against preserved state; and
+4. Cyrus approves numeric SLO, RPO, RTO, retention, and external model-spend
+   envelopes plus the final residual-risk decision.
+
+Passing deterministic, PostgreSQL, browser, portability, offline, and telemetry
+rows do not weaken these exits.
+
+#### Required artifacts and next safe order
+
+The canonical [`docs/privacy.md`](privacy.md) and
+[`docs/threat-model.md`](threat-model.md) now provide descriptive cross-phase
+baselines under [#116](https://github.com/Jamula/Andreja/issues/116), but are not
+ratified. Tuvok's security challenge, Deanna Troi's privacy challenge, Rai's
+AI-safety challenge, Cyrus's explicit residual-risk acceptance, and the
+classification/impact assessment remain open. They do not accept a Proposed ADR,
+authorize production or a future
+integration, or close the retention, residency, model-provider, and evidence
+decisions they identify. The narrower files under `docs/phase-1a/` remain evidence
+inputs and do not replace them.
+
+Pages containment is the completed prerequisite under
+[#114](https://github.com/Jamula/Andreja/issues/114). PR
+[#106](https://github.com/Jamula/Andreja/pull/106) completed the status
+reconciliation at merge commit `7a1fc20`.
+
+The exact premature-auto-merge race in
+[#104](https://github.com/Jamula/Andreja/issues/104) is currently contained because
+repository auto-merge is disabled (`allow_auto_merge=false`). This is containment,
+not the full required outcome: #104 remains open, and merged PR
+[#115](https://github.com/Jamula/Andreja/pull/115) (`c93c6be`) contributed
+human-blocked design evidence only. No external GitHub App/worker or always-present
+review-completion gate exists or is authorized.
+
+The next safe engineering lane is fail-closed selective CI under
+[#102](https://github.com/Jamula/Andreja/issues/102), only while repository
+auto-merge remains disabled. It must keep stable, always-present, fail-closed
+aggregate checks on pull-request, merge-group, and default-branch paths.
+Implementation of #102 must not depend on, substitute for, or weaken #115 or #104;
+unknown or unclassified changes must fail closed into the full relevant suite.
+
+Public launch, a real Copilot provider, managed cloud, federation, and production
+connectors remain deferred to their later phases and explicit gates.
+
+### Provider-scope proposal — 2026-08-26
+
+Issue [#74](https://github.com/Jamula/Andreja/issues/74) is addressed at proposal
+level by [ADR 0009](adr/0009-copilot-provider-phase-scope.md). Cyrus's
+[direction comment](https://github.com/Jamula/Andreja/issues/74#issuecomment-5427814163)
+is the durable source for the requested SDK-toolchain outcome, not approval of
+the recommended phase placement or any activation:
+
+- Phase 1A runtime is deterministic fake plus optional Andreja-native
+  OpenAI-compatible BYOK. It does not include a real Copilot provider.
+- Before runtime, the requested outcome is advanced only by a pinned, isolated,
+  non-shipping, credential-free compile/conformance adapter and developer checks;
+  usable Copilot interaction remains unsatisfied until a separately approved
+  provider activation. The spike is absent from the app dependency graph,
+  container, startup, service registration, UI/configuration, auth, egress, model
+  usage, account provisioning, spend, and product claims. CI scrubs ambient
+  Copilot/GitHub credentials and stores, removes Copilot/GitHub executables,
+  denies egress, prohibits runtime-start/session APIs, and proves the shipping
+  graph/artifact remains Copilot-free.
+- The earliest real Copilot work is a limited Phase 1B canary after explicit ADR
+  acceptance and current evidence for SDK/support, entitlement/billing,
+  tenant/user/session/tool/filesystem isolation, prompt/tool/data exposure,
+  retention/residency/training/abuse handling, authentication custody, hard
+  budgets/reconciliation, fallback/offline behavior, consent/disclosure,
+  audit/provenance, tests/canaries, legal/privacy/security approval,
+  operability/support, and rehearsed rollback.
+- A failed or unanswered gate defers Copilot beyond Phase 1B. It does not weaken
+  offline startup, deterministic conformance, BYOK, provider neutrality,
+  self-hosting, portability, or user-owned-data boundaries.
+
+ADR 0009 is **Proposed**. Required review is Cyrus after named architecture,
+privacy, security/abuse, FinOps/operations, and qualified legal verdicts.
+Documentation merge, issue closure, SDK general availability/package presence,
+a compile spike, or an existing subscription does not record Cyrus acceptance or
+authorize a runtime, account, network/model call, content disclosure, or spend.
+
 ## Vision
 
 Andreja is an assistant-and-skill platform. Personal task and open-loop management is the first substantial first-party skill set, not the platform boundary. Andreja begins as Cyrus's private, cross-device assistant across finances, bills, trips, social commitments, family support, health, home maintenance, reading and podcast queues, and trading research. It is intentionally built on foundations that can become:
@@ -109,7 +283,12 @@ Platform capabilities are privileged product functions governed by architecture/
 ### Initial channel connectors
 
 1. Local/linked identity: passkeys, Microsoft, Google, GitHub; later Apple, LinkedIn, Facebook, and enterprise OIDC.
-2. Assistant providers: GitHub Copilot OAuth and OpenAI-compatible BYOK; later Azure AI and local providers.
+2. Assistant providers: under Proposed ADR 0009, deterministic fake and
+   OpenAI-compatible BYOK are the Phase 1A runtime providers. A credential-free,
+   non-shipping Copilot SDK compile/conformance toolchain spike may occur in 1A;
+   a limited real GitHub Copilot provider begins no earlier than Phase 1B after
+   ADR 0009 acceptance and all entry gates pass; later Azure AI and local
+   providers.
 3. **Email first:** Gmail, Outlook.com/Hotmail, and Microsoft 365 mail; then their calendar surfaces.
 4. In-app messaging: user-to-Andreja, support/status, and later consented peer-assistant messaging.
 5. Discord: official bot/app installation only, with explicit server/channel scope and no self-bot/user-token automation.
@@ -428,13 +607,22 @@ First-party skills follow the same platform contract and quality gates expected 
 ## Assistant and AI architecture
 
 - Define application-owned `IAssistantProvider` and `IAssistantSession`; no provider SDK types cross into domain or UI contracts.
-- Use stable `GitHub.Copilot.SDK` 1.0.x as an initial provider. Official GitHub documentation describes OAuth-based SaaS, per-user subscriptions, multi-user session isolation, BYOK, and a shared headless CLI backend. Validate those flows operationally and obtain a counsel/vendor-reviewed answer on commercial product terms, acceptable use, entitlement, and redistribution before relying on them in paid Andreja offerings.
+- [Proposed ADR 0009](adr/0009-copilot-provider-phase-scope.md) recommends that
+  Phase 1A ship only the deterministic fake and Andreja-native OpenAI-compatible
+  BYOK provider. Phase 1A may pin the Copilot SDK only in an isolated,
+  non-shipping, credential-free compile/conformance spike. A limited real
+  `GitHub.Copilot.SDK` 1.0.x provider begins no earlier than Phase 1B after ADR
+  0009 is accepted and its SDK/support, entitlement/billing, tenant/user
+  isolation, data exposure, retention/residency/abuse monitoring, auth custody,
+  authenticated SDK-to-runtime control channel, budget, fallback,
+  consent/disclosure, audit/provenance, offline, test/canary,
+  legal/privacy/security, operability, and rollback gates pass.
 - Keep GitHub OAuth account linking separate from primary app identity.
 - Treat GitHub assistant authentication, the GitHub content connector, and GitHub feedback publishing as three independent grants with distinct tokens, scopes, consent, storage, and revocation. Never reuse one token across roles.
-- Ship an OpenAI-compatible BYOK adapter alongside Copilot in the walking skeleton so fully independent self-hosting has a working assistant and `IAssistantProvider` is validated by two implementations.
+- Ship an OpenAI-compatible BYOK adapter alongside the deterministic fake in the walking skeleton so fully independent self-hosting has a working assistant and the provider-neutral seam has deterministic conformance evidence.
 - Evaluate Azure AI Foundry/Azure OpenAI, local models, and other commercially appropriate providers for users without GitHub accounts.
 - Register a narrow typed tool allowlist. Never expose arbitrary SQL, shell, filesystem, or unrestricted network tools.
-- Shared Copilot runtimes use empty mode, explicit available tools, per-session credentials, tenant-scoped session identifiers/state, and deliberate cleanup. Provider capability negotiation decides which features are available rather than assuming Copilot semantics.
+- Any Phase 1B shared Copilot runtime uses empty mode, explicit available tools, per-session credentials, tenant-scoped session identifiers/state, and deliberate cleanup only after the ADR 0009 gates pass. Per-user runtime isolation is the initial preference; a shared runtime requires adversarial evidence and explicit residual-risk acceptance. Provider capability negotiation decides which features are available rather than assuming Copilot semantics.
 - All assistant writes become structured proposals with exact diff, policy evaluation, and explicit confirmation; sharing/grant changes always use the strongest confirmation tier.
 - Treat peer, connector, and skill data as untrusted prompt content and structurally separate it from instructions.
 - Scope every tool invocation by tenant, principal, purpose, grants, skill capabilities, and conversation context.
@@ -683,7 +871,7 @@ Connector identity, assistant, content, feedback, and publishing grants remain s
 |---|---|---|---|---|
 | Local identity | Passkeys/local recovery | Independent self-host sign-in and recovery | MVP | 1A |
 | Linked identity | Microsoft account, Google, GitHub; later Apple, LinkedIn, Facebook and enterprise OIDC | Verified account linking and primary-identity flexibility; no email-only linking | MVP/research | 1A-2 |
-| Assistant providers | GitHub Copilot OAuth, OpenAI-compatible BYOK; later Azure AI/local providers | User-selected assistant runtime with isolated credentials, retention and usage policy | MVP | 1A |
+| Assistant providers | Deterministic fake and OpenAI-compatible BYOK; non-runtime SDK qualification in 1A; limited real GitHub Copilot only after ADR 0009 acceptance and entry gates; later Azure AI/local providers | User-selected assistant runtime with isolated credentials, retention and usage policy | MVP | Proposed ADR 0009: BYOK/fake in 1A; earliest real Copilot is gated 1B |
 | Email intake/send | Gmail, Outlook.com/Hotmail, Microsoft 365 | MVP autonomous triage/task/calendar/control-plane story, with per-account policy; broader email workflows later | MVP | 1B core; 3A expansion |
 | In-app messaging | User-to-Andreja, feedback/support status and scoped trip collaboration; later general peer assistants | Private product messaging and proposal/status delivery; no ambient cross-tenant chat | MVP/early | 1B trip/support; general peer in 6 |
 | Discord | Official Discord bot/application | Explicit installation and server/channel scope; never self-bot or user-token automation | Early pilot | 3A |
@@ -931,6 +1119,8 @@ Guinan is the User Feedback and Support Lead and owns acknowledgment, privacy sc
 
 ## Public website, help, and support
 
+- **Tracking:** Phase 0 design/hosting matrix [#94](https://github.com/Jamula/Andreja/issues/94);
+  gated Phase 1B public/help site [#93](https://github.com/Jamula/Andreja/issues/93).
 - Build a separate public-site project in this repository and .NET solution, deployed independently from the authenticated Andreja application and every user data plane.
 - Launch a minimal site with the walking skeleton covering the vision, capabilities, user data ownership, self-hosted and managed choices, privacy/security posture, roadmap boundaries, and honest availability status.
 - Expand the same site into the canonical help and support destination:
@@ -1140,7 +1330,13 @@ Star Trek character names are internal/private Squad codenames pending trademark
 ### Available now
 
 - .NET SDK 10.0.301, Node.js 22.23.2, npm 12.0.1, GitHub CLI 2.96.0, and GitHub Copilot CLI 1.0.80 are installed.
-- `GitHub.Copilot.SDK` 1.0.11 is available from the configured NuGet feed. Official GitHub documentation supports OAuth-based SaaS, per-user subscriptions, BYOK, a shared headless backend, and multi-user session isolation patterns.
+- `GitHub.Copilot.SDK` 1.0.11 is available from the configured NuGet feed, and
+  GitHub announced the SDK as generally available on 2026-06-02. Official
+  documentation describes OAuth, per-user subscriptions, organization
+  server-to-server authentication, BYOK, headless backends, and multiple
+  isolation patterns. Documentation and package availability establish
+  qualification inputs, not Andreja entitlement, commercial permission,
+  effective isolation, retention/residency, support fitness, or activation.
 - The repository has Squad scaffolding and built-in Scribe, Ralph, Rai, and Fact Checker agents.
 - Built-in specialist agents cover architecture critique/rubber-duck review, code review, security review, research, exploration, test/build execution, and general implementation.
 - Existing Squad templates include architectural proposals, CI validation gates, E2E template testing, distributed-mesh concepts, economy mode, secret handling, reviewer protocol, and test discipline.
@@ -1181,7 +1377,7 @@ Before installation, review source/publisher provenance, immutable digest/versio
 - Agent Finder searches completed for architecture, ASP.NET, security, privacy, FinOps, testing, Legal, and Marketing candidates.
 - Five rubber-duck passes, including federation/skills, open-thread ratifiability, catalog/framework/feedback review and final post-closure ratification review, completed; latest verdict is RATIFIABLE after the applied Phase 0 envelope wording fix.
 - Two uncapped `fleet-research` reviews completed with primary-source-backed architecture, identity, assistant, connector, security/privacy, testing/observability, FinOps, licensing, website/mobile and expanded regulated-skill findings; confirmed corrections are incorporated in this revision.
-- Ratification decisions closed: provisional built-in passkey/local self-host identity with linked providers; artifact-based gates; Phase 1 working Copilot and BYOK providers; PostgreSQL reference deployment without permanent managed-database lock-in; Star Trek policy extension; plan PR before sanitized Squad PR.
+- Current implementation direction reconciled: built-in passkey/local self-host identity, PostgreSQL reference persistence without permanent managed-database lock-in, artifact-based gates, and Phase 1A deterministic fake plus OpenAI-compatible BYOK are implemented or represented in the current plan. Proposed ADR 0009 recommends a credential-free, non-shipping Copilot SDK compile/conformance toolchain spike in 1A and a limited real provider no earlier than gated Phase 1B. Neither the proposal nor implementation records Cyrus acceptance or accepts the Proposed ADR packet.
 - Initial first-party skill and connector catalogs, Personal Brand Studio guardrails, portfolio lanes, and launch-stage framework are explicitly documented.
 
 ### Partial or provisional
@@ -1189,7 +1385,14 @@ Before installation, review source/publisher provenance, immutable digest/versio
 - Squad bootstrap validation: `squad doctor` was attempted but npm blocked a transitive remote package with `EALLOWREMOTE`; diagnose the configured npm feed/policy before treating the scaffold as validated.
 - Working-profile defaults: principles are known, but user-approved preference fields/default values still need a settings-schema review.
 - WhatsApp API limitations: directionally researched and conservatively deferred, but verify against official Meta documentation before connector work.
-- Copilot operational fit: documented patterns are supported, but Andreja still needs load, isolation, token lifecycle, headless-runtime, failure, and cost measurements.
+- Copilot SDK qualification and Phase 1B operational fit: before runtime, “SDK
+  integrated into the toolchain” means only a pinned isolated development/test
+  project that compiles a conformance adapter against synthetic fixtures,
+  checks schema/version/dependency drift, and does not ship, authenticate, start
+  a runtime, make network/model calls, provision an account, or incur usage.
+  Before a limited real provider, Andreja still needs every Proposed ADR 0009
+  entitlement, isolation, exposure, retention/residency, auth, cost, consent,
+  audit, offline, test, legal/privacy/security, operations, and rollback gate.
 - External resource readiness: discovery is complete; source, publisher, permission, maintenance, license, and data-handling trust reviews are not.
 - Testing strategy: layers and scenarios are defined; test-auth impossibility, environment topology, thresholds, and budget require Phase 0 decisions.
 - Earlier capped `fleet-research` attempts exhausted credits/subagent limits without an artifact. Preserve them as Quark failure-cost evidence; the later uncapped run succeeded.
@@ -1199,21 +1402,21 @@ Before installation, review source/publisher provenance, immutable digest/versio
 ### Open Phase 0 investigations
 
 - License/IP, employer obligations, contribution terms, trademark, governance, and counsel-reviewed decision.
-- Clean/Onion module boundaries and ADR-backed ports/adapters inventory.
-- Managed database choice and PostgreSQL/provider migration/conformance cost.
+- Clean/Onion module boundaries and ports/adapters are implemented and architecture-tested; ADR acceptance and the final inventory remain open under #66.
+- PostgreSQL reference persistence, migrations, and local conformance are implemented; a managed database choice and provider migration/managed cost evidence remain Phase 1B decisions.
 - OCI runtime target and Kubernetes adoption triggers; runtime choice intentionally deferred.
 - Local performance/operability benchmarks plus Azure/AWS/GCP documentation, pricing and OpenTofu paper mappings; all provisioned measurement moves to separately budgeted Phase 1B.
-- Final self-host identity/provider/recovery design, updates, backups, support boundary, and optional control-plane protocol; built-in ASP.NET Core Identity/passkeys plus linked external identities is the provisional reference.
+- Built-in ASP.NET Core Identity/passkeys and local recovery flows are implemented; encrypted PostgreSQL-plus-Data-Protection-key clean restore with sign-in, genuine approved update/rollback, final support boundary, linked providers, and any optional control plane remain open.
 - CIAM provider/migration path and pricing.
 - Numeric budget, unit-cost model, Copilot token budgets, and numeric SLOs.
-- Threat model, privacy classification/impact assessment, retention, export, purge, residency, and model-provider rules.
+- Canonical `docs/threat-model.md` and `docs/privacy.md` descriptive baselines are present but not ratified; Tuvok/Deanna Troi/Rai challenge, Cyrus residual-risk acceptance, classification/impact assessment, numeric retention, residency, production export/purge, and model-provider decisions remain open.
 - Federation standards comparison, identity/trust/discovery, versioning, reference/copy semantics, and conformance scope.
-- Skill UI isolation, manifest schema, capability vocabulary, signing, and authoring compatibility.
+- Skill/channel manifest, host, capability, grant, peer-envelope, and minimal semantic contracts are implemented; UI isolation, signing, third-party execution, and authoring compatibility remain open.
 - OneDrive, Google Drive, GitHub, and Box API scopes, terms, limits, delta/webhook behavior, and connector security/privacy.
 - Product packaging and economics for independent self-hosting versus managed freemium/paid data hosting.
-- Public website/help information architecture, static/SSR/search/hosting decision, evidence-based product claims, and domain/trademark readiness.
+- The Phase 0 website matrix, claims inventory, local prototype, and Proposed ADR 0008 are complete as recommendation evidence; unintended GitHub Pages publication was contained under #114. Acceptance, any future hosting/CDN/DNS, evidence-based public claims, domain/trademark readiness, and publication remain open.
 - Native mobile architecture proof-of-concept, offline synchronization, device security, push/background behavior, and app-store lifecycle cost.
-- Seven-led personal semantic graph standards/ontology/provenance/privacy/storage research and minimal portable schema.
+- Minimal semantic-profile/provenance/export contracts are implemented; Seven-led standards, ontology, privacy, representative-journey, storage, and ADR decisions remain open.
 - Phase 0 prioritization score weights and stage-specific Must/Should/Could/Won't scope.
 - Personal Brand Studio evidence model and official LinkedIn/Facebook/Instagram API/account-type access before any publishing capability.
 - Gmail/Graph/Discord/WhatsApp delivery-topology, scope, verification, relay/polling, deliverability, cost and support ADRs.
@@ -1333,7 +1536,8 @@ Deliverables:
 - Self-host identity qualification for HTTPS/WebAuthn RP configuration, first-admin bootstrap, recovery, external identity collision/linking, Data Protection key backup, and restoration.
 - OpenTofu state/provider design and local-backend validation with pinned providers/lock files, remote-state encryption/locking/recovery design, CI workload-identity design, deployment TTLs/quotas and teardown. Provisioning remote state and CI identity moves to separately budgeted Phase 1B.
 - Copilot event-schema and billing-reconciliation spike covering usage events, AI credits, session content persistence, provider retention, credential/tool isolation, and invoice-grade limits.
-- Jadzia-led public website design/hosting matrix with Jett Reno, Spock, and Quark; cover static/SSR options, help/search tooling, CDN/hosting, portability, security separation, preview environments, and cost.
+- Jadzia-led public website design/hosting matrix with Jett Reno, Spock, and Quark; cover static/SSR options, help/search tooling, CDN/hosting, portability, security separation, preview environments, and cost. Tracked by [#94](https://github.com/Jamula/Andreja/issues/94).
+- Keep all Phase 0 website review on loopback or behind private access control. GitHub Pages, public previews, CDN delivery, and DNS publication remain disabled. Only a separately approved private preview may use authorization and expiry; `noindex` never substitutes for authorization. The historical public `main:/docs` GitHub Pages nonconformance was contained under #114 and is not evidence of an approved launch.
 - Initial threat model, privacy classification, numeric spike/steady-state cost envelopes, numeric SLO definitions with owners/evidence queries, and test strategy.
 - Evaluate but do not automatically install the recommended external skills/tools.
 
@@ -1351,7 +1555,7 @@ Deliverables:
 - Internal tenant/user/external-identity/membership/principal/contact foundations, access-scoped projections, policy evaluator, and two-tenant isolation tests.
 - Minimal semantic-profile/provenance contracts and export shape, without graph database or bitemporal assumptions.
 - Skill and channel manifest/host contracts, plus grant/consent/share-audit and peer-envelope contracts/tests without inactive persistence migrations.
-- Provider-neutral assistant shell with an Andreja-native OpenAI-compatible BYOK provider and deterministic fake.
+- Provider-neutral assistant shell with an Andreja-native OpenAI-compatible BYOK provider and deterministic fake. A Copilot SDK compile/conformance spike may exist only in the non-shipping, credential-free pre-runtime toolchain boundary defined by Proposed ADR 0009; it is not a Phase 1A provider.
 - The Phase 1A BYOK path may use a local OpenAI-compatible runtime; any external model/API spend requires an explicit Phase 1A model-spend envelope before use.
 - Responsive Blazor/API vertical slice where the assistant invokes Open Loops and Tasks through `ISkillHost` to propose, confirm, list, complete, export and delete a task.
 - Encrypted PostgreSQL logical dump/restore plus versioned portable Andreja application export/import into a clean instance, both distinct from provider PITR.
@@ -1371,9 +1575,27 @@ Exit gate checklist:
 Deliverables:
 
 - After a separate budget approval, one capped Azure managed reference deployment using the Phase 0-selected relational provider—PostgreSQL is the provisional reference—through OpenTofu with pinned providers, locked/encrypted state, CI workload identity, quotas, TTL/teardown, secrets, backups, health, OTel export, and cost evidence.
-- Real limited Copilot 1.0.x provider. Use a shared runtime only after Phase 0/local and Phase 1B evidence proves filesystem/session/tool/credential/concurrency/cleanup/cost isolation; otherwise use per-user runtime isolation. Keep separate credentials/tools/session state, usage reconciliation and an optional external runtime image only if the measured topology requires it.
-- Invitees may link their own Copilot/BYOK provider or, only after Sarek's counsel/vendor-reviewed answer on Copilot entitlement, acceptable use and redistribution, opt into an Andreja-funded dogfood allowance. Funded usage has explicit consent, per-tenant quotas, model/tool limits, attribution, budget exhaustion behavior and no hidden transfer of one user's entitlement to another.
-- Independently deployed pre-generated public-site artifact, conditional on product-name/domain clearance, covering vision, data ownership, privacy posture, help/support and evidence-based availability.
+- After Proposed ADR 0009 is accepted and every entry gate has current approval
+  and evidence, a limited real Copilot 1.0.x provider canary using synthetic
+  content and one dedicated non-user test identity. A consenting adult identity
+  is allowed only after that synthetic canary completes every required live gate.
+  Start with per-user runtime isolation. Use a shared runtime only after adversarial evidence proves
+  filesystem/session/tool/credential/concurrency/cleanup/cost isolation and
+  Cyrus accepts the residual risk. Keep separate credentials/tools/session
+  state, usage reconciliation, hard budgets, provider pause/kill, and an optional
+  external runtime image only if the measured topology requires it. SDK-to-CLI
+  traffic stays on loopback/isolated sidecar or uses mutually authenticated
+  encryption plus strict workload/network policy; the headless RPC listener is
+  never public. Otherwise defer Copilot and retain fake/BYOK.
+- Invitees may link their own BYOK provider. Copilot remains restricted to the
+  one-identity ADR 0009 canary until a separate expansion decision repeats the
+  provider gates for the cohort. Only after Sarek's counsel/vendor-reviewed
+  answer on Copilot entitlement, acceptable use and redistribution may an
+  approved canary identity opt into an Andreja-funded dogfood allowance. Funded
+  usage has explicit consent, a separately approved product-provider/model
+  envelope, per-tenant quotas, model/tool limits, attribution, budget exhaustion
+  behavior and no hidden transfer of one user's entitlement to another.
+- Independently deployed pre-generated public-site artifact, conditional on product-name/domain clearance, covering vision, data ownership, privacy posture, help/support and evidence-based availability. Tracked by [#93](https://github.com/Jamula/Andreja/issues/93).
 - Tenant-less public feedback intake plus authenticated in-app feedback, Guinan triage/status workflow, and sanitized/consented GitHub issue publication.
 - Minimal transactional outbound email for Guinan acknowledgments/status, with sender identity, SPF/DKIM/DMARC, bounce/complaint handling, abuse controls and cost evidence. Phase 3A expands email intake, reminders and provider choice.
 - Invite-only adult onboarding for a small dogfood cohort, with each invitee in a separate tenant, repeatable recovery and explicit support/feedback consent. Cross-tenant access is limited to the Group Travel workspace contract below.
@@ -1384,12 +1606,19 @@ Deliverables:
 Exit gate checklist:
 
 1. Use the managed deployment from a phone through a dedicated test identity.
-2. Complete the same assistant/skill task scenario with Copilot and switch to BYOK.
+2. If and only if ADR 0009 and every provider gate are accepted, complete the
+   same assistant/skill task scenario with the limited Copilot canary and switch
+   between Copilot, deterministic fake, and BYOK. Otherwise run that same scenario
+   on deterministic fake and BYOK, demonstrate switching between those providers,
+   and record Copilot as deferred without weakening offline behavior.
 3. Inspect trace and Quark reconciled usage/cost evidence without content leakage.
 4. Verify WebSocket reconnect, rolling revision, cold-start and circuit behavior.
 5. Submit public and in-app feedback, receive an opaque tracking update, and verify privacy/abuse controls.
 6. Onboard the invite cohort, prove each tenant cannot read/write/infer/enumerate another tenant's data, and complete deterministic tenant cleanup.
-7. Demonstrate user-funded and Andreja-funded assistant paths, quota enforcement and dogfood budget stop behavior.
+7. For every activated provider, including BYOK at minimum, demonstrate the
+   approved funding mode, quota enforcement, attribution/reconciliation, and
+   budget-stop behavior. Record each non-activated funding mode as deferred,
+   never “not applicable”; Copilot deferral does not waive fake/BYOK evidence.
 8. Demonstrate managed backup/PITR, PostgreSQL logical restore, cloud-neutral Andreja export/import and teardown within the approved spike envelope.
 9. Pass all six Email Triage MVP acceptance scenarios for Gmail plus Outlook.com or Microsoft 365.
 10. Pass all five Group Travel MVP acceptance scenarios across three separate dogfood tenants.
@@ -1590,7 +1819,11 @@ Exit gate:
 5. Phase 0: sanitize/validate Squad, extend Star Trek casting, cast the crew and trust-review external resources.
 6. Phase 0: complete architecture, portability, threat/privacy, cost, identity, federation, channel/skill, website, mobile-readiness and testing decisions.
 7. Phase 1A: deliver the independent self-hosted assistant MVP with tenancy, passkeys/recovery, BYOK, one task skill, backup/restore, portable export and local E2E evidence.
-8. Phase 1B: after separate budget/legal approval, deliver managed reference, invite cohort, Copilot/BYOK, public/help site and feedback; pass six Email Triage and five Group Travel acceptance scenarios and record Seven's extensibility-proof measurements.
+8. Phase 1B: after separate budget/legal approval, deliver managed reference,
+   invite cohort, BYOK, public/help site and feedback; add a limited real Copilot
+   provider only after ADR 0009 acceptance and all provider gates, otherwise
+   defer it; pass six Email Triage and five Group Travel acceptance scenarios
+   and record Seven's extensibility-proof measurements.
 9. Phase 1B-2: mature the independently deployed public website and canonical versioned help/support documentation.
 10. Phase 2: build the daily-use assistant and first-party skill product.
 11. Phase 3A: build email-first Gmail/Outlook.com-Hotmail/Microsoft 365 intake, minimal outbound email, in-app messaging, interaction-first Discord and conditional WhatsApp share/export.

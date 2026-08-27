@@ -52,8 +52,11 @@ git worktree add ..\Andreja-42 -b squad/42-fix-login origin/main
 
 ## Issue workflow
 
-1. Add `status:in-progress` and the accountable `squad:{member}` label.
-2. Create or reuse the isolated issue worktree after preflight.
+1. Add the accountable `squad:{member}` label. Do not manually replace the
+   issue's single lifecycle `status:*` label.
+2. Create or reuse the isolated issue worktree after preflight, using the
+   documented issue-number branch convention so status automation exposes
+   `status:branch-only`.
 3. Open a draft PR only after an initial coherent commit and required local
    validation.
 4. Keep issue and PR updated with dependencies, evidence, risks, and blockers.

@@ -59,8 +59,9 @@ owner, command/test ID, result, and known exclusions.
 - [ ] Empty/prior-schema migrations pass; startup cannot migrate implicitly.
 - [ ] Encrypted PostgreSQL logical restore plus identity/key recovery succeeds in a
       clean instance.
-- [ ] Portable Andreja export/import succeeds separately and proves all declared
-      exclusions and reauthorization requirements.
+- [x] Portable Andreja export/import succeeds separately against disposable
+      PostgreSQL and proves all declared exclusions and reauthorization
+      requirements; see the supplemental #87 section in `evidence-44.md`.
 - [ ] Restart and approved update/rollback paths preserve data, identity,
       configuration, audit, and idempotency.
 - [ ] Local OTel evidence queries run with nonzero sample counts and canary tests
@@ -79,7 +80,11 @@ envelope, or isolation/recovery/content-suppression fails.
 
 De-scope in this order:
 
-1. optional GitHub Copilot or second provider;
+1. any optional second external provider beyond required BYOK; real GitHub
+   Copilot is excluded from Phase 1A under
+   [Proposed ADR 0009](../adr/0009-copilot-provider-phase-scope.md), which remains
+   pending Cyrus acceptance, and cannot be treated as optional Phase 1A exit
+   evidence;
 2. inactive channel/federation contract persistence beyond conformance fixtures
    (the required contracts and in-memory signed-envelope tests remain);
 3. noncritical UI polish;

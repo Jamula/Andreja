@@ -2,8 +2,9 @@
 """Documentation CI check for catalog/hash drift.
 
 Fails the build when:
-  1. The plan SHA-256 hash recorded in docs/adr/0000-plan-ratification.md no
-     longer matches the merged docs/plan.md content.
+  1. The current or current-proposed plan SHA-256 content hash recorded in
+     docs/adr/0000-plan-ratification.md no longer matches docs/plan.md. An
+     accepted hash remains separate while a proposed amendment awaits approval.
   2. ADR 0006 and the charter/template ratification state are inconsistent, or
      an Accepted ADR's charter SHA-256 no longer matches docs/charter.md. A
      Proposed ADR does not enforce its candidate hash.
@@ -13,6 +14,8 @@ Fails the build when:
   4. The seed connector categories in docs/plan.md's "Connector catalog and
      release bands" table drift from the authoritative
      docs/roadmap/channel-connectors.md catalog.
+  5. A status-artifact row in docs/plan.md is missing, unexpected, malformed,
+       or has a SHA-256 value that does not match the referenced file.
 
 Per docs/plan.md and docs/frameworks/prioritization-launch.md, the roadmap
 catalogs are authoritative and the plan's seed tables must stay in sync.
@@ -34,6 +37,39 @@ DECISION_TEMPLATE_PATH = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "decision.ym
 PR_TEMPLATE_PATH = REPO_ROOT / ".github" / "pull_request_template.md"
 SKILLS_PATH = REPO_ROOT / "docs" / "roadmap" / "first-party-skills.md"
 CONNECTORS_PATH = REPO_ROOT / "docs" / "roadmap" / "channel-connectors.md"
+EXPECTED_STATUS_ARTIFACTS = {
+    "docs/operating-model.md",
+    "docs/cost-model.md",
+    "docs/privacy.md",
+    "docs/threat-model.md",
+    "docs/frameworks/feedback-support.md",
+    "docs/frameworks/prioritization-launch.md",
+    "docs/charter.md",
+    "docs/legal/license-evaluation.md",
+    "docs/legal/regulatory-applicability.md",
+}
+CANONICAL_BASELINE_REQUIREMENTS = {
+    "docs/privacy.md": ("Deanna Troi", "Tuvok", "Rai (AI safety); pending"),
+    "docs/threat-model.md": ("Tuvok", "Deanna Troi", "Rai (AI safety); pending"),
+}
+CANONICAL_OPEN_ASSESSMENT = (
+    "The classification/impact assessment remains open unless explicitly approved "
+    "with cited evidence."
+)
+CANONICAL_DOCUMENT_OPEN_ASSESSMENTS = {
+    "docs/privacy.md": (
+        "Open; this inventory does not satisfy "
+        "that gate without an explicitly approved assessment and cited evidence"
+    ),
+    "docs/threat-model.md": (
+        "Open; this model does not satisfy "
+        "that gate without an explicitly approved assessment and cited evidence"
+    ),
+}
+CANONICAL_ISSUE_SOURCE = (
+    "Issue [#116](https://github.com/Jamula/Andreja/issues/116)"
+)
+CANONICAL_PR_SOURCE = "PR [#117](https://github.com/Jamula/Andreja/pull/117)"
 
 
 def fail(message: str) -> None:
@@ -47,28 +83,146 @@ def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def parse_plan_hash_metadata(adr_text: str) -> tuple[str, str]:
+    metadata = adr_text.split("## Decision", 1)[0]
+    patterns = {
+        "proposed": r"\*\*Current proposed Plan SHA-256:\*\*\s*`([0-9a-fA-F]{64})`",
+        "current": r"\*\*Current Plan SHA-256:\*\*\s*`([0-9a-fA-F]{64})`",
+        "legacy": r"\*\*Plan SHA-256:\*\*\s*`([0-9a-fA-F]{64})`",
+    }
+    matches = {
+        state: re.search(pattern, metadata)
+        for state, pattern in patterns.items()
+    }
+    present = [(state, match) for state, match in matches.items() if match]
+    if len(present) != 1:
+        raise ValueError(
+            "ADR 0000 must contain exactly one current, current-proposed, "
+            "or legacy plan SHA-256 metadata line."
+        )
+
+    state, match = present[0]
+    assert match is not None
+    amendment_sections = re.split(r"(?m)^### ", adr_text)[1:]
+    hashed_sections = [
+        (
+            section,
+            hash_match.group(1).lower(),
+            approver_match.group(1) if approver_match else "",
+            classification_match.group(1) if classification_match else "",
+        )
+        for section in amendment_sections
+        if (hash_match := re.search(
+            r"(?m)^- \*\*Plan SHA-256:\*\*\s*`([0-9a-fA-F]{64})`",
+            section,
+        ))
+        for approver_match in [
+            re.search(r"(?m)^- \*\*Approver:\*\*\s*(.+)$", section)
+        ]
+        for classification_match in [
+            re.search(r"(?m)^- \*\*Classification:\*\*\s*(.+)$", section)
+        ]
+    ]
+    if not hashed_sections:
+        raise ValueError("ADR 0000 has no hashed amendment record.")
+
+    classified_sections = []
+    for section, digest, approver, classification in hashed_sections:
+        if not approver or not classification:
+            raise ValueError(
+                "Every hashed ADR 0000 amendment requires Approver and "
+                "Classification fields."
+            )
+        is_proposed = classification.lower().startswith("proposed")
+        has_pending = "pending" in approver.lower()
+        has_pending_grammar = re.fullmatch(
+            r".+;\s*\*\*pending\*\*\s*",
+            approver,
+            flags=re.IGNORECASE,
+        )
+        if is_proposed and not has_pending_grammar:
+            raise ValueError(
+                "A Proposed amendment Approver must use '<name>; **pending**'."
+            )
+        if not is_proposed and has_pending:
+            raise ValueError(
+                "A pending Approver requires a Classification beginning "
+                "with 'Proposed'."
+            )
+        classified_sections.append(
+            (section, digest, approver, classification, is_proposed)
+        )
+
+    if state == "proposed":
+        accepted_match = re.search(
+            r"\*\*Accepted Plan SHA-256:\*\*\s*`([0-9a-fA-F]{64})`",
+            metadata,
+        )
+        if not accepted_match:
+            raise ValueError(
+                "A current-proposed plan hash requires a separate accepted hash."
+            )
+        proposed_sections = [
+            record for record in classified_sections if record[4]
+        ]
+        if not proposed_sections:
+            raise ValueError(
+                "The current-proposed plan hash must be backed by the latest "
+                "pending, Proposed amendment with the same hash."
+            )
+        _, proposed_hash, _, _, _ = proposed_sections[-1]
+        if proposed_hash != match.group(1).lower():
+            raise ValueError(
+                "The current-proposed plan hash must be backed by the latest "
+                "pending, Proposed amendment with the same hash."
+            )
+        accepted_sections = [
+            (section, digest)
+            for section, digest, _, _, is_proposed in classified_sections
+            if not is_proposed
+        ]
+        if (
+            not accepted_sections
+            or accepted_sections[-1][1] != accepted_match.group(1).lower()
+        ):
+            raise ValueError(
+                "The accepted plan hash must match the latest accepted "
+                "amendment."
+            )
+    else:
+        accepted_sections = [
+            record for record in classified_sections if not record[4]
+        ]
+        if not accepted_sections or accepted_sections[-1][1] != match.group(1).lower():
+            raise ValueError(
+                "The current/legacy plan hash must match the latest explicitly "
+                "approved amendment."
+            )
+    return match.group(1).lower(), state
+
+
 def check_plan_hash() -> None:
     plan_text = read(PLAN_PATH)
     actual_hash = hashlib.sha256(plan_text.encode("utf-8")).hexdigest()
 
     adr_text = read(ADR_PATH)
-    match = re.search(r"\*\*Plan SHA-256:\*\*\s*`([0-9a-fA-F]+)`", adr_text)
-    if not match:
-        fail(
-            "Could not find a '**Plan SHA-256:** `<hash>`' line in "
-            f"{ADR_PATH.relative_to(REPO_ROOT)}."
-        )
-    recorded_hash = match.group(1).lower()
+    try:
+        recorded_hash, hash_state = parse_plan_hash_metadata(adr_text)
+    except ValueError as exc:
+        fail(str(exc))
 
     if recorded_hash != actual_hash:
         fail(
             "docs/plan.md has changed since ADR 0000 was ratified.\n"
             f"  Recorded hash: {recorded_hash}\n"
             f"  Actual hash:   {actual_hash}\n"
-            "Log an amendment (or re-ratify) in "
+            "Log a proposed/accepted amendment (or re-ratify) in "
             f"{ADR_PATH.relative_to(REPO_ROOT)} with the new hash."
         )
-    print("OK: docs/plan.md hash matches ADR 0000.")
+    print(
+        "OK: docs/plan.md content hash matches ADR 0000 "
+        f"({hash_state}; hash state does not imply approval)."
+    )
 
 
 def charter_adr_status(adr_text: str) -> str:
@@ -395,6 +549,176 @@ def first_segment(cell: str) -> str:
     return cell
 
 
+def extract_status_artifact_hashes(plan_text: str) -> dict[str, str]:
+    rows = extract_table_rows(
+        plan_text,
+        "#### Phase 0 policy and governance artifact classification",
+        "| Artifact | Source and current SHA-256 | Current authority |",
+    )
+    artifacts: dict[str, str] = {}
+    for row in rows:
+        if len(row) < 2:
+            raise ValueError("A status-artifact row has fewer than two columns.")
+        path_match = re.search(r"\[`([^`]+)`\]\([^)]+\)", row[0])
+        hash_match = re.search(r"`([0-9a-fA-F]{64})`", row[1])
+        if not path_match or not hash_match:
+            raise ValueError(f"Malformed status-artifact row: {' | '.join(row)}")
+        path = path_match.group(1)
+        if path in artifacts:
+            raise ValueError(f"Duplicate status-artifact row: {path}")
+        artifacts[path] = hash_match.group(1).lower()
+    return artifacts
+
+
+def extract_status_artifact_cells(plan_text: str) -> dict[str, list[str]]:
+    rows = extract_table_rows(
+        plan_text,
+        "#### Phase 0 policy and governance artifact classification",
+        "| Artifact | Source and current SHA-256 | Current authority |",
+    )
+    artifacts: dict[str, list[str]] = {}
+    for row in rows:
+        if len(row) != 3:
+            raise ValueError(f"Malformed status-artifact row: {' | '.join(row)}")
+        path_match = re.search(r"\[`([^`]+)`\]\([^)]+\)", row[0])
+        if not path_match:
+            raise ValueError(f"Malformed status-artifact row: {' | '.join(row)}")
+        artifacts[path_match.group(1)] = row
+    return artifacts
+
+
+def validate_canonical_baseline_rows(plan_text: str) -> None:
+    rows = extract_status_artifact_cells(plan_text)
+    for path, challengers in CANONICAL_BASELINE_REQUIREMENTS.items():
+        if path not in rows:
+            raise ValueError(f"Missing canonical baseline status row: {path}")
+        _, source, authority = rows[path]
+        required_source_parts = (CANONICAL_ISSUE_SOURCE, CANONICAL_PR_SOURCE)
+        missing_source = [part for part in required_source_parts if part not in source]
+        required_authority_parts = (
+            "Canonical descriptive baseline; not ratified",
+            *challengers,
+            "Cyrus residual-risk acceptance remains pending",
+            CANONICAL_OPEN_ASSESSMENT,
+        )
+        missing_authority = [
+            part for part in required_authority_parts if part not in authority
+        ]
+        if missing_source or missing_authority:
+            raise ValueError(
+                f"Canonical baseline authority drifted for {path}.\n"
+                f"  Missing source text: {missing_source}\n"
+                f"  Missing authority text: {missing_authority}"
+            )
+
+
+def parse_initial_metadata_block(document_text: str, path: str) -> dict[str, str]:
+    lines = document_text.splitlines()
+    if len(lines) < 4 or not lines[0].startswith("# ") or lines[1].strip():
+        raise ValueError(f"Canonical baseline metadata block malformed for {path}.")
+
+    metadata: dict[str, str] = {}
+    current_field: str | None = None
+    for line in lines[2:]:
+        if not line.strip():
+            if not metadata:
+                raise ValueError(
+                    f"Canonical baseline metadata block absent for {path}."
+                )
+            return metadata
+        field_match = re.match(r"^- \*\*([^*]+):\*\*\s+(\S.*)$", line)
+        if field_match:
+            current_field, value = field_match.groups()
+            if current_field in metadata:
+                raise ValueError(
+                    f"Duplicate canonical baseline metadata field "
+                    f"{current_field!r} for {path}."
+                )
+            metadata[current_field] = value.strip()
+        elif current_field and line.startswith(("  ", "\t")) and line.strip():
+            metadata[current_field] = " ".join(
+                f"{metadata[current_field]} {line.strip()}".split()
+            )
+        else:
+            raise ValueError(
+                f"Canonical baseline metadata block malformed for {path}."
+            )
+
+    raise ValueError(
+        f"Canonical baseline metadata block has no terminating blank line for {path}."
+    )
+
+
+def validate_canonical_baseline_documents(document_texts: dict[str, str]) -> None:
+    for path, challengers in CANONICAL_BASELINE_REQUIREMENTS.items():
+        metadata = parse_initial_metadata_block(document_texts[path], path)
+        required_fields = {
+            "Status": "Canonical descriptive baseline; not ratified",
+            "Residual-risk acceptance": "Cyrus; pending",
+            "Classification/impact assessment": (
+                CANONICAL_DOCUMENT_OPEN_ASSESSMENTS[path]
+            ),
+        }
+        drifted_fields = [
+            field
+            for field, expected in required_fields.items()
+            if metadata.get(field) != expected
+        ]
+        challenge = metadata.get("Required challenge", "")
+        missing_challengers = [
+            challenger for challenger in challengers if challenger not in challenge
+        ]
+        if drifted_fields or missing_challengers:
+            raise ValueError(
+                f"Canonical baseline header drifted for {path}.\n"
+                f"  Missing or drifted fields: {drifted_fields}\n"
+                f"  Missing required challengers: {missing_challengers}"
+            )
+
+
+def validate_status_artifact_hashes(
+    artifacts: dict[str, str],
+    expected_paths: set[str],
+    digest_for_path,
+) -> None:
+    actual_paths = set(artifacts)
+    if actual_paths != expected_paths:
+        raise ValueError(
+            "Status-artifact inventory drifted.\n"
+            f"  Missing:    {sorted(expected_paths - actual_paths)}\n"
+            f"  Unexpected: {sorted(actual_paths - expected_paths)}"
+        )
+    for path, recorded_hash in sorted(artifacts.items()):
+        actual_hash = digest_for_path(path)
+        if recorded_hash != actual_hash:
+            raise ValueError(
+                f"Status-artifact hash mismatch for {path}.\n"
+                f"  Recorded hash: {recorded_hash}\n"
+                f"  Actual hash:   {actual_hash}"
+            )
+
+
+def check_status_artifact_hashes() -> None:
+    try:
+        plan_text = read(PLAN_PATH)
+        artifacts = extract_status_artifact_hashes(plan_text)
+        validate_status_artifact_hashes(
+            artifacts,
+            EXPECTED_STATUS_ARTIFACTS,
+            lambda path: hashlib.sha256((REPO_ROOT / path).read_bytes()).hexdigest(),
+        )
+        validate_canonical_baseline_rows(plan_text)
+        validate_canonical_baseline_documents(
+            {
+                path: read(REPO_ROOT / path)
+                for path in CANONICAL_BASELINE_REQUIREMENTS
+            }
+        )
+    except (OSError, ValueError) as error:
+        fail(str(error))
+    print(f"OK: {len(artifacts)} status-artifact hashes match.")
+
+
 def check_skill_catalog() -> None:
     plan_text = read(PLAN_PATH)
     skills_text = read(SKILLS_PATH)
@@ -452,6 +776,7 @@ def check_connector_catalog() -> None:
 def main() -> None:
     check_plan_hash()
     check_charter_hash()
+    check_status_artifact_hashes()
     check_skill_catalog()
     check_connector_catalog()
     print("All documentation consistency checks passed.")

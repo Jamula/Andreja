@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "1.0",
+  "policyId": "andreja-phase-1a-oci-v1",
+  "forbiddenSeverities": [
+    "HIGH",
+    "CRITICAL"
+  ],
+  "platforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "sourceRepository": "https://github.com/Jamula/Andreja",
+  "baseImages": {
+    "sdk": "mcr.microsoft.com/dotnet/sdk:10.0.301-noble@sha256:ea8bde36c11b6e7eec2656d0e59101d4462f6bd630730f2c8201ed0572b295d5",
+    "runtime": "mcr.microsoft.com/dotnet/aspnet:10.0.11-noble-chiseled@sha256:0839314d08bb65da369135389a5d8291f75ace587fbb0488f469eb92c62eef68"
+  },
+  "tools": {
+    "syft": {
+      "version": "1.28.0",
+      "image": "anchore/syft@sha256:bc71d110d271c823b3e3c58702aa8ad6bf06e2abd3c1ff7c8966420a9a57dc00"
+    },
+    "grype": {
+      "version": "0.100.0",
+      "image": "anchore/grype@sha256:dcf0168c9b275c6dbcbff5ceeecfac29a6ccf138a87f0adc9ce5bd69fe6146f3"
+    },
+    "trivy": {
+      "version": "0.67.2",
+      "image": "aquasec/trivy@sha256:e2b22eac59c02003d8749f5b8d9bd073b62e30fefaef5b7c8371204e0a4b0c08"
+    },
+    "cosign": {
+      "version": "2.6.1",
+      "image": "ghcr.io/sigstore/cosign/cosign@sha256:68839b7f13dac5a6744a5d8818e984dd39183374e37855c19e14d623d9bc9037"
+    }
+  },
+  "requiredSbomFormats": [
+    "SPDX-2.3",
+    "CycloneDX-1.6"
+  ],
+  "hostedSigning": {
+    "mode": "deferred",
+    "reason": "Private-repository entitlement and no-publication boundaries do not authorize keyless OIDC or trusted release signing."
+  }
+}

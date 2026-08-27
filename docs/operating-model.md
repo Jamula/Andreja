@@ -22,12 +22,13 @@ and stop/de-scope rules, and executive-versus-Cyrus authority.
 It is explicitly **not authoritative** for, and does not define or duplicate,
 scoring, sequencing, or launch: the issue scorecard, portfolio lanes,
 Must/Should/Could/Won't stage scope, and launch-stage evidence gates remain owned
-by [issue #5](https://github.com/Jamula/Andreja/issues/5) and its ratified
+by [issue #5](https://github.com/Jamula/Andreja/issues/5) and its review-ready
 `docs/frameworks/prioritization-launch.md` (see `docs/plan.md`
-`## Roadmap prioritization and launch framework`). Where the two documents
-describe the same workstream, issue #5's ratified framework is authoritative for
-**scoring, sequencing, and launch-stage gating**; this document is authoritative
-for **who does the work, how they hand it off, and what authority they hold**.
+`## Roadmap prioritization and launch framework`). Neither framework has an
+explicit Cyrus ratification record, so `docs/plan.md` remains authoritative
+until that decision is recorded. If ratified, the prioritization framework owns
+**scoring, sequencing, and launch-stage gating**, while this document owns
+**who does the work, how they hand it off, and what authority they hold**.
 Neither document may silently override the other; a conflict is a `type:decision`
 issue, not a unilateral edit.
 
@@ -55,12 +56,12 @@ weights, lanes, or gate checklists.
 |---|---|---|
 | Architecture, roadmap, phased scope | [`docs/plan.md`](plan.md) and accepted ADRs (`docs/adr/`) | Spock (architecture); Picard (roadmap) |
 | Execution state (what's being worked, by whom, when done) | GitHub Issues and milestones in `Jamula/Andreja` | Coordinator (Squad) |
-| Prioritization, scoring, launch-stage gates | `docs/frameworks/prioritization-launch.md` (issue #5) | Picard/Quark |
+| Prioritization, scoring, launch-stage gates | `docs/plan.md`; proposed operational expansion in `docs/frameworks/prioritization-launch.md` (issue #5) | Picard/Quark |
 | Charters, routing, ceremonies, non-negotiable directives | `.squad/directives.md`, `.squad/team.md`, `.squad/routing.md`, `.squad/ceremonies.md`, `.squad/agents/*/charter.md` | Coordinator (Squad) |
 | Who owns which work right now | This document's workstream table + `squad:{member}` / `area:*` labels | Picard (triage) |
 | Financial/cost evidence | Quark's session-close usage ledger and FinOps issues (`area:finops`) | Quark |
 | Legal/regulatory applicability | `docs/legal/regulatory-applicability.md` (pending ratification, issue #8) | Sarek |
-| Feedback/support lifecycle | `docs/frameworks/feedback-support.md` (ratified, issue #10) | Guinan |
+| Feedback/support lifecycle | Proposed operational expansion in `docs/frameworks/feedback-support.md` (review-ready draft, issue #10) | Guinan |
 
 Squad runtime state (`.squad/`) supports routing and learning; it is never a
 competing backlog to GitHub Issues, and workstreams do not maintain private plans
@@ -122,11 +123,20 @@ RACI pattern for cross-workstream issues:
 | **Consulted (C)** | Specialist whose artifact gate applies (security, privacy, legal, cost, quality, RAI, fact-check) | Named per the "Artifact gates" table below, invoked only when their gate is due |
 | **Informed (I)** | Notified via issue comment/handoff note but not blocking | Coordinator, Guinan (user-facing changes), Quark (cost-bearing changes), affected downstream workstream leads |
 
+- Every issue has exactly one lifecycle label. `status:backlog`,
+  `status:branch-only`, `status:pr-draft`, `status:ready`, `status:merged`, and
+  `status:closed` describe only implementation/PR state. `status:ready` means
+  ready for review, not approved, checks-passing, or safe to merge.
 - Dependencies between issues are expressed with GitHub's "Depends on" /
-  "Blocked by" issue links and the `status:blocked` label, never a private
-  tracking sheet.
-- An issue with unresolved dependencies stays `status:blocked` until the
-  dependency merges; the Coordinator re-evaluates readiness at each triage pass.
+  "Blocked by" links, never a private tracking sheet. Unresolved links add
+  `blocked:dependency` without replacing lifecycle status. Classify the blocking
+  issue with `blocks:evidence` or `blocks:human` when it represents external/exit
+  evidence or an explicit human decision; dependents then expose
+  `blocked:evidence` or `blocked:human`.
+- A dependency closes only when its own outcome is complete. Code may therefore
+  be `status:ready` or `status:merged` while exit evidence remains
+  `blocked:evidence`; neither label implies that required checks, reviews,
+  approvals, or milestone gates passed.
 - Reassignment happens by removing one `squad:{member}` label and adding another;
   the issue history preserves the accountability trail.
 
@@ -150,10 +160,9 @@ due for that issue.
 
 Batch related artifacts into themed review packets with at most three
 evidence/revision cycles (per `.squad/directives.md`); unresolved items become
-explicit decision issues (tag `type:decision`; adopt the dedicated
-`status:needs-decision` label from "Recommended follow-up" below once it
-exists) instead of silently blocking unrelated packets. Silence is never
-approval.
+explicit decision issues (tag `type:decision`; use the
+`blocks:human` label when the decision blocks another issue) instead of
+silently blocking unrelated packets. Silence is never approval.
 
 ## Handoff format
 
@@ -173,7 +182,8 @@ creating a second backlog; Scribe logs automatically and never blocks.
 
 ## WIP limits
 
-- Each workstream lead limits concurrent `status:in-progress` issues to what one
+- Each workstream lead limits concurrent `status:branch-only`,
+  `status:pr-draft`, and `status:ready` issues to what one
   accountable owner can carry through review without queuing rejected work.
   Finish (merge or explicitly park with a recorded reason) before starting new
   work in the same file/module ownership area.
@@ -192,6 +202,16 @@ creating a second backlog; Scribe logs automatically and never blocks.
 - Every implementation issue gets a `squad/{issue-number}-{kebab-case-slug}`
   branch cut from the current integration branch, a sibling isolated worktree,
   one accountable owning agent, and an early draft PR.
+- `.github/workflows/issue-status.yml` derives lifecycle from issue, branch, and
+  trusted same-repository PR events. It reads automation only from the default
+  branch, makes idempotent label writes, posts no comments, and never executes
+  pull-request code with a write token. A workflow dispatch may reconcile all
+  issues or make a one-run manual override; the next lifecycle event derives
+  state again. Because Actions has no native issue-dependency trigger, an hourly
+  trusted full reconciliation converges dependency changes, edited closing
+  references, branch evidence, and stack promotion to the default branch.
+- Operator-facing label meanings and repair steps live in
+  [`docs/help/issue-status.md`](help/issue-status.md).
 - Agents never switch another worktree's branch, edit another agent's files, or
   share mutable build/output directories.
 - **Independent issues:** run concurrently in separate worktrees, each with its
@@ -396,18 +416,16 @@ not introduce a parallel prioritization taxonomy — that belongs to issue #5.
 **Recommended follow-up (non-blocking):** several workstreams (Web/UX, Mobile,
 Ops/Hosting, Channels, Skills, Customer Success, Marketing) currently share a
 broader `area:*` label with another workstream because no dedicated label
-exists yet. Two ceremonies referenced above also need dedicated labels that do
-not exist today: `retro-action` (for Retrospective-with-Enforcement action
-items, `.squad/ceremonies.md`) and `status:needs-decision` (for artifact-gate
-items awaiting Cyrus's decision, "Artifact gates" above). Picard should open a
-small `type:governance` issue to add `area:web-ux`, `area:mobile`, `area:ops`,
+exists yet. One ceremony referenced above also needs a dedicated label that
+does not exist today: `retro-action` (for Retrospective-with-Enforcement action
+items, `.squad/ceremonies.md`). Human decisions are represented by a
+`blocks:human` dependency rather than a second lifecycle status. Picard should
+open a small `type:governance` issue to add `area:web-ux`, `area:mobile`, `area:ops`,
 `area:channels`, `area:skills`, `area:customer-success`, `area:marketing`,
-`retro-action`, and `status:needs-decision` labels via
+and `retro-action` labels via
 `.github/workflows/sync-squad-labels.yml` once ratified, rather than expanding
 this document's scope to create labels unilaterally. Until that issue lands,
-use the existing `type:decision` label plus a body reference for
-needs-decision items, and `type:chore` plus a link to the retrospective issue
-for retro-action items.
+use `type:chore` plus a link to the retrospective issue for retro-action items.
 
 ## Cross-references
 
@@ -426,7 +444,7 @@ for retro-action items.
 - Prioritization, scorecard, and launch-stage gates (owned by issue #5, not
   duplicated here): `docs/plan.md` `## Roadmap prioritization and launch
   framework`, future `docs/frameworks/prioritization-launch.md`.
-- Feedback and support lifecycle (ratified under issue #10):
+- Feedback and support lifecycle (review-ready draft under issue #10):
   `docs/frameworks/feedback-support.md`.
 - Cost model and sponsorship policy (pending ratification under issue #11):
   `docs/plan.md` `## Cost and FinOps`; future `docs/cost-model.md` and

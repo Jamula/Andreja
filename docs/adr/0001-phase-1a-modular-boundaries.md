@@ -6,6 +6,7 @@
 - **Governing:** [Platform plan](../plan.md#non-negotiable-engineering-principles),
   [company charter](../charter.md#decision-and-launch-enforcement), and
   [ADR 0000](0000-plan-ratification.md)
+- **Diagram:** [High-level architecture and data flows](../architecture/andreja-high-level.md)
 - **Proposed by:** Spock
 - **Decision owner:** Cyrus
 

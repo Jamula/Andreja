@@ -8,18 +8,23 @@ This is a phase-scoped acceptance index, not a replacement threat model, privacy
 inventory, testing matrix, or financial ledger. These are internal dogfood gates,
 not public SLAs or production claims.
 
+The current implementation run is recorded in
+[`evidence-44.md`](evidence-44.md). Its blocked rows remain blocking; the record
+does not approve launch or close this proposed packet.
+
 ## Canonical artifact links
 
 | Domain | Canonical source and ownership | Phase 1A use |
 |---|---|---|
-| Threat | The plan requires [`docs/threat-model.md`](../plan.md#documentation-structure); until that standalone artifact lands, [Security engineering](../plan.md#security-engineering) is the governing baseline. Tuvok owns challenge. | The threat rows below index the Phase 1A controls and proof that the canonical model must contain. |
-| Privacy | The plan requires [`docs/privacy.md`](../plan.md#documentation-structure); until it lands, [Privacy engineering](../plan.md#privacy-engineering) and the [charter](../charter.md#ethics-and-sustainability-impact-assessment) govern. Deanna Troi owns challenge. | The privacy gate below is a Phase 1A field/test overlay, not a second data inventory. |
-| Testing | The plan requires [`docs/testing-matrix.md`](../plan.md#documentation-structure) and defines the [validation strategy](../plan.md#validation-and-regression-strategy). Data owns challenge. | The table below supplies Phase 1A rows/test IDs to the canonical matrix. |
-| Cost | [PR #20](https://github.com/Jamula/Andreja/pull/20) proposes `docs/cost-model.md` as Quark's canonical ledger/budget source; until merged, the [plan's Cost and FinOps rules](../plan.md#cost-and-finops) govern. | This file only links the Phase 1A usage query and stop checks. It neither duplicates price/SKU figures nor changes PR #20's ledgers or authority. |
+| Threat | The canonical [`docs/threat-model.md`](../threat-model.md) reconciles current, contract-only, evidence-blocked, and future/gated threats and controls. Tuvok owns challenge; the ratified plan governs. The [charter](../charter.md#ethics-and-sustainability-impact-assessment) is a proposed input until explicitly ratified. | The threat rows below index Phase 1A controls and proof into that canonical model. |
+| Privacy | The canonical [`docs/privacy.md`](../privacy.md) owns the inventory and handling baseline. Deanna Troi owns challenge; the ratified plan governs. The [charter](../charter.md#ethics-and-sustainability-impact-assessment) is a proposed input until explicitly ratified. | The privacy gate below is a Phase 1A field/test overlay, not a second data inventory. |
+| Testing | The canonical [`docs/testing-matrix.md`](../testing-matrix.md) records current local evidence and exclusions. Data owns challenge; the plan defines the governing [validation strategy](../plan.md#validation-and-regression-strategy). | The table below supplies Phase 1A rows/test IDs to that canonical matrix. |
+| Cost | The canonical [`docs/cost-model.md`](../cost-model.md) is Quark's cost-model and ledger source. It remains **Draft for ratification**, authorizes no spend, and the plan's [Cost and FinOps rules](../plan.md#cost-and-finops) remain governing. | This file only links the Phase 1A usage query and stop checks. It neither duplicates price/SKU figures nor changes the cost model's authority. |
 
-When a canonical artifact is merged, its evidence identifier and revision replace the
-interim plan link here. Conflicts resolve in favor of the governing plan/charter and
-the canonical owner; this index must then be corrected.
+These links are self-correcting pointers: the same change that makes a canonical
+path, status, owner, or evidence mapping stale must correct this index. Conflicts
+resolve in favor of the ratified plan and canonical owner. The proposed charter
+does not co-govern until explicitly ratified; this index must then be corrected.
 
 ## Threat gate
 
@@ -29,10 +34,10 @@ the canonical owner; this index must then be corrected.
 | Bootstrap or recovery takeover | Single-use bootstrap, HTTPS/RP validation, rate limits, session invalidation, collision tests, recovery audit, and clean restore drill |
 | BYOK theft or provider confusion | External key custody, encrypted credentials, endpoint allowlist, separate grants, redaction tests, revoke/rotate test |
 | Prompt/tool injection | Untrusted content separation, exact typed-tool allowlist, schema validation, purpose/capability checks, proposal confirmation, adversarial tests |
-| Skill confused deputy | No ambient services/secrets, scoped `ISkillHost`, permission-negative and manifest tampering tests |
-| Grant, consent, or disclosure escalation | Bilateral consent state machine, active purpose-bound grant, ordered disclosure intersection, expiry/revocation, allow/deny audit, and negative tests for stale consent, wrong principal/purpose/operation, and every attempted ladder escalation |
+| Skill/channel confused deputy | No ambient services/secrets, scoped `ISkillHost`/`IChannelHost`, distinct tenant/app-user/principal identity, complete manifest metadata, permission-negative and manifest digest/version tampering tests |
+| Grant, consent, or disclosure escalation | One evaluator shared by skill/channel hosts; user policy, bilateral consent, active purpose-bound grant, capability, operation, data class and ordered disclosure intersection; expiry/revocation; content-minimized allow/deny audit; negative tests for wrong tenant/app user/principal/purpose/grant/capability/operation/data class and every attempted ladder escalation |
 | Peer-envelope spoof, replay, or confused audience | Canonical signed-envelope vectors; tamper, signature/key/algorithm, sender/recipient, time, nonce replay, idempotency conflict, grant/purpose, payload type, and version rejection tests using local fixtures only |
-| Malicious/failed update or restore | Immutable digests, checksums, explicit migration, backup-before-update, clean restore, rollback exercise |
+| Malicious/failed update or restore | Reproducible OCI build from a clean commit; source/base/image/tool digests; SPDX and CycloneDX checksums; pinned dependency/image/container/IaC scans with High/Critical deny policy; signed in-toto provenance under a separately trusted operator key; exact offline inventory verification; explicit migration notes; backup-before-update; clean restore; rollback exercise |
 | Telemetry leakage | Attribute allowlist, content suppression, canary-secret redaction test, bounded cardinality and local query review |
 | Backup/export disclosure | Encryption, least-privilege destination, explicit exclusions, checksum validation, restore/import access tests |
 
@@ -60,6 +65,9 @@ Defaults are:
   user ID, or token;
 - deletion removes eligible primary and derived data and emits a content-free audit
   receipt; export reports every exclusion;
+- semantic assertions distinguish user-stated or verified facts from unreviewed
+  hypotheses, keep source references content-minimized, and default model exposure,
+  sharing, and sensitive-inference export to denied;
 - grant/consent/share-audit fixtures contain no shared payload; future persisted
   records require the canonical privacy inventory and active-slice approval;
 - no cloud processor or Andreja service receives self-host content by default.
@@ -73,8 +81,8 @@ approves residual risk before dogfood data is entered.
 |---|---|
 | Unit/domain | Task lifecycle, proposal expiry/idempotency, policy combinations, recovery rules |
 | Architecture | Dependency direction, no framework/SDK types inward, no cross-module internals, no UI-to-handler/EF path |
-| PostgreSQL integration | Migrations from empty/prior schema, composite FK/uniqueness, transactional audit, concurrency, delete |
-| Contract/conformance | API DTO serialization; assistant fake/failure/cancel; skill/channel manifest and permission negatives; exact `Grant`, `ConsentRecord`, `ShareAuditEntry`, disclosure-ladder, and `IPeerChannel` signed-envelope vectors including consent transitions, least disclosure, tamper, audience, expiry, replay, and idempotent retry |
+| PostgreSQL integration | Migrations from empty/prior schema, composite FK/uniqueness, atomic proposal/task/audit/receipt confirmation, restart and crash recovery, concurrency, delete |
+| Contract/conformance | API DTO serialization; assistant fake/failure/cancel; complete skill/channel manifest serialization, semantic/schema versions, explicit non-applicable metadata, permission negatives, digest mutation, concurrency and no-ambient-service checks; exact `Grant`, `ConsentRecord`, `ShareAuditEntry`, disclosure-ladder, and `IPeerChannel` signed-envelope vectors including consent transitions, least disclosure, tamper, audience, expiry, replay, and idempotent retry; semantic assertion and pinned JSON-LD fixtures covering typed ownership, append-only provenance, raw-lineage rejection, atomic single-winner correction/retraction, dependency invalidation, safe predicate IRIs, coexistence, least exposure, isolation/purpose denial, default-sensitive exclusion, delete/tombstone, serialized content-minimization canaries, unknown versions/classes, tamper, and concurrent updates |
 | Security/privacy | Cross-tenant enumeration, bootstrap/recovery abuse, CSRF/headers, canary secrets, telemetry/export exclusions |
 | End to end | Passkey bootstrap, BYOK/fake assistant proposal, confirmation, create/list/complete/export/delete |
 | Operations | Offline startup after image acquisition from a preloaded/locally built image or local registry, restart, update, provider outage, dump/restore plus keys, app import, readiness |

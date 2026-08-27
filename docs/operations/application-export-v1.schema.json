@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://andreja.example/schemas/application-export-v1.schema.json",
+  "title": "Andreja application export manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "archiveVersion",
+    "schemaVersion",
+    "applicationVersion",
+    "exportId",
+    "createdAtUtc",
+    "tenantReference",
+    "artifacts",
+    "exclusions",
+    "reauthorization"
+  ],
+  "properties": {
+    "archiveVersion": { "const": "1" },
+    "schemaVersion": { "type": "string", "minLength": 1 },
+    "applicationVersion": { "type": "string", "minLength": 1 },
+    "exportId": { "type": "string", "format": "uuid" },
+    "createdAtUtc": { "type": "string", "format": "date-time" },
+    "tenantReference": { "type": "string", "minLength": 1 },
+    "artifacts": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": { "$ref": "#/$defs/artifact" },
+      "allOf": [
+        { "contains": { "properties": { "dataArea": { "const": "Records" } } } },
+        { "contains": { "properties": { "dataArea": { "const": "Attachments" } } } },
+        { "contains": { "properties": { "dataArea": { "const": "Grants" } } } },
+        { "contains": { "properties": { "dataArea": { "const": "Audit" } } } },
+        { "contains": { "properties": { "dataArea": { "const": "Settings" } } } },
+        { "contains": { "properties": { "dataArea": { "const": "Semantic" } } } },
+        { "contains": { "properties": { "dataArea": { "const": "Provenance" } } } }
+      ]
+    },
+    "exclusions": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": { "$ref": "#/$defs/exclusion" },
+      "allOf": [
+        { "contains": { "properties": { "code": { "const": "credentials" } } } },
+        { "contains": { "properties": { "code": { "const": "passkeys" } } } },
+        { "contains": { "properties": { "code": { "const": "recovery-secrets" } } } },
+        { "contains": { "properties": { "code": { "const": "provider-tokens" } } } },
+        { "contains": { "properties": { "code": { "const": "data-protection-keys" } } } },
+        { "contains": { "properties": { "code": { "const": "tls-private-keys" } } } },
+        { "contains": { "properties": { "code": { "const": "signing-keys" } } } },
+        { "contains": { "properties": { "code": { "const": "bootstrap-secrets" } } } },
+        { "contains": { "properties": { "code": { "const": "caches" } } } },
+        { "contains": { "properties": { "code": { "const": "sensitive-inferences" } } } },
+        { "contains": { "properties": { "code": { "const": "telemetry" } } } },
+        { "contains": { "properties": { "code": { "const": "runtime-secrets" } } } }
+      ]
+    },
+    "reauthorization": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [ "providerReference", "action" ],
+        "properties": {
+          "providerReference": { "type": "string", "minLength": 1 },
+          "action": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataArea",
+        "contractVersion",
+        "path",
+        "sha256",
+        "byteLength",
+        "recordCount"
+      ],
+      "properties": {
+        "dataArea": {
+          "enum": [
+            "Records",
+            "Attachments",
+            "Grants",
+            "Audit",
+            "Settings",
+            "Semantic",
+            "Provenance"
+          ]
+        },
+        "contractVersion": { "type": "string", "minLength": 1 },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\:]+$"
+        },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "byteLength": { "type": "integer", "minimum": 0 },
+        "recordCount": { "type": "integer", "minimum": 0 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "dataArea": { "const": "Semantic" } } },
+          "then": { "properties": { "contractVersion": { "const": "1.0" } } }
+        },
+        {
+          "if": { "properties": { "dataArea": { "const": "Provenance" } } },
+          "then": { "properties": { "contractVersion": { "const": "1.0" } } }
+        }
+      ]
+    },
+    "exclusion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [ "code", "reason" ],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

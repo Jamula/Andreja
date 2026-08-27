@@ -1,0 +1,60 @@
+[
+  {
+    "name": "sidebar-linked draft PR",
+    "issueNumber": 70,
+    "issueState": "open",
+    "connectedNumbers": [10],
+    "pullRequests": [
+      {
+        "number": 10,
+        "state": "open",
+        "isDraft": true,
+        "merged": false,
+        "baseRef": "main",
+        "headRef": "feature/draft",
+        "headRepository": "Jamula/Andreja",
+        "body": ""
+      }
+    ],
+    "expectedStatus": "status:pr-draft"
+  },
+  {
+    "name": "sidebar-linked ready PR",
+    "issueNumber": 71,
+    "issueState": "open",
+    "connectedNumbers": [11],
+    "pullRequests": [
+      {
+        "number": 11,
+        "state": "open",
+        "isDraft": false,
+        "merged": false,
+        "baseRef": "main",
+        "headRef": "feature/ready",
+        "headRepository": "Jamula/Andreja",
+        "body": ""
+      }
+    ],
+    "expectedStatus": "status:ready"
+  },
+  {
+    "name": "sidebar-linked merged PR",
+    "issueNumber": 72,
+    "issueState": "open",
+    "connectedNumbers": [12],
+    "pullRequests": [
+      {
+        "number": 12,
+        "state": "closed",
+        "isDraft": false,
+        "merged": true,
+        "mergedAt": "2026-08-24T21:00:00Z",
+        "baseRef": "main",
+        "headRef": "feature/merged",
+        "headRepository": "Jamula/Andreja",
+        "body": ""
+      }
+    ],
+    "expectedStatus": "status:merged"
+  }
+]

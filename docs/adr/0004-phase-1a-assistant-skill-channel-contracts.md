@@ -86,6 +86,26 @@ These tests create no grant, consent, share-audit, channel, or federation databa
 tables or migrations. Phase 1A runs no peer listener, discovery, relay, remote trust
 exchange, or live federation traffic.
 
+### Implemented contract mapping
+
+The Phase 1A implementation keeps `TenantId`, authoritative `AppUserId`, and
+`PrincipalId` distinct on assistant, skill, and channel execution boundaries.
+`SkillManifest` and `ChannelManifest` use semantic artifact versions plus explicit
+schema versions and describe lifecycle stage, publisher, purpose/capability/data-class
+permissions, disclosure ceiling, execution mode, retention, help/support,
+compatibility, integrity/provenance, and explicit reasons for every non-applicable
+field.
+
+One application-owned evaluator is used by both in-memory hosts. It denies unless the
+invocation, user policy, active grant, active bilateral consent, declared capability,
+operation, data class, purpose, time window, revocation state, and ordered disclosure
+ceiling intersect. Manifest/schema/version mismatches and pre-policy denials use the
+same content-minimized audit shape. The channel fixture is deterministic and local:
+provider, account, OAuth, query/sync/publish, webhook/change-feed, cache, cost, and
+delivery-topology fields are explicitly non-applicable. This mapping introduces no
+connector, provider credential, network execution, marketplace publication,
+federation traffic, or persistence migration.
+
 ### Independent BYOK path
 
 The required provider adapter is an OpenAI-compatible BYOK profile selected by the
@@ -95,6 +115,18 @@ database and never enter manifests, prompts, usage records, logs, traces, export
 or skill calls. A deterministic fake provider is the default test path. GitHub
 Copilot and local-model adapters are optional future implementations; neither is
 required for offline-from-Andreja-cloud startup.
+
+### Copilot provider phase-scope proposal
+
+[Proposed ADR 0009](0009-copilot-provider-phase-scope.md) recommends the narrow
+resolution of issue #74. Phase 1A has no real Copilot provider. Its only Copilot
+SDK work is a pinned, isolated, non-shipping, credential-free
+compile/conformance adapter and developer tooling: no production dependency,
+service registration, container/runtime, configuration/UI, authentication,
+network/model call, account provisioning, content disclosure, or usage. A
+limited real provider begins no earlier than Phase 1B after ADR 0009 acceptance
+and its provider gates. This cross-reference neither accepts ADR 0004 nor ADR
+0009 and does not authorize provider activation.
 
 ### Open Loops vertical slice
 
