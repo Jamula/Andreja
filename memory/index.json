@@ -128,5 +128,15 @@
     "status": "active",
     "createdAt": "2026-08-29T18:41:57.727Z",
     "updatedAt": "2026-08-29T18:41:57.727Z"
+  },
+  {
+    "id": "7c07ed99-4171-446a-92b7-7e957ece1eab",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Set Quark conflict disclosure boundary",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-set-quark-conflict-disclosure-boundary-7c07ed99.md",
+    "status": "active",
+    "createdAt": "2026-08-29T18:43:19.510Z",
+    "updatedAt": "2026-08-29T18:43:19.510Z"
   }
 ]
