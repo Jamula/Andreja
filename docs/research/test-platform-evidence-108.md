@@ -92,7 +92,9 @@ Both candidates also passed:
 - async initialize/cleanup markers;
 - class fixture lifetime and one shared fixture instance across two classes;
 - two-class concurrency rendezvous;
-- bounded timeout/cancellation;
+- isolated negative timeout probes that exceeded 250 ms and produced one
+  timeout/cancellation failure per candidate, with a 15-second process kill
+  bound; these conditional probes did not change normal inventory;
 - anonymous Andreja API `401` and rejection of
   `X-Andreja-Test-Authenticate`;
 - discovery of all six production EF migrations without a database connection;
@@ -107,18 +109,20 @@ thread-safety, failure, and cleanup behavior before adapting it to PostgreSQL.
 
 ## Timing, repetition, and memory
 
-Measurements used restored/built projects on one Windows arm64 host. They are
-representative guardrails, not benchmarks.
+Measurements used restored/built projects on one Windows arm64 host. Warm runs
+alternated candidate order. The harness tests its median calculation against
+known odd and even samples before using the mathematical median for the 10%
+gate. These are representative guardrails, not benchmarks.
 
 | Measurement | xUnit v3/MTP | MSTest/MTP |
 | --- | ---: | ---: |
-| Five warm full runs, min / median / max | 1,249 / 1,341 / 1,456 ms | 1,162 / 1,222 / 1,809 ms |
+| Four counterbalanced warm full runs, min / median / max | 1,322 / 1,463.5 / 1,652 ms | 1,264 / 1,319.5 / 1,551 ms |
 | One clean build + full run | 2,293 ms | 2,153 ms |
 | Sampled direct-runner largest-process working set | 99.4 MiB | 90.9 MiB |
 
-MSTest's warm median was 8.9% faster and its clean build/run was 6.1% faster.
+MSTest's warm median was 9.8% faster and its clean build/run was 6.1% faster.
 One MSTest warm run was a high outlier. Neither candidate crossed the 10%
-sustained regression stop condition. Five stabilized
+sustained regression stop condition. Four counterbalanced
 timing runs plus the final Debug, Release, filter, and direct-executable runs
 had no intermittent failure. Memory is approximate and excludes child/process
 tree aggregation.

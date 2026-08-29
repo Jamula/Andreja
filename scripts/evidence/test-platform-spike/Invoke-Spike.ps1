@@ -28,16 +28,93 @@ function Invoke-Dotnet {
     }
 }
 
+function Invoke-DotnetExpectingTestFailure {
+    param(
+        [Parameter(Mandatory)][string[]] $Arguments,
+        [Parameter(Mandatory)][string] $OutputPath,
+        [int] $TimeoutSeconds = 15
+    )
+
+    $startInfo = [Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $Dotnet
+    $startInfo.WorkingDirectory = $PSScriptRoot
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    foreach ($argument in $Arguments) {
+        $startInfo.ArgumentList.Add($argument)
+    }
+
+    $process = [Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+    try {
+        if (-not $process.Start()) {
+            throw "Could not start dotnet for the expected-failure probe."
+        }
+
+        $stdout = $process.StandardOutput.ReadToEndAsync()
+        $stderr = $process.StandardError.ReadToEndAsync()
+        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+            $process.Kill($true)
+            $process.WaitForExit()
+            throw "Expected-failure probe exceeded the $TimeoutSeconds-second process bound."
+        }
+
+        $output = @(
+            $stdout.GetAwaiter().GetResult()
+            $stderr.GetAwaiter().GetResult()
+        ) -join [Environment]::NewLine
+        $output | Set-Content -LiteralPath $OutputPath
+        $output | Write-Host
+        if ($process.ExitCode -eq 0) {
+            throw "Expected-failure probe unexpectedly exited successfully."
+        }
+    }
+    finally {
+        $process.Dispose()
+    }
+}
+
+function Get-Median {
+    param([Parameter(Mandatory)][double[]] $Values)
+
+    if ($Values.Count -eq 0) {
+        throw "Cannot calculate a median for an empty sample."
+    }
+
+    $sorted = @($Values | Sort-Object)
+    $middle = [math]::Floor($sorted.Count / 2)
+    if (($sorted.Count % 2) -eq 1) {
+        return $sorted[$middle]
+    }
+
+    return ($sorted[$middle - 1] + $sorted[$middle]) / 2
+}
+
+$medianCases = @(
+    @{ Name = "odd"; Values = @(9, 1, 5); Expected = 5 }
+    @{ Name = "even"; Values = @(10, 2, 8, 4); Expected = 6 }
+)
+foreach ($medianCase in $medianCases) {
+    $actualMedian = Get-Median -Values $medianCase.Values
+    if ($actualMedian -ne $medianCase.Expected) {
+        throw "The $($medianCase.Name)-sample median check failed: $actualMedian."
+    }
+}
+
 function Assert-TrxCounters {
     param(
         [Parameter(Mandatory)][string] $Path,
         [Parameter(Mandatory)][int] $Total,
         [Parameter(Mandatory)][int] $Executed,
         [Parameter(Mandatory)][int] $Passed,
-        [Parameter(Mandatory)][int] $NotExecuted
+        [Parameter(Mandatory)][int] $NotExecuted,
+        [string] $ExpectedOutput,
+        [string] $ExpectedSkipReason
     )
 
-    [xml] $trx = Get-Content -LiteralPath $Path
+    $trxContent = Get-Content -LiteralPath $Path -Raw
+    [xml] $trx = $trxContent
     $counters = $trx.TestRun.ResultSummary.Counters
     $actual = @(
         [int] $counters.total,
@@ -49,6 +126,47 @@ function Assert-TrxCounters {
     $expected = @($Total, $Executed, $Passed, 0, $NotExecuted)
     if (Compare-Object $expected $actual -SyncWindow 0) {
         throw "Unexpected TRX counters in '$Path': $($actual -join '/')."
+    }
+    if ($ExpectedOutput -and $trxContent -notmatch [regex]::Escape($ExpectedOutput)) {
+        throw "Expected output marker '$ExpectedOutput' is absent from '$Path'."
+    }
+    if ($ExpectedSkipReason -and $trxContent -notmatch [regex]::Escape($ExpectedSkipReason)) {
+        throw "Expected skip reason '$ExpectedSkipReason' is absent from '$Path'."
+    }
+}
+
+function Assert-TimeoutFailureResult {
+    param(
+        [Parameter(Mandatory)][string] $Path,
+        [Parameter(Mandatory)][string] $TestName
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        throw "Timeout probe did not create '$Path'."
+    }
+
+    [xml] $trx = Get-Content -LiteralPath $Path -Raw
+    $counters = $trx.TestRun.ResultSummary.Counters
+    $actual = @(
+        [int] $counters.total,
+        [int] $counters.executed,
+        [int] $counters.passed,
+        [int] $counters.failed
+    )
+    if (Compare-Object @(1, 1, 0, 1) $actual -SyncWindow 0) {
+        throw "Unexpected timeout-probe counters in '$Path': $($actual -join '/')."
+    }
+
+    $results = @(
+        $trx.SelectNodes("//*[local-name()='UnitTestResult']") |
+            Where-Object { $_.testName -like "*$TestName*" }
+    )
+    if ($results.Count -ne 1 -or $results[0].outcome -notin @("Failed", "Timeout")) {
+        throw "Expected one failed timeout result named '$TestName' in '$Path'."
+    }
+
+    if ($results[0].OuterXml -notmatch "(?i)timeout|timed out|cancel") {
+        throw "The failed result in '$Path' contains no timeout/cancellation evidence."
     }
 }
 
@@ -123,10 +241,14 @@ try {
 
         Assert-TrxCounters `
             -Path (Join-Path $configurationResults "XunitV3Spike.$configuration.trx") `
-            -Total 13 -Executed 12 -Passed 12 -NotExecuted 1
+            -Total 13 -Executed 12 -Passed 12 -NotExecuted 1 `
+            -ExpectedOutput "xunit-v3-output" `
+            -ExpectedSkipReason "intentional evidence skip"
         Assert-TrxCounters `
             -Path (Join-Path $configurationResults "MSTestMtpSpike.$configuration.trx") `
-            -Total 13 -Executed 12 -Passed 12 -NotExecuted 1
+            -Total 13 -Executed 12 -Passed 12 -NotExecuted 1 `
+            -ExpectedOutput "mstest-mtp-output" `
+            -ExpectedSkipReason "intentional evidence skip"
         $lifecycleComplete =
             (Get-Content $xunitLifecycle) -eq "xunit-v3-cleanup" -and
             (Get-Content $mstestLifecycle) -eq "mstest-mtp-cleanup" -and
@@ -157,23 +279,74 @@ try {
     )
     Assert-TrxCounters `
         -Path (Join-Path $filterResults "XunitV3Spike.Filter.trx") `
-        -Total 6 -Executed 5 -Passed 5 -NotExecuted 1
+        -Total 6 -Executed 5 -Passed 5 -NotExecuted 1 `
+        -ExpectedOutput "xunit-v3-output" `
+        -ExpectedSkipReason "intentional evidence skip"
     Assert-TrxCounters `
         -Path (Join-Path $filterResults "MSTestMtpSpike.Filter.trx") `
-        -Total 6 -Executed 5 -Passed 5 -NotExecuted 1
+        -Total 6 -Executed 5 -Passed 5 -NotExecuted 1 `
+        -ExpectedOutput "mstest-mtp-output" `
+        -ExpectedSkipReason "intentional evidence skip"
     if (Test-Path $unrelatedFixture) {
         throw "The MSTest shared fixture initialized for an unrelated filter."
     }
 
     Remove-Item Env:ANDREJA_SPIKE_LIFECYCLE_FILE, Env:ANDREJA_SPIKE_FIXTURE_FILE `
         -ErrorAction SilentlyContinue
+    $timeoutResults = Join-Path $resultsRoot "timeout-probes"
+    New-Item -ItemType Directory -Path $timeoutResults -Force | Out-Null
+    $xunitTimeoutTrx = Join-Path $timeoutResults "XunitV3Spike.Timeout.trx"
+    $mstestTimeoutTrx = Join-Path $timeoutResults "MSTestMtpSpike.Timeout.trx"
+    Remove-Item $xunitTimeoutTrx, $mstestTimeoutTrx -Force -ErrorAction SilentlyContinue
+
+    Invoke-Dotnet @(
+        "build", $xunitProject, "-c", "Debug", "--no-restore",
+        "-p:RunTimeoutProbe=true"
+    )
+    Invoke-DotnetExpectingTestFailure `
+        -Arguments @(
+            "test", "--project", $xunitProject, "-c", "Debug", "--no-build",
+            "--report-xunit-trx",
+            "--report-xunit-trx-filename", "XunitV3Spike.Timeout.trx",
+            "--results-directory", $timeoutResults
+        ) `
+        -OutputPath (Join-Path $timeoutResults "xunit-timeout-output.txt")
+    Assert-TimeoutFailureResult -Path $xunitTimeoutTrx -TestName "TimeoutEnforcementProbe"
+
+    Invoke-Dotnet @(
+        "build", $mstestProject, "-c", "Debug", "--no-restore",
+        "-p:RunTimeoutProbe=true"
+    )
+    Invoke-DotnetExpectingTestFailure `
+        -Arguments @(
+            "test", "--project", $mstestProject, "-c", "Debug", "--no-build",
+            "--report-trx",
+            "--report-trx-filename", "MSTestMtpSpike.Timeout.trx",
+            "--results-directory", $timeoutResults
+        ) `
+        -OutputPath (Join-Path $timeoutResults "mstest-timeout-output.txt")
+    Assert-TimeoutFailureResult -Path $mstestTimeoutTrx -TestName "TimeoutEnforcementProbe"
+
+    Invoke-Dotnet @("build", $xunitProject, "-c", "Debug", "--no-restore")
+    Invoke-Dotnet @("build", $mstestProject, "-c", "Debug", "--no-restore")
+
     $timings = 1..$WarmRuns | ForEach-Object {
-        $xunit = (Measure-Command {
-            Invoke-Dotnet @("test", "--project", $xunitProject, "-c", "Debug", "--no-build")
-        }).TotalMilliseconds
-        $mstest = (Measure-Command {
-            Invoke-Dotnet @("test", "--project", $mstestProject, "-c", "Debug", "--no-build")
-        }).TotalMilliseconds
+        if (($_ % 2) -eq 1) {
+            $xunit = (Measure-Command {
+                Invoke-Dotnet @("test", "--project", $xunitProject, "-c", "Debug", "--no-build")
+            }).TotalMilliseconds
+            $mstest = (Measure-Command {
+                Invoke-Dotnet @("test", "--project", $mstestProject, "-c", "Debug", "--no-build")
+            }).TotalMilliseconds
+        }
+        else {
+            $mstest = (Measure-Command {
+                Invoke-Dotnet @("test", "--project", $mstestProject, "-c", "Debug", "--no-build")
+            }).TotalMilliseconds
+            $xunit = (Measure-Command {
+                Invoke-Dotnet @("test", "--project", $xunitProject, "-c", "Debug", "--no-build")
+            }).TotalMilliseconds
+        }
         [pscustomobject]@{
             Run = $_
             XunitV3Milliseconds = [math]::Round($xunit)
@@ -181,8 +354,8 @@ try {
         }
     }
     $timings | Export-Csv (Join-Path $resultsRoot "warm-runs.csv") -NoTypeInformation
-    $xunitMedian = ($timings.XunitV3Milliseconds | Sort-Object)[[math]::Floor($WarmRuns / 2)]
-    $mstestMedian = ($timings.MSTestMtpMilliseconds | Sort-Object)[[math]::Floor($WarmRuns / 2)]
+    $xunitMedian = Get-Median -Values $timings.XunitV3Milliseconds
+    $mstestMedian = Get-Median -Values $timings.MSTestMtpMilliseconds
     if ($mstestMedian -gt ($xunitMedian * 1.10)) {
         throw "MSTest median exceeded the 10% stop threshold: $mstestMedian vs $xunitMedian ms."
     }

@@ -36,9 +36,11 @@ compared current stable xUnit.net v3 (`xunit.v3` 4.0.0, native MTP 2.3.3)
 against `MSTest.Sdk` 4.3.3/MTP 2.3.3 on the pinned .NET SDK 10.0.301.
 Equivalent Debug/Release and filtered spikes preserved data expansion, async
 lifecycle, class/cross-class fixture behavior, explicit concurrency,
-skip/timeout/output, WebApplicationFactory authentication boundaries, EF
-migration metadata, TRX, and telemetry opt-out controls. Neither candidate
-crossed the 10% sustained full-run regression stop threshold.
+skip/output, WebApplicationFactory authentication boundaries, EF migration
+metadata, TRX, and telemetry opt-out controls. Isolated negative probes also
+verified that both candidates enforce cooperative timeout/cancellation without
+changing normal inventory. Warm-run order was counterbalanced and the 10% gate
+used a tested mathematical median. Neither candidate crossed the threshold.
 
 The evidence supports retaining Cyrus's existing long-term MSTest/MTP direction.
 It does not establish a performance winner, accept this Proposed ADR, or

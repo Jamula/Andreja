@@ -13,5 +13,8 @@
   <ItemGroup>
     <Compile Remove="AnalyzerProbe.cs" />
     <Compile Include="AnalyzerProbe.cs" Condition="'$(RunAnalyzerProbe)' == 'true'" />
+    <Compile Remove="TimeoutProbe.cs" />
+    <Compile Include="TimeoutProbe.cs" Condition="'$(RunTimeoutProbe)' == 'true'" />
+    <Compile Remove="FrameworkEvidenceTests.cs" Condition="'$(RunTimeoutProbe)' == 'true'" />
   </ItemGroup>
 </Project>
