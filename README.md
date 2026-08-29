@@ -263,10 +263,19 @@ finally {
 
 pwsh -NoProfile -File scripts\supply-chain\Test-OciEvidence.ps1 `
   -BundleDirectory artifacts\supply-chain `
-  -TrustedPublicKeyPath $HOME\.andreja-signing\andreja.pub
+  -TrustedPublicKeyPath $HOME\.andreja-signing\andreja.pub `
+  -ExpectedSigningMode operator-held-key
 if ($LASTEXITCODE -ne 0) {
   throw "OCI evidence verification failed."
 }
+
+# For retained hosted keyless evidence, use independently acquired policy and
+# Sigstore root files outside the evidence directory; verification blocks networking.
+pwsh -NoProfile -File scripts\supply-chain\Test-OciEvidence.ps1 `
+  -BundleDirectory artifacts\supply-chain `
+  -TrustedPolicyPath D:\trusted\supply-chain-policy.json `
+  -TrustedRootPath D:\trusted\sigstore-trusted-root.json `
+  -ExpectedSigningMode keyless-sigstore
 
 $evidence = Get-Content artifacts\supply-chain\evidence.json -Raw |
   ConvertFrom-Json

@@ -45,6 +45,17 @@ $sourceRevision = Invoke-CheckedCommand -FilePath 'git' -Arguments @(
 $sourceTree = Invoke-CheckedCommand -FilePath 'git' -Arguments @(
     '-C', $repositoryRoot, 'rev-parse', 'HEAD^{tree}'
 ) -FailureMessage 'Unable to resolve source tree.' -CaptureOutput
+$sourceRef = if ($env:GITHUB_REF) {
+    $env:GITHUB_REF
+} else {
+    $branch = Invoke-CheckedCommand -FilePath 'git' -Arguments @(
+        '-C', $repositoryRoot, 'symbolic-ref', '--quiet', '--short', 'HEAD'
+    ) -FailureMessage 'Supply-chain evidence requires a named source ref.' -CaptureOutput
+    "refs/heads/$branch"
+}
+if ($sourceRef -notmatch '^refs/(heads|tags)/[A-Za-z0-9][A-Za-z0-9._/-]*$') {
+    throw "Unsupported source ref '$sourceRef'."
+}
 $sourceDateEpochText = Invoke-CheckedCommand -FilePath 'git' -Arguments @(
     '-C', $repositoryRoot, 'show', '-s', '--format=%ct', 'HEAD'
 ) -FailureMessage 'Unable to resolve source timestamp.' -CaptureOutput
@@ -342,7 +353,7 @@ Assert-NoForbiddenFinding -Count $iacFindings -Scope 'Container/IaC'
 
 Remove-Item -LiteralPath $cacheRoot -Recurse -Force
 Copy-Item -LiteralPath $policyPath -Destination (Join-Path $outputRoot 'policy.json')
-Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\operations\oci-supply-chain-evidence-v1.schema.json') `
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\operations\oci-supply-chain-evidence-v1.1.schema.json') `
     -Destination (Join-Path $outputRoot 'evidence.schema.json')
 
 $migrationSource = Get-Content -LiteralPath (Join-Path $repositoryRoot 'docs\operations\oci-migration-notes.md') -Raw
@@ -427,11 +438,22 @@ $provenance | ConvertTo-Json -Depth 100 |
 
 $signing = if ($HostedUnsigned) {
     [ordered]@{
-        mode = 'hosted-deferred'
+        mode = 'hosted-unsigned-validation'
         status = 'unsigned'
         trustedPublicKeySha256 = $null
         signature = $null
-        hostedDeferral = $policy.hostedSigning.reason
+        bundle = $null
+        trustedRoot = $null
+        certificateIdentity = $null
+        oidcIssuer = $null
+        repository = $null
+        workflow = $null
+        workflowRevision = $null
+        ref = $null
+        trigger = $null
+        transparencyLogIncluded = $null
+        certificateTransparencyIncluded = $null
+        hostedDeferral = 'Hosted validation is unsigned until the tag-gated keyless signing job completes.'
     }
 } else {
     $signingKey = (Resolve-Path $SigningKeyPath).Path
@@ -447,6 +469,8 @@ $signing = if ($HostedUnsigned) {
         $policy.tools.cosign.image,
         'sign-blob',
         '--yes',
+        '--new-bundle-format=false',
+        '--use-signing-config=false',
         '--tlog-upload=false',
         '--key', "/signing/$([IO.Path]::GetFileName($signingKey))",
         '--output-signature', '/work/provenance.sig',
@@ -471,6 +495,17 @@ $signing = if ($HostedUnsigned) {
         status = 'signed'
         trustedPublicKeySha256 = Get-FileSha256 -Path $trustedPublicKey
         signature = Get-ChecksummedFile -Root $outputRoot -Name 'provenance.sig'
+        bundle = $null
+        trustedRoot = $null
+        certificateIdentity = $null
+        oidcIssuer = $null
+        repository = $null
+        workflow = $null
+        workflowRevision = $null
+        ref = $null
+        trigger = $null
+        transparencyLogIncluded = $null
+        certificateTransparencyIncluded = $null
         hostedDeferral = $null
     }
 }
@@ -495,12 +530,13 @@ if ($signing.status -eq 'signed') {
 $artifacts = @($artifactNames | ForEach-Object { Get-ChecksummedFile -Root $outputRoot -Name $_ })
 
 $evidence = [ordered]@{
-    schemaVersion = '1.0'
+    schemaVersion = '1.1'
     policy = Get-ChecksummedFile -Root $outputRoot -Name 'policy.json'
     source = [ordered]@{
         repository = $policy.sourceRepository
         commit = $sourceRevision
         tree = $sourceTree
+        ref = $sourceRef
     }
     image = [ordered]@{
         name = $ImageName

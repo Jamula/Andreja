@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "policyId": "andreja-phase-1a-oci-v1",
   "forbiddenSeverities": [
     "HIGH",
@@ -28,16 +28,37 @@
       "image": "aquasec/trivy@sha256:e2b22eac59c02003d8749f5b8d9bd073b62e30fefaef5b7c8371204e0a4b0c08"
     },
     "cosign": {
-      "version": "2.6.1",
-      "image": "ghcr.io/sigstore/cosign/cosign@sha256:68839b7f13dac5a6744a5d8818e984dd39183374e37855c19e14d623d9bc9037"
+      "version": "3.1.3",
+      "image": "ghcr.io/sigstore/cosign/cosign@sha256:9e5c2f2edc34351160407ca3416c61855bdf9403c3c5936e0f0be7fc261611b8"
     }
   },
   "requiredSbomFormats": [
     "SPDX-2.3",
     "CycloneDX-1.6"
   ],
+  "operatorHeldKey": {
+    "enabled": true,
+    "scope": "local-operator-evidence-only",
+    "maySatisfyHostedRelease": false
+  },
   "hostedSigning": {
-    "mode": "deferred",
-    "reason": "Private-repository entitlement and no-publication boundaries do not authorize keyless OIDC or trusted release signing."
+    "mode": "keyless-sigstore",
+    "oidcIssuer": "https://token.actions.githubusercontent.com",
+    "repository": "Jamula/Andreja",
+    "workflow": "https://github.com/Jamula/Andreja/.github/workflows/oci-supply-chain.yml",
+    "workflowName": "OCI Supply Chain",
+    "allowedRefPattern": "^refs/tags/v[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$",
+    "trigger": "push",
+    "bundleMediaType": "application/vnd.dev.sigstore.bundle.v0.3+json",
+    "requireTransparencyLog": true,
+    "requireCertificateTransparency": true,
+    "trustedRootSource": "Sigstore TUF trusted root authenticated and pre-positioned outside the evidence bundle before signing",
+    "publicDisclosure": [
+      "repository",
+      "workflow identity",
+      "workflow revision",
+      "tag ref",
+      "artifact digest"
+    ]
   }
 }
