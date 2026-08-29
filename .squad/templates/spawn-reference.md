@@ -31,8 +31,8 @@ When `create_session` is available, spawn commit-producing agents as **sub-sessi
 - **`kickoff.prompt`**: The full agent prompt (same as task prompt below)
 - **`kickoff.mode`**: `"{parent_mode}"` when supported; otherwise the documented task fallback
 - **`kickoff.model`**: `"{parent_model}"` when supported; otherwise `"{resolved_model}"`
-- **`kickoff.context_tier`**: `"{parent_context_tier}"` when supported
-- **`kickoff.reasoning_effort`**: `"{parent_reasoning_effort}"` when supported; otherwise `"{resolved_effort}"`
+- **`kickoff.context_tier`**: `"{resolved_context_tier}"` when the resolved tier is non-default
+- **`kickoff.reasoning_effort`**: `"{resolved_effort}"` when supported by the selected model
 
 **Constraints:**
 - **Max depth:** 1 — no sub-sub-sessions. If an agent needs to delegate, it uses `task` tool.
@@ -50,8 +50,8 @@ create_session({
     prompt: "{full agent prompt — see template below}",
     mode: "{parent_mode}",
     model: "{parent_model_or_resolved_model}",
-    context_tier: "{parent_context_tier}",
-    reasoning_effort: "{parent_reasoning_effort_or_resolved_effort}"
+    context_tier: "{resolved_context_tier_when_non_default}",
+    reasoning_effort: "{resolved_effort}"
   }
 })
 ```
@@ -72,6 +72,8 @@ Standard spawn via `task` tool — used in CLI, or as fallback when `create_sess
 - **`mode`**: `"background"` (default) or `"sync"` — use `"background"` for all parallelizable work; use `"sync"` only when the result is needed before the next step can proceed
 - **`description`**: `"{Name}: {brief task summary}"` (e.g., `"Ripley: Design REST API endpoints"`, `"Dallas: Build login form"`) — this is what appears in the UI, so it MUST carry the agent's name and what they're doing
 - **`prompt`**: The full agent prompt (see below)
+- **`reasoning_effort`**: `"{resolved_effort}"` when non-default and supported by the selected model
+- **`context_tier`**: `"{resolved_context_tier}"` when non-default and supported by the selected model
 
 **⚡ Inline the charter.** Before spawning, read the agent's `charter.md` (resolve from team root: `{team_root}/.squad/agents/{name}/charter.md`) and paste its contents directly into the spawn prompt. This eliminates a tool call from the agent's critical path. The agent still reads its own `history.md` and `decisions.md`.
 
@@ -85,9 +87,9 @@ Standard spawn via `task` tool — used in CLI, or as fallback when `create_sess
 
 ```
 agent_type: "{Squad_if_advertised_else_general-purpose}"
-model: "{parent_model_or_resolved_model}"
-reasoning_effort: "{parent_reasoning_effort_or_resolved_effort}"
-context_tier: "{parent_context_tier}"
+model: "{resolved_model}"
+reasoning_effort: "{resolved_effort_when_non_default}"
+context_tier: "{resolved_context_tier_when_non_default}"
 mode: "background"
 name: "{name}"
 description: "{emoji} {Name}: {brief task summary}"
