@@ -188,5 +188,15 @@
     "status": "active",
     "createdAt": "2026-08-29T19:03:25.905Z",
     "updatedAt": "2026-08-29T19:03:25.905Z"
+  },
+  {
+    "id": "539faedf-a051-4a06-840f-6ffbec6c753d",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Issue-drain five-agent waves",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-issue-drain-five-agent-waves-539faedf.md",
+    "status": "active",
+    "createdAt": "2026-08-29T19:55:19.787Z",
+    "updatedAt": "2026-08-29T19:55:19.787Z"
   }
 ]
