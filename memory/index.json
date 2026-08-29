@@ -108,5 +108,15 @@
     "status": "active",
     "createdAt": "2026-08-29T07:50:15.613Z",
     "updatedAt": "2026-08-29T07:50:15.613Z"
+  },
+  {
+    "id": "9f623f38-2827-45bd-a5b6-f0ee9f30fbff",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Require three-ledger separation for issue 37",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-require-three-ledger-separation-for-issue-37-9f623f38.md",
+    "status": "active",
+    "createdAt": "2026-08-29T07:51:52.438Z",
+    "updatedAt": "2026-08-29T07:51:52.438Z"
   }
 ]
