@@ -158,5 +158,15 @@
     "status": "active",
     "createdAt": "2026-08-29T18:50:32.391Z",
     "updatedAt": "2026-08-29T18:50:32.391Z"
+  },
+  {
+    "id": "20496137-2ccb-44c5-8dde-655523baa701",
+    "class": "POLICY",
+    "loadGuidance": "ALWAYS",
+    "title": "Issue-drain five-child ACK batches",
+    "path": ".squad\\memory\\policy-inbox\\cyrus-jamula-via-squad-coordinator-issue-drain-five-child-ack-batches-20496137.md",
+    "status": "active",
+    "createdAt": "2026-08-29T19:00:00.269Z",
+    "updatedAt": "2026-08-29T19:00:00.269Z"
   }
 ]
