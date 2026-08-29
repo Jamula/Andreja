@@ -148,5 +148,15 @@
     "status": "active",
     "createdAt": "2026-08-29T18:47:54.211Z",
     "updatedAt": "2026-08-29T18:47:54.211Z"
+  },
+  {
+    "id": "4c7b903d-2d82-4b21-8868-4bee71d0c36a",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Retain sole launch authority for issue 37",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-retain-sole-launch-authority-for-issue-37-4c7b903d.md",
+    "status": "active",
+    "createdAt": "2026-08-29T18:50:32.391Z",
+    "updatedAt": "2026-08-29T18:50:32.391Z"
   }
 ]
