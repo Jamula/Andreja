@@ -48,5 +48,15 @@
     "status": "active",
     "createdAt": "2026-08-29T05:31:38.315Z",
     "updatedAt": "2026-08-29T05:31:38.315Z"
+  },
+  {
+    "id": "427e83ca-b824-4c78-86c2-c101ab5096e9",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Windows ARM64 evidence runtime",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-windows-arm64-evidence-runtime-427e83ca.md",
+    "status": "active",
+    "createdAt": "2026-08-29T05:46:12.291Z",
+    "updatedAt": "2026-08-29T05:46:12.291Z"
   }
 ]
