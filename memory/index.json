@@ -198,5 +198,15 @@
     "status": "active",
     "createdAt": "2026-08-29T19:55:19.787Z",
     "updatedAt": "2026-08-29T19:55:19.787Z"
+  },
+  {
+    "id": "128efbf9-0be8-4d00-ad58-b9c396d5881d",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Issue 132 review rejection",
+    "path": ".squad\\decisions\\inbox\\squad-coordinator-issue-132-review-rejection-128efbf9.md",
+    "status": "active",
+    "createdAt": "2026-08-29T19:59:21.301Z",
+    "updatedAt": "2026-08-29T19:59:21.301Z"
   }
 ]
