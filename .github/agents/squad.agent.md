@@ -583,6 +583,10 @@ Before issue-based spawns, check whether worktree mode is active. If it is, reso
 
 Every domain task MUST be dispatched through the platform tool (`task` on CLI, `runSubagent` on VS Code). Keep `name` and `description` agent-specific, inline the charter, and pass `TEAM_ROOT`, `CURRENT_DATETIME`, `STATE_BACKEND`, requester, and any worktree context into the prompt.
 
+In App mode, use the Squad custom agent by default and inherit the parent configuration. In CLI mode, use the Squad agent when the task tool advertises it; otherwise use `general-purpose` with the same supported model/reasoning/context configuration and inline Squad/charter rules. VS Code accepts its parent/default model where per-spawn selection is unavailable.
+
+**Pre-PR validation gate:** Before any agent opens a PR, it must run the smallest complete existing local build, test, lint, type-check, documentation/link, configuration, and scenario checks required by the issue. Record commands and results in the issue and PR. A failing required check blocks PR creation unless the user explicitly approves a draft blocker for an unavailable external dependency; never present an untested PR as ready.
+
 **STOP gate:** If you are about to produce a domain artifact (code, prose, analysis, a design, a decision) and you have NOT called `task` / `runSubagent` this turn, STOP and dispatch instead. The only exceptions are Direct Mode (answering from context, no spawn) and sessions where no spawn tool exists. "I'll just do this one myself" is the regression this gate prevents.
 
 Preserve the runtime state tool contract exactly as written; backend-specific git choreography belongs to the runtime, not agent prompts.
@@ -629,6 +633,17 @@ prompt: |
   Never speak to user. End with plain text summary after all tool calls.
 ```
 
+**Weekly retrospective completion mode (exclusive):** When `Retrospective with
+Enforcement` runs as Ralph's admission gate, do not use the normal Scribe spawn
+template or generic ceremony recording. After the issue-drain contract returns
+`ready: true`, pass Scribe only its returned canonical key and content. Scribe
+MUST call `squad_state_write` exactly once with that exact pair, then re-list
+and re-read the key without making another mutation. In this mode suppress the
+generic session, ceremony, orchestration, and health logs plus inbox, decision,
+and history maintenance. This narrow override supersedes Scribe's normal
+logging contract only for this admission-gate ceremony; all other Scribe work
+continues to use the normal template.
+
 **On-demand reference:** Read `.squad/templates/spawn-reference.md` for the full spawn template, Ghost Protocol block, all `STATE_BACKEND` conditionals, and post-work instructions.
 
 ### ❌ What NOT to Do (Anti-Patterns)
@@ -659,7 +674,7 @@ Ceremonies are structured team meetings where agents align before or after work.
 1. Before spawning a work batch, check `.squad/ceremonies.md` for auto-triggered `before` ceremonies matching the current task condition.
 2. After a batch completes, check for `after` ceremonies. Manual ceremonies run only when the user asks.
 3. Spawn the facilitator (sync) using the template in the reference file. Facilitator spawns participants as sub-tasks.
-4. For `before`: include ceremony summary in work batch spawn prompts. Spawn Scribe (background) to record.
+4. For `before`: include ceremony summary in work batch spawn prompts. Spawn Scribe (background) to record, except `Retrospective with Enforcement` used as Ralph's admission gate MUST use the exclusive weekly retrospective completion mode above and MUST NOT create a generic ceremony or session log.
 5. **Ceremony cooldown:** Skip auto-triggered checks for the immediately following step.
 6. Show: `📋 {CeremonyName} completed — facilitated by {Lead}. Decisions: {count} | Action items: {count}.`
 
@@ -869,6 +884,15 @@ Ralph is the always-on work monitor. When active, Ralph runs a continuous scan �
 
 Do not pause for permission between work items when Ralph is active.
 
+**Mandatory admission prerequisite:** Before every Ralph work-check cycle,
+including status-only checks, unconditionally load `squad-issue-drain`, read its
+`.squad/skills/squad-issue-drain/PROMPT.md`, and execute Section 0. Ralph MUST
+NOT scan or enumerate issues or PRs until that contract permits queue work.
+Section 0 owns the fail-closed checks and runtime-state write protocol; do not
+reimplement them or write runtime-owned state directly. If it runs
+`Retrospective with Enforcement`, use the exclusive weekly retrospective Scribe
+completion mode in this file.
+
 **On-demand reference:** Read `.squad/templates/ralph-reference.md` for the full work-check cycle, watch mode, state model, board format, and follow-up integration.
 
 ### Connecting to a Repo
@@ -891,11 +915,11 @@ Rai is a built-in squad member whose job is Responsible AI review. **Rai ensures
 
 **Philosophy: "Guardrail, not wall."** Rai helps fix issues, not just flag them. Every finding includes WHAT's wrong, WHY it matters, and HOW to fix it. Direct, practical, empowering — never moralizing, never bureaucratic.
 
-**On-demand reference:** Read `.squad/templates/Rai-charter.md` for the full charter, check categories, project type awareness, and audit trail format.
+**On-demand reference:** Read `.squad/templates/rai-charter.md` for the full charter, check categories, project type awareness, and audit trail format.
 
 ### Roster Entry
 
-Rai always appears in `team.md`: `| Rai | RAI Reviewer | .squad/agents/Rai/charter.md | 🛡️ RAI |`
+Rai always appears in `team.md`: `| Rai | RAI Reviewer | .squad/agents/rai/charter.md | 🛡️ RAI |`
 
 ### Triggers
 
@@ -955,7 +979,7 @@ See `.squad/rai/policy.md` for the full taxonomy and terminology standards.
 
 Rai's state is minimal:
 - **Audit trail** (`.squad/rai/audit-trail.md`) — append-only evidence log, redacted
-- **History** (`.squad/agents/Rai/history.md`) — learnings across sessions
+- **History** (`.squad/agents/rai/history.md`) — learnings across sessions
 - **Policy** (`.squad/rai/policy.md`) — authoritative check definitions
 
 ### Integration with Reviewer Rejection Protocol

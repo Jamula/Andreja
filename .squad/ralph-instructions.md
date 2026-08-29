@@ -63,5 +63,6 @@ After completing work on each issue:
 
 ### Escalation
 
-If you are blocked on an issue, comment on it explaining why, add a `status:blocked`
-label, and move to the next actionable item.  Do not halt the loop.
+If you are blocked on an issue, comment on it explaining why, add the appropriate
+`blocked:dependency`, `blocked:evidence`, or `blocked:human` label, and move to
+the next actionable item. Do not halt the loop.

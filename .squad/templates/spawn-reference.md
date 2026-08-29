@@ -27,9 +27,12 @@ When `create_session` is available, spawn commit-producing agents as **sub-sessi
 - **`name`**: `"{Name} {verb}ing {noun}"` — 40-char max, sentence case (e.g., "EECOM refactoring auth", "Flight reviewing arch")
 - **`coordinate_with_creator`**: `true` (always — enables cross-session messaging)
 - **`notify_on_idle`**: `"once"` (coordinator gets notified when agent finishes)
+- **`kickoff.agent`**: `"Squad"` by default; use another installed custom agent only when explicitly required
 - **`kickoff.prompt`**: The full agent prompt (same as task prompt below)
-- **`kickoff.mode`**: `"autopilot"` (agents work autonomously)
-- **`kickoff.model`**: `"{resolved_model}"`
+- **`kickoff.mode`**: `"{parent_mode}"` when supported; otherwise the documented task fallback
+- **`kickoff.model`**: `"{parent_model}"` when supported; otherwise `"{resolved_model}"`
+- **`kickoff.context_tier`**: `"{resolved_context_tier}"` when the resolved tier is non-default
+- **`kickoff.reasoning_effort`**: `"{resolved_effort}"` when supported by the selected model
 
 **Constraints:**
 - **Max depth:** 1 — no sub-sub-sessions. If an agent needs to delegate, it uses `task` tool.
@@ -43,13 +46,19 @@ create_session({
   coordinate_with_creator: true,
   notify_on_idle: "once",
   kickoff: {
+    agent: "Squad",
     prompt: "{full agent prompt — see template below}",
-    mode: "autopilot",
-    model: "{resolved_model}",
+    mode: "{parent_mode}",
+    model: "{parent_model_or_resolved_model}",
+    context_tier: "{resolved_context_tier_when_non_default}",
     reasoning_effort: "{resolved_effort}"
   }
 })
 ```
+
+If a parent setting is unavailable or unsupported by the selected model/client,
+omit that field and record the fallback. Never silently switch model or
+reasoning configuration.
 
 **Result collection:** When `notify_on_idle` fires, the coordinator receives the session result via cross-session notification. No polling required.
 
@@ -59,10 +68,12 @@ create_session({
 
 Standard spawn via `task` tool — used in CLI, or as fallback when `create_session` is unavailable:
 
-- **`agent_type`**: `"general-purpose"` (always — this gives agents full tool access)
+- **`agent_type`**: `"Squad"` when the task tool advertises the custom agent; otherwise `"general-purpose"` with Squad and specialist charter instructions inlined
 - **`mode`**: `"background"` (default) or `"sync"` — use `"background"` for all parallelizable work; use `"sync"` only when the result is needed before the next step can proceed
 - **`description`**: `"{Name}: {brief task summary}"` (e.g., `"Ripley: Design REST API endpoints"`, `"Dallas: Build login form"`) — this is what appears in the UI, so it MUST carry the agent's name and what they're doing
 - **`prompt`**: The full agent prompt (see below)
+- **`reasoning_effort`**: `"{resolved_effort}"` when non-default and supported by the selected model
+- **`context_tier`**: `"{resolved_context_tier}"` when non-default and supported by the selected model
 
 **⚡ Inline the charter.** Before spawning, read the agent's `charter.md` (resolve from team root: `{team_root}/.squad/agents/{name}/charter.md`) and paste its contents directly into the spawn prompt. This eliminates a tool call from the agent's critical path. The agent still reads its own `history.md` and `decisions.md`.
 
@@ -75,8 +86,10 @@ Standard spawn via `task` tool — used in CLI, or as fallback when `create_sess
 **Template for any agent** (substitute `{Name}`, `{Role}`, `{name}`, and inline the charter):
 
 ```
-agent_type: "general-purpose"
+agent_type: "{Squad_if_advertised_else_general-purpose}"
 model: "{resolved_model}"
+reasoning_effort: "{resolved_effort_when_non_default}"
+context_tier: "{resolved_context_tier_when_non_default}"
 mode: "background"
 name: "{name}"
 description: "{emoji} {Name}: {brief task summary}"
@@ -107,11 +120,16 @@ prompt: |
 
   WORKTREE_PATH: {worktree_path}
   WORKTREE_MODE: {true|false}
+  BASE_REF: {verified_remote_base_ref}
+  BASE_SHA: {verified_remote_base_sha}
 
   {% if WORKTREE_MODE %}
   **WORKTREE:** You are working in a dedicated worktree at `{WORKTREE_PATH}`.
   - All file operations should be relative to this path
   - Do NOT switch branches — the worktree IS your branch (`{branch_name}`)
+  - Start clean: fetch/prune the remote and rebase onto `BASE_REF` when safe
+  - For independent work `BASE_REF` is live `origin/main`; for stacked work it is the verified remote parent branch
+  - Stop on dirty state, changed remote tip, conflict, or lease failure; never overwrite concurrent work
   - Build and test in the worktree, not the main repo
   - Commit and push from the worktree
   {% endif %}
@@ -138,6 +156,13 @@ prompt: |
   If .squad/identity/now.md exists, read it at spawn time.
   Check project skill directories (.squad/skills/, .github/skills/, .copilot/skills/, .claude/skills/, .agents/skills/) for any SKILL.md the coordinator attached to your prompt.
   Read any relevant SKILL.md files before working.
+
+  Before opening a PR:
+  - Run the smallest complete existing local validation required by the issue
+    (build/test/lint/type-check/docs/config/scenario checks as applicable)
+  - Record the exact commands and results in the issue and PR
+  - Do not open or mark ready a PR with failing required checks unless the user
+    explicitly approved a draft blocker for an unavailable external dependency
 
   ⚠️ WORK FRESHNESS: When determining what to work on:
   - If an external tracker is configured (GitHub Issues, GitLab Issues, Azure DevOps),

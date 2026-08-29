@@ -2,6 +2,26 @@
 
 You are working on a project that uses **Squad**, an AI team framework. When picking up issues autonomously, follow these guidelines.
 
+## Andreja Project Rules
+
+- Read `docs/plan.md`, accepted ADRs, `.squad/directives.md`, the issue, and the
+  assigned crew charter before changing code.
+- `main` is the integration branch. Use one issue, `squad/{issue}-{slug}`
+  branch, isolated worktree, and draft PR.
+- At issue start, require a clean worktree, fetch/prune, and rebase from the
+  verified live `origin/main` or stacked parent branch. Stop on conflict or a
+  changed remote tip; never overwrite concurrent work.
+- New App sub-sessions default to the `Squad` agent and inherit the parent
+  model/context/reasoning/mode when supported.
+- Use dependent/stacked PRs only when work truly depends on an unmerged layer.
+- Never post personal data, prompts, connector content, tokens, or private
+  diagnostics in issues, PRs, logs, telemetry, or committed Squad state.
+- Phase 0 provisions no cloud accounts, subscriptions, free tiers, or trials.
+- User agency, tenant isolation, data ownership, privacy, security,
+  accessibility, and truthful evidence override speed.
+- Follow the smallest targeted test path, then add the acceptance evidence to
+  the linked issue and PR.
+
 ## Coordinator Canary Check
 
 **IMPORTANT — run this check on EVERY session start, before doing any work:**
@@ -54,6 +74,10 @@ When opening a PR:
 - If the issue had a `squad:{member}` label, mention the member: `Working as {member} ({role})`
 - If this is a 🟡 needs-review task, add to the PR description: `⚠️ This task was flagged as "needs review" — please have a squad member review before merging.`
 - Follow any project conventions in `.squad/decisions.md`
+- Target `main` unless the issue explicitly identifies a lower stacked PR.
+- Run the smallest complete existing local validation for the issue first and
+  record exact commands/results. Required failures block readiness and normally
+  block PR creation.
 
 ## Decisions
 
