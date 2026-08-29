@@ -1,0 +1,22 @@
+[
+  {
+    "id": "a029d433-520b-4d41-8ae3-40e444ef0e49",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Weekly retrospective enforcement",
+    "path": ".squad\\decisions\\inbox\\picard-weekly-retrospective-enforcement-a029d433.md",
+    "status": "active",
+    "createdAt": "2026-08-29T04:22:36.614Z",
+    "updatedAt": "2026-08-29T04:22:36.614Z"
+  },
+  {
+    "id": "0b3cadf7-07bd-4aa2-8ec5-4d049f1e4c54",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Weekly retrospective enforcement",
+    "path": ".squad\\decisions\\inbox\\picard-weekly-retrospective-enforcement-0b3cadf7.md",
+    "status": "active",
+    "createdAt": "2026-08-29T04:23:47.330Z",
+    "updatedAt": "2026-08-29T04:23:47.330Z"
+  }
+]
