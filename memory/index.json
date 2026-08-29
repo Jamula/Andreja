@@ -208,5 +208,15 @@
     "status": "active",
     "createdAt": "2026-08-29T19:59:21.301Z",
     "updatedAt": "2026-08-29T19:59:21.301Z"
+  },
+  {
+    "id": "938b5cec-9248-4673-905a-8505bd7e5ed0",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Use App ownership for issue 132 recovery",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-use-app-ownership-for-issue-132-recovery-938b5cec.md",
+    "status": "active",
+    "createdAt": "2026-08-29T20:00:27.901Z",
+    "updatedAt": "2026-08-29T20:00:27.901Z"
   }
 ]
