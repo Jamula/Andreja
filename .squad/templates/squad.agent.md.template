@@ -80,9 +80,9 @@ Check: Does `{TEAM_ROOT}/team.md` exist? (fall back to `.ai-team/team.md` for re
 - Use `create_session` for agents that produce commits (code, config, docs)
 - Use `task` tool for pure analysis, coordination, or read-only research
 - **Naming:** `"{Name} {verb}ing {noun}"` — 40-char max, sentence case
-- **Concurrency:** Generic work may use 4-5 simultaneous sub-sessions. Issue
-  drain uses one batch of up to five child issue sessions, capped by lower
-  verified platform capacity and every safety gate.
+- **Concurrency:** Generic work may use up to five simultaneous sub-sessions.
+  Issue drain uses waves of five child issue sessions, reduced by lower verified
+  platform capacity and every safety gate.
 - **Depth:** No sub-sub-sessions — spawned agents use `task` if they need to delegate
 - **Fallback:** Outside issue drain, a definitive `create_session` failure may
   use `task`. Issue drain permits exactly one paced local fallback only after
@@ -478,9 +478,12 @@ Never crash or halt because an MCP tool is missing. MCP tools are enhancements, 
 
 > **⚠️ Issue-drain exception:** Queue work is governed by
 > `.squad/skills/squad-issue-drain/PROMPT.md`. Universal Section 0, verified
-> atomic ownership, lower App capacity, 10-second spawn-attempt pacing,
-> correlated all-ACK batch release, and ambiguous-creation rules override eager
-> execution and generic fan-out.
+> atomic issue reservations, lower App capacity, exact 10-second spawn-attempt
+> pacing without in-turn sleep, and the all-successfully-created-child ACK
+> barrier override eager execution and generic fan-out. Launch same-wave members
+> without waiting for individual ACKs. A failed/ambiguous creation, changed
+> eligibility, lost capacity, or closed safety gate stops the remainder of that
+> wave without replacement and blocks the next wave.
 
 The Coordinator's default mindset is **launch aggressively, collect results later.**
 
@@ -516,8 +519,11 @@ Before spawning, assess: **is there a reason this MUST be sync?** If not, use ba
 
 ### Parallel Fan-Out
 
-This section governs ordinary routed work only. Issue-drain queue admission uses
-its stricter batch contract and must not launch all children in one tool turn.
+This section governs ordinary routed work only. Issue-drain queue admission
+reserves up to five issues, launches one reserved child per exact 10-second
+boundary without waiting for individual ACKs, and must not launch all children
+in one tool turn. It releases only after the spawn phase closes and every
+successfully created child returns a valid correlated ACK.
 
 When the user gives any task, the Coordinator MUST:
 
@@ -922,6 +928,16 @@ existing repository-scoped atomic lease or conditional-create/CAS capability.
 Without it, remain read-only and claim no exclusivity. If Section 0 runs
 `Retrospective with Enforcement`, use the exclusive weekly retrospective Scribe
 completion mode in this file.
+
+Ralph must follow the five-child wave ledger rather than generic simultaneous
+fan-out: reserve each issue before creation, use a one-time wake or
+`NEXT_TICK_REQUIRED` at every 10-second boundary, and do not wait for an
+individual ACK before launching the next reserved member. Any failed or
+ambiguous creation, changed eligibility, lost capacity, or closed safety gate
+stops the remaining wave. Every successfully created child remains owned and
+paused until the all-created-child ACK barrier passes. A negative, missing, or
+invalid ACK blocks the next wave; timeout/restart permits one inspection at five
+minutes and never replacement while ownership is uncertain.
 
 Ralph may classify an approved, check-passing PR as
 `READY_FOR_AGENT_MERGE`, but MUST NOT merge, auto-merge, enqueue, or activate

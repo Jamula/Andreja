@@ -294,6 +294,23 @@ git worktree remove ../worktrees/{issue-number}
 
 When spawning an agent to work on an issue, include this context block:
 
+Issue-drain admissions also follow the stricter wave lifecycle before this
+ordinary implementation flow:
+
+1. Reserve up to five independent issues under the verified atomic owner,
+   reduced by the lower confirmed platform limit.
+2. Create one reserved child at each exact 10-second boundary using a one-time
+   wake or `NEXT_TICK_REQUIRED`, without waiting for the preceding ACK.
+3. Stop all later launches on failed/ambiguous creation, changed eligibility,
+   lost capacity, or a closed safety gate. Preserve created children; do not
+   replace uncertainty.
+4. Keep created children paused until every successfully created child returns
+   a valid correlated ACK. Missing or negative ACKs block; invalid/corrupt ACKs
+   are a distinct failure. Inspect once at five minutes or restart.
+5. A completed wave may advance after the barrier. A stopped partial wave may
+   release ACKed created children but cannot begin the next wave until its stop
+   reason and a fresh admission scan are reconciled.
+
 ```markdown
 ## ISSUE CONTEXT
 

@@ -11,14 +11,17 @@
 
 **⚡ Context budget rule:** After collecting results from 3+ agents, use compact format (agent + 1-line outcome). Full details go in orchestration log via Scribe.
 
-After each batch of agent work:
+After each ordinary batch of agent work, or after issue drain has explicitly
+released the successfully created members of a wave:
 
 1. **Collect results** via `read_agent` (wait: true, timeout: 300).
 
 2. **Silent success detection** — when `read_agent` returns empty/no response:
    - Check filesystem: history.md modified? New decision inbox files? Output files created?
    - Files found → `"⚠️ {Name} completed (files verified) but response lost."` Treat as DONE.
-   - No files → `"❌ {Name} failed — no work product."` Consider re-spawn.
+   - No files → `"❌ {Name} failed — no work product."` Consider re-spawn only
+     for ordinary work. Issue drain never replaces a missing or uncertain child;
+     it preserves ownership and follows its five-minute inspect-once rule.
 
 3. **Show compact results:** `{emoji} {Name} — {1-line summary of what they did}`
 
@@ -27,6 +30,10 @@ After each batch of agent work:
    or awaiting read-back. Exclusive completion takes precedence. Do not start
    generic Scribe until its single conditional-create attempt has a reconciled
    outcome:
+   For issue drain, the spawn manifest must preserve the reserved wave/batch ID,
+   stable tokens, all successfully created children, stopped-partial status, ACK
+   dispositions, and release state. Scribe must not turn missing/negative ACKs
+   or uncertain creation into release, advancement, or replacement.
 
 ```
 agent_type: "general-purpose"

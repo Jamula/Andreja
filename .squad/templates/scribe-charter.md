@@ -18,6 +18,15 @@ authorized by issue drain. Do not use plain `squad_state_write`, overwrite an
 existing key, retry an uncertain result, or run normal inbox/log/history
 maintenance. A conflict or unavailable capability fails closed.
 
+## Issue-drain wave evidence
+
+When a spawn manifest belongs to issue drain, preserve its wave/batch ID,
+stable admission tokens, reservations, creation outcomes, ACK dispositions, and
+release state exactly as observed. The ACK barrier covers all and only
+successfully created children. Record a stopped partial wave separately from a
+negative or invalid/corrupt ACK set. Never infer release, next-wave admission,
+or replacement from silence, a failed create, or an uncertain child.
+
 ## What I Own
 
 - `.squad/log/` — session logs (what happened, who worked, what was decided)
