@@ -30,7 +30,7 @@ function completedLog(completedAt = '2026-08-29T04:17:54.580Z') {
       '- #44',
       '',
       '## Decisions',
-      '- Queue admission fails closed — governed decision a029d433',
+      '- Queue admission fails closed — Reference: governed decision a029d433',
       '',
       '## Retro actions',
       '- created: Automate retrospective enforcement — https://github.com/Jamula/Andreja/issues/122',
@@ -109,6 +109,52 @@ test('the existing detailed runtime log is accepted during canonical-key rollout
     stateAvailable: true,
     enumerationComplete: true,
   }).allowed, true);
+});
+
+test('legacy rollout records require a substantive list entry in every section', () => {
+  const entries = [
+    ['Evidence', '- GitHub counts reviewed.'],
+    ['Decisions', '- Queue admission fails closed.'],
+    ['Actions', '- Existing issues reused.'],
+  ];
+
+  for (const [name, entry] of entries) {
+    for (const body of ['', ' \t', '-   ']) {
+      const legacy = {
+        key: 'log/2026-08-28T21-17-54.580-07-00-retrospective-with-enforcement.md',
+        content: [
+          '# Retrospective with Enforcement — 2026-08-28',
+          '',
+          'Evidence window: 2026-08-22T04:17:54.580Z through 2026-08-29T04:17:54.580Z.',
+          '',
+          '## Evidence',
+          '- GitHub counts reviewed.',
+          '',
+          '## Decisions',
+          '- Queue admission fails closed.',
+          '',
+          '## Actions',
+          '- Existing issues reused.',
+        ].join('\n').replace(`## ${name}\n${entry}`, `## ${name}\n${body}`),
+      };
+
+      assert.equal(
+        validateCompletedLog(legacy).reason,
+        'not-a-completed-legacy-record',
+        `${name} without a substantive list entry must fail validation`,
+      );
+      assert.equal(
+        assessAdmission({
+          now,
+          logs: [legacy],
+          stateAvailable: true,
+          enumerationComplete: true,
+        }).allowed,
+        false,
+        `${name} without a substantive list entry must not allow admission`,
+      );
+    }
+  }
 });
 
 test('an unavailable configured enforcement component does not bypass built-in enforcement', () => {
@@ -255,6 +301,7 @@ test('completion is a single deterministic runtime-state write per UTC weekly cy
   assert.match(first.write.content, /## Blockers/);
   assert.match(first.write.content, /## Decisions/);
   assert.match(first.write.content, /## Retro actions/);
+  assert.equal(validateCompletedLog(first.write).valid, true);
 
   const afterWrite = prepareCompletion({
     ...input,
@@ -302,7 +349,7 @@ test('state failures and malformed canonical records fail closed', () => {
 test('canonical completion validation rejects empty required section bodies', () => {
   const sections = [
     ['Blockers', '- #44'],
-    ['Decisions', '- Queue admission fails closed — governed decision a029d433'],
+    ['Decisions', '- Queue admission fails closed — Reference: governed decision a029d433'],
     [
       'Retro actions',
       '- created: Automate retrospective enforcement — https://github.com/Jamula/Andreja/issues/122',
@@ -325,7 +372,7 @@ test('canonical completion validation rejects empty required section bodies', ()
 test('admission rejects a canonical completion with a blank required section', () => {
   const log = completedLog();
   log.content = log.content.replace(
-    '## Decisions\n- Queue admission fails closed — governed decision a029d433\n',
+    '## Decisions\n- Queue admission fails closed — Reference: governed decision a029d433\n',
     '## Decisions\n \t\n',
   );
 
@@ -341,6 +388,139 @@ test('admission rejects a canonical completion with a blank required section', (
     key: log.key,
     detail: 'required-section-entries-missing',
   });
+});
+
+test('canonical completion validation enforces each section entry shape', () => {
+  const malformedEntries = [
+    ['Blockers', '- #44', '- arbitrary text'],
+    [
+      'Decisions',
+      '- Queue admission fails closed — Reference: governed decision a029d433',
+      '- Queue admission fails closed — governed decision a029d433',
+    ],
+    [
+      'Retro actions',
+      '- created: Automate retrospective enforcement — https://github.com/Jamula/Andreja/issues/122',
+      '- created: Automate retrospective enforcement — https://api.github.com/repos/Jamula/Andreja/issues/122',
+    ],
+  ];
+
+  for (const [name, validEntry, malformedEntry] of malformedEntries) {
+    const log = completedLog();
+    log.content = log.content.replace(
+      `## ${name}\n${validEntry}`,
+      `## ${name}\n${malformedEntry}`,
+    );
+    assert.equal(
+      validateCompletedLog(log).reason,
+      'required-section-entries-invalid',
+      `${name} must reject malformed entries`,
+    );
+    assert.equal(
+      assessAdmission({
+        now,
+        logs: [log],
+        stateAvailable: true,
+        enumerationComplete: true,
+      }).allowed,
+      false,
+      `${name} must not allow admission with malformed entries`,
+    );
+  }
+
+  const mixedSentinel = completedLog();
+  mixedSentinel.content = mixedSentinel.content.replace(
+    '## Blockers\n- #44',
+    '## Blockers\n- No blockers.\n- #44',
+  );
+  assert.equal(
+    validateCompletedLog(mixedSentinel).reason,
+    'required-section-entries-invalid',
+  );
+});
+
+test('completion preserves explicit no-item sentinels accepted by validation', () => {
+  const completion = prepareCompletion({
+    now,
+    logs: [],
+    stateAvailable: true,
+    enumerationComplete: true,
+    evidence: {
+      windowStart: '2026-08-22T04:17:54.580Z',
+      windowEnd: '2026-08-29T04:17:54.580Z',
+      shippedCount: 56,
+      openCount: 27,
+    },
+    blockers: [],
+    decisions: [],
+    actions: [],
+    gates: {
+      evidenceReviewComplete: true,
+      decisionReviewComplete: true,
+      decisionsRecorded: true,
+      duplicateSearchComplete: true,
+      actionIssuesComplete: true,
+      privacyReviewComplete: true,
+    },
+  });
+
+  assert.equal(completion.ready, true);
+  assert.match(completion.write.content, /## Blockers\n- No blockers\./);
+  assert.match(completion.write.content, /## Decisions\n- No new decision required\./);
+  assert.match(
+    completion.write.content,
+    /## Retro actions\n- No actions after complete duplicate search\./,
+  );
+  assert.equal(validateCompletedLog(completion.write).valid, true);
+});
+
+test('completion fails closed on malformed caller entries for every section', () => {
+  const input = {
+    now,
+    logs: [],
+    stateAvailable: true,
+    enumerationComplete: true,
+    evidence: {
+      windowStart: '2026-08-22T04:17:54.580Z',
+      windowEnd: '2026-08-29T04:17:54.580Z',
+      shippedCount: 56,
+      openCount: 27,
+    },
+    blockers: ['#44'],
+    decisions: [{ summary: 'Fail closed', reference: 'governed decision a029d433' }],
+    actions: [{
+      summary: 'Automate retrospective enforcement',
+      disposition: 'existing',
+      issueUrl: 'https://github.com/Jamula/Andreja/issues/122',
+    }],
+    gates: {
+      evidenceReviewComplete: true,
+      decisionReviewComplete: true,
+      decisionsRecorded: true,
+      duplicateSearchComplete: true,
+      actionIssuesComplete: true,
+      privacyReviewComplete: true,
+    },
+  };
+  const malformed = [
+    { blockers: ['arbitrary text'] },
+    { decisions: [{ summary: 'Fail closed', reference: '' }] },
+    { decisions: [{ summary: 'Fail closed', reference: { key: 'decision' } }] },
+    {
+      actions: [{
+        summary: 'Automate retrospective enforcement',
+        disposition: 'existing',
+        issueUrl: 'https://api.github.com/repos/Jamula/Andreja/issues/122',
+      }],
+    },
+  ];
+
+  for (const override of malformed) {
+    const result = prepareCompletion({ ...input, ...override });
+    assert.equal(result.ready, false);
+    assert.equal(result.write, null);
+    assert.match(result.reason, /^record-invalid:/);
+  }
 });
 
 test('timestamps and both evidence-window endpoints require strict timezone-qualified RFC 3339', () => {

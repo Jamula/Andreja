@@ -58,6 +58,18 @@ does not disable or relax admission.
 The completion record contains only the evidence window, shipped/open counts,
 blocker references, decision summaries/references, and action issue links. Do
 not write an additional ceremony or session summary log for the same cycle.
+Canonical section entries use these exact shapes:
+
+- **Blockers:** `- #123`, `- owner/repository#123`, or a canonical GitHub issue
+  or pull-request URL; use only `- No blockers.` when none exist.
+- **Decisions:** `- <summary> — Reference: <durable reference>`; use only
+  `- No new decision required.` when none are required.
+- **Retro actions:** `- created|existing: <summary> — https://github.com/<owner>/<repository>/issues/<number>`;
+  use only `- No actions after complete duplicate search.` when the completed
+  search found no actions.
+
+Arbitrary bullets, malformed links, empty sections, or a no-item sentinel mixed
+with other entries invalidate the record and keep admission closed.
 
 ## Recovery
 

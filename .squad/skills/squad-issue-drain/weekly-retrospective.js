@@ -3,8 +3,13 @@
 const WINDOW_MILLISECONDS = 7 * 24 * 60 * 60 * 1000;
 const CANONICAL_PREFIX = 'log/weekly-retrospective-';
 const SCHEMA_MARKER = '<!-- weekly-retrospective:v1 -->';
+const NO_BLOCKERS = 'No blockers.';
+const NO_DECISIONS = 'No new decision required.';
+const NO_RETRO_ACTIONS = 'No actions after complete duplicate search.';
+const GITHUB_ISSUE_URL =
+  /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/issues\/\d+$/;
 const BLOCKER_REFERENCE =
-  /^(?:#\d+|[^/\s]+\/[^#\s]+#\d+|https:\/\/github\.com\/[^/]+\/[^/]+\/(?:issues|pull)\/\d+)$/;
+  /^(?:#\d+|[^/\s]+\/[^/#\s]+#\d+|https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/(?:issues|pull)\/\d+)$/;
 const RFC3339_TIMESTAMP =
   /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d):([0-5]\d)(?:\.(\d{1,3}))?(Z|[+-](?:(?:0\d|1[0-3]):[0-5]\d|14:00))$/;
 
@@ -99,6 +104,59 @@ function sectionHasListEntry(content, name) {
     .some((line) => /^[-*+]\s+\S/.test(line.trim()));
 }
 
+function canonicalSectionEntries(content, name) {
+  const lines = content.split(/\r?\n/);
+  const sectionStart = lines.indexOf(`## ${name}`);
+  if (sectionStart === -1) {
+    return { valid: false, reason: 'required-sections-missing' };
+  }
+  const nextSection = lines.findIndex(
+    (line, index) => index > sectionStart && /^##\s+\S/.test(line),
+  );
+  const sectionEnd = nextSection === -1 ? lines.length : nextSection;
+  const body = lines
+    .slice(sectionStart + 1, sectionEnd)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (body.length === 0) return { valid: false, reason: 'required-section-entries-missing' };
+  if (body.some((line) => !/^- \S/.test(line))) {
+    return { valid: false, reason: 'required-section-entries-invalid' };
+  }
+  return { valid: true, entries: body.map((line) => line.slice(2)) };
+}
+
+function isSentinelOnly(entries, sentinel) {
+  return entries.length === 1 && entries[0] === sentinel;
+}
+
+function validateCanonicalSections(content) {
+  const validators = {
+    Blockers: (entries) =>
+      isSentinelOnly(entries, NO_BLOCKERS)
+      || entries.every((entry) => BLOCKER_REFERENCE.test(entry)),
+    Decisions: (entries) =>
+      isSentinelOnly(entries, NO_DECISIONS)
+      || entries.every((entry) =>
+        /^\S(?:.*\S)? — Reference: \S(?:.*\S)?$/.test(entry)),
+    'Retro actions': (entries) =>
+      isSentinelOnly(entries, NO_RETRO_ACTIONS)
+      || entries.every((entry) => {
+        const match = entry.match(/^(created|existing): (\S(?:.*\S)?) — (\S+)$/);
+        return Boolean(match && GITHUB_ISSUE_URL.test(match[3]));
+      }),
+  };
+
+  for (const [name, validator] of Object.entries(validators)) {
+    const parsed = canonicalSectionEntries(content, name);
+    if (!parsed.valid) return parsed;
+    if (!validator(parsed.entries)) {
+      return { valid: false, reason: 'required-section-entries-invalid' };
+    }
+  }
+  return { valid: true };
+}
+
 function validateCompletedLog(log) {
   if (!log || typeof log.key !== 'string' || typeof log.content !== 'string') {
     return { valid: false, reason: 'missing-log-data' };
@@ -145,9 +203,8 @@ function validateCompletedLog(log) {
     if (requiredSections.some((name) => !new RegExp(`^## ${name}$`, 'm').test(log.content))) {
       return { valid: false, reason: 'required-sections-missing' };
     }
-    if (requiredSections.some((name) => !sectionHasListEntry(log.content, name))) {
-      return { valid: false, reason: 'required-section-entries-missing' };
-    }
+    const sectionValidation = validateCanonicalSections(log.content);
+    if (!sectionValidation.valid) return sectionValidation;
     return { valid: true, completedAt: completedDate };
   }
 
@@ -171,7 +228,10 @@ function validateCompletedLog(log) {
     && evidenceWindowValid
     && /^## Evidence$/m.test(log.content)
     && /^## Decisions$/m.test(log.content)
-    && /^## Actions$/m.test(log.content);
+    && /^## Actions$/m.test(log.content)
+    && sectionHasListEntry(log.content, 'Evidence')
+    && sectionHasListEntry(log.content, 'Decisions')
+    && sectionHasListEntry(log.content, 'Actions');
   return legacyComplete
     ? { valid: true, completedAt, legacy: true }
     : { valid: false, reason: 'not-a-completed-legacy-record' };
@@ -311,7 +371,10 @@ function isNonNegativeInteger(value) {
 }
 
 function oneLine(value, name) {
-  const text = String(value || '').trim();
+  if (typeof value !== 'string') {
+    throw new Error(`${name} must be a non-empty single line`);
+  }
+  const text = value.trim();
   if (!text || /[\r\n]/.test(text)) {
     throw new Error(`${name} must be a non-empty single line`);
   }
@@ -319,7 +382,10 @@ function oneLine(value, name) {
 }
 
 function referenceList(values, emptyText) {
-  if (!values || values.length === 0) return [`- ${emptyText}`];
+  if (!Array.isArray(values)) {
+    throw new Error('blockers must be an array');
+  }
+  if (values.length === 0) return [`- ${emptyText}`];
   return values.map((value) => {
     const reference = oneLine(value, 'blocker reference');
     if (!BLOCKER_REFERENCE.test(reference)) {
@@ -395,19 +461,32 @@ function prepareCompletion({
   let decisionLines;
   let actionLines;
   try {
-    blockerLines = referenceList(blockers, 'None.');
+    blockerLines = referenceList(blockers, NO_BLOCKERS);
+    if (!Array.isArray(decisions)) {
+      throw new Error('decisions must be an array');
+    }
     decisionLines = decisions.length === 0
-      ? ['- No new decision required.']
-      : decisions.map((decision) =>
-        `- ${oneLine(decision.summary, 'decision summary')} — ${oneLine(decision.reference, 'decision reference')}`);
+      ? [`- ${NO_DECISIONS}`]
+      : decisions.map((decision) => {
+        if (!decision || typeof decision !== 'object' || Array.isArray(decision)) {
+          throw new Error('decision must be an object');
+        }
+        return `- ${oneLine(decision.summary, 'decision summary')} — Reference: ${oneLine(decision.reference, 'decision reference')}`;
+      });
+    if (!Array.isArray(actions)) {
+      throw new Error('actions must be an array');
+    }
     actionLines = actions.length === 0
-      ? ['- No genuinely new action identified.']
+      ? [`- ${NO_RETRO_ACTIONS}`]
       : actions.map((action) => {
+        if (!action || typeof action !== 'object' || Array.isArray(action)) {
+          throw new Error('action must be an object');
+        }
         if (!['existing', 'created'].includes(action.disposition)) {
           throw new Error('action disposition must be existing or created');
         }
         const url = oneLine(action.issueUrl, 'action issue URL');
-        if (!/^https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/\d+$/.test(url)) {
+        if (!GITHUB_ISSUE_URL.test(url)) {
           throw new Error('action issue URL must be a GitHub issue URL');
         }
         return `- ${action.disposition}: ${oneLine(action.summary, 'action summary')} — ${url}`;
@@ -436,6 +515,15 @@ function prepareCompletion({
     ...actionLines,
     '',
   ].join('\n');
+
+  const validation = validateCompletedLog({ key, content });
+  if (!validation.valid) {
+    return {
+      ready: false,
+      reason: `record-invalid:generated completion failed validation (${validation.reason})`,
+      write: null,
+    };
+  }
 
   return { ready: true, reason: 'completion-ready', write: { key, content } };
 }

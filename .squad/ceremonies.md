@@ -59,7 +59,8 @@
 1. What shipped this week? (closed issues, merged PRs)
 2. What did not ship? (open issues, blockers)
 3. Root cause on any failures
-4. Action items -- each MUST become a GitHub Issue labeled retro-action
+4. Action items -- reuse existing source issues without relabeling them; create
+   and label `retro-action` issues only for genuinely new, non-duplicate actions
 
 **Coordinator integration:**
 At round start, use the built-in fail-closed protocol in
