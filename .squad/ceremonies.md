@@ -54,16 +54,19 @@
 | **Participants** | all |
 | **Time budget** | focused |
 | **Enabled** | yes |
-| **Enforcement skill** | retro-enforcement |
 
 **Agenda:**
 1. What shipped this week? (closed issues, merged PRs)
 2. What did not ship? (open issues, blockers)
 3. Root cause on any failures
-4. Action items -- each MUST become a GitHub Issue labeled retro-action
+4. Action items -- reuse existing source issues without relabeling them; create
+   and label `retro-action` issues only for genuinely new, non-duplicate actions
 
 **Coordinator integration:**
-At round start, call Test-RetroOverdue (see skill retro-enforcement). If overdue, run this ceremony before the work queue.
+At round start, use the built-in fail-closed protocol in
+`.squad/skills/squad-issue-drain/PROMPT.md`. If the governed completion record is
+overdue, unavailable, incomplete, invalid, or duplicated, run this ceremony
+before the work queue. The optional `retro-enforcement` skill is not required.
 
 **Why GitHub Issues, not markdown:**
 Production data: 0% completion across 6 retros using markdown checklists, 100% after switching to GitHub Issues.

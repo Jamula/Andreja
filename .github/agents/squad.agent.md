@@ -287,7 +287,7 @@ The routing table determines **WHO** handles work. After routing, use Response M
 | Issues/backlog request ("pull issues", "show backlog", "work on #N") | Follow GitHub Issues Mode (see that section) |
 | PRD intake ("here's the PRD", "read the PRD at X", pastes spec) | Follow PRD Mode (see that section) |
 | Human member management ("add {name} as PM", routes to human) | Follow Human Team Members (see that section) |
-| Ralph commands ("Ralph, go", "keep working", "Ralph, status", "Ralph, idle") | Follow Ralph — Work Monitor (see that section) |
+| Ralph commands ("Ralph, go", "keep working", "Ralph, status", "Ralph, idle") | Before any Ralph scan or issue/PR enumeration, unconditionally load `squad-issue-drain` and follow its `PROMPT.md` Section 0 admission contract; only then follow Ralph — Work Monitor (see that section) |
 | "squad commands", "what can squad do", "show me squad options", "slash commands", "what commands are available" | Read `.github/skills/squad/SKILL.md`, present categorized menu (see squad skill). Users can also invoke this directly via `/squad`. |
 | "upgrade squad", "update squad", "what's new in squad", "install the update" | Run upgrade flow per `.squad/templates/session-init-reference.md` |
 | User says "spawn a squad", "another squad", "two squads", "second squad", "fan out to squads", "delegate to a squad", or any phrasing that treats "squad" as a unit to spawn or address | This is the Squad-PRODUCT concept (a peer with its own `.squad/`), NOT generic English "team" or "group". **Before any `task` spawn**, invoke the `skill` tool on `cross-squad` (discovery via registry/upstream) AND `cross-squad-communication` (sync CLI / git-async / GH-issue protocols) to load the full peer-squad workflow. Then delegate via Pattern 0/1/2/3 — NOT by fanning out raw `task` agents inside your own coordinator context. **Default = literal Squad install.** Calling `task` sub-agents "squad-alpha" / "squad-beta" does NOT make them squads — that is the explicit anti-pattern. **If the request is ambiguous** (could be either "two real `.squad/` installs" or "two ad-hoc groups of agents"), you MUST `ask_user` with a 2-choice prompt — `["Real squads — separate .squad/ per squad (heavier, persistent)", "Ad-hoc agents — one-shot task dispatch (lighter, ephemeral)"]` — and never silently pick the cheaper option. If the peer doesn't exist yet, walk the user through `squad init` in a separate directory or `squad registry add` first. |
@@ -602,6 +602,17 @@ prompt: |
   Never speak to user. End with plain text summary after all tool calls.
 ```
 
+**Weekly retrospective completion mode (exclusive):** When `Retrospective with
+Enforcement` runs as Ralph's admission gate, do not use the normal Scribe spawn
+template or generic ceremony recording. After the issue-drain contract returns
+`ready: true`, pass Scribe only its returned canonical key and content. Scribe
+MUST call `squad_state_write` exactly once with that exact pair, then re-list
+and re-read the key without making another mutation. In this mode suppress the
+generic session, ceremony, orchestration, and health logs plus inbox, decision,
+and history maintenance. This narrow override supersedes Scribe's normal
+logging contract only for this admission-gate ceremony; all other Scribe work
+continues to use the normal template.
+
 **On-demand reference:** Read `.squad/templates/spawn-reference.md` for the full spawn template, Ghost Protocol block, all `STATE_BACKEND` conditionals, and post-work instructions.
 
 ### ❌ What NOT to Do (Anti-Patterns)
@@ -632,7 +643,7 @@ Ceremonies are structured team meetings where agents align before or after work.
 1. Before spawning a work batch, check `.squad/ceremonies.md` for auto-triggered `before` ceremonies matching the current task condition.
 2. After a batch completes, check for `after` ceremonies. Manual ceremonies run only when the user asks.
 3. Spawn the facilitator (sync) using the template in the reference file. Facilitator spawns participants as sub-tasks.
-4. For `before`: include ceremony summary in work batch spawn prompts. Spawn Scribe (background) to record.
+4. For `before`: include ceremony summary in work batch spawn prompts. Spawn Scribe (background) to record, except `Retrospective with Enforcement` used as Ralph's admission gate MUST use the exclusive weekly retrospective completion mode above and MUST NOT create a generic ceremony or session log.
 5. **Ceremony cooldown:** Skip auto-triggered checks for the immediately following step.
 6. Show: `📋 {CeremonyName} completed — facilitated by {Lead}. Decisions: {count} | Action items: {count}.`
 
@@ -827,6 +838,15 @@ Before connecting to a GitHub repository, verify that the `gh` CLI is available 
 Ralph is the always-on work monitor. When active, Ralph runs a continuous scan → act → rescan loop until the board is clear or the user explicitly says to stop; a clear board moves Ralph to idle-watch, not full shutdown.
 
 Do not pause for permission between work items when Ralph is active.
+
+**Mandatory admission prerequisite:** Before every Ralph work-check cycle,
+including status-only checks, unconditionally load `squad-issue-drain`, read its
+`.squad/skills/squad-issue-drain/PROMPT.md`, and execute Section 0. Ralph MUST
+NOT scan or enumerate issues or PRs until that contract permits queue work.
+Section 0 owns the fail-closed checks and runtime-state write protocol; do not
+reimplement them or write runtime-owned state directly. If it runs
+`Retrospective with Enforcement`, use the exclusive weekly retrospective Scribe
+completion mode in this file.
 
 **On-demand reference:** Read `.squad/templates/ralph-reference.md` for the full work-check cycle, watch mode, state model, board format, and follow-up integration.
 

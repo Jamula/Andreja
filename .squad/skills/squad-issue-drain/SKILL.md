@@ -20,5 +20,9 @@ Start with the MVP defaults:
 - use Agent Merge to reach merge-ready, while the app performs the merge; and
 - archive owned sessions only after GitHub confirms merge.
 
+Queue admission is fail-closed behind the built-in weekly retrospective protocol
+in `PROMPT.md`. It uses runtime state tools and remains active when the optional
+`retro-enforcement` component is missing.
+
 Always render the ready/active/blocked issue tree before starting work. Reconcile
 existing sessions, branches, worktrees, and PRs before every new admission.
