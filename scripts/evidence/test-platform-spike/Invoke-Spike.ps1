@@ -2,7 +2,8 @@
 param(
     [string] $Dotnet = "dotnet",
     [ValidateRange(3, 21)]
-    [int] $WarmRuns = 5
+    [int] $WarmRuns = 5,
+    [switch] $ValidateHelpersOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -165,9 +166,63 @@ function Assert-TimeoutFailureResult {
         throw "Expected one failed timeout result named '$TestName' in '$Path'."
     }
 
-    if ($results[0].OuterXml -notmatch "(?i)timeout|timed out|cancel") {
+    # Restrict evidence to the runner's error message; result attributes contain authored identifiers.
+    $diagnosticText = @(
+        $results[0].SelectNodes(
+            "./*[local-name()='Output']/*[local-name()='ErrorInfo']/*[local-name()='Message']"
+        ) | ForEach-Object { $_.InnerText }
+    ) -join [Environment]::NewLine
+    if ($diagnosticText -notmatch "(?i)\b(?:timeout|timed\s+out|cancel(?:led|ed|lation|ling|ing)?)\b") {
         throw "The failed result in '$Path' contains no timeout/cancellation evidence."
     }
+}
+
+function Test-TimeoutDiagnosticAssertion {
+    $regressionPath = Join-Path $resultsRoot "timeout-diagnostic-regression.trx"
+    @'
+<TestRun>
+  <ResultSummary>
+    <Counters total="1" executed="1" passed="0" failed="1" />
+  </ResultSummary>
+  <Results>
+    <UnitTestResult testName="TimeoutNamedButUnrelatedFailure" outcome="Failed">
+      <Output>
+        <ErrorInfo>
+          <Message>Expected values to be equal.</Message>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+  </Results>
+</TestRun>
+'@ | Set-Content -LiteralPath $regressionPath
+
+    try {
+        $unrelatedFailureRejected = $false
+        try {
+            Assert-TimeoutFailureResult `
+                -Path $regressionPath `
+                -TestName "TimeoutNamedButUnrelatedFailure"
+        }
+        catch {
+            if ($_.Exception.Message -notlike "*contains no timeout/cancellation evidence.") {
+                throw
+            }
+            $unrelatedFailureRejected = $true
+        }
+
+        if (-not $unrelatedFailureRejected) {
+            throw "A test name containing 'Timeout' incorrectly satisfied the diagnostic assertion."
+        }
+    }
+    finally {
+        Remove-Item -LiteralPath $regressionPath -Force -ErrorAction SilentlyContinue
+    }
+}
+
+Test-TimeoutDiagnosticAssertion
+if ($ValidateHelpersOnly) {
+    Write-Host "Spike helper regression validation passed."
+    return
 }
 
 function Get-DiscoveryCount {
