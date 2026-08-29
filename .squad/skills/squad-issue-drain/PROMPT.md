@@ -35,7 +35,9 @@ At every round start, before enumerating or admitting queue work:
    legacy `*-retrospective-with-enforcement.md` entries through
    `squad_state_read`. An unavailable bridge, incomplete listing/read, malformed
    canonical record, future timestamp, or duplicate completed record for one
-   UTC Monday-through-Sunday cycle blocks admission.
+   UTC Monday-through-Sunday cycle blocks admission. Current, completion, and
+   both evidence-window timestamps must be timezone-qualified RFC 3339 values;
+   malformed or timezone-less values block admission.
 2. Apply the deterministic seven-day rules in `weekly-retrospective.js`.
    A completed record is current through exactly seven elapsed days. This check
    is built into issue drain and must not depend on the configured
@@ -49,15 +51,18 @@ At every round start, before enumerating or admitting queue work:
 5. For each concrete action, search all existing open and closed GitHub issues.
    Reuse and link a matching source-of-truth issue. Only a genuinely new,
    non-duplicate action may become a new issue labeled `retro-action`.
-6. Completion requires all evidence, decision, duplicate-search, action-issue,
-   and privacy gates in `prepareCompletion` to pass. Only then make exactly one
-   `squad_state_write` to its canonical cycle key using the returned content.
-   Do not also write a ceremony summary log. Re-list and re-read the key before
-   resuming queue work.
+6. Completion requires confirmed state availability and complete enumeration plus
+   all evidence, decision, duplicate-search, action-issue, and privacy gates in
+   `prepareCompletion` to pass. The orchestrator must not write `log/` directly.
+   Only then hand the returned canonical key and content to Scribe; Scribe alone
+   makes exactly one `squad_state_write` through the runtime state backend. Do not
+   also write a ceremony summary log. Re-list and re-read the key before resuming
+   queue work.
 
-The state write is the final atomic ceremony step. An interrupted ceremony has
-no completion record and remains blocking. If interruption occurs after the
-write, the next round reuses that valid record and must not write another.
+Scribe's runtime state write is the final atomic ceremony step. An interrupted
+ceremony has no completion record and remains blocking. If interruption occurs
+after the write, the next round reuses that valid record and must not write
+another.
 Never hand-write runtime state, use git notes, overwrite an existing key, or
 create a second log for a cycle. Follow
 `docs/operations/weekly-retrospective.md` for ownership and recovery.

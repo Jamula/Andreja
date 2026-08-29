@@ -5,17 +5,41 @@ const CANONICAL_PREFIX = 'log/weekly-retrospective-';
 const SCHEMA_MARKER = '<!-- weekly-retrospective:v1 -->';
 const BLOCKER_REFERENCE =
   /^(?:#\d+|[^/\s]+\/[^#\s]+#\d+|https:\/\/github\.com\/[^/]+\/[^/]+\/(?:issues|pull)\/\d+)$/;
+const RFC3339_TIMESTAMP =
+  /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d):([0-5]\d)(?:\.(\d+))?(Z|[+-](?:(?:0\d|1[0-3]):[0-5]\d|14:00))$/;
 
 function requiredDate(value, name) {
+  const match = typeof value === 'string' ? value.match(RFC3339_TIMESTAMP) : null;
+  if (!match) {
+    throw new Error(`${name} must be a timezone-qualified RFC 3339 timestamp`);
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [
+    31, leapYear ? 29 : 28, 31, 30, 31, 30,
+    31, 31, 30, 31, 30, 31,
+  ];
+  if (month < 1 || month > 12 || day < 1 || day > daysInMonth[month - 1]) {
+    throw new Error(`${name} must be a timezone-qualified RFC 3339 timestamp`);
+  }
+
   const timestamp = Date.parse(value);
   if (!Number.isFinite(timestamp)) {
-    throw new Error(`${name} must be an ISO 8601 timestamp`);
+    throw new Error(`${name} must be a timezone-qualified RFC 3339 timestamp`);
   }
   return new Date(timestamp);
 }
 
 function cycleStart(dateValue) {
-  const date = requiredDate(dateValue, 'date');
+  const date = dateValue instanceof Date
+    ? new Date(dateValue.getTime())
+    : requiredDate(dateValue, 'date');
+  if (!Number.isFinite(date.getTime())) {
+    throw new Error('date must be a valid Date or timezone-qualified RFC 3339 timestamp');
+  }
   const dayFromMonday = (date.getUTCDay() + 6) % 7;
   date.setUTCHours(0, 0, 0, 0);
   date.setUTCDate(date.getUTCDate() - dayFromMonday);
@@ -32,13 +56,33 @@ function parseStateTimestamp(key) {
   );
   if (!match) return null;
   const zone = match[5] === 'Z' ? 'Z' : `${match[5].slice(0, 3)}:${match[5].slice(4)}`;
-  const timestamp = Date.parse(`${match[1]}T${match[2]}:${match[3]}:${match[4]}${zone}`);
-  return Number.isFinite(timestamp) ? new Date(timestamp) : null;
+  try {
+    return requiredDate(
+      `${match[1]}T${match[2]}:${match[3]}:${match[4]}${zone}`,
+      'legacy completion timestamp',
+    );
+  } catch {
+    return null;
+  }
 }
 
 function field(content, name) {
   const match = content.match(new RegExp(`^- ${name}:\\s*(.+)$`, 'im'));
   return match ? match[1].trim() : null;
+}
+
+function parseEvidenceWindow(value) {
+  const match = typeof value === 'string' ? value.match(/^(.+) through (.+)$/) : null;
+  if (!match) {
+    throw new Error('evidence window must contain two timestamps');
+  }
+
+  const start = requiredDate(match[1], 'evidence window start');
+  const end = requiredDate(match[2], 'evidence window end');
+  if (start >= end) {
+    throw new Error('evidence window start must precede its end');
+  }
+  return { start, end };
 }
 
 function validateCompletedLog(log) {
@@ -59,6 +103,7 @@ function validateCompletedLog(log) {
     const shippedCount = field(log.content, 'Shipped count');
     const openCount = field(log.content, 'Open count');
     let completedDate;
+    let parsedEvidenceWindow;
     try {
       completedDate = requiredDate(completedAt, 'Completed at');
     } catch {
@@ -70,6 +115,14 @@ function validateCompletedLog(log) {
     }
     if (!evidenceWindow || !/ through /.test(evidenceWindow)) {
       return { valid: false, reason: 'evidence-window-missing' };
+    }
+    try {
+      parsedEvidenceWindow = parseEvidenceWindow(evidenceWindow);
+    } catch {
+      return { valid: false, reason: 'invalid-evidence-window' };
+    }
+    if (parsedEvidenceWindow.end > completedDate) {
+      return { valid: false, reason: 'invalid-evidence-window' };
     }
     if (!/^\d+$/.test(shippedCount || '') || !/^\d+$/.test(openCount || '')) {
       return { valid: false, reason: 'counts-missing' };
@@ -86,10 +139,20 @@ function validateCompletedLog(log) {
     return { valid: false, reason: 'not-a-completion-record' };
   }
   const completedAt = parseStateTimestamp(log.key);
+  const legacyEvidence = log.content.match(/^Evidence window:\s*(.+)\.$/m);
+  let evidenceWindowValid = false;
+  if (legacyEvidence) {
+    try {
+      const parsedEvidenceWindow = parseEvidenceWindow(legacyEvidence[1]);
+      evidenceWindowValid = Boolean(completedAt && parsedEvidenceWindow.end <= completedAt);
+    } catch {
+      evidenceWindowValid = false;
+    }
+  }
   const legacyComplete =
     completedAt
     && /^# Retrospective with Enforcement\b/m.test(log.content)
-    && /^Evidence window:\s*.+ through .+\.$/m.test(log.content)
+    && evidenceWindowValid
     && /^## Evidence$/m.test(log.content)
     && /^## Decisions$/m.test(log.content)
     && /^## Actions$/m.test(log.content);
@@ -253,13 +316,20 @@ function referenceList(values, emptyText) {
 function prepareCompletion({
   now,
   logs = [],
+  stateAvailable = false,
+  enumerationComplete = false,
   evidence,
   blockers = [],
   decisions = [],
   actions = [],
   gates = {},
 }) {
-  const admission = assessAdmission({ now, logs });
+  const admission = assessAdmission({
+    now,
+    logs,
+    stateAvailable,
+    enumerationComplete,
+  });
   if (admission.allowed) {
     return { ready: false, reason: 'cycle-already-complete', write: null };
   }

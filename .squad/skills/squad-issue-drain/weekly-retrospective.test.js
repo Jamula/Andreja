@@ -8,6 +8,7 @@ const {
   assessAdmission,
   prepareCompletion,
   resolveActionCandidates,
+  validateCompletedLog,
 } = require('./weekly-retrospective');
 
 const now = '2026-08-28T22:03:38.453-07:00';
@@ -139,6 +140,8 @@ test('an interrupted ceremony cannot produce a completion write', () => {
   const result = prepareCompletion({
     now,
     logs: [],
+    stateAvailable: true,
+    enumerationComplete: true,
     evidence: {
       windowStart: '2026-08-22T04:17:54.580Z',
       windowEnd: '2026-08-29T04:17:54.580Z',
@@ -167,6 +170,8 @@ test('completion is a single deterministic runtime-state write per UTC weekly cy
   const input = {
     now,
     logs: [],
+    stateAvailable: true,
+    enumerationComplete: true,
     evidence: {
       windowStart: '2026-08-22T04:17:54.580Z',
       windowEnd: '2026-08-29T04:17:54.580Z',
@@ -233,6 +238,83 @@ test('state failures and malformed canonical records fail closed', () => {
   );
 });
 
+test('timestamps and both evidence-window endpoints require strict timezone-qualified RFC 3339', () => {
+  assert.throws(
+    () => assessAdmission({ now: '2026-08-29 04:17:54', logs: [] }),
+    /timezone-qualified RFC 3339/,
+  );
+  assert.equal(
+    validateCompletedLog(completedLog('2026-08-29T04:17:54.580')).reason,
+    'invalid-completion-timestamp',
+  );
+
+  const invalidWindows = [
+    '2026-08-22T04:17:54.580 through 2026-08-29T04:17:54.580Z',
+    '2026-08-22T04:17:54.580Z through 2026-08-29T04:17:54.580',
+    '2026-08-30T04:17:54.580Z through 2026-08-29T04:17:54.580Z',
+    '2026-02-30T04:17:54.580Z through 2026-08-29T04:17:54.580Z',
+  ];
+  for (const evidenceWindow of invalidWindows) {
+    const log = completedLog();
+    log.content = log.content.replace(
+      '2026-08-22T04:17:54.580Z through 2026-08-29T04:17:54.580Z',
+      evidenceWindow,
+    );
+    assert.equal(validateCompletedLog(log).reason, 'invalid-evidence-window');
+  }
+
+  const legacy = {
+    key: 'log/2026-08-28T21-17-54.580-07-00-retrospective-with-enforcement.md',
+    content: [
+      '# Retrospective with Enforcement — 2026-08-28',
+      'Evidence window: 2026-08-22T04:17:54.580 through 2026-08-29T04:17:54.580Z.',
+      '## Evidence',
+      '## Decisions',
+      '## Actions',
+    ].join('\n'),
+  };
+  assert.equal(validateCompletedLog(legacy).valid, false);
+});
+
+test('completion requires confirmed state availability and complete enumeration', () => {
+  const input = {
+    now,
+    logs: [],
+    evidence: {
+      windowStart: '2026-08-22T04:17:54.580Z',
+      windowEnd: '2026-08-29T04:17:54.580Z',
+      shippedCount: 56,
+      openCount: 27,
+    },
+    gates: {
+      evidenceReviewComplete: true,
+      decisionReviewComplete: true,
+      decisionsRecorded: true,
+      duplicateSearchComplete: true,
+      actionIssuesComplete: true,
+      privacyReviewComplete: true,
+    },
+  };
+
+  assert.deepEqual(prepareCompletion(input), {
+    ready: false,
+    reason: 'state-backend-unavailable',
+    write: null,
+  });
+  assert.equal(
+    prepareCompletion({ ...input, stateAvailable: true }).reason,
+    'log-enumeration-incomplete',
+  );
+  assert.equal(
+    prepareCompletion({
+      ...input,
+      stateAvailable: true,
+      enumerationComplete: true,
+    }).ready,
+    true,
+  );
+});
+
 test('the issue-drain contract and runbook require governed fail-closed recovery', () => {
   const root = path.resolve(__dirname, '../../..');
   const prompt = fs.readFileSync(path.join(__dirname, 'PROMPT.md'), 'utf8');
@@ -244,8 +326,10 @@ test('the issue-drain contract and runbook require governed fail-closed recovery
   assert.match(prompt, /before enumerating or admitting queue work/i);
   assert.match(prompt, /squad_state_list.*`log`/s);
   assert.match(prompt, /must not depend on the configured\s+`retro-enforcement` skill/i);
-  assert.match(prompt, /exactly one\s+`squad_state_write`/i);
+  assert.match(prompt, /orchestrator must not write `log\/` directly/i);
+  assert.match(prompt, /Scribe alone\s+makes exactly one `squad_state_write`/i);
   assert.match(runbook, /Operational owner.*Jett Reno/i);
+  assert.match(runbook, /Scribe alone writes\s+`log\/`/i);
   assert.match(runbook, /interrupted before the final write/i);
   assert.match(runbook, /Never write.*runtime-owned.*directly/i);
 });
