@@ -643,6 +643,18 @@ test('completion requires confirmed state availability and complete enumeration'
 test('the issue-drain contract and runbook require governed fail-closed recovery', () => {
   const root = path.resolve(__dirname, '../../..');
   const prompt = fs.readFileSync(path.join(__dirname, 'PROMPT.md'), 'utf8');
+  const coordinator = fs.readFileSync(
+    path.join(root, '.github/agents/squad.agent.md'),
+    'utf8',
+  );
+  const ralphReference = fs.readFileSync(
+    path.join(root, '.squad/templates/ralph-reference.md'),
+    'utf8',
+  );
+  const ceremonyReference = fs.readFileSync(
+    path.join(root, '.squad/templates/ceremony-reference.md'),
+    'utf8',
+  );
   const runbook = fs.readFileSync(
     path.join(root, 'docs/operations/weekly-retrospective.md'),
     'utf8',
@@ -655,6 +667,28 @@ test('the issue-drain contract and runbook require governed fail-closed recovery
   assert.match(prompt, /Scribe alone\s+makes exactly one `squad_state_write`/i);
   assert.match(prompt, /limited to millisecond precision/i);
   assert.match(prompt, /literal boolean `true`/i);
+  assert.match(
+    coordinator,
+    /Before every Ralph work-check cycle[\s\S]*unconditionally load `squad-issue-drain`/i,
+  );
+  assert.match(
+    coordinator,
+    /Weekly retrospective completion mode \(exclusive\)[\s\S]*`squad_state_write` exactly once/i,
+  );
+  assert.match(
+    coordinator,
+    /suppress the\s+generic session, ceremony, orchestration, and health logs/i,
+  );
+  assert.match(ralphReference, /Step 0.*Enforce queue admission/i);
+  assert.match(
+    ralphReference,
+    /Do not scan or enumerate issues or PRs until that contract\s+permits queue work/i,
+  );
+  assert.match(ceremonyReference, /Admission-gate exception/i);
+  assert.match(
+    ceremonyReference,
+    /Resume queue work only after the issue-drain\s+protocol confirms a valid durable completion record/i,
+  );
   assert.match(runbook, /Operational owner.*Jett Reno/i);
   assert.match(runbook, /Scribe alone writes\s+`log\/`/i);
   assert.match(runbook, /interrupted before the final write/i);
