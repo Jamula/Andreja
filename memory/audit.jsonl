@@ -65,3 +65,4 @@
 {"timestamp":"2026-08-29T19:55:22.459Z","action":"write","id":"539faedf-a051-4a06-840f-6ffbec6c753d","class":"DECISION","title":"Issue-drain five-agent waves","path":".squad\\decisions\\inbox\\cyrus-jamula-issue-drain-five-agent-waves-539faedf.md","reason":"Content is allowed for governed local memory","actor":"Cyrus Jamula","provider":"local"}
 {"timestamp":"2026-08-29T19:57:56.756Z","action":"search","reason":"Search returned 1 result(s)"}
 {"timestamp":"2026-08-29T19:58:13.122Z","action":"search","reason":"Search returned 1 result(s)"}
+{"timestamp":"2026-08-29T19:59:24.072Z","action":"write","id":"128efbf9-0be8-4d00-ad58-b9c396d5881d","class":"DECISION","title":"Issue 132 review rejection","path":".squad\\decisions\\inbox\\squad-coordinator-issue-132-review-rejection-128efbf9.md","reason":"Content is allowed for governed local memory","actor":"Squad Coordinator","provider":"local"}
