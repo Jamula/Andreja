@@ -11,12 +11,16 @@ Start with the fail-closed defaults:
 
 - writer operation only with verified existing repository-scoped atomic
   ownership; otherwise read-only;
-- up to five App child issue sessions per batch, capped by lower verified
+- waves of up to five App child issue sessions, capped by lower verified
   capacity;
 - one issue, owner, session, branch/worktree, and PR;
-- at least 10 seconds between all spawn attempts;
-- require a correlated valid ACK from every admitted child before releasing any
-  child or advancing the batch;
+- reserve each selected issue before creation and wait exactly 10 seconds
+  between all spawn attempts without sleeping inside a turn;
+- continue same-wave launches without waiting for individual ACKs, then require
+  a correlated valid ACK from every successfully created child before release
+  or another wave;
+- stop a partial wave on failed/ambiguous creation, changed eligibility, lost
+  capacity, or a closed safety gate, without replacing uncertain children;
 - prefer eligible cloud work and fall back locally only after definitive
   non-creation;
 - use Squad as the child agent when supported;

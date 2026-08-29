@@ -12,6 +12,10 @@
 | **Why chosen** | {Routing rationale — what in the request matched this agent} |
 | **Mode** | {`background` / `sync`} |
 | **Why this mode** | {Brief reason — e.g., "No hard data dependencies" or "User needs to approve architecture"} |
+| **Issue-drain wave** | {wave/batch ID or `not-applicable`} |
+| **Admission token** | {stable token or `not-applicable`} |
+| **Reservation / creation** | {reserved → created / failed / ambiguous / ineligible / unlaunched} |
+| **ACK / release** | {pending / valid / negative / invalid / released / stopped-partial} |
 | **Files authorized to read** | {Exact file paths the agent was told to read} |
 | **File(s) agent must produce** | {Exact file paths the agent is expected to create or modify} |
 | **Outcome** | {Completed / Rejected by {Reviewer} / Escalated} |
@@ -25,3 +29,6 @@
 3. **Update outcome AFTER the agent completes.** Fill in the Outcome field.
 4. **Never delete or edit past entries.** Append-only.
 5. **If a reviewer rejects work,** log the rejection as a new entry with the revision agent.
+6. **Issue-drain entries reflect the ledger.** Log only observed reservation,
+   creation, ACK, and release outcomes. A stopped partial wave is not an invalid
+   ACK set, and an uncertain child is never logged as replaced.
