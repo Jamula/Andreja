@@ -98,5 +98,15 @@
     "status": "active",
     "createdAt": "2026-08-29T07:41:29.823Z",
     "updatedAt": "2026-08-29T07:41:29.823Z"
+  },
+  {
+    "id": "6c1f98f8-cb8d-44be-84b0-602de763d804",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Select Quark co-lead topology for issue 37",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-select-quark-co-lead-topology-for-issue-37-6c1f98f8.md",
+    "status": "active",
+    "createdAt": "2026-08-29T07:50:15.613Z",
+    "updatedAt": "2026-08-29T07:50:15.613Z"
   }
 ]
