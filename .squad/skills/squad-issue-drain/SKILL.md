@@ -1,4 +1,4 @@
-# Backlog Orchestrator
+# Squad Issue Drain
 
 Use this skill when the user asks to work through the GitHub issue backlog,
 activate an agent fleet, run Ralph across local/cloud sessions, or continuously
