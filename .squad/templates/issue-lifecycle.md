@@ -258,20 +258,16 @@ gh pr ready {pr-number}
 
 **Merge strategies:**
 
-**GitHub (merge commit):**
-```bash
-gh pr merge {pr-number} --merge --delete-branch
-```
+**GitHub:**
 
-**GitHub (squash):**
-```bash
-gh pr merge {pr-number} --squash --delete-branch
-```
+Ralph and issue-drain automation do not merge, auto-merge, enqueue, or activate
+Agent Merge. After independent approval and green required checks, report
+`READY_FOR_AGENT_MERGE` with the PR URL and evidence. The app owns landing.
 
 **Azure DevOps:**
-```bash
-az repos pr update --id {pr-id} --status completed --delete-source-branch true
-```
+
+Use the same reviewed handoff: report `READY_FOR_AGENT_MERGE` with evidence and
+leave completion to the app. Automation must not directly complete the PR.
 
 **Post-merge actions:**
 1. Issue automatically closes (if "Closes #{number}" is in PR description)
@@ -337,7 +333,7 @@ Ralph (the work monitor) continuously checks issue and PR state:
 1. **Triage:** Detects untriaged issues, assigns `squad:{member}` labels
 2. **Spawn:** Launches agents for assigned issues
 3. **Monitor:** Tracks PR state transitions (needsReview → changesRequested → readyToMerge)
-4. **Merge:** Automatically merges approved PRs
+4. **Handoff:** Reports approved, green PRs as `READY_FOR_AGENT_MERGE`
 5. **Cleanup:** Marks issues as done when PRs merge
 
 **Ralph's work-check cycle:**
@@ -352,10 +348,11 @@ See `.squad/templates/ralph-reference.md` for Ralph's full lifecycle.
 ### Automated Approval (CI-only projects)
 
 If the project has no human reviewers configured:
-1. PR opens
-2. CI runs
-3. If CI passes, Ralph auto-merges
-4. Issue closes
+1. PR opens as draft.
+2. CI runs.
+3. The PR remains blocked pending independent approval.
+4. After approval and green checks, Ralph reports `READY_FOR_AGENT_MERGE`.
+5. The app decides whether and how to land it.
 
 ### Human Review Required
 
@@ -363,7 +360,7 @@ If the project requires human approval:
 1. PR opens
 2. Human reviewer is notified (GitHub/ADO notifications)
 3. Reviewer approves or requests changes
-4. If approved + CI passes, Ralph merges
+4. If approved + CI passes, Ralph reports `READY_FOR_AGENT_MERGE`
 5. If changes requested, agent addresses feedback
 
 ### Squad Member Review
@@ -375,17 +372,18 @@ If the issue was assigned to a squad member and they authored the PR:
 
 ## Common Issue Lifecycle Patterns
 
-### Pattern 1: Quick Fix (Single Agent, No Review)
+### Pattern 1: Quick Fix
 ```
 Issue created → Assigned to agent → Branch created → Code fixed → 
-PR opened → CI passes → Auto-merged → Issue closed
+Draft PR opened → CI passes → Independent approval → READY_FOR_AGENT_MERGE →
+App lands PR → Issue closed
 ```
 
 ### Pattern 2: Feature Development (Human Review)
 ```
 Issue created → Assigned to agent → Branch created → Feature implemented → 
 PR opened → Human reviews → Changes requested → Agent fixes → 
-Re-reviewed → Approved → Merged → Issue closed
+Re-reviewed → Approved → READY_FOR_AGENT_MERGE → App lands PR → Issue closed
 ```
 
 ### Pattern 3: Research-Then-Implement

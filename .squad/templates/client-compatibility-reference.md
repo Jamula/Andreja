@@ -43,4 +43,9 @@ When in VS Code mode, the coordinator changes behavior in these ways:
 
 #### SQL Tool Caveat
 
-The `sql` tool is **CLI-only**. It does not exist on VS Code, JetBrains, or GitHub.com. Any coordinator logic or agent workflow that depends on SQL (todo tracking, batch processing, session state) will silently fail on non-CLI surfaces. Cross-platform code paths must not depend on SQL. Use filesystem-based state (`.squad/` files) for anything that must work everywhere.
+The `sql` tool is **CLI-only**. It does not exist on VS Code, JetBrains, or
+GitHub.com. Cross-platform code paths must not depend on SQL. For runtime-owned
+Squad state, use the configured `squad_state` bridge only; never substitute
+filesystem writes on a non-local backend. If a surface cannot expose the
+verified repository-scoped atomic operation required by issue-drain, that
+surface remains read-only and makes no exclusivity claim.

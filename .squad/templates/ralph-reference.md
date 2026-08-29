@@ -24,7 +24,7 @@ Ralph always appears in `team.md`: `| Ralph | Work Monitor | — | 🔄 Monitor 
 | "Ralph, idle" / "Take a break" / "Stop monitoring" | Fully deactivate (stop loop + idle-watch) |
 | "Ralph, scope: just issues" / "Ralph, skip CI" | Adjust what Ralph monitors this session |
 | References PR feedback or changes requested | Spawn agent to address PR review feedback |
-| "merge PR #N" / "merge it" (recent context) | Merge via `gh pr merge` |
+| "merge PR #N" / "merge it" (recent context) | Report `READY_FOR_AGENT_MERGE`; the app owns landing |
 
 These are intent signals, not exact strings — match meaning, not words.
 
@@ -32,13 +32,14 @@ When Ralph is active, run this check cycle after every batch of agent work compl
 
 **Step 0 — Enforce queue admission** (mandatory):
 
-Before every cycle, including a status-only check, load `squad-issue-drain`,
-read `.squad/skills/squad-issue-drain/PROMPT.md`, and execute its Section 0
-admission contract. Do not scan or enumerate issues or PRs until that contract
-permits queue work. If it cannot conclusively permit work, remain fail-closed
-before Step 1 and follow the contract's recovery path. Do not duplicate its
-state algorithm or write runtime-owned state directly; its runtime-tool and
-Scribe-only handoff remains authoritative.
+Before every queue enumeration, status, classification, or admission path,
+including every cycle and status-only check, load `squad-issue-drain`, read
+`.squad/skills/squad-issue-drain/PROMPT.md`, and execute its Section 0 admission
+contract. Do not scan or enumerate issues or PRs until that contract permits the
+requested read-only or writer mode. If it cannot conclusively permit work,
+remain fail-closed before Step 1 and follow the contract's recovery path. Do not
+duplicate its state algorithm or write runtime-owned state directly. Exclusive
+retrospective completion must finish before generic Scribe work starts.
 
 **Step 1 — Scan for work** (run these in parallel):
 
@@ -65,7 +66,7 @@ gh pr list --state open --draft --json number,title,author,labels,checks --limit
 | **Draft PRs** | PR in draft from squad member | Check if agent needs to continue; if stalled, nudge |
 | **Review feedback** | PR has `CHANGES_REQUESTED` review | Route feedback to PR author agent to address |
 | **CI failures** | PR checks failing | Notify assigned agent to fix, or create a fix issue |
-| **Approved PRs** | PR approved, CI green, ready to merge | Merge and close related issue |
+| **Approved PRs** | PR approved, CI green, ready to land | Report `READY_FOR_AGENT_MERGE`; do not merge, auto-merge, or enqueue |
 | **No work found** | All clear | Report: "📋 Board is clear. Ralph is idling." Suggest `npx @bradygaster/squad-cli watch` for persistent polling. |
 
 **Step 3 — Act on highest-priority item:**
@@ -80,7 +81,7 @@ After every 3-5 rounds, pause and report before continuing:
 
 ```
 🔄 Ralph: Round {N} complete.
-   ✅ {X} issues closed, {Y} PRs merged
+   ✅ {X} issues closed, {Y} PRs ready for Agent Merge
    📋 {Z} items remaining: {brief list}
    Continuing... (say "Ralph, idle" to stop)
 ```
@@ -117,7 +118,7 @@ Ralph's state is session-scoped (not persisted to disk):
 - **Active/idle** — whether the loop is running
 - **Round count** — how many check cycles completed
 - **Scope** — what categories to monitor (default: all)
-- **Stats** — issues closed, PRs merged, items processed this session
+- **Stats** — issues closed, PRs handed to Agent Merge, items processed this session
 
 ### Ralph on the Board
 

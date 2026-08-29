@@ -36,8 +36,19 @@ When `create_session` is available, spawn commit-producing agents as **sub-sessi
 
 **Constraints:**
 - **Max depth:** 1 — no sub-sub-sessions. If an agent needs to delegate, it uses `task` tool.
-- **Concurrency cap:** Maximum 4-5 simultaneous sub-sessions. Queue additional spawns.
-- **Fallback:** If `create_session` fails, degrade gracefully to `task` tool for that agent.
+- **Issue-drain batch cap:** Up to five simultaneous child issue sessions,
+  further capped
+  by lower verified platform capacity and every safety gate. Do not infer
+  capacity from configured limits or prior success.
+- **Pacing:** Space every child spawn attempt by at least 10 seconds, including
+  failures and fallback attempts. Follow the issue-drain prompt rather than
+  sleeping inside a turn.
+- **ACK gate:** Preallocate a batch ID and admission token per child. Keep every
+  child paused until all admitted children return correlated valid ACKs.
+- **Fallback:** A failed `create_session` may fall back exactly once only after
+  definitive evidence that no session, branch, worktree, or PR was created.
+  Reuse the same admission token and honor the 10-second attempt spacing.
+  Ambiguous creation blocks fallback or replacement; uncertainty is ambiguous.
 
 **Sub-session template:**
 ```

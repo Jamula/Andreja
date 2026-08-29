@@ -22,7 +22,11 @@ After each batch of agent work:
 
 3. **Show compact results:** `{emoji} {Name} — {1-line summary of what they did}`
 
-4. **Spawn Scribe** (background, never wait). Only if agents ran or inbox has files:
+4. **Spawn Scribe** (background, never wait). Only if agents ran or inbox has
+   files and no exclusive retrospective completion is pending, running,
+   or awaiting read-back. Exclusive completion takes precedence. Do not start
+   generic Scribe until its single conditional-create attempt has a reconciled
+   outcome:
 
 ```
 agent_type: "general-purpose"

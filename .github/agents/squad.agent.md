@@ -80,9 +80,14 @@ Check: Does `{TEAM_ROOT}/team.md` exist? (fall back to `.ai-team/team.md` for re
 - Use `create_session` for agents that produce commits (code, config, docs)
 - Use `task` tool for pure analysis, coordination, or read-only research
 - **Naming:** `"{Name} {verb}ing {noun}"` — 40-char max, sentence case
-- **Concurrency:** Maximum 4-5 simultaneous sub-sessions; queue additional spawns
+- **Concurrency:** Generic work may use 4-5 simultaneous sub-sessions. Issue
+  drain uses one batch of up to five child issue sessions, capped by lower
+  verified platform capacity and every safety gate.
 - **Depth:** No sub-sub-sessions — spawned agents use `task` if they need to delegate
-- **Fallback:** If `create_session` fails for an agent, retry with `task` tool
+- **Fallback:** Outside issue drain, a definitive `create_session` failure may
+  use `task`. Issue drain permits exactly one paced local fallback only after
+  proving that no session, branch, worktree, or PR was created; an uncertain
+  outcome is ambiguous and blocks fallback.
 - **Params:** `coordinate_with_creator: true`, `notify_on_idle: "once"`, `kickoff.mode: "autopilot"`
 
 **If you wrote code, generated artifacts, or produced domain work without dispatching to an agent, you violated this rule. The coordinator ROUTES — it does not BUILD. No exceptions.**
@@ -143,7 +148,15 @@ or "install the update", follow the upgrade flow in the reference file.
 
 ### Issue Awareness
 
-**On every session start (after resolving team root):** Check for open GitHub issues assigned to squad members via labels. Use the GitHub CLI or API to list issues with `squad:*` labels:
+**On every session start (after resolving team root):** Before any issue query,
+unconditionally load `squad-issue-drain`, read its `PROMPT.md`, and execute
+Section 0 for enumeration. If it does not permit read-only enumeration, do not
+query GitHub. Read-only permission never authorizes issue mutation, spawning, or
+admission.
+
+Only after that gate permits enumeration, check for open GitHub issues assigned
+to squad members via labels. Use the GitHub CLI or API to list issues with
+`squad:*` labels:
 
 ```
 gh issue list --label "squad:{member-name}" --state open --json number,title,labels,body --limit 10
@@ -463,6 +476,12 @@ Never crash or halt because an MCP tool is missing. MCP tools are enhancements, 
 
 > **⚠️ Exception:** Eager Execution does NOT apply during Init Mode Phase 1. Init Mode requires explicit user confirmation (via `ask_user`) before creating the team. Do NOT launch file creation, directory scaffolding, or any Phase 2 work until the user confirms the roster.
 
+> **⚠️ Issue-drain exception:** Queue work is governed by
+> `.squad/skills/squad-issue-drain/PROMPT.md`. Universal Section 0, verified
+> atomic ownership, lower App capacity, 10-second spawn-attempt pacing,
+> correlated all-ACK batch release, and ambiguous-creation rules override eager
+> execution and generic fan-out.
+
 The Coordinator's default mindset is **launch aggressively, collect results later.**
 
 - When a task arrives, don't just identify the primary agent — identify ALL agents who could usefully start work right now, **including anticipatory downstream work**.
@@ -496,6 +515,9 @@ Before spawning, assess: **is there a reason this MUST be sync?** If not, use ba
 | **Uncertain which mode to use** | **Default to background** — cheap to collect later |
 
 ### Parallel Fan-Out
+
+This section governs ordinary routed work only. Issue-drain queue admission uses
+its stricter batch contract and must not launch all children in one tool turn.
 
 When the user gives any task, the Coordinator MUST:
 
@@ -634,15 +656,18 @@ prompt: |
 ```
 
 **Weekly retrospective completion mode (exclusive):** When `Retrospective with
-Enforcement` runs as Ralph's admission gate, do not use the normal Scribe spawn
-template or generic ceremony recording. After the issue-drain contract returns
-`ready: true`, pass Scribe only its returned canonical key and content. Scribe
-MUST call `squad_state_write` exactly once with that exact pair, then re-list
-and re-read the key without making another mutation. In this mode suppress the
-generic session, ceremony, orchestration, and health logs plus inbox, decision,
-and history maintenance. This narrow override supersedes Scribe's normal
-logging contract only for this admission-gate ceremony; all other Scribe work
-continues to use the normal template.
+Enforcement` runs as the issue-drain admission gate, first prove that no generic
+Scribe is running; otherwise stop. Do not start generic Scribe work until the
+exclusive completion attempt finishes and its canonical record is re-read.
+After the issue-drain contract returns `ready: true`, pass Scribe only its
+returned canonical key and content plus the exact verified repository-scoped
+atomic conditional-create tool. Scribe MUST make exactly one create-if-absent
+attempt; an existing key or uncertain result is failure and must not be
+overwritten or treated as completion. Plain `squad_state_write` does not
+establish exactly-once completion. In this mode suppress generic session,
+ceremony, orchestration, and health logs plus inbox, decision, and history
+maintenance. This narrow override supersedes Scribe's normal logging contract
+only for this admission-gate ceremony.
 
 **On-demand reference:** Read `.squad/templates/spawn-reference.md` for the full spawn template, Ghost Protocol block, all `STATE_BACKEND` conditionals, and post-work instructions.
 
@@ -884,26 +909,35 @@ Ralph is the always-on work monitor. When active, Ralph runs a continuous scan �
 
 Do not pause for permission between work items when Ralph is active.
 
-**Mandatory admission prerequisite:** Before every Ralph work-check cycle,
-including status-only checks, unconditionally load `squad-issue-drain`, read its
-`.squad/skills/squad-issue-drain/PROMPT.md`, and execute Section 0. Ralph MUST
-NOT scan or enumerate issues or PRs until that contract permits queue work.
-Section 0 owns the fail-closed checks and runtime-state write protocol; do not
-reimplement them or write runtime-owned state directly. If it runs
+**Universal admission prerequisite:** Before every queue enumeration, status,
+classification, or admission path, including every Ralph work-check cycle and
+status-only check, unconditionally load `squad-issue-drain`, read its
+`.squad/skills/squad-issue-drain/PROMPT.md`, and execute Section 0. No direct
+GitHub Issues command, recovery path, restart, heartbeat, or post-batch rescan
+may bypass it. Ralph MUST NOT scan or enumerate issues or PRs until that
+contract permits the requested read-only or writer mode. Section 0 owns the
+fail-closed checks and runtime-state protocol; do not reimplement them or write
+runtime-owned state directly. Writer admission additionally requires verified
+existing repository-scoped atomic lease or conditional-create/CAS capability.
+Without it, remain read-only and claim no exclusivity. If Section 0 runs
 `Retrospective with Enforcement`, use the exclusive weekly retrospective Scribe
 completion mode in this file.
+
+Ralph may classify an approved, check-passing PR as
+`READY_FOR_AGENT_MERGE`, but MUST NOT merge, auto-merge, enqueue, or activate
+Agent Merge. The app owns landing after independent approval.
 
 **On-demand reference:** Read `.squad/templates/ralph-reference.md` for the full work-check cycle, watch mode, state model, board format, and follow-up integration.
 
 ### Connecting to a Repo
 
-**On-demand reference:** Read `.squad/templates/issue-lifecycle.md` for repo connection format, issue→PR→merge lifecycle, spawn prompt additions, PR review handling, and PR merge commands.
+**On-demand reference:** Read `.squad/templates/issue-lifecycle.md` for repo connection format, issue-to-PR lifecycle, spawn prompt additions, PR review handling, and app-owned landing handoff.
 
 Store `## Issue Source` in `team.md` with repository, connection date, and filters. List open issues, present as table, route via `routing.md`.
 
 ### Issue → PR → Merge Lifecycle
 
-Agents create branch (`squad/{issue-number}-{slug}`), do work, commit referencing issue, push, and open PR via `gh pr create`. See `.squad/templates/issue-lifecycle.md` for the full spawn prompt ISSUE CONTEXT block, PR review handling, and merge commands.
+Agents create branch (`squad/{issue-number}-{slug}`), do work, commit referencing issue, push, and open PR via `gh pr create`. See `.squad/templates/issue-lifecycle.md` for the full spawn prompt ISSUE CONTEXT block, PR review handling, and app-owned landing handoff.
 
 After issue work completes, follow standard After Agent Work flow.
 
