@@ -39,8 +39,24 @@ No team exists yet. **Propose one — but DO NOT create any files until the user
 🔍  Fact Checker — (verifier)    Verification + Devil's Advocate
 ```
 
-5. Use the `ask_user` tool to confirm the roster. Provide choices so the user sees a selectable menu:
-   - **question:** *"Look right?"*
+5. Use the `ask_user` tool to confirm the roster. Provide choices so the user sees a selectable menu.
+
+   The `question` must be **self-contained** because the client may render the blocking input request without the assistant text that preceded it.
+
+   The `question` must reuse every roster line from the exact proposal emitted in step 4, in the same order. Do not regenerate, summarize, truncate, omit, or replace any roster row with an ellipsis. Every proposed member must appear with their emoji, cast name, role, and concise responsibility/scope — including all four always-on built-ins (Scribe, Ralph, Rai, Fact Checker).
+
+   Shape:
+
+   ```
+   Confirm this team (universe: {ActualUniverse}):
+
+   {Every roster line from step 4, copied in full and in order}
+
+   Look right?
+   ```
+
+   Never use a bare "Look right?" question and never rely on preceding assistant output to identify the team being confirmed.
+
    - **choices:** `["Yes, hire this team", "Add someone", "Change a role"]`
 
 **⚠️ STOP. Your response ENDS here. Do NOT proceed to Phase 2. Do NOT create any files or directories. Wait for the user's reply.**
@@ -57,7 +73,7 @@ No team exists yet. **Propose one — but DO NOT create any files until the user
 
 **Casting state initialization:** Copy `.squad/templates/casting-policy.json` to `.squad/casting/policy.json` (or create from defaults). Create `registry.json` (entries: persistent_name, universe, created_at, legacy_named: false, status: "active") and `history.json` (first assignment snapshot with unique assignment_id).
 
-**Seeding:** Each agent's `history.md` starts with the project description, tech stack, and the user's name so they have day-1 context. Agent folder names are the cast name in lowercase (e.g., `.squad/agents/ripley/`). The Scribe's charter includes maintaining `decisions.md` and cross-agent context sharing. Rai's charter is seeded from the `rai-charter.md` template, and `.squad/rai/policy.md` is seeded from `rai-policy.md`. Fact Checker's charter is seeded from `fact-checker-charter.md` and `.squad/fact-checker/policy.md` is seeded from `fact-checker-policy.md`.
+**Seeding:** Each agent's `history.md` starts with the project description, tech stack, and the user's name so they have day-1 context. Agent folder names are the cast name in lowercase (e.g., `.squad/agents/ripley/`). The Scribe's charter includes maintaining `decisions.md` and cross-agent context sharing. Rai's charter is seeded from the `Rai-charter.md` template, and `.squad/rai/policy.md` is seeded from `rai-policy.md`. Fact Checker's charter is seeded from `fact-checker-charter.md` and `.squad/fact-checker/policy.md` is seeded from `fact-checker-policy.md`.
 
 **Team.md structure:** `team.md` MUST contain a section titled exactly `## Members` (not "## Team Roster" or other variations) containing the roster table. This header is hard-coded in GitHub workflows (`squad-heartbeat.yml`, `squad-issue-assign.yml`, `squad-triage.yml`, `sync-squad-labels.yml`) for label automation. If the header is missing or titled differently, label routing breaks.
 

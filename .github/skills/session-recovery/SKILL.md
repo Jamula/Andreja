@@ -120,9 +120,7 @@ WHERE sr.ref_type = 'issue'
 ORDER BY s.updated_at DESC;
 ```
 
-Cross-reference with `gh issue list` for `status:branch-only`,
-`status:pr-draft`, and `status:ready` to find active implementation issues with
-no active session.
+Cross-reference with `gh issue list --label "status:in-progress"` to find issues that are marked in-progress but have no active session.
 
 ### 7. Resume a Session
 

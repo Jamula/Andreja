@@ -80,8 +80,3 @@ TASK CONTEXT:
    Decisions: {count} | Action items: {count}.
    ```
 8. **Failure handling:** If the facilitator fails or times out, log a warning and proceed with work. Ceremonies must never block the pipeline indefinitely.
-   **Admission-gate exception:** When issue drain requires `Retrospective with
-   Enforcement` before queue admission, facilitator failure, timeout, or
-   interruption remains fail-closed. Resume queue work only after the issue-drain
-   protocol confirms a valid durable completion record. Other ceremonies retain
-   the generic fail-open behavior above.

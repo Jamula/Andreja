@@ -30,16 +30,6 @@ These are intent signals, not exact strings — match meaning, not words.
 
 When Ralph is active, run this check cycle after every batch of agent work completes (or immediately on activation):
 
-**Step 0 — Enforce queue admission** (mandatory):
-
-Before every cycle, including a status-only check, load `squad-issue-drain`,
-read `.squad/skills/squad-issue-drain/PROMPT.md`, and execute its Section 0
-admission contract. Do not scan or enumerate issues or PRs until that contract
-permits queue work. If it cannot conclusively permit work, remain fail-closed
-before Step 1 and follow the contract's recovery path. Do not duplicate its
-state algorithm or write runtime-owned state directly; its runtime-tool and
-Scribe-only handoff remains authoritative.
-
 **Step 1 — Scan for work** (run these in parallel):
 
 ```bash
