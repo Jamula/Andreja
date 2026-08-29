@@ -118,5 +118,15 @@
     "status": "active",
     "createdAt": "2026-08-29T07:51:52.438Z",
     "updatedAt": "2026-08-29T07:51:52.438Z"
+  },
+  {
+    "id": "15eeff06-d3d4-48bc-9adb-f3fe35873458",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Set user-controlled custody for issue 37",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-set-user-controlled-custody-for-issue-37-15eeff06.md",
+    "status": "active",
+    "createdAt": "2026-08-29T18:41:57.727Z",
+    "updatedAt": "2026-08-29T18:41:57.727Z"
   }
 ]
