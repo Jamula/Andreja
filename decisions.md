@@ -77,3 +77,10 @@ No collection, GitHub publication, or outbound email may activate before gates 1
 ## Boundaries
 
 This is a security verdict only. It does not declare legal compliance and does not replace privacy review (Deanna Troi / Sarek) or Cyrus's residual-risk approval.
+
+### 2026-08-28T22:04:41.627-07:00: Phase 1A evidence governance path
+**By:** Cyrus Jamula
+**Issue:** Jamula/Andreja#62
+**Decision:** Update the Phase 1A evidence packet to match current repository reality, provisionally accept the updated packet as the governing work target, and then complete the missing evidence. Do not claim Phase 1A exit/completion and do not authorize external spend through this decision.
+**Remaining gates:** trusted operator signing; encrypted PostgreSQL-and-key recovery with restored passkey sign-in; separately signed update/rollback proof; numeric service, recovery, retention, and model-spend limits; specialist reviews; final residual-risk acceptance by Cyrus.
+**Disposition:** Keep #62 provisional while amendment and follow-up evidence work proceed.
