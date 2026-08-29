@@ -169,8 +169,7 @@ See `.squad/templates/issue-lifecycle.md` for the full template if your project 
 Create `.squad/templates/issue-lifecycle.md` with your project's git workflow. At minimum it should include:
 
 - An ISSUE CONTEXT block template (for spawn prompts)
-- Coordinator post-work steps (verify push → verify PR → route to reviewer →
-  report `READY_FOR_AGENT_MERGE` on approval)
+- Coordinator post-work steps (verify push → verify PR → route to reviewer → merge on approval)
 - Issue closure rules (PR merge auto-close vs manual close)
 - Worktree requirements (if applicable)
 
@@ -182,14 +181,13 @@ Add numbered rules to the `## Rules` section that reference the lifecycle:
 N.  **Issue lifecycle enforcement** — all issue-linked work follows the lifecycle
     in `.squad/templates/issue-lifecycle.md`. The coordinator adds the ISSUE CONTEXT
     block to spawn prompts and follows the post-work steps (verify push → verify PR
-    → route to reviewer → report `READY_FOR_AGENT_MERGE` on approval). Read
-    `issue-lifecycle.md` before
+    → route to reviewer → merge on approval). Read `issue-lifecycle.md` before
     spawning any agent for issue work.
 
 N+1. **{ReviewerName} PR Gate** — every PR created by any agent MUST be reviewed
     by {ReviewerName} before merge. The coordinator spawns {ReviewerName} (sync)
     with the PR diff. On REJECT, the original author addresses feedback. On APPROVE,
-    the coordinator reports `READY_FOR_AGENT_MERGE`. The app owns landing.
+    the coordinator merges. No PR merges without {ReviewerName}'s approval.
 
 N+2. **Issue closure restriction** — issues that produced files (code, docs, scripts,
     designs, tests) close ONLY via PR merge auto-close ("Closes #N" in PR body).
