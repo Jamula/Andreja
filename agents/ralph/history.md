@@ -2,3 +2,5 @@
 📌 Team update (2026-08-28T19:22:58.476-07:00): Board disposition confirmed: #108 may proceed after live-base verification; #102 is blocked pending a natural candidate plus newly approved budget/window. Data started #108, Guinan is reconciling #10, and Spock is reconciling #99.
 
 📌 Team update (2026-08-28T19:22:58.721-07:00): Spock found issue #99 acceptance criteria unsatisfied, posted blocker comment https://github.com/Jamula/Andreja/issues/99#issuecomment-5459769447, and left the issue open.
+
+📌 Team update (2026-08-28T21:17:54.580-07:00): Weekly retrospective enforcement now fails closed. Do not admit additional queue work when no completed retrospective log exists within seven days; resume only after current GitHub evidence is reviewed, governed completion is logged, decisions are recorded, and genuinely new actions are filed as non-duplicate `retro-action` issues — decided by Picard.
