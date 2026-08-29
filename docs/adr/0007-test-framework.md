@@ -3,6 +3,7 @@
 - **Status:** Proposed (amended; not accepted)
 - **Date:** 2026-08-24
 - **Amended:** 2026-08-25
+- **Evidence refreshed:** 2026-08-28
 - **Issue:** [#96](https://github.com/Jamula/Andreja/issues/96)
 - **Migration issue:** [#112](https://github.com/Jamula/Andreja/issues/112)
 - **Governing:** [Platform plan](../plan.md#phase-1a---self-hosted-assistant-walking-skeleton),
@@ -27,6 +28,33 @@ PostgreSQL inventory parity, CI/TRX/IDE evidence, package/provenance review,
 performance evidence, independent quality/architecture review, and rollback.
 No production or test source, package, runner, or workflow migration is in scope
 for this amendment.
+
+## 2026-08-28 issue #108 evidence refresh
+
+[Issue #108's bounded evidence](../research/test-platform-evidence-108.md)
+compared current stable xUnit.net v3 (`xunit.v3` 4.0.0, native MTP 2.3.3)
+against `MSTest.Sdk` 4.3.3/MTP 2.3.3 on the pinned .NET SDK 10.0.301.
+Equivalent Debug/Release and filtered spikes preserved data expansion, async
+lifecycle, class/cross-class fixture behavior, explicit concurrency,
+skip/output, WebApplicationFactory authentication boundaries, EF migration
+metadata, TRX, and telemetry opt-out controls. Isolated negative probes also
+verified that both candidates enforce cooperative timeout/cancellation without
+changing normal inventory. Warm-run order was counterbalanced and the 10% gate
+used a tested mathematical median. Neither candidate crossed the threshold.
+
+The evidence supports retaining Cyrus's existing long-term MSTest/MTP direction.
+It does not establish a performance winner, accept this Proposed ADR, or
+authorize conversion. The production xUnit 2 suite remains unchanged.
+
+Live PostgreSQL and graphical Visual Studio/VS Code execution were unavailable
+on the evidence host and are explicitly blocked rather than inferred. The
+MSTest spike's lazy class-requested shared owner did not initialize for an
+unrelated filter, addressing the earlier eager assembly-fixture concern at
+prototype level. Its custom lifecycle still requires full production review.
+Issue #112 remains the only migration owner and must prove exact Debug/Release
+and live-PostgreSQL inventory parity, IDE/CI/TRX behavior, extension profile
+licenses, package provenance, telemetry controls, performance, review, and
+rollback before any suite change.
 
 The original recommendation, measurements, risks, and stop conditions below are
 retained as historical investigation evidence for #112. Where they recommend
