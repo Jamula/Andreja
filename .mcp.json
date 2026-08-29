@@ -7,7 +7,19 @@
       ],
       "env": {},
       "tools": [
-        "*"
+        "squad_decide",
+        "squad_state_read",
+        "squad_state_write",
+        "squad_state_append",
+        "squad_state_delete",
+        "squad_state_list",
+        "squad_state_health",
+        "memory.classify",
+        "memory.write",
+        "memory.search",
+        "memory.promote",
+        "memory.delete",
+        "memory.audit"
       ]
     }
   }
