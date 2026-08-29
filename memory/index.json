@@ -78,5 +78,15 @@
     "status": "active",
     "createdAt": "2026-08-29T06:53:42.198Z",
     "updatedAt": "2026-08-29T06:53:42.198Z"
+  },
+  {
+    "id": "4cd63e6a-fbab-44a0-b417-8291d5696023",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Authorize issue 67 negative enforcement exercise",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-authorize-issue-67-negative-enforcement-exercise-4cd63e6a.md",
+    "status": "active",
+    "createdAt": "2026-08-29T07:28:16.159Z",
+    "updatedAt": "2026-08-29T07:28:16.159Z"
   }
 ]
