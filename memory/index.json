@@ -138,5 +138,15 @@
     "status": "active",
     "createdAt": "2026-08-29T18:43:19.510Z",
     "updatedAt": "2026-08-29T18:43:19.510Z"
+  },
+  {
+    "id": "5bf2fedf-e7b8-4f88-aac8-e31a241eb370",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Require two-step professional review for issue 37",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-require-two-step-professional-review-for-issue-37-5bf2fedf.md",
+    "status": "active",
+    "createdAt": "2026-08-29T18:47:54.211Z",
+    "updatedAt": "2026-08-29T18:47:54.211Z"
   }
 ]
