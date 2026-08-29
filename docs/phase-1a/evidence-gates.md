@@ -1,16 +1,21 @@
 # Phase 1A evidence-gate index
 
-- **Status:** Proposed
-- **Date:** 2026-08-23
-- **Issue:** [#9](https://github.com/Jamula/Andreja/issues/9)
+- **Status:** Provisionally accepted as the governing work target under #62; not
+  fully accepted; Phase 1A exit is not claimed
+- **Date:** 2026-08-28
+- **Issues:** Original packet [#9](https://github.com/Jamula/Andreja/issues/9);
+  provisional amendment [#62](https://github.com/Jamula/Andreja/issues/62)
 
 This is a phase-scoped acceptance index, not a replacement threat model, privacy
 inventory, testing matrix, or financial ledger. These are internal dogfood gates,
 not public SLAs or production claims.
 
-The current implementation run is recorded in
-[`evidence-44.md`](evidence-44.md). Its blocked rows remain blocking; the record
-does not approve launch or close this proposed packet.
+The current merged implementation run is recorded in
+[`evidence-44.md`](evidence-44.md). Its passing rows reconcile this index with
+implemented local evidence; its partial and blocked rows remain blocking.
+Provisional acceptance under #62 makes this the governing work target. It does
+not accept Proposed ADRs 0001–0005, approve launch or readiness, authorize
+external spend, or claim Phase 1A exit.
 
 ## Canonical artifact links
 
@@ -25,6 +30,34 @@ These links are self-correcting pointers: the same change that makes a canonical
 path, status, owner, or evidence mapping stale must correct this index. Conflicts
 resolve in favor of the ratified plan and canonical owner. The proposed charter
 does not co-govern until explicitly ratified; this index must then be corrected.
+
+## Current merged evidence and remaining blockers
+
+The merged record reports passing synthetic local evidence for architecture and
+PostgreSQL tests, explicit migrations, production passkey and task browser flows,
+local provider-failure conformance, contract-only skill/channel/grant/consent/peer
+and semantic seams, application export/import, offline start/restart/no-egress,
+OTel suppression, basic responsive/keyboard checks, and reproducible OCI audit
+artifacts. Use [`evidence-44.md`](evidence-44.md) for commands, versions, results,
+and exclusions rather than duplicating them here.
+
+Phase 1A remains blocked on all of the following:
+
+1. a trusted operator rerun with an approved external signing key and trust
+   anchor;
+2. encrypted PostgreSQL and recoverable Data Protection keys restored together
+   into a clean instance, followed by restored passkey sign-in;
+3. a genuine second, separately approved and signed revision completing both
+   update and rollback against preserved state;
+4. Cyrus-approved numeric internal SLO and RPO/RTO limits, numeric retention
+   limits, and a numeric Phase 1A model-spend envelope with a hard stop;
+5. the named architecture, operations, security, privacy, cost, AI-safety,
+   legal, contract, and quality reviews; and
+6. Cyrus's final residual-risk acceptance.
+
+This index does not choose among restoring local tooling, using an isolated
+equivalent evidence host, or stopping. #62 remains provisional pending the
+technical evidence-host decision and completion of the gates above.
 
 ## Threat gate
 
@@ -106,11 +139,12 @@ Architecture and publish tests must prove:
 Phase 1B may use a real dedicated test OIDC tenant only under its separate decision;
 it does not weaken this rule.
 
-## Provisional internal SLOs and evidence queries
+## Candidate internal SLOs and evidence queries
 
 Metric names are contracts exported over OTLP. A local Prometheus-compatible
-evidence profile may evaluate these queries. Targets require Cyrus approval after a
-local baseline and are not external commitments.
+evidence profile may evaluate these queries. The values below remain unapproved
+candidate targets for evaluation after a local baseline; they are not governing
+numeric limits, public SLAs, readiness claims, or external commitments.
 
 | Internal objective | Provisional target | Evidence query |
 |---|---:|---|
@@ -123,8 +157,8 @@ local baseline and are not external commitments.
 
 Zero denominators or zero policy checks produce "insufficient evidence," never
 success. Every evidence record includes build digest, schema version, window, sample
-count, query version, owner, and known exclusions. RPO/RTO and retention windows
-remain human decisions.
+count, query version, owner, and known exclusions. Numeric SLO/RPO/RTO and
+retention limits remain human decisions.
 
 A content-free PostgreSQL usage-ledger query supports cost review:
 
