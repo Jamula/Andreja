@@ -85,6 +85,20 @@ function parseEvidenceWindow(value) {
   return { start, end };
 }
 
+function sectionHasListEntry(content, name) {
+  const lines = content.split(/\r?\n/);
+  const sectionStart = lines.indexOf(`## ${name}`);
+  if (sectionStart === -1) return false;
+
+  const nextSection = lines.findIndex(
+    (line, index) => index > sectionStart && /^##\s+\S/.test(line),
+  );
+  const sectionEnd = nextSection === -1 ? lines.length : nextSection;
+  return lines
+    .slice(sectionStart + 1, sectionEnd)
+    .some((line) => /^[-*+]\s+\S/.test(line.trim()));
+}
+
 function validateCompletedLog(log) {
   if (!log || typeof log.key !== 'string' || typeof log.content !== 'string') {
     return { valid: false, reason: 'missing-log-data' };
@@ -127,10 +141,12 @@ function validateCompletedLog(log) {
     if (!/^\d+$/.test(shippedCount || '') || !/^\d+$/.test(openCount || '')) {
       return { valid: false, reason: 'counts-missing' };
     }
-    if (!/^## Blockers$/m.test(log.content)
-      || !/^## Decisions$/m.test(log.content)
-      || !/^## Retro actions$/m.test(log.content)) {
+    const requiredSections = ['Blockers', 'Decisions', 'Retro actions'];
+    if (requiredSections.some((name) => !new RegExp(`^## ${name}$`, 'm').test(log.content))) {
       return { valid: false, reason: 'required-sections-missing' };
+    }
+    if (requiredSections.some((name) => !sectionHasListEntry(log.content, name))) {
+      return { valid: false, reason: 'required-section-entries-missing' };
     }
     return { valid: true, completedAt: completedDate };
   }
@@ -242,7 +258,7 @@ function assessAdmission({
 }
 
 function issueUrl(issue) {
-  return issue?.url || issue?.html_url || null;
+  return issue?.html_url || issue?.url || null;
 }
 
 function resolveActionCandidates(candidates, searches) {
@@ -255,7 +271,7 @@ function resolveActionCandidates(candidates, searches) {
   for (const candidate of candidates || []) {
     const id = String(candidate.id);
     const search = searchByCandidate.get(id);
-    if (!search?.complete) {
+    if (search?.complete !== true) {
       pending.push({ id, reason: 'duplicate-search-incomplete' });
       continue;
     }

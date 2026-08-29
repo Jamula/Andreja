@@ -140,9 +140,12 @@ test('duplicate action search reuses an existing issue instead of creating anoth
       candidateId: 'admission',
       complete: true,
       matches: [{
+        url: 'https://api.github.com/repos/Jamula/Andreja/issues/122',
+        repository_url: 'https://api.github.com/repos/Jamula/Andreja',
+        html_url: 'https://github.com/Jamula/Andreja/issues/122',
         number: 122,
-        url: 'https://github.com/Jamula/Andreja/issues/122',
         state: 'OPEN',
+        title: '[Feedback]: Automate weekly retrospective enforcement and durable logging',
       }],
       createdIssue: null,
     }],
@@ -157,6 +160,29 @@ test('duplicate action search reuses an existing issue instead of creating anoth
     }],
     pending: [],
   });
+});
+
+test('duplicate action search requires an exact boolean completion confirmation', () => {
+  for (const complete of ['true', 'false', 1, -1, {}, []]) {
+    const resolution = resolveActionCandidates(
+      [{ id: 'admission', summary: 'Automate retrospective enforcement' }],
+      [{
+        candidateId: 'admission',
+        complete,
+        matches: [{
+          number: 122,
+          html_url: 'https://github.com/Jamula/Andreja/issues/122',
+          state: 'OPEN',
+        }],
+      }],
+    );
+
+    assert.deepEqual(resolution, {
+      complete: false,
+      actions: [],
+      pending: [{ id: 'admission', reason: 'duplicate-search-incomplete' }],
+    });
+  }
 });
 
 test('an interrupted ceremony cannot produce a completion write', () => {
@@ -273,6 +299,50 @@ test('state failures and malformed canonical records fail closed', () => {
   );
 });
 
+test('canonical completion validation rejects empty required section bodies', () => {
+  const sections = [
+    ['Blockers', '- #44'],
+    ['Decisions', '- Queue admission fails closed — governed decision a029d433'],
+    [
+      'Retro actions',
+      '- created: Automate retrospective enforcement — https://github.com/Jamula/Andreja/issues/122',
+    ],
+  ];
+
+  for (const [name, entry] of sections) {
+    for (const body of ['', ' \t\n']) {
+      const log = completedLog();
+      log.content = log.content.replace(`## ${name}\n${entry}\n`, `## ${name}\n${body}`);
+      assert.equal(
+        validateCompletedLog(log).reason,
+        'required-section-entries-missing',
+        `${name} with an empty or blank body must fail validation`,
+      );
+    }
+  }
+});
+
+test('admission rejects a canonical completion with a blank required section', () => {
+  const log = completedLog();
+  log.content = log.content.replace(
+    '## Decisions\n- Queue admission fails closed — governed decision a029d433\n',
+    '## Decisions\n \t\n',
+  );
+
+  assert.deepEqual(assessAdmission({
+    now,
+    logs: [log],
+    stateAvailable: true,
+    enumerationComplete: true,
+  }), {
+    allowed: false,
+    ceremonyRequired: false,
+    reason: 'invalid-completion-record',
+    key: log.key,
+    detail: 'required-section-entries-missing',
+  });
+});
+
 test('timestamps and both evidence-window endpoints require strict timezone-qualified RFC 3339', () => {
   assert.throws(
     () => assessAdmission({
@@ -381,14 +451,13 @@ test('completion requires confirmed state availability and complete enumeration'
       'evidence-window-invalid',
     );
   }
-  assert.equal(
-    prepareCompletion({
-      ...input,
-      stateAvailable: true,
-      enumerationComplete: true,
-    }).ready,
-    true,
-  );
+  const completion = prepareCompletion({
+    ...input,
+    stateAvailable: true,
+    enumerationComplete: true,
+  });
+  assert.equal(completion.ready, true);
+  assert.equal(validateCompletedLog(completion.write).valid, true);
 });
 
 test('the issue-drain contract and runbook require governed fail-closed recovery', () => {
