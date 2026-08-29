@@ -1,0 +1,251 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const test = require('node:test');
+const {
+  assessAdmission,
+  prepareCompletion,
+  resolveActionCandidates,
+} = require('./weekly-retrospective');
+
+const now = '2026-08-28T22:03:38.453-07:00';
+
+function completedLog(completedAt = '2026-08-29T04:17:54.580Z') {
+  return {
+    key: 'log/weekly-retrospective-2026-08-24.md',
+    content: [
+      '<!-- weekly-retrospective:v1 -->',
+      '# Weekly Retrospective — 2026-08-24',
+      '',
+      '- Status: complete',
+      `- Completed at: ${completedAt}`,
+      '- Evidence window: 2026-08-22T04:17:54.580Z through 2026-08-29T04:17:54.580Z',
+      '- Shipped count: 56',
+      '- Open count: 27',
+      '',
+      '## Blockers',
+      '- #44',
+      '',
+      '## Decisions',
+      '- Queue admission fails closed — governed decision a029d433',
+      '',
+      '## Retro actions',
+      '- created: Automate retrospective enforcement — https://github.com/Jamula/Andreja/issues/122',
+      '',
+    ].join('\n'),
+  };
+}
+
+test('overdue admission fails closed and requires the built-in ceremony', () => {
+  assert.deepEqual(assessAdmission({ now, logs: [] }), {
+    allowed: false,
+    ceremonyRequired: true,
+    reason: 'retrospective-overdue',
+    mechanism: 'built-in',
+    configuredEnforcementAvailable: true,
+  });
+});
+
+test('a completed retrospective within seven days allows admission', () => {
+  const result = assessAdmission({ now, logs: [completedLog()] });
+  assert.equal(result.allowed, true);
+  assert.equal(result.reason, 'retrospective-current');
+
+  assert.equal(
+    assessAdmission({
+      now: '2026-09-05T04:17:54.580Z',
+      logs: [completedLog()],
+    }).allowed,
+    true,
+  );
+  assert.equal(
+    assessAdmission({
+      now: '2026-09-05T04:17:54.581Z',
+      logs: [completedLog()],
+    }).reason,
+    'retrospective-overdue',
+  );
+});
+
+test('the existing detailed runtime log is accepted during canonical-key rollout', () => {
+  const legacy = {
+    key: 'log/2026-08-28T21-17-54.580-07-00-retrospective-with-enforcement.md',
+    content: [
+      '# Retrospective with Enforcement — 2026-08-28',
+      '',
+      'Evidence window: 2026-08-22T04:17:54.580Z through 2026-08-29T04:17:54.580Z.',
+      '',
+      '## Evidence',
+      '- GitHub counts reviewed.',
+      '',
+      '## Decisions',
+      '- Queue admission fails closed.',
+      '',
+      '## Actions',
+      '- Existing issues reused.',
+    ].join('\n'),
+  };
+
+  assert.equal(assessAdmission({ now, logs: [legacy] }).allowed, true);
+});
+
+test('an unavailable configured enforcement component does not bypass built-in enforcement', () => {
+  const overdue = assessAdmission({
+    now,
+    logs: [],
+    configuredEnforcementAvailable: false,
+  });
+  assert.equal(overdue.allowed, false);
+  assert.equal(overdue.ceremonyRequired, true);
+  assert.equal(overdue.mechanism, 'built-in');
+
+  const current = assessAdmission({
+    now,
+    logs: [completedLog()],
+    configuredEnforcementAvailable: false,
+  });
+  assert.equal(current.allowed, true);
+});
+
+test('duplicate action search reuses an existing issue instead of creating another', () => {
+  const resolution = resolveActionCandidates(
+    [{ id: 'admission', summary: 'Automate retrospective enforcement' }],
+    [{
+      candidateId: 'admission',
+      complete: true,
+      matches: [{
+        number: 122,
+        url: 'https://github.com/Jamula/Andreja/issues/122',
+        state: 'OPEN',
+      }],
+      createdIssue: null,
+    }],
+  );
+
+  assert.deepEqual(resolution, {
+    complete: true,
+    actions: [{
+      summary: 'Automate retrospective enforcement',
+      disposition: 'existing',
+      issueUrl: 'https://github.com/Jamula/Andreja/issues/122',
+    }],
+    pending: [],
+  });
+});
+
+test('an interrupted ceremony cannot produce a completion write', () => {
+  const result = prepareCompletion({
+    now,
+    logs: [],
+    evidence: {
+      windowStart: '2026-08-22T04:17:54.580Z',
+      windowEnd: '2026-08-29T04:17:54.580Z',
+      shippedCount: 56,
+      openCount: 27,
+    },
+    blockers: ['#44'],
+    decisions: [{ summary: 'Fail closed', reference: 'governed decision a029d433' }],
+    actions: [],
+    gates: {
+      evidenceReviewComplete: true,
+      decisionReviewComplete: true,
+      decisionsRecorded: true,
+      duplicateSearchComplete: false,
+      actionIssuesComplete: false,
+      privacyReviewComplete: true,
+    },
+  });
+
+  assert.equal(result.ready, false);
+  assert.equal(result.write, null);
+  assert.match(result.reason, /^gate-incomplete:/);
+});
+
+test('completion is a single deterministic runtime-state write per UTC weekly cycle', () => {
+  const input = {
+    now,
+    logs: [],
+    evidence: {
+      windowStart: '2026-08-22T04:17:54.580Z',
+      windowEnd: '2026-08-29T04:17:54.580Z',
+      shippedCount: 56,
+      openCount: 27,
+    },
+    blockers: ['#44', '#62'],
+    decisions: [{ summary: 'Queue admission fails closed', reference: 'governed decision a029d433' }],
+    actions: [{
+      summary: 'Automate retrospective enforcement',
+      disposition: 'created',
+      issueUrl: 'https://github.com/Jamula/Andreja/issues/122',
+    }],
+    gates: {
+      evidenceReviewComplete: true,
+      decisionReviewComplete: true,
+      decisionsRecorded: true,
+      duplicateSearchComplete: true,
+      actionIssuesComplete: true,
+      privacyReviewComplete: true,
+    },
+  };
+  const first = prepareCompletion(input);
+  const second = prepareCompletion(input);
+
+  assert.equal(first.ready, true);
+  assert.equal(first.write.key, 'log/weekly-retrospective-2026-08-24.md');
+  assert.deepEqual(second, first);
+  assert.match(first.write.content, /Evidence window:/);
+  assert.match(first.write.content, /Shipped count: 56/);
+  assert.match(first.write.content, /Open count: 27/);
+  assert.match(first.write.content, /## Blockers/);
+  assert.match(first.write.content, /## Decisions/);
+  assert.match(first.write.content, /## Retro actions/);
+
+  const afterWrite = prepareCompletion({
+    ...input,
+    logs: [first.write],
+  });
+  assert.equal(afterWrite.ready, false);
+  assert.equal(afterWrite.reason, 'cycle-already-complete');
+  assert.equal(afterWrite.write, null);
+});
+
+test('state failures and malformed canonical records fail closed', () => {
+  assert.equal(assessAdmission({ now, stateAvailable: false }).reason, 'state-backend-unavailable');
+  assert.equal(
+    assessAdmission({ now, enumerationComplete: false }).reason,
+    'log-enumeration-incomplete',
+  );
+  assert.equal(
+    assessAdmission({
+      now,
+      logs: [{ key: 'log/weekly-retrospective-2026-08-24.md', content: 'partial' }],
+    }).reason,
+    'invalid-completion-record',
+  );
+  assert.equal(
+    assessAdmission({
+      now,
+      logs: [completedLog('2026-08-30T04:17:54.580Z')],
+    }).reason,
+    'future-completion-record',
+  );
+});
+
+test('the issue-drain contract and runbook require governed fail-closed recovery', () => {
+  const root = path.resolve(__dirname, '../../..');
+  const prompt = fs.readFileSync(path.join(__dirname, 'PROMPT.md'), 'utf8');
+  const runbook = fs.readFileSync(
+    path.join(root, 'docs/operations/weekly-retrospective.md'),
+    'utf8',
+  );
+
+  assert.match(prompt, /before enumerating or admitting queue work/i);
+  assert.match(prompt, /squad_state_list.*`log`/s);
+  assert.match(prompt, /must not depend on the configured\s+`retro-enforcement` skill/i);
+  assert.match(prompt, /exactly one\s+`squad_state_write`/i);
+  assert.match(runbook, /Operational owner.*Jett Reno/i);
+  assert.match(runbook, /interrupted before the final write/i);
+  assert.match(runbook, /Never write.*runtime-owned.*directly/i);
+});

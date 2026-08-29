@@ -1,0 +1,366 @@
+'use strict';
+
+const WINDOW_MILLISECONDS = 7 * 24 * 60 * 60 * 1000;
+const CANONICAL_PREFIX = 'log/weekly-retrospective-';
+const SCHEMA_MARKER = '<!-- weekly-retrospective:v1 -->';
+const BLOCKER_REFERENCE =
+  /^(?:#\d+|[^/\s]+\/[^#\s]+#\d+|https:\/\/github\.com\/[^/]+\/[^/]+\/(?:issues|pull)\/\d+)$/;
+
+function requiredDate(value, name) {
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) {
+    throw new Error(`${name} must be an ISO 8601 timestamp`);
+  }
+  return new Date(timestamp);
+}
+
+function cycleStart(dateValue) {
+  const date = requiredDate(dateValue, 'date');
+  const dayFromMonday = (date.getUTCDay() + 6) % 7;
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCDate(date.getUTCDate() - dayFromMonday);
+  return date.toISOString().slice(0, 10);
+}
+
+function completionKey(dateValue) {
+  return `${CANONICAL_PREFIX}${cycleStart(dateValue)}.md`;
+}
+
+function parseStateTimestamp(key) {
+  const match = key.match(
+    /^log\/(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2}(?:\.\d+)?)(Z|[+-]\d{2}-\d{2})-/,
+  );
+  if (!match) return null;
+  const zone = match[5] === 'Z' ? 'Z' : `${match[5].slice(0, 3)}:${match[5].slice(4)}`;
+  const timestamp = Date.parse(`${match[1]}T${match[2]}:${match[3]}:${match[4]}${zone}`);
+  return Number.isFinite(timestamp) ? new Date(timestamp) : null;
+}
+
+function field(content, name) {
+  const match = content.match(new RegExp(`^- ${name}:\\s*(.+)$`, 'im'));
+  return match ? match[1].trim() : null;
+}
+
+function validateCompletedLog(log) {
+  if (!log || typeof log.key !== 'string' || typeof log.content !== 'string') {
+    return { valid: false, reason: 'missing-log-data' };
+  }
+
+  if (log.key.startsWith(CANONICAL_PREFIX)) {
+    if (!log.content.includes(SCHEMA_MARKER)) {
+      return { valid: false, reason: 'missing-schema-marker' };
+    }
+    if (field(log.content, 'Status')?.toLowerCase() !== 'complete') {
+      return { valid: false, reason: 'completion-status-missing' };
+    }
+
+    const completedAt = field(log.content, 'Completed at');
+    const evidenceWindow = field(log.content, 'Evidence window');
+    const shippedCount = field(log.content, 'Shipped count');
+    const openCount = field(log.content, 'Open count');
+    let completedDate;
+    try {
+      completedDate = requiredDate(completedAt, 'Completed at');
+    } catch {
+      return { valid: false, reason: 'invalid-completion-timestamp' };
+    }
+
+    if (completionKey(completedDate) !== log.key) {
+      return { valid: false, reason: 'completion-key-cycle-mismatch' };
+    }
+    if (!evidenceWindow || !/ through /.test(evidenceWindow)) {
+      return { valid: false, reason: 'evidence-window-missing' };
+    }
+    if (!/^\d+$/.test(shippedCount || '') || !/^\d+$/.test(openCount || '')) {
+      return { valid: false, reason: 'counts-missing' };
+    }
+    if (!/^## Blockers$/m.test(log.content)
+      || !/^## Decisions$/m.test(log.content)
+      || !/^## Retro actions$/m.test(log.content)) {
+      return { valid: false, reason: 'required-sections-missing' };
+    }
+    return { valid: true, completedAt: completedDate };
+  }
+
+  if (!/-retrospective-with-enforcement\.md$/.test(log.key)) {
+    return { valid: false, reason: 'not-a-completion-record' };
+  }
+  const completedAt = parseStateTimestamp(log.key);
+  const legacyComplete =
+    completedAt
+    && /^# Retrospective with Enforcement\b/m.test(log.content)
+    && /^Evidence window:\s*.+ through .+\.$/m.test(log.content)
+    && /^## Evidence$/m.test(log.content)
+    && /^## Decisions$/m.test(log.content)
+    && /^## Actions$/m.test(log.content);
+  return legacyComplete
+    ? { valid: true, completedAt, legacy: true }
+    : { valid: false, reason: 'not-a-completed-legacy-record' };
+}
+
+function assessAdmission({
+  now,
+  logs = [],
+  stateAvailable = true,
+  enumerationComplete = true,
+  configuredEnforcementAvailable = true,
+}) {
+  const current = requiredDate(now, 'now');
+  if (!stateAvailable) {
+    return { allowed: false, ceremonyRequired: false, reason: 'state-backend-unavailable' };
+  }
+  if (!enumerationComplete) {
+    return { allowed: false, ceremonyRequired: false, reason: 'log-enumeration-incomplete' };
+  }
+
+  const invalidCanonical = logs
+    .filter((log) => log.key?.startsWith(CANONICAL_PREFIX))
+    .map((log) => ({ log, validation: validateCompletedLog(log) }))
+    .find(({ validation }) => !validation.valid);
+  if (invalidCanonical) {
+    return {
+      allowed: false,
+      ceremonyRequired: false,
+      reason: 'invalid-completion-record',
+      key: invalidCanonical.log.key,
+      detail: invalidCanonical.validation.reason,
+    };
+  }
+
+  const completed = logs
+    .map((log) => ({ log, validation: validateCompletedLog(log) }))
+    .filter(({ validation }) => validation.valid);
+  const future = completed.find(({ validation }) => validation.completedAt > current);
+  if (future) {
+    return {
+      allowed: false,
+      ceremonyRequired: false,
+      reason: 'future-completion-record',
+      key: future.log.key,
+    };
+  }
+
+  const cycles = new Map();
+  for (const item of completed) {
+    const cycle = cycleStart(item.validation.completedAt);
+    cycles.set(cycle, [...(cycles.get(cycle) || []), item.log.key]);
+  }
+  const duplicate = [...cycles.entries()].find(([, keys]) => new Set(keys).size > 1);
+  if (duplicate) {
+    return {
+      allowed: false,
+      ceremonyRequired: false,
+      reason: 'duplicate-completion-records',
+      cycle: duplicate[0],
+      keys: duplicate[1],
+    };
+  }
+
+  completed.sort((left, right) =>
+    right.validation.completedAt.getTime() - left.validation.completedAt.getTime());
+  const latest = completed[0];
+  if (latest && current.getTime() - latest.validation.completedAt.getTime() <= WINDOW_MILLISECONDS) {
+    return {
+      allowed: true,
+      ceremonyRequired: false,
+      reason: 'retrospective-current',
+      completionKey: latest.log.key,
+      configuredEnforcementAvailable,
+    };
+  }
+
+  return {
+    allowed: false,
+    ceremonyRequired: true,
+    reason: 'retrospective-overdue',
+    mechanism: 'built-in',
+    configuredEnforcementAvailable,
+  };
+}
+
+function issueUrl(issue) {
+  return issue?.url || issue?.html_url || null;
+}
+
+function resolveActionCandidates(candidates, searches) {
+  const searchByCandidate = new Map(
+    (searches || []).map((search) => [String(search.candidateId), search]),
+  );
+  const actions = [];
+  const pending = [];
+
+  for (const candidate of candidates || []) {
+    const id = String(candidate.id);
+    const search = searchByCandidate.get(id);
+    if (!search?.complete) {
+      pending.push({ id, reason: 'duplicate-search-incomplete' });
+      continue;
+    }
+
+    const matches = (search.matches || [])
+      .filter((issue) => issueUrl(issue))
+      .sort((left, right) => (left.number || 0) - (right.number || 0));
+    if (matches.length > 0) {
+      actions.push({
+        summary: candidate.summary,
+        disposition: 'existing',
+        issueUrl: issueUrl(matches[0]),
+      });
+      continue;
+    }
+
+    const created = search.createdIssue;
+    const labels = (created?.labels || []).map((label) =>
+      String(typeof label === 'string' ? label : label.name).toLowerCase());
+    if (issueUrl(created) && labels.includes('retro-action')) {
+      actions.push({
+        summary: candidate.summary,
+        disposition: 'created',
+        issueUrl: issueUrl(created),
+      });
+      continue;
+    }
+
+    pending.push({ id, reason: 'new-action-issue-required' });
+  }
+
+  return { complete: pending.length === 0, actions, pending };
+}
+
+function isNonNegativeInteger(value) {
+  return Number.isInteger(value) && value >= 0;
+}
+
+function oneLine(value, name) {
+  const text = String(value || '').trim();
+  if (!text || /[\r\n]/.test(text)) {
+    throw new Error(`${name} must be a non-empty single line`);
+  }
+  return text;
+}
+
+function referenceList(values, emptyText) {
+  if (!values || values.length === 0) return [`- ${emptyText}`];
+  return values.map((value) => {
+    const reference = oneLine(value, 'blocker reference');
+    if (!BLOCKER_REFERENCE.test(reference)) {
+      throw new Error('blocker reference must identify a GitHub issue or pull request');
+    }
+    return `- ${reference}`;
+  });
+}
+
+function prepareCompletion({
+  now,
+  logs = [],
+  evidence,
+  blockers = [],
+  decisions = [],
+  actions = [],
+  gates = {},
+}) {
+  const admission = assessAdmission({ now, logs });
+  if (admission.allowed) {
+    return { ready: false, reason: 'cycle-already-complete', write: null };
+  }
+  if (!admission.ceremonyRequired) {
+    return { ready: false, reason: admission.reason, write: null };
+  }
+
+  const requiredGates = [
+    'evidenceReviewComplete',
+    'decisionReviewComplete',
+    'decisionsRecorded',
+    'duplicateSearchComplete',
+    'actionIssuesComplete',
+    'privacyReviewComplete',
+  ];
+  const missingGate = requiredGates.find((gate) => gates[gate] !== true);
+  if (missingGate) {
+    return { ready: false, reason: `gate-incomplete:${missingGate}`, write: null };
+  }
+
+  if (!evidence
+    || !isNonNegativeInteger(evidence.shippedCount)
+    || !isNonNegativeInteger(evidence.openCount)) {
+    return { ready: false, reason: 'evidence-counts-invalid', write: null };
+  }
+
+  let current;
+  let windowStart;
+  let windowEnd;
+  try {
+    current = requiredDate(now, 'now');
+    windowStart = requiredDate(evidence.windowStart, 'evidence.windowStart');
+    windowEnd = requiredDate(evidence.windowEnd, 'evidence.windowEnd');
+  } catch {
+    return { ready: false, reason: 'evidence-window-invalid', write: null };
+  }
+  if (windowStart >= windowEnd || windowEnd > current) {
+    return { ready: false, reason: 'evidence-window-invalid', write: null };
+  }
+
+  const key = completionKey(current);
+  if (logs.some((log) => log.key === key)) {
+    return { ready: false, reason: 'completion-key-conflict', write: null };
+  }
+
+  let blockerLines;
+  let decisionLines;
+  let actionLines;
+  try {
+    blockerLines = referenceList(blockers, 'None.');
+    decisionLines = decisions.length === 0
+      ? ['- No new decision required.']
+      : decisions.map((decision) =>
+        `- ${oneLine(decision.summary, 'decision summary')} — ${oneLine(decision.reference, 'decision reference')}`);
+    actionLines = actions.length === 0
+      ? ['- No genuinely new action identified.']
+      : actions.map((action) => {
+        if (!['existing', 'created'].includes(action.disposition)) {
+          throw new Error('action disposition must be existing or created');
+        }
+        const url = oneLine(action.issueUrl, 'action issue URL');
+        if (!/^https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/\d+$/.test(url)) {
+          throw new Error('action issue URL must be a GitHub issue URL');
+        }
+        return `- ${action.disposition}: ${oneLine(action.summary, 'action summary')} — ${url}`;
+      });
+  } catch (error) {
+    return { ready: false, reason: `record-invalid:${error.message}`, write: null };
+  }
+
+  const content = [
+    SCHEMA_MARKER,
+    `# Weekly Retrospective — ${cycleStart(current)}`,
+    '',
+    '- Status: complete',
+    `- Completed at: ${current.toISOString()}`,
+    `- Evidence window: ${windowStart.toISOString()} through ${windowEnd.toISOString()}`,
+    `- Shipped count: ${evidence.shippedCount}`,
+    `- Open count: ${evidence.openCount}`,
+    '',
+    '## Blockers',
+    ...blockerLines,
+    '',
+    '## Decisions',
+    ...decisionLines,
+    '',
+    '## Retro actions',
+    ...actionLines,
+    '',
+  ].join('\n');
+
+  return { ready: true, reason: 'completion-ready', write: { key, content } };
+}
+
+module.exports = {
+  CANONICAL_PREFIX,
+  SCHEMA_MARKER,
+  assessAdmission,
+  completionKey,
+  cycleStart,
+  prepareCompletion,
+  resolveActionCandidates,
+  validateCompletedLog,
+};
