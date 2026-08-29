@@ -85,7 +85,6 @@ This is a security verdict only. It does not declare legal compliance and does n
 **Remaining gates:** trusted operator signing; encrypted PostgreSQL-and-key recovery with restored passkey sign-in; separately signed update/rollback proof; numeric service, recovery, retention, and model-spend limits; specialist reviews; final residual-risk acceptance by Cyrus.
 **Disposition:** Keep #62 provisional while amendment and follow-up evidence work proceed.
 
-
 ### 2026-08-29T00:19:56.420-07:00: Authorize bounded default-branch negative exercise
 **By:** Cyrus Jamula (via Squad coordinator)
 **What:** Run exactly one bounded live negative enforcement exercise for issue #67: create a disposable PR with one intentionally failing required check, verify GitHub reports it blocked, issue no merge command, make no repository-setting change, then close the PR and remove its branch after recording evidence.
@@ -148,3 +147,15 @@ This is a security verdict only. It does not declare legal compliance and does n
 ### 2026-08-29: Issue-drain prompt revision scope
 **By:** Cyrus Jamula
 **Decision:** Update the issue-drain prompt for five-child batches, ten-second spawn spacing, and explicit ACK from every child before advancement. Fix Ralph's high-confidence P0/P1 contradictions where supported. Where atomic repository leases or conditional-create/CAS state are unavailable, fail closed rather than rely on prose-only concurrency guarantees. Do not expand into unsupported runtime implementation without separate approval.
+
+### 2026-08-29T12:55:03.294-07:00: Issue-drain five-agent waves
+**By:** Cyrus Jamula
+**What:** For Squad issue drain, spawn sub-agents in waves of five, space spawn attempts 10 seconds apart, and wait for an ACK from every member of the wave before admitting the next wave. Apply only with confirmed platform capacity and the active issue-drain safety contract; never duplicate ownership or bypass stale-base, retrospective, dependency, collision, or ACK gates.
+
+### 2026-08-29T20:00:26.964-07:00: Use App ownership for issue 132 recovery
+**By:** Cyrus Jamula
+**What:** For issue #132 recovery, do not block on a separate atomic lease/CAS probe; let the App system handle session/worktree ownership. Apply narrowly to the rejected #132 revision: reconcile first, create one isolated App worktree/session for Spock, preserve duplicate/collision checks and the explicit ACK-before-release gate, keep Jett Reno locked out, and require independent review before any readiness claim. Does not authorize merge, auto-merge, enqueue, or ordinary backlog admission.
+
+### 2026-08-29T12:54:23.291-07:00: Issue 132 review rejection
+**By:** Squad Coordinator
+**What:** Data independently reviewed PR #134 / issue #132 after merge and REJECTED the artifact. Blocking findings: caller-forgeable writer authorization; bypassable pacing, capacity, and fallback; self-asserted retrospective evidence without provenance or Scribe-quiescence proof. Jett Reno authored the rejected artifact and is locked out for this revision cycle. Data recommends Spock as revision owner. Ordinary issue-drain writer admission remains frozen. The merged contract requires verified repository-scoped atomic ownership; no such capability has been verified, so no revision writer may be admitted until the runtime supplies it or Cyrus separately authorizes an allowed recovery path.
