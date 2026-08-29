@@ -2,6 +2,7 @@
 
 **Status:** Counsel-ready research packet; not approved policy  
 **Prepared:** 2026-08-23  
+**Last re-verified:** 2026-08-29 (see section 1.1.1)  
 **Scope:** United States baseline, with jurisdiction-specific questions preserved  
 **Tracking:** GitHub issue #6  
 
@@ -62,6 +63,25 @@ The following are point-in-time technical observations, not legal conclusions:
 | The current GitHub API snapshot showed one collaborator account, no pending repository invitations, no forks, no releases, and no deploy keys. The collaborator count includes the owner. | GitHub repository APIs |
 | No Git tags were present in the local repository. | Local Git history |
 | ADR 0000 blocks external contributions and visibility changes pending this Phase 0 decision. | `docs/adr/0000-plan-ratification.md` |
+
+### 1.1.1 Re-verification as of 2026-08-29
+
+Section 16 requires re-review when repository facts change. The following
+observations re-verify or supersede the 2026-08-23 snapshot; they remain
+technical observations, not legal conclusions:
+
+| Fact as of 2026-08-29 | Evidence |
+|---|---|
+| `LICENSE` is byte-identical to the initial commit; SHA-256 is still `c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4` and the file has not been modified since commit `3f576b3ac4418e9975d858e303094e24672aacda` (2026-08-22). | Local Git history and file hash |
+| The `Jamula/Andreja` `main` head was `f4f8f1442b545dbc9138f711b2f95f870052b17b` with 64 commits, superseding the seven-commit snapshot. | Local Git history after `git fetch --unshallow` |
+| One human Git author identity still appears across all 64 commits; every commit is recorded with the GitHub web-flow committer identity, which reflects platform-mediated merges rather than an additional author. | Local Git history |
+| Commit messages in history carry `Co-authored-by` trailers for AI coding-agent identities (`Copilot`, `Copilot App`, and `copilot-swe-agent[bot]`). This is new evidence relative to the 2026-08-23 snapshot. | Local Git history commit trailers |
+| The repository still reports a single collaborator account (the owner), and no releases or tags exist. | GitHub repository APIs and `git ls-remote --tags` |
+
+A `Co-authored-by` trailer is metadata a tool or human inserted into a commit
+message. It is not an adjudication of authorship, copyright ownership,
+human-authorship sufficiency, or any platform's terms. Counsel should treat it
+as one input into the section 3.2 provenance analysis.
 
 ### 1.2 What these facts do not establish
 
@@ -172,7 +192,10 @@ counsel.
 4. Preserve AI-assistance provenance privately: human selection, arrangement,
    revision, testing, and other creative control; model/tool and applicable
    terms; and any known third-party source concern. Do not commit prompts or
-   private connector content.
+   private connector content. Because Git history records AI coding-agent
+   `Co-authored-by` trailers (section 1.1.1), determine for each affected commit
+   what a human actually authored, reviewed, and adopted, and whether the
+   trailer misstates the record.
 5. Run dependency, snippet, notice, and license scans before any publication,
    then have a human resolve provenance rather than treating scanner output as
    title evidence.
@@ -532,6 +555,10 @@ marketplace.
     dispute terms are required before a marketplace pilot?
 12. Which facts and communications should be handled under privilege or a
     litigation/investigation hold?
+13. What is the copyright and ownership status of material produced with the AI
+    coding agents recorded as commit co-authors, what do the applicable platform
+    and model terms provide, and should the trailer practice be changed,
+    corrected, or supplemented with a private provenance record?
 
 ### Cyrus as human decision-maker
 
