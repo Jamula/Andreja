@@ -38,5 +38,15 @@
     "status": "active",
     "createdAt": "2026-08-29T05:12:22.475Z",
     "updatedAt": "2026-08-29T05:12:22.475Z"
+  },
+  {
+    "id": "3b82824f-6270-4bad-a899-1af704dc474b",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Phase 1A local evidence execution",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-phase-1a-local-evidence-execution-3b82824f.md",
+    "status": "active",
+    "createdAt": "2026-08-29T05:31:38.315Z",
+    "updatedAt": "2026-08-29T05:31:38.315Z"
   }
 ]
