@@ -28,5 +28,15 @@
     "status": "active",
     "createdAt": "2026-08-29T04:32:00.384Z",
     "updatedAt": "2026-08-29T04:32:00.384Z"
+  },
+  {
+    "id": "784ae7c8-090b-466e-bdf1-ed83fd0c15a7",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Phase 1A evidence governance path",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-phase-1a-evidence-governance-path-784ae7c8.md",
+    "status": "active",
+    "createdAt": "2026-08-29T05:12:22.475Z",
+    "updatedAt": "2026-08-29T05:12:22.475Z"
   }
 ]
