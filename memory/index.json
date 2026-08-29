@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "id": "a029d433-520b-4d41-8ae3-40e444ef0e49",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Weekly retrospective enforcement",
+    "path": ".squad\\decisions\\inbox\\picard-weekly-retrospective-enforcement-a029d433.md",
+    "status": "active",
+    "createdAt": "2026-08-29T04:22:36.614Z",
+    "updatedAt": "2026-08-29T04:22:36.614Z"
+  }
+]
