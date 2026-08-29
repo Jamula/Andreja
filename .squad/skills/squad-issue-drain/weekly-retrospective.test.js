@@ -40,7 +40,12 @@ function completedLog(completedAt = '2026-08-29T04:17:54.580Z') {
 }
 
 test('overdue admission fails closed and requires the built-in ceremony', () => {
-  assert.deepEqual(assessAdmission({ now, logs: [] }), {
+  assert.deepEqual(assessAdmission({
+    now,
+    logs: [],
+    stateAvailable: true,
+    enumerationComplete: true,
+  }), {
     allowed: false,
     ceremonyRequired: true,
     reason: 'retrospective-overdue',
@@ -50,7 +55,12 @@ test('overdue admission fails closed and requires the built-in ceremony', () => 
 });
 
 test('a completed retrospective within seven days allows admission', () => {
-  const result = assessAdmission({ now, logs: [completedLog()] });
+  const result = assessAdmission({
+    now,
+    logs: [completedLog()],
+    stateAvailable: true,
+    enumerationComplete: true,
+  });
   assert.equal(result.allowed, true);
   assert.equal(result.reason, 'retrospective-current');
 
@@ -58,6 +68,8 @@ test('a completed retrospective within seven days allows admission', () => {
     assessAdmission({
       now: '2026-09-05T04:17:54.580Z',
       logs: [completedLog()],
+      stateAvailable: true,
+      enumerationComplete: true,
     }).allowed,
     true,
   );
@@ -65,6 +77,8 @@ test('a completed retrospective within seven days allows admission', () => {
     assessAdmission({
       now: '2026-09-05T04:17:54.581Z',
       logs: [completedLog()],
+      stateAvailable: true,
+      enumerationComplete: true,
     }).reason,
     'retrospective-overdue',
   );
@@ -89,13 +103,20 @@ test('the existing detailed runtime log is accepted during canonical-key rollout
     ].join('\n'),
   };
 
-  assert.equal(assessAdmission({ now, logs: [legacy] }).allowed, true);
+  assert.equal(assessAdmission({
+    now,
+    logs: [legacy],
+    stateAvailable: true,
+    enumerationComplete: true,
+  }).allowed, true);
 });
 
 test('an unavailable configured enforcement component does not bypass built-in enforcement', () => {
   const overdue = assessAdmission({
     now,
     logs: [],
+    stateAvailable: true,
+    enumerationComplete: true,
     configuredEnforcementAvailable: false,
   });
   assert.equal(overdue.allowed, false);
@@ -105,6 +126,8 @@ test('an unavailable configured enforcement component does not bypass built-in e
   const current = assessAdmission({
     now,
     logs: [completedLog()],
+    stateAvailable: true,
+    enumerationComplete: true,
     configuredEnforcementAvailable: false,
   });
   assert.equal(current.allowed, true);
@@ -217,15 +240,25 @@ test('completion is a single deterministic runtime-state write per UTC weekly cy
 });
 
 test('state failures and malformed canonical records fail closed', () => {
-  assert.equal(assessAdmission({ now, stateAvailable: false }).reason, 'state-backend-unavailable');
+  assert.equal(assessAdmission({ now }).reason, 'state-backend-unavailable');
   assert.equal(
-    assessAdmission({ now, enumerationComplete: false }).reason,
+    assessAdmission({ now, stateAvailable: true }).reason,
+    'log-enumeration-incomplete',
+  );
+  assert.equal(
+    assessAdmission({ now, stateAvailable: 'true', enumerationComplete: true }).reason,
+    'state-backend-unavailable',
+  );
+  assert.equal(
+    assessAdmission({ now, stateAvailable: true, enumerationComplete: 1 }).reason,
     'log-enumeration-incomplete',
   );
   assert.equal(
     assessAdmission({
       now,
       logs: [{ key: 'log/weekly-retrospective-2026-08-24.md', content: 'partial' }],
+      stateAvailable: true,
+      enumerationComplete: true,
     }).reason,
     'invalid-completion-record',
   );
@@ -233,6 +266,8 @@ test('state failures and malformed canonical records fail closed', () => {
     assessAdmission({
       now,
       logs: [completedLog('2026-08-30T04:17:54.580Z')],
+      stateAvailable: true,
+      enumerationComplete: true,
     }).reason,
     'future-completion-record',
   );
@@ -240,11 +275,20 @@ test('state failures and malformed canonical records fail closed', () => {
 
 test('timestamps and both evidence-window endpoints require strict timezone-qualified RFC 3339', () => {
   assert.throws(
-    () => assessAdmission({ now: '2026-08-29 04:17:54', logs: [] }),
+    () => assessAdmission({
+      now: '2026-08-29 04:17:54',
+      logs: [],
+      stateAvailable: true,
+      enumerationComplete: true,
+    }),
     /timezone-qualified RFC 3339/,
   );
   assert.equal(
     validateCompletedLog(completedLog('2026-08-29T04:17:54.580')).reason,
+    'invalid-completion-timestamp',
+  );
+  assert.equal(
+    validateCompletedLog(completedLog('2026-08-29T04:17:54.5801Z')).reason,
     'invalid-completion-timestamp',
   );
 
@@ -253,6 +297,8 @@ test('timestamps and both evidence-window endpoints require strict timezone-qual
     '2026-08-22T04:17:54.580Z through 2026-08-29T04:17:54.580',
     '2026-08-30T04:17:54.580Z through 2026-08-29T04:17:54.580Z',
     '2026-02-30T04:17:54.580Z through 2026-08-29T04:17:54.580Z',
+    '2026-08-22T04:17:54.5801Z through 2026-08-29T04:17:54.580Z',
+    '2026-08-22T04:17:54.580Z through 2026-08-29T04:17:54.5801Z',
   ];
   for (const evidenceWindow of invalidWindows) {
     const log = completedLog();
@@ -308,6 +354,36 @@ test('completion requires confirmed state availability and complete enumeration'
   assert.equal(
     prepareCompletion({
       ...input,
+      stateAvailable: 'true',
+      enumerationComplete: true,
+    }).reason,
+    'state-backend-unavailable',
+  );
+  assert.equal(
+    prepareCompletion({
+      ...input,
+      stateAvailable: true,
+      enumerationComplete: 1,
+    }).reason,
+    'log-enumeration-incomplete',
+  );
+  for (const [endpoint, value] of [
+    ['windowStart', '2026-08-22T04:17:54.5801Z'],
+    ['windowEnd', '2026-08-29T04:17:54.5801Z'],
+  ]) {
+    assert.equal(
+      prepareCompletion({
+        ...input,
+        stateAvailable: true,
+        enumerationComplete: true,
+        evidence: { ...input.evidence, [endpoint]: value },
+      }).reason,
+      'evidence-window-invalid',
+    );
+  }
+  assert.equal(
+    prepareCompletion({
+      ...input,
       stateAvailable: true,
       enumerationComplete: true,
     }).ready,
@@ -328,8 +404,12 @@ test('the issue-drain contract and runbook require governed fail-closed recovery
   assert.match(prompt, /must not depend on the configured\s+`retro-enforcement` skill/i);
   assert.match(prompt, /orchestrator must not write `log\/` directly/i);
   assert.match(prompt, /Scribe alone\s+makes exactly one `squad_state_write`/i);
+  assert.match(prompt, /limited to millisecond precision/i);
+  assert.match(prompt, /literal boolean `true`/i);
   assert.match(runbook, /Operational owner.*Jett Reno/i);
   assert.match(runbook, /Scribe alone writes\s+`log\/`/i);
   assert.match(runbook, /interrupted before the final write/i);
+  assert.match(runbook, /no more than three fractional-second\s+digits/i);
+  assert.match(runbook, /Omitted or\s+non-boolean confirmations fail closed/i);
   assert.match(runbook, /Never write.*runtime-owned.*directly/i);
 });

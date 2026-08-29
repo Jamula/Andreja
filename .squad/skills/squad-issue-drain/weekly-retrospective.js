@@ -6,7 +6,7 @@ const SCHEMA_MARKER = '<!-- weekly-retrospective:v1 -->';
 const BLOCKER_REFERENCE =
   /^(?:#\d+|[^/\s]+\/[^#\s]+#\d+|https:\/\/github\.com\/[^/]+\/[^/]+\/(?:issues|pull)\/\d+)$/;
 const RFC3339_TIMESTAMP =
-  /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d):([0-5]\d)(?:\.(\d+))?(Z|[+-](?:(?:0\d|1[0-3]):[0-5]\d|14:00))$/;
+  /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d):([0-5]\d)(?:\.(\d{1,3}))?(Z|[+-](?:(?:0\d|1[0-3]):[0-5]\d|14:00))$/;
 
 function requiredDate(value, name) {
   const match = typeof value === 'string' ? value.match(RFC3339_TIMESTAMP) : null;
@@ -164,15 +164,15 @@ function validateCompletedLog(log) {
 function assessAdmission({
   now,
   logs = [],
-  stateAvailable = true,
-  enumerationComplete = true,
+  stateAvailable = false,
+  enumerationComplete = false,
   configuredEnforcementAvailable = true,
 }) {
   const current = requiredDate(now, 'now');
-  if (!stateAvailable) {
+  if (stateAvailable !== true) {
     return { allowed: false, ceremonyRequired: false, reason: 'state-backend-unavailable' };
   }
-  if (!enumerationComplete) {
+  if (enumerationComplete !== true) {
     return { allowed: false, ceremonyRequired: false, reason: 'log-enumeration-incomplete' };
   }
 

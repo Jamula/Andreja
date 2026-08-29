@@ -37,7 +37,9 @@ At every round start, before enumerating or admitting queue work:
    canonical record, future timestamp, or duplicate completed record for one
    UTC Monday-through-Sunday cycle blocks admission. Current, completion, and
    both evidence-window timestamps must be timezone-qualified RFC 3339 values;
-   malformed or timezone-less values block admission.
+   fractional seconds are limited to millisecond precision, and malformed,
+   timezone-less, or more precise values block admission. State availability and
+   complete enumeration must each be confirmed with the literal boolean `true`.
 2. Apply the deterministic seven-day rules in `weekly-retrospective.js`.
    A completed record is current through exactly seven elapsed days. This check
    is built into issue drain and must not depend on the configured

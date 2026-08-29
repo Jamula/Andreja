@@ -26,8 +26,9 @@ during rollout, but new ceremonies use only the canonical key.
 3. Apply `.squad/skills/squad-issue-drain/weekly-retrospective.js` using the
    coordinator-provided current timestamp. Filesystem timestamps are not
    evidence. Current, completion, and both evidence-window endpoints must be
-   timezone-qualified RFC 3339 values; malformed, timezone-less, or reversed
-   endpoints fail closed.
+   timezone-qualified RFC 3339 values with no more than three fractional-second
+   digits; malformed, timezone-less, over-precise, or reversed endpoints fail
+   closed.
 4. Fail closed on an overdue record, unavailable/incomplete state read,
    malformed canonical record, future completion, or multiple completed records
    in one cycle.
@@ -47,10 +48,11 @@ does not disable or relax admission.
 5. Confirm the record contains no personal data, prompts, connector content,
    credentials, or private diagnostics.
 6. Run the completion validation with state availability and complete enumeration
-   explicitly confirmed. Only after every gate passes, hand the returned key and
-   content to Scribe. Scribe persists it with exactly one `squad_state_write`
-   through the runtime state backend; the orchestrator never writes `log/`
-   directly.
+   each explicitly confirmed with the literal boolean `true`. Omitted or
+   non-boolean confirmations fail closed. Only after every gate passes, hand the
+   returned key and content to Scribe. Scribe persists it with exactly one
+   `squad_state_write` through the runtime state backend; the orchestrator never
+   writes `log/` directly.
 7. Re-list and re-read the record, then resume queue work.
 
 The completion record contains only the evidence window, shipped/open counts,
