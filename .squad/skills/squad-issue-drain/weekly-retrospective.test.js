@@ -6,12 +6,61 @@ const path = require('node:path');
 const test = require('node:test');
 const {
   assessAdmission,
-  prepareCompletion,
+  prepareCompletion: prepareCompletionForRepository,
   resolveActionCandidates,
   validateCompletedLog,
 } = require('./weekly-retrospective');
 
 const now = '2026-08-28T22:03:38.453-07:00';
+const atomicCompletionCapability = {
+  verified: true,
+  repositoryScoped: true,
+  repository: 'Jamula/Andreja',
+  kind: 'conditional-create',
+  tool: 'test.conditionalCreate',
+  createIfAbsent: true,
+  conflictIsFailure: true,
+};
+
+function prepareCompletion(input) {
+  return prepareCompletionForRepository({
+    repository: 'Jamula/Andreja',
+    ...input,
+  });
+}
+
+function verificationFor({
+  shippedCount = 0,
+  openCount = 0,
+  blockers = [],
+  decisions = [],
+  actions = [],
+} = {}) {
+  return {
+    github: {
+      repository: 'Jamula/Andreja',
+      observedAt: now,
+      shippedIssueUrls: Array.from(
+        { length: shippedCount },
+        (_, index) => `https://github.com/Jamula/Andreja/issues/${1000 + index}`,
+      ),
+      openIssueUrls: Array.from(
+        { length: openCount },
+        (_, index) => `https://github.com/Jamula/Andreja/issues/${2000 + index}`,
+      ),
+      blockerReferences: blockers,
+    },
+    decisionReferences: decisions.map(({ reference }) => reference),
+    duplicateSearch: {
+      searchedStates: ['open', 'closed'],
+      resolvedIssueUrls: actions.map(({ issueUrl }) => issueUrl),
+    },
+    privacy: {
+      reviewedAt: now,
+      prohibitedDataFound: false,
+    },
+  };
+}
 
 function completedLog(completedAt = '2026-08-29T04:17:54.580Z') {
   return {
@@ -84,7 +133,7 @@ test('a completed retrospective within seven days allows admission', () => {
   );
 });
 
-test('the existing detailed runtime log is accepted during canonical-key rollout', () => {
+test('legacy runtime logs are rejected during canonical-key rollout', () => {
   const legacy = {
     key: 'log/2026-08-28T21-17-54.580-07-00-retrospective-with-enforcement.md',
     content: [
@@ -108,10 +157,10 @@ test('the existing detailed runtime log is accepted during canonical-key rollout
     logs: [legacy],
     stateAvailable: true,
     enumerationComplete: true,
-  }).allowed, true);
+  }).reason, 'retrospective-overdue');
 });
 
-test('legacy rollout records require a substantive list entry in every section', () => {
+test('legacy rollout records are rejected regardless of section content', () => {
   const entries = [
     ['Evidence', '- GitHub counts reviewed.'],
     ['Decisions', '- Queue admission fails closed.'],
@@ -140,8 +189,8 @@ test('legacy rollout records require a substantive list entry in every section',
 
       assert.equal(
         validateCompletedLog(legacy).reason,
-        'not-a-completed-legacy-record',
-        `${name} without a substantive list entry must fail validation`,
+        'legacy-completion-record-unsupported',
+        `${name} legacy records must fail validation`,
       );
       assert.equal(
         assessAdmission({
@@ -232,6 +281,8 @@ test('duplicate action search requires an exact boolean completion confirmation'
 });
 
 test('an interrupted ceremony cannot produce a completion write', () => {
+  const blockers = ['#44'];
+  const decisions = [{ summary: 'Fail closed', reference: 'governed decision a029d433' }];
   const result = prepareCompletion({
     now,
     logs: [],
@@ -243,25 +294,37 @@ test('an interrupted ceremony cannot produce a completion write', () => {
       shippedCount: 56,
       openCount: 27,
     },
-    blockers: ['#44'],
-    decisions: [{ summary: 'Fail closed', reference: 'governed decision a029d433' }],
+    blockers,
+    decisions,
     actions: [],
-    gates: {
-      evidenceReviewComplete: true,
-      decisionReviewComplete: true,
-      decisionsRecorded: true,
-      duplicateSearchComplete: false,
-      actionIssuesComplete: false,
-      privacyReviewComplete: true,
+    verification: {
+      ...verificationFor({
+        shippedCount: 56,
+        openCount: 27,
+        blockers,
+        decisions,
+      }),
+      duplicateSearch: undefined,
     },
+    atomicCompletionCapability,
   });
 
   assert.equal(result.ready, false);
   assert.equal(result.write, null);
-  assert.match(result.reason, /^gate-incomplete:/);
+  assert.equal(result.reason, 'duplicate-search-evidence-mismatch');
 });
 
-test('completion is a single deterministic runtime-state write per UTC weekly cycle', () => {
+test('completion prepares one deterministic conditional create per UTC weekly cycle', () => {
+  const blockers = ['#44', '#62'];
+  const decisions = [{
+    summary: 'Queue admission fails closed',
+    reference: 'governed decision a029d433',
+  }];
+  const actions = [{
+    summary: 'Automate retrospective enforcement',
+    disposition: 'created',
+    issueUrl: 'https://github.com/Jamula/Andreja/issues/122',
+  }];
   const input = {
     now,
     logs: [],
@@ -273,21 +336,17 @@ test('completion is a single deterministic runtime-state write per UTC weekly cy
       shippedCount: 56,
       openCount: 27,
     },
-    blockers: ['#44', '#62'],
-    decisions: [{ summary: 'Queue admission fails closed', reference: 'governed decision a029d433' }],
-    actions: [{
-      summary: 'Automate retrospective enforcement',
-      disposition: 'created',
-      issueUrl: 'https://github.com/Jamula/Andreja/issues/122',
-    }],
-    gates: {
-      evidenceReviewComplete: true,
-      decisionReviewComplete: true,
-      decisionsRecorded: true,
-      duplicateSearchComplete: true,
-      actionIssuesComplete: true,
-      privacyReviewComplete: true,
-    },
+    blockers,
+    decisions,
+    actions,
+    verification: verificationFor({
+      shippedCount: 56,
+      openCount: 27,
+      blockers,
+      decisions,
+      actions,
+    }),
+    atomicCompletionCapability,
   };
   const first = prepareCompletion(input);
   const second = prepareCompletion(input);
@@ -454,14 +513,8 @@ test('completion preserves explicit no-item sentinels accepted by validation', (
     blockers: [],
     decisions: [],
     actions: [],
-    gates: {
-      evidenceReviewComplete: true,
-      decisionReviewComplete: true,
-      decisionsRecorded: true,
-      duplicateSearchComplete: true,
-      actionIssuesComplete: true,
-      privacyReviewComplete: true,
-    },
+    verification: verificationFor({ shippedCount: 56, openCount: 27 }),
+    atomicCompletionCapability,
   });
 
   assert.equal(completion.ready, true);
@@ -475,6 +528,13 @@ test('completion preserves explicit no-item sentinels accepted by validation', (
 });
 
 test('completion fails closed on malformed caller entries for every section', () => {
+  const blockers = ['#44'];
+  const decisions = [{ summary: 'Fail closed', reference: 'governed decision a029d433' }];
+  const actions = [{
+    summary: 'Automate retrospective enforcement',
+    disposition: 'existing',
+    issueUrl: 'https://github.com/Jamula/Andreja/issues/122',
+  }];
   const input = {
     now,
     logs: [],
@@ -486,21 +546,17 @@ test('completion fails closed on malformed caller entries for every section', ()
       shippedCount: 56,
       openCount: 27,
     },
-    blockers: ['#44'],
-    decisions: [{ summary: 'Fail closed', reference: 'governed decision a029d433' }],
-    actions: [{
-      summary: 'Automate retrospective enforcement',
-      disposition: 'existing',
-      issueUrl: 'https://github.com/Jamula/Andreja/issues/122',
-    }],
-    gates: {
-      evidenceReviewComplete: true,
-      decisionReviewComplete: true,
-      decisionsRecorded: true,
-      duplicateSearchComplete: true,
-      actionIssuesComplete: true,
-      privacyReviewComplete: true,
-    },
+    blockers,
+    decisions,
+    actions,
+    verification: verificationFor({
+      shippedCount: 56,
+      openCount: 27,
+      blockers,
+      decisions,
+      actions,
+    }),
+    atomicCompletionCapability,
   };
   const malformed = [
     { blockers: ['arbitrary text'] },
@@ -582,14 +638,8 @@ test('completion requires confirmed state availability and complete enumeration'
       shippedCount: 56,
       openCount: 27,
     },
-    gates: {
-      evidenceReviewComplete: true,
-      decisionReviewComplete: true,
-      decisionsRecorded: true,
-      duplicateSearchComplete: true,
-      actionIssuesComplete: true,
-      privacyReviewComplete: true,
-    },
+    verification: verificationFor({ shippedCount: 56, openCount: 27 }),
+    atomicCompletionCapability,
   };
 
   assert.deepEqual(prepareCompletion(input), {
@@ -640,6 +690,107 @@ test('completion requires confirmed state availability and complete enumeration'
   assert.equal(validateCompletedLog(completion.write).valid, true);
 });
 
+test('completion fails closed without verified atomic conditional create support', () => {
+  const input = {
+    now,
+    logs: [],
+    stateAvailable: true,
+    enumerationComplete: true,
+    evidence: {
+      windowStart: '2026-08-22T04:17:54.580Z',
+      windowEnd: '2026-08-29T04:17:54.580Z',
+      shippedCount: 0,
+      openCount: 0,
+    },
+    verification: verificationFor(),
+  };
+
+  assert.equal(prepareCompletion(input).reason, 'atomic-completion-unavailable');
+  assert.equal(
+    prepareCompletion({
+      ...input,
+      atomicCompletionCapability: {
+        ...atomicCompletionCapability,
+        repositoryScoped: false,
+      },
+    }).reason,
+    'atomic-completion-unavailable',
+  );
+});
+
+test('completion rejects stale or contradictory GitHub evidence', () => {
+  const evidence = {
+    windowStart: '2026-08-22T04:17:54.580Z',
+    windowEnd: '2026-08-29T04:17:54.580Z',
+    shippedCount: 1,
+    openCount: 1,
+  };
+  const input = {
+    now,
+    logs: [],
+    stateAvailable: true,
+    enumerationComplete: true,
+    evidence,
+    atomicCompletionCapability,
+  };
+  const verification = verificationFor({ shippedCount: 1, openCount: 1 });
+
+  assert.equal(prepareCompletion({
+    ...input,
+    verification: {
+      ...verification,
+      github: { ...verification.github, observedAt: '2026-08-29T04:30:00.000Z' },
+    },
+  }).reason, 'github-observation-invalid');
+
+  const duplicateUrl = verification.github.shippedIssueUrls[0]
+    .replace('/issues/', '/pull/');
+  assert.equal(prepareCompletion({
+    ...input,
+    verification: {
+      ...verification,
+      github: {
+        ...verification.github,
+        openIssueUrls: [duplicateUrl],
+      },
+    },
+  }).reason, 'github-evidence-state-conflict');
+
+  assert.equal(prepareCompletion({
+    ...input,
+    verification: {
+      ...verification,
+      github: { ...verification.github, repository: 'other/repository' },
+    },
+  }).reason, 'github-repository-mismatch');
+
+  assert.equal(prepareCompletion({
+    ...input,
+    atomicCompletionCapability: {
+      ...atomicCompletionCapability,
+      repository: 'other/repository',
+    },
+    verification,
+  }).reason, 'atomic-completion-unavailable');
+
+  const duplicateIdentity = verification.github.shippedIssueUrls[0]
+    .replace('/issues/1000', '/pull/01000');
+  assert.equal(prepareCompletion({
+    ...input,
+    evidence: { ...evidence, shippedCount: 2 },
+    verification: {
+      ...verification,
+      github: {
+        ...verification.github,
+        shippedIssueUrls: [
+          verification.github.shippedIssueUrls[0],
+          duplicateIdentity,
+        ],
+      },
+    },
+  }).reason, 'github-evidence-identity-duplicate');
+});
+
 test('the issue-drain contract and runbook require governed fail-closed recovery', () => {
   const root = path.resolve(__dirname, '../../..');
   const prompt = fs.readFileSync(path.join(__dirname, 'PROMPT.md'), 'utf8');
@@ -660,29 +811,30 @@ test('the issue-drain contract and runbook require governed fail-closed recovery
     'utf8',
   );
 
-  assert.match(prompt, /before enumerating or admitting queue work/i);
+  assert.match(prompt, /before every queue enumeration, status, classification, or\s+admission path/i);
   assert.match(prompt, /squad_state_list.*`log`/s);
   assert.match(prompt, /must not depend on the configured\s+`retro-enforcement` skill/i);
   assert.match(prompt, /orchestrator must not write `log\/` directly/i);
-  assert.match(prompt, /Scribe alone\s+makes exactly one `squad_state_write`/i);
-  assert.match(prompt, /limited to millisecond precision/i);
-  assert.match(prompt, /literal boolean `true`/i);
+  assert.match(prompt, /exactly one conditional-create attempt/i);
+  assert.match(prompt, /Plain `squad_state_write` is insufficient/i);
+  assert.match(prompt, /limited\s+to millisecond precision/i);
+  assert.match(prompt, /structured evidence, not caller-supplied/i);
   assert.match(
     coordinator,
-    /Before every Ralph work-check cycle[\s\S]*unconditionally load `squad-issue-drain`/i,
+    /Before every queue enumeration, status,\s*classification, or admission path[\s\S]*unconditionally load `squad-issue-drain`/i,
   );
   assert.match(
     coordinator,
-    /Weekly retrospective completion mode \(exclusive\)[\s\S]*`squad_state_write` exactly once/i,
+    /Weekly retrospective completion mode \(exclusive\)[\s\S]*atomic conditional-create tool/i,
   );
   assert.match(
     coordinator,
-    /suppress the\s+generic session, ceremony, orchestration, and health logs/i,
+    /suppress.*generic session.*ceremony.*orchestration.*health logs/is,
   );
   assert.match(ralphReference, /Step 0.*Enforce queue admission/i);
   assert.match(
     ralphReference,
-    /Do not scan or enumerate issues or PRs until that contract\s+permits queue work/i,
+    /Do not scan or enumerate issues or PRs until that contract permits the\s+requested read-only or writer mode/i,
   );
   assert.match(ceremonyReference, /Admission-gate exception/i);
   assert.match(
@@ -690,9 +842,9 @@ test('the issue-drain contract and runbook require governed fail-closed recovery
     /Resume queue work only after the issue-drain\s+protocol confirms a valid durable completion record/i,
   );
   assert.match(runbook, /Operational owner.*Jett Reno/i);
-  assert.match(runbook, /Scribe alone writes\s+`log\/`/i);
-  assert.match(runbook, /interrupted before the final write/i);
+  assert.match(runbook, /Scribe alone completes the canonical `log\/` record/i);
+  assert.match(runbook, /interrupted before the final conditional create/i);
   assert.match(runbook, /no more than three fractional-second\s+digits/i);
-  assert.match(runbook, /Omitted or\s+non-boolean confirmations fail closed/i);
+  assert.match(runbook, /caller self-assertion is not evidence/i);
   assert.match(runbook, /Never write.*runtime-owned.*directly/i);
 });

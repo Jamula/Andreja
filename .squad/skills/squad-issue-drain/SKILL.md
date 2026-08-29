@@ -7,17 +7,20 @@ drive issues through draft PRs and Agent Merge.
 Read `PROMPT.md` in this skill directory and follow it as the orchestration
 contract.
 
-Start with the MVP defaults:
+Start with the fail-closed defaults:
 
-- one active orchestrator per repository;
-- four App child sessions unless the platform confirms more capacity;
+- writer operation only with verified existing repository-scoped atomic
+  ownership; otherwise read-only;
+- up to five App child issue sessions per batch, capped by lower verified
+  capacity;
 - one issue, owner, session, branch/worktree, and PR;
-- at least 30 seconds between spawn attempts;
-- require the previous child ACK before admitting the next;
+- at least 10 seconds between all spawn attempts;
+- require a correlated valid ACK from every admitted child before releasing any
+  child or advancing the batch;
 - prefer eligible cloud work and fall back locally only after definitive
   non-creation;
 - use Squad as the child agent when supported;
-- use Agent Merge to reach merge-ready, while the app performs the merge; and
+- report `READY_FOR_AGENT_MERGE` without activating it; the app owns landing; and
 - archive owned sessions only after GitHub confirms merge.
 
 Queue admission is fail-closed behind the built-in weekly retrospective protocol

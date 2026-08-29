@@ -4,9 +4,10 @@
 
 **Operational owner:** Jett Reno owns the admission mechanism and this runbook.
 Ralph enforces the check before queue work, Picard facilitates the ceremony, and
-the Squad coordinator requests governed state operations. Scribe alone writes
-`log/` through the runtime state backend. GitHub issues remain the action source
-of truth.
+the Squad coordinator requests governed state operations. Scribe alone completes the canonical `log/` record through a verified,
+repository-scoped atomic conditional create supplied by the existing runtime.
+Plain state writes do not establish exclusivity. GitHub issues remain the
+action source of truth.
 
 Queue admission requires one valid completed retrospective no more than seven
 elapsed days old. Each UTC Monday-through-Sunday cycle has at most one durable
@@ -18,11 +19,16 @@ The date is the cycle's UTC Monday. The fixed key makes retries idempotent.
 Legacy detailed `*-retrospective-with-enforcement.md` records remain readable
 during rollout, but new ceremonies use only the canonical key.
 
-## Round-start check
+## Universal queue check
+
+Run this check before every queue enumeration, status, classification, or
+admission path, including Ralph status, recovery, restart, heartbeat, and
+post-batch rescan.
 
 1. Confirm the runtime state bridge is healthy.
-2. List `log` with `squad_state_list`; read canonical and candidate legacy
-   completion records with `squad_state_read`.
+2. List `log` with `squad_state_list`; read every canonical completion record
+   with `squad_state_read`. Preserve candidate legacy records for audit, but
+   never accept them as completion.
 3. Apply `.squad/skills/squad-issue-drain/weekly-retrospective.js` using the
    coordinator-provided current timestamp. Filesystem timestamps are not
    evidence. Current, completion, and both evidence-window endpoints must be
@@ -47,13 +53,22 @@ does not disable or relax admission.
    only for a genuinely new, non-duplicate action.
 5. Confirm the record contains no personal data, prompts, connector content,
    credentials, or private diagnostics.
-6. Run the completion validation with state availability and complete enumeration
-   each explicitly confirmed with the literal boolean `true`. Omitted or
-   non-boolean confirmations fail closed. Only after every gate passes, hand the
-   returned key and content to Scribe. Scribe persists it with exactly one
-   `squad_state_write` through the runtime state backend; the orchestrator never
-   writes `log/` directly.
-7. Re-list and re-read the record, then resume queue work.
+6. Run completion validation with state availability, complete enumeration,
+   structured GitHub URL/count evidence, blocker references, governed decision
+   references, open-and-closed duplicate-search results, action issue URLs, and
+   privacy review evidence. GitHub evidence must be observed within five minutes
+   of completion, and shipped/open identities must be disjoint even when issue
+   and pull-request URL forms differ. Missing, malformed, stale, or inconsistent
+   evidence fails closed; caller self-assertion is not evidence.
+7. Prove that generic Scribe work is quiescent. If it cannot be proven finished,
+   stop. Do not start generic Scribe until completion is reconciled.
+8. Capability-detect an existing verified repository-scoped atomic
+   conditional-create operation. Without it, remain read-only and blocked; do
+   not substitute `squad_state_write`.
+9. Hand the returned key and content to exclusive Scribe. Scribe makes one
+   create-if-absent attempt. Conflict or uncertainty is failure, not overwrite
+   or success. The orchestrator never writes `log/` directly.
+10. Re-list and re-read the record, then resume queue work.
 
 The completion record contains only the evidence window, shipped/open counts,
 blocker references, decision summaries/references, and action issue links. Do
@@ -77,9 +92,9 @@ with other entries invalidate the record and keep admission closed.
   the configured runtime state bridge, then rerun the round-start check.
 - **Optional enforcement component unavailable:** continue with the built-in
   issue-drain protocol; do not bypass the ceremony.
-- **Ceremony interrupted before the final write:** rerun it. The absence of a
+- **Ceremony interrupted before the final conditional create:** rerun it. The absence of a
   valid record intentionally keeps admission blocked.
-- **Interruption after the final write:** re-read and reuse the valid canonical
+- **Interruption after the conditional create:** re-read and reuse the valid canonical
   record. Never create a second log.
 - **Existing malformed canonical key or duplicate cycle records:** stop
   admission and escalate to the Squad coordinator. Preserve the records for
@@ -87,6 +102,8 @@ with other entries invalidate the record and keep admission closed.
   approved recovery policy.
 - **GitHub evidence or duplicate search incomplete:** keep the ceremony open and
   admission blocked. Do not infer completion or create speculative actions.
+- **Atomic conditional-create unavailable:** remain read-only. Do not claim a
+  lease, write completion, admit children, or replace atomicity with convention.
 
 Never write, edit, delete, or copy runtime-owned Squad state directly, and never
 use git-notes choreography. Recovery uses `squad_state_*` or governed memory

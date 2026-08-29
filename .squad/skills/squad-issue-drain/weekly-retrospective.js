@@ -8,10 +8,13 @@ const NO_DECISIONS = 'No new decision required.';
 const NO_RETRO_ACTIONS = 'No actions after complete duplicate search.';
 const GITHUB_ISSUE_URL =
   /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/issues\/\d+$/;
+const GITHUB_ISSUE_OR_PULL_URL =
+  /^https:\/\/github\.com\/([^/\s]+\/[^/\s]+)\/(?:issues|pull)\/(\d+)$/;
 const BLOCKER_REFERENCE =
   /^(?:#\d+|[^/\s]+\/[^/#\s]+#\d+|https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/(?:issues|pull)\/\d+)$/;
 const RFC3339_TIMESTAMP =
   /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d):([0-5]\d)(?:\.(\d{1,3}))?(Z|[+-](?:(?:0\d|1[0-3]):[0-5]\d|14:00))$/;
+const MAX_GITHUB_EVIDENCE_AGE_MILLISECONDS = 5 * 60 * 1000;
 
 function requiredDate(value, name) {
   const match = typeof value === 'string' ? value.match(RFC3339_TIMESTAMP) : null;
@@ -55,22 +58,6 @@ function completionKey(dateValue) {
   return `${CANONICAL_PREFIX}${cycleStart(dateValue)}.md`;
 }
 
-function parseStateTimestamp(key) {
-  const match = key.match(
-    /^log\/(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2}(?:\.\d+)?)(Z|[+-]\d{2}-\d{2})-/,
-  );
-  if (!match) return null;
-  const zone = match[5] === 'Z' ? 'Z' : `${match[5].slice(0, 3)}:${match[5].slice(4)}`;
-  try {
-    return requiredDate(
-      `${match[1]}T${match[2]}:${match[3]}:${match[4]}${zone}`,
-      'legacy completion timestamp',
-    );
-  } catch {
-    return null;
-  }
-}
-
 function field(content, name) {
   const match = content.match(new RegExp(`^- ${name}:\\s*(.+)$`, 'im'));
   return match ? match[1].trim() : null;
@@ -88,20 +75,6 @@ function parseEvidenceWindow(value) {
     throw new Error('evidence window start must precede its end');
   }
   return { start, end };
-}
-
-function sectionHasListEntry(content, name) {
-  const lines = content.split(/\r?\n/);
-  const sectionStart = lines.indexOf(`## ${name}`);
-  if (sectionStart === -1) return false;
-
-  const nextSection = lines.findIndex(
-    (line, index) => index > sectionStart && /^##\s+\S/.test(line),
-  );
-  const sectionEnd = nextSection === -1 ? lines.length : nextSection;
-  return lines
-    .slice(sectionStart + 1, sectionEnd)
-    .some((line) => /^[-*+]\s+\S/.test(line.trim()));
 }
 
 function canonicalSectionEntries(content, name) {
@@ -208,33 +181,10 @@ function validateCompletedLog(log) {
     return { valid: true, completedAt: completedDate };
   }
 
-  if (!/-retrospective-with-enforcement\.md$/.test(log.key)) {
-    return { valid: false, reason: 'not-a-completion-record' };
+  if (/-retrospective-with-enforcement\.md$/.test(log.key)) {
+    return { valid: false, reason: 'legacy-completion-record-unsupported' };
   }
-  const completedAt = parseStateTimestamp(log.key);
-  const legacyEvidence = log.content.match(/^Evidence window:\s*(.+)\.$/m);
-  let evidenceWindowValid = false;
-  if (legacyEvidence) {
-    try {
-      const parsedEvidenceWindow = parseEvidenceWindow(legacyEvidence[1]);
-      evidenceWindowValid = Boolean(completedAt && parsedEvidenceWindow.end <= completedAt);
-    } catch {
-      evidenceWindowValid = false;
-    }
-  }
-  const legacyComplete =
-    completedAt
-    && /^# Retrospective with Enforcement\b/m.test(log.content)
-    && evidenceWindowValid
-    && /^## Evidence$/m.test(log.content)
-    && /^## Decisions$/m.test(log.content)
-    && /^## Actions$/m.test(log.content)
-    && sectionHasListEntry(log.content, 'Evidence')
-    && sectionHasListEntry(log.content, 'Decisions')
-    && sectionHasListEntry(log.content, 'Actions');
-  return legacyComplete
-    ? { valid: true, completedAt, legacy: true }
-    : { valid: false, reason: 'not-a-completed-legacy-record' };
+  return { valid: false, reason: 'not-a-completion-record' };
 }
 
 function assessAdmission({
@@ -370,6 +320,130 @@ function isNonNegativeInteger(value) {
   return Number.isInteger(value) && value >= 0;
 }
 
+function uniqueStrings(values) {
+  return Array.isArray(values)
+    && values.every((value) => typeof value === 'string' && value.length > 0)
+    && new Set(values).size === values.length;
+}
+
+function validateCompletionEvidence({
+  now,
+  repository,
+  evidence,
+  blockers,
+  decisions,
+  actions,
+  verification,
+}) {
+  if (!verification || typeof verification !== 'object' || Array.isArray(verification)) {
+    return { valid: false, reason: 'verification-evidence-missing' };
+  }
+  const github = verification.github;
+  if (!github || typeof github !== 'object' || Array.isArray(github)) {
+    return { valid: false, reason: 'github-evidence-missing' };
+  }
+  if (!/^[^/\s]+\/[^/\s]+$/.test(github.repository || '')) {
+    return { valid: false, reason: 'github-repository-invalid' };
+  }
+  if (github.repository !== repository) {
+    return { valid: false, reason: 'github-repository-mismatch' };
+  }
+  let observedAt;
+  let current;
+  try {
+    observedAt = requiredDate(github.observedAt, 'github observedAt');
+    current = requiredDate(now, 'now');
+  } catch {
+    return { valid: false, reason: 'github-observation-invalid' };
+  }
+  let evidenceWindowEnd;
+  try {
+    evidenceWindowEnd = requiredDate(evidence.windowEnd, 'evidence window end');
+  } catch {
+    return { valid: false, reason: 'github-observation-invalid' };
+  }
+  if (observedAt < evidenceWindowEnd
+      || observedAt > current
+      || current - observedAt > MAX_GITHUB_EVIDENCE_AGE_MILLISECONDS) {
+    return { valid: false, reason: 'github-observation-invalid' };
+  }
+  if (!uniqueStrings(github.shippedIssueUrls) || !uniqueStrings(github.openIssueUrls)) {
+    return { valid: false, reason: 'github-evidence-urls-invalid' };
+  }
+  const allGithubUrls = [...github.shippedIssueUrls, ...github.openIssueUrls];
+  if (allGithubUrls.some((url) => {
+    const match = url.match(GITHUB_ISSUE_OR_PULL_URL);
+    return !match || match[1] !== github.repository;
+  })) {
+    return { valid: false, reason: 'github-evidence-urls-invalid' };
+  }
+  if (github.shippedIssueUrls.length !== evidence.shippedCount
+      || github.openIssueUrls.length !== evidence.openCount) {
+    return { valid: false, reason: 'github-evidence-count-mismatch' };
+  }
+  const itemIdentity = (url) => {
+    const match = url.match(GITHUB_ISSUE_OR_PULL_URL);
+    const issueNumber = match?.[2].replace(/^0+(?=\d)/, '');
+    return match ? `${match[1]}#${issueNumber}` : null;
+  };
+  const shippedItems = github.shippedIssueUrls.map(itemIdentity);
+  const openItems = github.openIssueUrls.map(itemIdentity);
+  if (new Set(shippedItems).size !== shippedItems.length
+      || new Set(openItems).size !== openItems.length) {
+    return { valid: false, reason: 'github-evidence-identity-duplicate' };
+  }
+  const shippedIdentities = new Set(shippedItems);
+  if (openItems.some((identity) => shippedIdentities.has(identity))) {
+    return { valid: false, reason: 'github-evidence-state-conflict' };
+  }
+  if (!Array.isArray(github.blockerReferences)
+      || JSON.stringify(github.blockerReferences) !== JSON.stringify(blockers)) {
+    return { valid: false, reason: 'github-blocker-evidence-mismatch' };
+  }
+
+  const decisionReferences = verification.decisionReferences;
+  if (!uniqueStrings(decisionReferences)
+      || decisions.some((decision) => !decisionReferences.includes(decision.reference))) {
+    return { valid: false, reason: 'decision-evidence-mismatch' };
+  }
+
+  const duplicateSearch = verification.duplicateSearch;
+  if (!duplicateSearch
+      || JSON.stringify(duplicateSearch.searchedStates) !== JSON.stringify(['open', 'closed'])
+      || !uniqueStrings(duplicateSearch.resolvedIssueUrls)
+      || actions.some((action) => !duplicateSearch.resolvedIssueUrls.includes(action.issueUrl))) {
+    return { valid: false, reason: 'duplicate-search-evidence-mismatch' };
+  }
+
+  const privacy = verification.privacy;
+  let reviewedAt;
+  try {
+    reviewedAt = requiredDate(privacy?.reviewedAt, 'privacy reviewedAt');
+  } catch {
+    return { valid: false, reason: 'privacy-evidence-missing' };
+  }
+  if (reviewedAt > current || privacy.prohibitedDataFound !== false) {
+    return { valid: false, reason: 'privacy-evidence-invalid' };
+  }
+  return { valid: true };
+}
+
+function validateAtomicCompletionCapability(capability, repository) {
+  return Boolean(
+    capability
+    && typeof capability === 'object'
+    && !Array.isArray(capability)
+    && capability.verified === true
+    && capability.repositoryScoped === true
+    && capability.repository === repository
+    && capability.kind === 'conditional-create'
+    && typeof capability.tool === 'string'
+    && capability.tool.length > 0
+    && capability.createIfAbsent === true
+    && capability.conflictIsFailure === true,
+  );
+}
+
 function oneLine(value, name) {
   if (typeof value !== 'string') {
     throw new Error(`${name} must be a non-empty single line`);
@@ -397,6 +471,7 @@ function referenceList(values, emptyText) {
 
 function prepareCompletion({
   now,
+  repository,
   logs = [],
   stateAvailable = false,
   enumerationComplete = false,
@@ -404,7 +479,8 @@ function prepareCompletion({
   blockers = [],
   decisions = [],
   actions = [],
-  gates = {},
+  verification,
+  atomicCompletionCapability,
 }) {
   const admission = assessAdmission({
     now,
@@ -419,17 +495,11 @@ function prepareCompletion({
     return { ready: false, reason: admission.reason, write: null };
   }
 
-  const requiredGates = [
-    'evidenceReviewComplete',
-    'decisionReviewComplete',
-    'decisionsRecorded',
-    'duplicateSearchComplete',
-    'actionIssuesComplete',
-    'privacyReviewComplete',
-  ];
-  const missingGate = requiredGates.find((gate) => gates[gate] !== true);
-  if (missingGate) {
-    return { ready: false, reason: `gate-incomplete:${missingGate}`, write: null };
+  if (!/^[^/\s]+\/[^/\s]+$/.test(repository || '')) {
+    return { ready: false, reason: 'repository-invalid', write: null };
+  }
+  if (!validateAtomicCompletionCapability(atomicCompletionCapability, repository)) {
+    return { ready: false, reason: 'atomic-completion-unavailable', write: null };
   }
 
   if (!evidence
@@ -495,6 +565,19 @@ function prepareCompletion({
     return { ready: false, reason: `record-invalid:${error.message}`, write: null };
   }
 
+  const evidenceValidation = validateCompletionEvidence({
+    now,
+    repository,
+    evidence,
+    blockers,
+    decisions,
+    actions,
+    verification,
+  });
+  if (!evidenceValidation.valid) {
+    return { ready: false, reason: evidenceValidation.reason, write: null };
+  }
+
   const content = [
     SCHEMA_MARKER,
     `# Weekly Retrospective — ${cycleStart(current)}`,
@@ -530,11 +613,14 @@ function prepareCompletion({
 
 module.exports = {
   CANONICAL_PREFIX,
+  MAX_GITHUB_EVIDENCE_AGE_MILLISECONDS,
   SCHEMA_MARKER,
   assessAdmission,
   completionKey,
   cycleStart,
   prepareCompletion,
   resolveActionCandidates,
+  validateAtomicCompletionCapability,
+  validateCompletionEvidence,
   validateCompletedLog,
 };

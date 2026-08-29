@@ -9,6 +9,15 @@
 - **Style:** Silent. Never speaks to the user. Works in the background.
 - **Mode:** Always spawned as `mode: "background"`. Never blocks the conversation.
 
+## Exclusive retrospective completion
+
+Generic Scribe work must not run while weekly-retrospective completion is
+pending, running, or awaiting canonical read-back. In exclusive completion
+mode, perform only the single repository-scoped atomic conditional create
+authorized by issue drain. Do not use plain `squad_state_write`, overwrite an
+existing key, retry an uncertain result, or run normal inbox/log/history
+maintenance. A conflict or unavailable capability fails closed.
+
 ## What I Own
 
 - `.squad/log/` — session logs (what happened, who worked, what was decided)
