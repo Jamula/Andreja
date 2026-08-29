@@ -1,0 +1,92 @@
+[
+  {
+    "id": "a029d433-520b-4d41-8ae3-40e444ef0e49",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Weekly retrospective enforcement",
+    "path": ".squad\\decisions\\inbox\\picard-weekly-retrospective-enforcement-a029d433.md",
+    "status": "active",
+    "createdAt": "2026-08-29T04:22:36.614Z",
+    "updatedAt": "2026-08-29T04:22:36.614Z"
+  },
+  {
+    "id": "0b3cadf7-07bd-4aa2-8ec5-4d049f1e4c54",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Weekly retrospective enforcement",
+    "path": ".squad\\decisions\\inbox\\picard-weekly-retrospective-enforcement-0b3cadf7.md",
+    "status": "active",
+    "createdAt": "2026-08-29T04:23:47.330Z",
+    "updatedAt": "2026-08-29T04:23:47.330Z"
+  },
+  {
+    "id": "6b15decc-c0b4-40fc-b3c5-13720caef9ed",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Privacy approval for issue 10",
+    "path": ".squad\\decisions\\inbox\\deanna-troi-privacy-approval-for-issue-10-6b15decc.md",
+    "status": "active",
+    "createdAt": "2026-08-29T04:32:00.384Z",
+    "updatedAt": "2026-08-29T04:32:00.384Z"
+  },
+  {
+    "id": "784ae7c8-090b-466e-bdf1-ed83fd0c15a7",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Phase 1A evidence governance path",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-phase-1a-evidence-governance-path-784ae7c8.md",
+    "status": "active",
+    "createdAt": "2026-08-29T05:12:22.475Z",
+    "updatedAt": "2026-08-29T05:12:22.475Z"
+  },
+  {
+    "id": "3b82824f-6270-4bad-a899-1af704dc474b",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Phase 1A local evidence execution",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-phase-1a-local-evidence-execution-3b82824f.md",
+    "status": "active",
+    "createdAt": "2026-08-29T05:31:38.315Z",
+    "updatedAt": "2026-08-29T05:31:38.315Z"
+  },
+  {
+    "id": "427e83ca-b824-4c78-86c2-c101ab5096e9",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Windows ARM64 evidence runtime",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-windows-arm64-evidence-runtime-427e83ca.md",
+    "status": "active",
+    "createdAt": "2026-08-29T05:46:12.291Z",
+    "updatedAt": "2026-08-29T05:46:12.291Z"
+  },
+  {
+    "id": "1337a563-5ddd-4da1-a420-944aff2434b3",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Phase 1A keyless signing direction",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-phase-1a-keyless-signing-direction-1337a563.md",
+    "status": "active",
+    "createdAt": "2026-08-29T06:37:28.251Z",
+    "updatedAt": "2026-08-29T06:37:28.251Z"
+  },
+  {
+    "id": "adbb49d2-15b4-4314-af2e-b027c2331c87",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "GitHub Actions keyless signing identity",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-github-actions-keyless-signing-identity-adbb49d2.md",
+    "status": "active",
+    "createdAt": "2026-08-29T06:53:42.198Z",
+    "updatedAt": "2026-08-29T06:53:42.198Z"
+  },
+  {
+    "id": "4cd63e6a-fbab-44a0-b417-8291d5696023",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Authorize issue 67 negative enforcement exercise",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-authorize-issue-67-negative-enforcement-exercise-4cd63e6a.md",
+    "status": "active",
+    "createdAt": "2026-08-29T07:28:16.159Z",
+    "updatedAt": "2026-08-29T07:28:16.159Z"
+  }
+]
