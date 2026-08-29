@@ -88,5 +88,15 @@
     "status": "active",
     "createdAt": "2026-08-29T07:28:16.159Z",
     "updatedAt": "2026-08-29T07:28:16.159Z"
+  },
+  {
+    "id": "7ef231aa-30b0-4c19-a567-1f570900e7c1",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Pause issue 67 for private Actions resolution",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-pause-issue-67-for-private-actions-resolution-7ef231aa.md",
+    "status": "active",
+    "createdAt": "2026-08-29T07:41:29.823Z",
+    "updatedAt": "2026-08-29T07:41:29.823Z"
   }
 ]
