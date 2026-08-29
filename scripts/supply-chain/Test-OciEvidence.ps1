@@ -2,6 +2,11 @@
 param(
     [Parameter(Mandatory)][string] $BundleDirectory,
     [string] $TrustedPublicKeyPath,
+    [string] $TrustedPolicyPath,
+    [string] $TrustedRootPath,
+    [Parameter(Mandatory)]
+    [ValidateSet('operator-held-key', 'hosted-unsigned-validation', 'keyless-sigstore')]
+    [string] $ExpectedSigningMode,
     [switch] $AllowUnsignedHostedEvidence
 )
 
@@ -23,12 +28,27 @@ if (-not ($evidenceJson | Test-Json -SchemaFile $schemaPath -ErrorAction Stop)) 
 }
 
 $evidence = $evidenceJson | ConvertFrom-Json -Depth 100
+if ($evidence.signing.mode -ne $ExpectedSigningMode) {
+    throw "Evidence signing mode '$($evidence.signing.mode)' does not match required mode '$ExpectedSigningMode'."
+}
 Assert-ArtifactInventory -Root $bundleRoot -Artifacts $evidence.artifacts
 
 $policyPath = Join-Path $bundleRoot $evidence.policy.path
-$policy = Read-SupplyChainPolicy -Path $policyPath
+$bundledPolicy = Read-SupplyChainPolicy -Path $policyPath
 if ((Get-FileSha256 -Path $policyPath) -ne $evidence.policy.sha256) {
     throw 'Supply-chain policy checksum does not match the evidence manifest.'
+}
+
+$policy = $bundledPolicy
+if ($evidence.signing.mode -eq 'keyless-sigstore') {
+    if ([string]::IsNullOrWhiteSpace($TrustedPolicyPath)) {
+        throw 'Keyless evidence requires a separately trusted supply-chain policy.'
+    }
+    $trustedPolicy = (Resolve-Path $TrustedPolicyPath).Path
+    $policy = Read-SupplyChainPolicy -Path $trustedPolicy
+    if ((Get-FileSha256 -Path $trustedPolicy) -ne (Get-FileSha256 -Path $policyPath)) {
+        throw 'Bundled supply-chain policy does not match the separately trusted policy.'
+    }
 }
 
 if ($evidence.source.repository -ne $policy.sourceRepository) {
@@ -101,12 +121,13 @@ foreach ($byproduct in $provenance.predicate.runDetails.byproducts) {
     }
 }
 
-Assert-SigningStatus -Signing $evidence.signing -AllowUnsignedHostedEvidence:$AllowUnsignedHostedEvidence
+Assert-SigningStatus -Signing $evidence.signing -Policy $policy -Source $evidence.source `
+    -AllowUnsignedHostedEvidence:$AllowUnsignedHostedEvidence
 
 Assert-RequiredCommand -Name 'docker'
 Assert-RequiredCommand -Name 'tar'
 
-if ($evidence.signing.status -eq 'signed') {
+if ($evidence.signing.mode -eq 'operator-held-key') {
     if ([string]::IsNullOrWhiteSpace($TrustedPublicKeyPath)) {
         throw 'A separately trusted public key is required for offline verification.'
     }
@@ -129,12 +150,55 @@ if ($evidence.signing.status -eq 'signed') {
         '--mount', $publicKeyMount,
         $policy.tools.cosign.image,
         'verify-blob',
-        '--offline',
         '--insecure-ignore-tlog',
         '--key', "/trust/$([IO.Path]::GetFileName($trustedPublicKey))",
         '--signature', "/work/$($evidence.signing.signature.path)",
         "/work/$($evidence.provenance.path)"
     ) -FailureMessage 'Provenance signature is invalid or untrusted.'
+} elseif ($evidence.signing.mode -eq 'keyless-sigstore') {
+    if ([string]::IsNullOrWhiteSpace($TrustedRootPath)) {
+        throw 'Keyless evidence requires an independently pre-positioned Sigstore trusted root.'
+    }
+    $bundlePath = Join-Path $bundleRoot $evidence.signing.bundle.path
+    $evidenceRootPath = Join-Path $bundleRoot $evidence.signing.trustedRoot.path
+    $trustedRoot = (Resolve-Path $TrustedRootPath).Path
+    $bundlePrefix = [IO.Path]::GetFullPath($bundleRoot).TrimEnd(
+        [IO.Path]::DirectorySeparatorChar,
+        [IO.Path]::AltDirectorySeparatorChar
+    ) + [IO.Path]::DirectorySeparatorChar
+    if ([IO.Path]::GetFullPath($trustedRoot).StartsWith(
+        $bundlePrefix,
+        [StringComparison]::OrdinalIgnoreCase
+    )) {
+        throw 'The independently trusted Sigstore root must be outside the evidence bundle.'
+    }
+    if ((Get-FileSha256 -Path $bundlePath) -ne $evidence.signing.bundle.sha256 -or
+        (Get-FileSha256 -Path $evidenceRootPath) -ne $evidence.signing.trustedRoot.sha256) {
+        throw 'Keyless bundle or trusted-root checksum does not match the evidence manifest.'
+    }
+    Assert-KeylessBundleStructure -BundlePath $bundlePath -ArtifactPath $provenancePath `
+        -Policy $policy
+    Assert-IndependentSigstoreTrustedRoot -EvidenceRootPath $evidenceRootPath `
+        -TrustedRootPath $trustedRoot -ExpectedEvidenceSha256 $evidence.signing.trustedRoot.sha256
+
+    & docker image inspect $policy.tools.cosign.image *> $null
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Pinned Cosign verifier image is not preloaded; offline verification cannot continue.'
+    }
+
+    $artifactMount = "type=bind,source=$bundleRoot,target=/work,readonly"
+    $trustedRootMount = "type=bind,source=$([IO.Path]::GetDirectoryName($trustedRoot)),target=/trust,readonly"
+    $arguments = @(
+        'run', '--rm', '--network', 'none',
+        '--mount', $artifactMount,
+        '--mount', $trustedRootMount,
+        $policy.tools.cosign.image
+    ) + (Get-KeylessVerificationArguments -Signing $evidence.signing -Policy $policy `
+        -BundlePath "/work/$($evidence.signing.bundle.path)" `
+        -TrustedRootPath "/trust/$([IO.Path]::GetFileName($trustedRoot))" `
+        -ArtifactPath "/work/$($evidence.provenance.path)")
+    Invoke-CheckedCommand -FilePath 'docker' -Arguments $arguments `
+        -FailureMessage 'Keyless provenance signature, identity, or transparency proof is invalid.'
 }
 
 $archivePath = Join-Path $bundleRoot $evidence.image.archive.path

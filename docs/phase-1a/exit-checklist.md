@@ -44,9 +44,13 @@ owner, command/test ID, result, and known exclusions.
       and restarts the pinned Compose bundle from a preloaded image, a locally built
       image, or an operator-controlled local registry. No startup/runtime call reaches
       GitHub or Andreja cloud; acquisition provenance and digest are recorded.
-- [ ] A separately trusted operator reruns OCI evidence with an approved external
-      signing key and trust anchor. The merged reproducible audit bundle is unsigned
-      and does not authorize release, update, or startup.
+- [ ] A reviewed hosted version-tag run produces accepted ADR 0010's keyless
+      Sigstore bundle and retained root copy, exact-matches issuer, repository,
+      workflow identity/revision, trigger, and tag ref, then verifies with networking
+      blocked against an independently authenticated root outside the evidence.
+      The implementation and historical unsigned bundle do not themselves
+      authorize release, update, or startup; local operator-key evidence cannot
+      substitute for the hosted run.
 - [x] Passkey first-admin bootstrap works once; collision, replay, origin, rate-limit,
       recovery-code, and session-invalidation cases pass. Second-passkey enrollment
       is tested only when configured; break-glass is tested only if Cyrus approves

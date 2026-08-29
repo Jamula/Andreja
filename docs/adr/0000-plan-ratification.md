@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `678124a48ea02fea7e3a58e8df36b48b363e102280bc2b4969cdfd9776acd7e6`
+- **Current proposed Plan SHA-256:** `1827878653b67b3560334ae1c6dce8b58f52575971b8efdce14d1af33580eb1a`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -177,3 +177,17 @@ not match the merged `docs/plan.md`.
   acceptance and all provider gates. Unanswered or failed gates defer Copilot
   without weakening provider-neutral, self-hosted, offline, BYOK, portability,
   or user-owned-data boundaries.
+
+### 2026-08-29 — proposed keyless signing status-artifact hash refresh
+
+- **Tracking issue:** [#127](https://github.com/Jamula/Andreja/issues/127)
+- **Pull request:** pending
+- **Plan SHA-256:** `1827878653b67b3560334ae1c6dce8b58f52575971b8efdce14d1af33580eb1a`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/status amendment; no re-ratification,
+  release publication, production deployment, external spend, or Phase 1A exit
+  is authorized.
+- **Scope:** Refresh the canonical threat-model hash and issue pointer after
+  accepted ADR 0010 added the approved GitHub Actions OIDC and Sigstore trust
+  boundary. ADR 0010's acceptance is independent; this pending status-artifact
+  refresh does not accept other Proposed plan or ADR content.

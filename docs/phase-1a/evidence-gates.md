@@ -43,8 +43,10 @@ and exclusions rather than duplicating them here.
 
 Phase 1A remains blocked on all of the following:
 
-1. a trusted operator rerun with an approved external signing key and trust
-   anchor;
+1. a reviewed hosted version-tag run producing accepted ADR 0010's keyless
+   Sigstore bundle and retained root copy, followed by exact-claim,
+   network-blocked verification against an independently held root; the retained operator-key path is local-only
+   and cannot substitute;
 2. encrypted PostgreSQL and recoverable Data Protection keys restored together
    into a clean instance, followed by restored passkey sign-in;
 3. a genuine second, separately approved and signed revision completing both
@@ -70,7 +72,7 @@ technical evidence-host decision and completion of the gates above.
 | Skill/channel confused deputy | No ambient services/secrets, scoped `ISkillHost`/`IChannelHost`, distinct tenant/app-user/principal identity, complete manifest metadata, permission-negative and manifest digest/version tampering tests |
 | Grant, consent, or disclosure escalation | One evaluator shared by skill/channel hosts; user policy, bilateral consent, active purpose-bound grant, capability, operation, data class and ordered disclosure intersection; expiry/revocation; content-minimized allow/deny audit; negative tests for wrong tenant/app user/principal/purpose/grant/capability/operation/data class and every attempted ladder escalation |
 | Peer-envelope spoof, replay, or confused audience | Canonical signed-envelope vectors; tamper, signature/key/algorithm, sender/recipient, time, nonce replay, idempotency conflict, grant/purpose, payload type, and version rejection tests using local fixtures only |
-| Malicious/failed update or restore | Reproducible OCI build from a clean commit; source/base/image/tool digests; SPDX and CycloneDX checksums; pinned dependency/image/container/IaC scans with High/Critical deny policy; signed in-toto provenance under a separately trusted operator key; exact offline inventory verification; explicit migration notes; backup-before-update; clean restore; rollback exercise |
+| Malicious/failed update or restore | Reproducible OCI build from a clean commit; source/base/image/tool digests; SPDX and CycloneDX checksums; pinned dependency/image/container/IaC scans with High/Critical deny policy; accepted ADR 0010 keyless provenance with exact issuer/repository/workflow/revision/tag claims, retained bundle/root copy, independently held trusted root, and network-blocked verification; local-only operator-key evidence cannot downgrade the hosted policy; explicit migration notes; backup-before-update; clean restore; rollback exercise |
 | Telemetry leakage | Attribute allowlist, content suppression, canary-secret redaction test, bounded cardinality and local query review |
 | Backup/export disclosure | Encryption, least-privilege destination, explicit exclusions, checksum validation, restore/import access tests |
 

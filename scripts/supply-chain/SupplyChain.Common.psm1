@@ -45,7 +45,8 @@ function Read-SupplyChainPolicy {
     }
 
     $policy = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -Depth 100
-    if ($policy.schemaVersion -ne '1.0' -or $policy.policyId -ne 'andreja-phase-1a-oci-v1') {
+    if ($policy.schemaVersion -notin @('1.0', '1.1') -or
+        $policy.policyId -ne 'andreja-phase-1a-oci-v1') {
         throw 'Unsupported supply-chain policy schema or policy identifier.'
     }
 
@@ -78,8 +79,42 @@ function Read-SupplyChainPolicy {
         throw 'Policy platforms must explicitly contain supported Linux OCI platforms.'
     }
 
-    if ($policy.hostedSigning.mode -ne 'deferred' -or [string]::IsNullOrWhiteSpace($policy.hostedSigning.reason)) {
-        throw 'Hosted signing must record the approved explicit deferral.'
+    if ($policy.schemaVersion -eq '1.0') {
+        if ($policy.hostedSigning.mode -ne 'deferred' -or
+            [string]::IsNullOrWhiteSpace([string] $policy.hostedSigning.reason)) {
+            throw 'Legacy hosted signing must retain its explicit deferral.'
+        }
+    } else {
+        if (-not $policy.operatorHeldKey.enabled -or
+            $policy.operatorHeldKey.scope -ne 'local-operator-evidence-only' -or
+            $policy.operatorHeldKey.maySatisfyHostedRelease -ne $false) {
+            throw 'Operator-held signing must remain local-only and cannot satisfy hosted release signing.'
+        }
+
+        $hosted = $policy.hostedSigning
+        if ($hosted.mode -ne 'keyless-sigstore' -or
+            $hosted.oidcIssuer -ne 'https://token.actions.githubusercontent.com' -or
+            $hosted.repository -ne 'Jamula/Andreja' -or
+            $hosted.workflow -ne 'https://github.com/Jamula/Andreja/.github/workflows/oci-supply-chain.yml' -or
+            $hosted.workflowName -ne 'OCI Supply Chain' -or
+            $hosted.trigger -ne 'push' -or
+            $hosted.bundleMediaType -ne 'application/vnd.dev.sigstore.bundle.v0.3+json' -or
+            $hosted.trustedRootSource -ne
+                'Sigstore TUF trusted root authenticated and pre-positioned outside the evidence bundle before signing' -or
+            -not $hosted.requireTransparencyLog -or
+            -not $hosted.requireCertificateTransparency) {
+            throw 'Hosted signing policy must exact-match the approved GitHub Actions Sigstore boundary.'
+        }
+
+        try {
+            $null = [regex]::new($hosted.allowedRefPattern)
+        } catch {
+            throw 'Hosted signing allowedRefPattern is invalid.'
+        }
+        if ('refs/tags/v1.2.3' -notmatch $hosted.allowedRefPattern -or
+            'refs/heads/main' -match $hosted.allowedRefPattern) {
+            throw 'Hosted signing must allow version tags and reject branch refs.'
+        }
     }
 
     $policy
@@ -359,28 +394,225 @@ function Assert-ProvenanceBinding {
     }
 }
 
+function Get-KeylessCertificateIdentity {
+    param(
+        [Parameter(Mandatory)] $Policy,
+        [Parameter(Mandatory)][string] $Ref
+    )
+
+    "$($Policy.hostedSigning.workflow)@$Ref"
+}
+
+function Assert-KeylessBundleStructure {
+    param(
+        [Parameter(Mandatory)][string] $BundlePath,
+        [Parameter(Mandatory)][string] $ArtifactPath,
+        [Parameter(Mandatory)] $Policy
+    )
+
+    $bundle = Get-Content -LiteralPath $BundlePath -Raw | ConvertFrom-Json -Depth 100
+    if ($bundle.mediaType -ne $Policy.hostedSigning.bundleMediaType) {
+        throw 'Sigstore bundle media type is unsupported.'
+    }
+
+    if (-not $bundle.verificationMaterial.certificate.rawBytes) {
+        throw 'Sigstore bundle is missing the Fulcio certificate.'
+    }
+    try {
+        $null = [Convert]::FromBase64String([string] $bundle.verificationMaterial.certificate.rawBytes)
+    } catch {
+        throw 'Sigstore bundle contains an invalid Fulcio certificate.'
+    }
+
+    $entries = @($bundle.verificationMaterial.tlogEntries)
+    if ($entries.Count -ne 1) {
+        throw 'Sigstore bundle must contain exactly one transparency-log entry.'
+    }
+    $entry = $entries[0]
+    if (-not $entry.inclusionPromise.signedEntryTimestamp -or
+        -not $entry.inclusionProof.rootHash -or
+        -not $entry.inclusionProof.treeSize -or
+        -not $entry.inclusionProof.checkpoint.envelope -or
+        -not $entry.canonicalizedBody) {
+        throw 'Sigstore bundle is missing its transparency-log inclusion promise or proof.'
+    }
+
+    try {
+        $logIndex = [long] $entry.logIndex
+        $proofLogIndex = [long] $entry.inclusionProof.logIndex
+        $treeSize = [long] $entry.inclusionProof.treeSize
+        $rootHash = [Convert]::FromBase64String([string] $entry.inclusionProof.rootHash)
+        if ($logIndex -ne $proofLogIndex -or $treeSize -le $logIndex -or $rootHash.Length -ne 32) {
+            throw 'invalid proof'
+        }
+        foreach ($hash in @($entry.inclusionProof.hashes)) {
+            if ([Convert]::FromBase64String([string] $hash).Length -ne 32) {
+                throw 'invalid proof hash'
+            }
+        }
+    } catch {
+        throw 'Sigstore bundle contains an invalid transparency-log inclusion proof.'
+    }
+
+    $messageSignature = $bundle.messageSignature
+    if ($messageSignature.messageDigest.algorithm -ne 'SHA2_256' -or
+        -not $messageSignature.messageDigest.digest -or
+        -not $messageSignature.signature) {
+        throw 'Sigstore bundle is missing the required SHA-256 message signature.'
+    }
+    try {
+        $bundleDigest = [Convert]::ToHexString(
+            [Convert]::FromBase64String([string] $messageSignature.messageDigest.digest)
+        ).ToLowerInvariant()
+        $null = [Convert]::FromBase64String([string] $messageSignature.signature)
+        $null = [Convert]::FromBase64String([string] $entry.inclusionPromise.signedEntryTimestamp)
+        $null = [Convert]::FromBase64String([string] $entry.canonicalizedBody)
+    } catch {
+        throw 'Sigstore bundle contains invalid base64 verification material.'
+    }
+
+    if ($bundleDigest -ne (Get-FileSha256 -Path $ArtifactPath)) {
+        throw 'Sigstore bundle message digest does not match the signed artifact.'
+    }
+}
+
+function Assert-SigstoreTrustedRootStructure {
+    param([Parameter(Mandatory)][string] $Path)
+
+    $trustedRoot = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -Depth 100
+    if ($trustedRoot.mediaType -ne 'application/vnd.dev.sigstore.trustedroot+json;version=0.1' -or
+        @($trustedRoot.certificateAuthorities).Count -eq 0 -or
+        @($trustedRoot.tlogs).Count -eq 0 -or
+        @($trustedRoot.ctlogs).Count -eq 0) {
+        throw 'Sigstore trusted root lacks required Fulcio, Rekor, or certificate-log trust material.'
+    }
+}
+
+function Assert-IndependentSigstoreTrustedRoot {
+    param(
+        [Parameter(Mandatory)][string] $EvidenceRootPath,
+        [Parameter(Mandatory)][string] $TrustedRootPath,
+        [Parameter(Mandatory)][string] $ExpectedEvidenceSha256
+    )
+
+    $evidenceRoot = (Resolve-Path $EvidenceRootPath).Path
+    $trustedRoot = (Resolve-Path $TrustedRootPath).Path
+    if ([IO.Path]::GetFullPath($evidenceRoot) -eq [IO.Path]::GetFullPath($trustedRoot)) {
+        throw 'The independently trusted Sigstore root must be outside the evidence bundle.'
+    }
+
+    Assert-SigstoreTrustedRootStructure -Path $evidenceRoot
+    Assert-SigstoreTrustedRootStructure -Path $trustedRoot
+    $evidenceHash = Get-FileSha256 -Path $evidenceRoot
+    $trustedHash = Get-FileSha256 -Path $trustedRoot
+    if ($evidenceHash -ne $ExpectedEvidenceSha256 -or $trustedHash -ne $evidenceHash) {
+        throw 'The retained Sigstore root does not match the independently trusted root.'
+    }
+}
+
+function Get-KeylessVerificationArguments {
+    param(
+        [Parameter(Mandatory)] $Signing,
+        [Parameter(Mandatory)] $Policy,
+        [Parameter(Mandatory)][string] $BundlePath,
+        [Parameter(Mandatory)][string] $TrustedRootPath,
+        [Parameter(Mandatory)][string] $ArtifactPath
+    )
+
+    @(
+        'verify-blob',
+        '--bundle', $BundlePath,
+        '--trusted-root', $TrustedRootPath,
+        '--certificate-identity', $Signing.certificateIdentity,
+        '--certificate-oidc-issuer', $Signing.oidcIssuer,
+        '--certificate-github-workflow-repository', $Signing.repository,
+        '--certificate-github-workflow-name', $Policy.hostedSigning.workflowName,
+        '--certificate-github-workflow-ref', $Signing.ref,
+        '--certificate-github-workflow-sha', $Signing.workflowRevision,
+        '--certificate-github-workflow-trigger', $Signing.trigger,
+        $ArtifactPath
+    )
+}
+
 function Assert-SigningStatus {
     param(
         [Parameter(Mandatory)] $Signing,
+        [Parameter(Mandatory)] $Policy,
+        [Parameter(Mandatory)] $Source,
         [switch] $AllowUnsignedHostedEvidence
     )
 
-    if ($Signing.status -eq 'signed') {
-        if ($Signing.mode -ne 'operator-held-key' -or
+    $signingProperties = @($Signing.PSObject.Properties.Name)
+    $getSigningValue = {
+        param([string] $Name)
+        if ($signingProperties -contains $Name) {
+            return $Signing.PSObject.Properties[$Name].Value
+        }
+        return $null
+    }
+    $sourceRef = if (@($Source.PSObject.Properties.Name) -contains 'ref') {
+        $Source.ref
+    } else {
+        $null
+    }
+
+    if ($Signing.mode -eq 'operator-held-key') {
+        $hostedTag = $Policy.schemaVersion -eq '1.1' -and
+            -not [string]::IsNullOrWhiteSpace([string] $sourceRef) -and
+            $sourceRef -match $Policy.hostedSigning.allowedRefPattern
+        if ($Signing.status -ne 'signed' -or
             [string]::IsNullOrWhiteSpace($Signing.trustedPublicKeySha256) -or
-            -not $Signing.signature) {
+            -not $Signing.signature -or $hostedTag -or
+            (& $getSigningValue 'bundle') -or (& $getSigningValue 'trustedRoot') -or
+            (& $getSigningValue 'certificateIdentity') -or
+            (& $getSigningValue 'oidcIssuer') -or (& $getSigningValue 'repository') -or
+            (& $getSigningValue 'workflow') -or (& $getSigningValue 'workflowRevision') -or
+            (& $getSigningValue 'ref') -or (& $getSigningValue 'trigger') -or
+            $null -ne (& $getSigningValue 'transparencyLogIncluded') -or
+            $null -ne (& $getSigningValue 'certificateTransparencyIncluded') -or
+            (& $getSigningValue 'hostedDeferral')) {
             throw 'Signed evidence lacks the required operator trust metadata.'
         }
 
         return
     }
 
-    if (-not $AllowUnsignedHostedEvidence) {
+    if ($Signing.mode -eq 'keyless-sigstore') {
+        if ($Policy.schemaVersion -ne '1.1') {
+            throw 'Keyless evidence requires supply-chain policy schema 1.1.'
+        }
+        $expectedIdentity = Get-KeylessCertificateIdentity -Policy $Policy -Ref $Source.ref
+        if ($Signing.status -ne 'signed' -or $Signing.trustedPublicKeySha256 -or
+            $Signing.signature -or -not $Signing.bundle -or -not $Signing.trustedRoot -or
+            $Signing.certificateIdentity -ne $expectedIdentity -or
+            $Signing.oidcIssuer -ne $Policy.hostedSigning.oidcIssuer -or
+            $Signing.repository -ne $Policy.hostedSigning.repository -or
+            $Signing.workflow -ne $Policy.hostedSigning.workflow -or
+            $Signing.workflowRevision -ne $Source.commit -or
+            $Signing.ref -ne $Source.ref -or
+            $Signing.ref -notmatch $Policy.hostedSigning.allowedRefPattern -or
+            $Signing.trigger -ne $Policy.hostedSigning.trigger -or
+            $Signing.transparencyLogIncluded -ne $true -or
+            $Signing.certificateTransparencyIncluded -ne $true -or
+            $Signing.hostedDeferral) {
+            throw 'Keyless evidence does not exact-match the approved GitHub OIDC signing policy.'
+        }
+
+        return
+    }
+
+    if ($Signing.mode -ne 'hosted-unsigned-validation' -or -not $AllowUnsignedHostedEvidence) {
         throw 'Unsigned provenance is untrusted and blocks offline startup/update.'
     }
 
     if ($env:GITHUB_ACTIONS -ne 'true' -or
-        $Signing.mode -ne 'hosted-deferred' -or
+        $Signing.status -ne 'unsigned' -or
+        $Signing.trustedPublicKeySha256 -or $Signing.signature -or
+        $Signing.bundle -or $Signing.trustedRoot -or $Signing.certificateIdentity -or
+        $Signing.oidcIssuer -or $Signing.repository -or $Signing.workflow -or
+        $Signing.workflowRevision -or $Signing.ref -or $Signing.trigger -or
+        $null -ne $Signing.transparencyLogIncluded -or
+        $null -ne $Signing.certificateTransparencyIncluded -or
         [string]::IsNullOrWhiteSpace($Signing.hostedDeferral)) {
         throw 'Unsigned evidence is allowed only for the explicit hosted validation deferral.'
     }
@@ -389,6 +621,7 @@ function Assert-SigningStatus {
 Export-ModuleMember -Function @(
     'Assert-ArtifactInventory',
     'Assert-DockerfileProductionTarget',
+    'Assert-KeylessBundleStructure',
     'Assert-NoForbiddenFinding',
     'Assert-OciPlatformBinding',
     'Assert-PinnedImageReference',
@@ -397,6 +630,10 @@ Export-ModuleMember -Function @(
     'Assert-RequiredCommand',
     'Assert-SbomDocument',
     'Assert-SigningStatus',
+    'Assert-IndependentSigstoreTrustedRoot',
+    'Assert-SigstoreTrustedRootStructure',
+    'Get-KeylessCertificateIdentity',
+    'Get-KeylessVerificationArguments',
     'Get-ChecksummedFile',
     'Get-FileSha256',
     'Get-GrypeForbiddenCount',

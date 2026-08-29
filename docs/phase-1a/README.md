@@ -26,6 +26,7 @@ authorize external spend.
 6. [Threat, privacy, cost, and test gates](evidence-gates.md)
 7. [Exit and decision checklist](exit-checklist.md)
 8. [BYOK security and privacy contract](byok-security-privacy.md)
+9. [Accepted ADR 0010 — keyless Sigstore signing](../adr/0010-keyless-sigstore-github-oidc.md)
 
 The canonical cross-phase [privacy baseline](../privacy.md) and
 [threat model](../threat-model.md) reconcile these Phase 1A overlays with current
@@ -68,7 +69,10 @@ decision authoritative.
 Cyrus must explicitly decide or accept:
 
 1. final disposition of ADRs 0001–0005 after the named specialist reviews;
-2. trusted operator signing and the external trust anchor for release evidence;
+2. one reviewed hosted tag run proving accepted ADR 0010's exact GitHub workload
+   identity, public transparency record, retained bundle/root copy, and
+   network-blocked verification against an independently held root; operator-held
+   local evidence cannot substitute for that run;
 3. encrypted PostgreSQL and Data Protection key recovery into a clean instance,
    including restored passkey sign-in;
 4. a genuine second, separately approved and signed revision for both update and

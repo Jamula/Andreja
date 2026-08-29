@@ -31,9 +31,12 @@ controlling until Cyrus and qualified counsel explicitly decide otherwise.
 - Docker Buildx plus the exact Syft, Grype, Trivy, and Cosign images pinned in
   `supply-chain-policy.json`. Scanner or advisory-database unavailability is a hard
   failure; do not substitute a different tag or skip a scan.
-- A Cosign public key obtained through a separately authenticated operator channel.
-  The corresponding password-protected private key remains outside the repository,
-  image, evidence bundle, backups, and runtime host whenever possible.
+- For local operator evidence, a Cosign public key obtained through a separately
+  authenticated operator channel. The corresponding password-protected private
+  key remains outside the repository, image, evidence bundle, backups, and
+  runtime host whenever possible. Hosted release evidence instead requires the
+  retained Sigstore bundle plus independently acquired root and policy from
+  ADR 0010.
 
 Copy `.env.example` to `.env`. Create the PostgreSQL password and one-time identity
 bootstrap token files without placing either value in `.env`, command arguments,
@@ -141,7 +144,7 @@ operator-controlled `ANDREJA_IMAGE` must be a verified
 Critical dependency, final-image, container, and IaC findings and permits no
 waivers or scanner fallback. Record the source/tree, base and final image digests,
 tool versions, both SBOM checksums, scanner reports, provenance, signature trust
-anchor fingerprint, and migration notes in the recovery inventory. These local
+material, and migration notes in the recovery inventory. These local
 evidence instructions do not authorize publication.
 
 Generate an operator-held key outside the checkout once, while the pinned Cosign
@@ -176,15 +179,16 @@ and detailed reports: keep it access-controlled and never upload it as a GitHub
 artifact, attach it to an issue/PR, or send it to a public registry. Publication,
 release, and license decisions remain in issues #6 and #65.
 
-For offline transfer, acquire the signed bundle, the independently trusted public
-key, this verification script, and the exact pinned Cosign image before
-disconnecting. Transfer them only through the approved private operator channel.
-At the destination, disconnect networking and run:
+For offline transfer of local operator evidence, acquire the evidence directory,
+independently trusted public key, verification script, and exact pinned Cosign
+image before disconnecting. Transfer them only through the approved private
+operator channel. At the destination, disconnect networking and run:
 
 ```powershell
 pwsh -NoProfile -File scripts\supply-chain\Test-OciEvidence.ps1 `
   -BundleDirectory artifacts\supply-chain `
-  -TrustedPublicKeyPath D:\trusted\andreja.pub
+  -TrustedPublicKeyPath D:\trusted\andreja.pub `
+  -ExpectedSigningMode operator-held-key
 $evidence = Get-Content artifacts\supply-chain\evidence.json -Raw | ConvertFrom-Json
 $env:ANDREJA_IMAGE = $evidence.image.immutableReference
 ```
@@ -201,12 +205,33 @@ invalid/unsigned provenance, an untrusted key, forbidden findings, policy,
 platform or checksum drift, unavailable tools, or an unresolved digest blocks startup.
 There is no unsigned, tag-based, online, or scanner fallback.
 
-The hosted workflow performs the same reproducible build and scans with read-only
-permissions and no secrets, then destroys its local image layers and reports. It
-does not upload them and cannot produce trusted release evidence. Keyless OIDC is
-explicitly deferred because private entitlement and no-publication boundaries have
-not been approved. Its unsigned provenance exercises binding only and cannot
-authorize offline startup or update.
+For accepted ADR 0010 keyless evidence, acquire the complete retained evidence
+directory, independently authenticated and pre-positioned copies of the Sigstore
+TUF trusted root and `supply-chain-policy.json`, and the preloaded pinned Cosign
+image. Keep both trust inputs outside the evidence directory. With networking
+unavailable, run:
+
+```powershell
+pwsh -NoProfile -File scripts\supply-chain\Test-OciEvidence.ps1 `
+  -BundleDirectory artifacts\supply-chain `
+  -TrustedPolicyPath D:\trusted\supply-chain-policy.json `
+  -TrustedRootPath D:\trusted\sigstore-trusted-root.json `
+  -ExpectedSigningMode keyless-sigstore
+```
+
+The hosted workflow builds and scans with read-only permissions. Only its
+version-tag signing job has `id-token: write`. That job requires the tag commit
+on protected `main`, exact-matches repository/workflow/revision/ref policy,
+creates the public Fulcio/CT/Rekor record, retains the standardized bundle and a
+copy of the pre-positioned TUF root, and verifies against only the independent
+root path with `--network none`. Pull-request and ordinary
+`main` runs remain unsigned validation evidence and cannot authorize startup or
+update. The local operator-key mode cannot substitute for hosted release
+evidence.
+
+Evidence schema 1.1 carries the keyless-only fields. The retained evidence v1
+schema and policy 1.0 operator path remain verifiable; policy 1.1 keyless fields
+are required only for keyless mode.
 
 ## Start, stop, and inspect
 
@@ -434,8 +459,10 @@ result as the migration evidence set.
    into a clean instance before approving the update.
 3. Acquire the proposed digest and inspect signatures, SBOM/vulnerability results,
    release notes, and migration notes without changing the running reference. Run
-   `Test-OciEvidence.ps1` offline with the separately trusted public key; any failure
-   stops the update before Compose or migration.
+   `Test-OciEvidence.ps1` offline with either the separately trusted local public
+   key or, for hosted evidence, independently trusted Sigstore root and policy
+   files outside the retained evidence; any failure stops the update before
+   Compose or migration.
 4. Stop writes. Run the exact explicit migration command above with the reviewed
    SQL, restored backup evidence, checksum approval, and pending-ID list. The web
    process never migrates on startup.

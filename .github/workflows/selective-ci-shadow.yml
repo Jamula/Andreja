@@ -491,7 +491,7 @@ jobs:
         shell: pwsh
         run: |
           ./scripts/supply-chain/New-OciEvidence.ps1 -OutputDirectory artifacts/supply-chain -Platform linux/amd64 -HostedUnsigned
-          ./scripts/supply-chain/Test-OciEvidence.ps1 -BundleDirectory artifacts/supply-chain -AllowUnsignedHostedEvidence
+          ./scripts/supply-chain/Test-OciEvidence.ps1 -BundleDirectory artifacts/supply-chain -ExpectedSigningMode hosted-unsigned-validation -AllowUnsignedHostedEvidence
       - if: always()
         name: Destroy private OCI layers and reports
         shell: pwsh
