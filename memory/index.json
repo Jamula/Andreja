@@ -58,5 +58,15 @@
     "status": "active",
     "createdAt": "2026-08-29T05:46:12.291Z",
     "updatedAt": "2026-08-29T05:46:12.291Z"
+  },
+  {
+    "id": "1337a563-5ddd-4da1-a420-944aff2434b3",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Phase 1A keyless signing direction",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-phase-1a-keyless-signing-direction-1337a563.md",
+    "status": "active",
+    "createdAt": "2026-08-29T06:37:28.251Z",
+    "updatedAt": "2026-08-29T06:37:28.251Z"
   }
 ]
