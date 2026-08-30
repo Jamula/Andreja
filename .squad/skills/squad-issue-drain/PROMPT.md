@@ -81,9 +81,11 @@ other prompt or template may bypass it.
    worktree blocks; a dirty explicit non-owner stays visible in the guard's
    `excludedRecords` evidence but does not block. Missing or inconsistent
    ownership or dirty-state evidence is ambiguous and fails closed. A PR that
-   merely references an issue is not its owner; a verified closing link is.
-   Duplicate positive issue ownership anywhere across active sessions,
-   branches, worktrees, and pull requests remains blocking.
+   merely references an issue is not its owner; every verified closing link is
+   ownership evidence and takes precedence over exclusion markers. Malformed
+   closing-link evidence fails closed. Duplicate positive issue ownership
+   anywhere across active sessions, branches, worktrees, and pull requests
+   remains blocking.
 8. The orchestrator must not write `log/` directly. Hand the deterministic
    canonical key/content to the dedicated Scribe only after a complete listing
    confirms the key is absent. Scribe performs one `squad_state_write`, then

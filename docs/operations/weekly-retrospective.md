@@ -79,9 +79,10 @@ does not disable or relax admission.
      and non-issue or out-of-scope remain visible but do not block. Missing or
      contradictory ownership or dirty-state evidence fails closed.
    - A PR body reference such as `Refs #3` is evidence of relationship, not
-     issue ownership. A verified closing issue link is ownership. Duplicate
-     positive issue ownership across active sessions, branches, worktrees, and
-     PRs blocks completion.
+     issue ownership. Every verified closing issue link is ownership evidence
+     and takes precedence over exclusion markers; malformed closing-link
+     evidence fails closed. Duplicate positive issue ownership across active
+     sessions, branches, worktrees, and PRs blocks completion.
 9. Hand the returned key and content to dedicated Scribe. After a complete
    listing proves the key absent, Scribe makes one `squad_state_write`. The
    orchestrator never writes `log/` directly.

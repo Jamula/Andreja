@@ -799,6 +799,23 @@ test('completion ignores only explicit non-writing records and preserves issue o
       ],
     }),
   }).reason, 'duplicate-reconciliation-conflict');
+
+  assert.equal(prepareCompletion({
+    ...input,
+    reconciliation: repositoryReconciliation({
+      pullRequests: [
+        {
+          issue: null,
+          ownership: 'non-issue',
+          writing: false,
+          state: 'open',
+          closingIssues: [3],
+          number: 50,
+        },
+        { issue: 3, state: 'open', number: 140 },
+      ],
+    }),
+  }).reason, 'duplicate-reconciliation-conflict');
 });
 
 test('completion read-back distinguishes missing and conflicting state', () => {

@@ -244,6 +244,7 @@ test('guard excludes only explicit non-writing and out-of-scope records', () => 
         ownership: 'out-of-scope',
         writing: false,
         state: 'active',
+        branch: 'main',
         dirty: true,
       }],
       pullRequests: [
@@ -281,6 +282,52 @@ test('guard excludes only explicit non-writing and out-of-scope records', () => 
   ]);
 });
 
+test('verified closing links override PR exclusion and expose duplicate ownership', () => {
+  const excludedOwner = {
+    issue: null,
+    ownership: 'non-issue',
+    writing: false,
+    state: 'open',
+    closingIssues: [3],
+    number: 50,
+  };
+  const ownership = assessSingleCoordinatorProcessGuard(
+    repositoryReconciliation({ pullRequests: [excludedOwner] }),
+    { now, repository: 'Jamula/Andreja', coordinatorId: 'coordinator-1' },
+  );
+  assert.equal(ownership.available, true);
+  assert.deepEqual(ownership.occupiedIssues, [3]);
+  assert.deepEqual(ownership.excludedRecords, []);
+
+  const positiveOwnership = assessSingleCoordinatorProcessGuard(
+    repositoryReconciliation({
+      branches: [{
+        issue: 4,
+        ownership: 'out-of-scope',
+        writing: false,
+        state: 'open',
+      }],
+    }),
+    { now, repository: 'Jamula/Andreja', coordinatorId: 'coordinator-1' },
+  );
+  assert.equal(positiveOwnership.available, true);
+  assert.deepEqual(positiveOwnership.occupiedIssues, [4]);
+  assert.deepEqual(positiveOwnership.excludedRecords, []);
+
+  const conflict = assessSingleCoordinatorProcessGuard(
+    repositoryReconciliation({
+      pullRequests: [
+        excludedOwner,
+        { issue: 3, state: 'open', number: 140 },
+      ],
+    }),
+    { now, repository: 'Jamula/Andreja', coordinatorId: 'coordinator-1' },
+  );
+  assert.equal(conflict.reason, 'duplicate-reconciliation-conflict');
+  assert.equal(conflict.issue, 3);
+  assert.deepEqual(conflict.sources, ['pullRequests', 'pullRequests']);
+});
+
 test('missing or inconsistent ownership and worktree state fail closed', () => {
   for (const [source, record] of [
     ['sessions', { state: 'running' }],
@@ -291,10 +338,17 @@ test('missing or inconsistent ownership and worktree state fail closed', () => {
       state: 'running',
     }],
     ['pullRequests', {
-      issue: 3,
+      issue: null,
+      ownership: 'issue',
+      writing: false,
+      state: 'open',
+    }],
+    ['pullRequests', {
+      issue: null,
       ownership: 'non-issue',
       writing: false,
       state: 'open',
+      closingIssues: [3, '4'],
     }],
     ['worktrees', {
       issue: null,

@@ -83,21 +83,37 @@ function activeRecord(record) {
     && !INACTIVE_STATES.has(String(record?.state || '').toLowerCase());
 }
 
+function ownershipEvidenceIssues(source, record) {
+  const issues = positiveInteger(record.issue) ? [record.issue] : [];
+  if (source !== 'pullRequests'
+      || !Object.prototype.hasOwnProperty.call(record, 'closingIssues')) {
+    return { valid: true, issues };
+  }
+  if (!Array.isArray(record.closingIssues)
+      || record.closingIssues.some((issue) => !positiveInteger(issue))
+      || new Set(record.closingIssues).size !== record.closingIssues.length) {
+    return { valid: false, reason: 'repository-reconciliation-ambiguous' };
+  }
+  return {
+    valid: true,
+    issues: [...new Set([...issues, ...record.closingIssues])],
+  };
+}
+
 function classifyReconciliationRecord(source, record) {
   if (!record || typeof record !== 'object' || Array.isArray(record)) {
     return { valid: false, reason: 'repository-reconciliation-invalid' };
   }
 
-  if (positiveInteger(record.issue)) {
-    if (EXCLUDED_OWNERSHIP.has(record.ownership)) {
-      return { valid: false, reason: 'repository-reconciliation-ambiguous' };
-    }
+  const evidence = ownershipEvidenceIssues(source, record);
+  if (!evidence.valid) return evidence;
+  if (evidence.issues.length > 0) {
     if (source === 'worktrees'
         && activeRecord(record)
         && typeof record.dirty !== 'boolean') {
       return { valid: false, reason: 'repository-reconciliation-ambiguous' };
     }
-    return { valid: true, ownership: 'issue' };
+    return { valid: true, ownership: 'issue', issues: evidence.issues };
   }
 
   const explicitlyExcluded = REPOSITORY_ARTIFACT_COLLECTIONS.has(source)
@@ -166,10 +182,14 @@ function assessSingleCoordinatorProcessGuard(reconciliation, {
     REPOSITORY_ARTIFACT_COLLECTIONS.has(name)
       && classification.ownership === 'issue'
       && activeRecord(record));
+  const activeOwnershipClaims = activeArtifacts.flatMap(
+    ({ name, classification }) =>
+      classification.issues.map((ownedIssue) => ({ name, issue: ownedIssue })),
+  );
   const seenIssues = new Set();
-  const duplicateArtifact = activeArtifacts.find(({ record }) => {
-    if (seenIssues.has(record.issue)) return true;
-    seenIssues.add(record.issue);
+  const duplicateArtifact = activeOwnershipClaims.find(({ issue: ownedIssue }) => {
+    if (seenIssues.has(ownedIssue)) return true;
+    seenIssues.add(ownedIssue);
     return false;
   });
   if (duplicateArtifact) {
@@ -177,9 +197,9 @@ function assessSingleCoordinatorProcessGuard(reconciliation, {
       available: false,
       mode: 'blocked',
       reason: 'duplicate-reconciliation-conflict',
-      issue: duplicateArtifact.record.issue,
-      sources: activeArtifacts
-        .filter(({ record }) => record.issue === duplicateArtifact.record.issue)
+      issue: duplicateArtifact.issue,
+      sources: activeOwnershipClaims
+        .filter(({ issue: ownedIssue }) => ownedIssue === duplicateArtifact.issue)
         .map(({ name }) => name),
     };
   }
@@ -227,7 +247,7 @@ function assessSingleCoordinatorProcessGuard(reconciliation, {
     readiness.set(record.issue, record.ready === true);
   }
   const occupiedIssues = new Set(
-    activeArtifacts.map(({ record }) => record.issue),
+    activeOwnershipClaims.map(({ issue: ownedIssue }) => ownedIssue),
   );
   const excludedRecords = records
     .filter(({ classification }) => classification.excluded)
