@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "recordType": "administrative-termination",
+  "reportedAt": "2026-08-26T15:14:03Z",
+  "issue": 102,
+  "controllerSha": "d87ecc4b49a80356549ec01b3a9f91944950f8b9",
+  "outcome": "blocked:evidence",
+  "reason": "no-qualifying-natural-prose-candidate",
+  "candidatePreflight": {
+    "eligibleProseOnlyCandidateFound": false,
+    "fullCandidatePullRequest": 50,
+    "fullCandidateClassification": "full-suite",
+    "syntheticCandidateCreated": false
+  },
+  "collection": {
+    "dispatches": 0,
+    "labeledRuns": 0,
+    "actionsVariablesProvisioned": false,
+    "sampleLabelProvisioned": false,
+    "collectionEvidenceAvailable": false,
+    "runnerMinutes": null,
+    "costUsd": null,
+    "savingsClaimed": false
+  },
+  "workflow": {
+    "path": ".github/workflows/selective-ci-shadow.yml",
+    "state": "disabled_manually",
+    "preMergeRunCount": 5,
+    "trustedPostMergeRunCount": 0,
+    "lastPreMergeRunId": 32931733394
+  },
+  "ruleset": {
+    "id": 21199927,
+    "changed": false
+  },
+  "autoMergeEnabled": false,
+  "promotionAuthorized": false,
+  "source": "https://github.com/Jamula/Andreja/issues/102#issuecomment-5427374680"
+}

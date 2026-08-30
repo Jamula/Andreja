@@ -140,7 +140,6 @@ function main() {
     const selectedDomains = ALL_DOMAINS.filter((domain) => decision.domains[domain].selected);
     return {
       number: pull.number,
-      title: pull.title,
       mergedAt: pull.merged_at,
       baseSha: pull.base.sha,
       headSha: pull.head.sha,
