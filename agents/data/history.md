@@ -5,3 +5,5 @@
 
 ### 2026-08-28 — Issue #99 architecture correction
 Approved final artifact quality and architecture binding. Local generation, rendering, checks, tests, compilation, docs validation, and clean-status validation passed; hosted Excalidraw literal import remains unvalidated.
+
+📌 Team update (2026-08-30T10:54:18.410-07:00): ISSUE_104_DECISION_BRIEF_READY confirmed the auto-merge bug is still live; auto-merge is enabled with zero approvals and no required review-policy context, so containment and closure semantics remain open; PR #115 is the reusable scaffold, PR #151 is stale.
