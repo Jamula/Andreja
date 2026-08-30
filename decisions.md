@@ -159,3 +159,14 @@ This is a security verdict only. It does not declare legal compliance and does n
 ### 2026-08-29T12:54:23.291-07:00: Issue 132 review rejection
 **By:** Squad Coordinator
 **What:** Data independently reviewed PR #134 / issue #132 after merge and REJECTED the artifact. Blocking findings: caller-forgeable writer authorization; bypassable pacing, capacity, and fallback; self-asserted retrospective evidence without provenance or Scribe-quiescence proof. Jett Reno authored the rejected artifact and is locked out for this revision cycle. Data recommends Spock as revision owner. Ordinary issue-drain writer admission remains frozen. The merged contract requires verified repository-scoped atomic ownership; no such capability has been verified, so no revision writer may be admitted until the runtime supplies it or Cyrus separately authorizes an allowed recovery path.
+
+### 2026-08-29T19:48:48.237-07:00: Simplify issue admission ownership
+**By:** Cyrus Jamula
+**What:** Remove the repository-scoped atomic CAS/lease requirement from issue admission and replace it with a simpler single-coordinator guard. Preserve fail-safe duplicate detection and do not weaken unrelated issue, worktree, validation, privacy, or merge gates.
+**Why:** User directive captured for team memory.
+
+### 2026-08-30T03-04-54: Prefer .NET for Squad tools and skills
+**By:** Squad Coordinator
+**What:** Prefer .NET for Squad tools and skills
+**References:** u/cyrusjamula/simplify-issue-admission, Jett Reno
+**Why:** Cyrus Jamula requested moving the relevant Squad tooling and skill implementation from JavaScript or Python to .NET. Apply this preference to the current single-coordinator admission/weekly-retrospective change when a complete, idiomatic migration fits existing repository patterns; do not ship a partial conversion or weaken behavior.
