@@ -268,5 +268,15 @@
     "status": "active",
     "createdAt": "2026-08-30T17:50:18.565Z",
     "updatedAt": "2026-08-30T17:50:18.565Z"
+  },
+  {
+    "id": "b41604a9-180d-4c7d-83c7-ca7cdf67d2b7",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Phase 1A issue 44 decision bundle",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-phase-1a-issue-44-decision-bundle-b41604a9.md",
+    "status": "active",
+    "createdAt": "2026-08-30T17:53:04.740Z",
+    "updatedAt": "2026-08-30T17:53:04.740Z"
   }
 ]
