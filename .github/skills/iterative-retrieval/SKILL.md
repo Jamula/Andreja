@@ -36,10 +36,8 @@ Example:
 ## Escalation path
 {What the agent should do if uncertain or stuck. "Stop and ask me" is valid.}
 Example:
-- If requirements are ambiguous → stop, open/link a decision issue labeled
-  `blocks:human`, and explain what decision is required
-- If blocked by a dependency → add a native `Blocked by` relationship; classify
-  the blocker with `blocks:evidence` or `blocks:human` when applicable
+- If requirements are ambiguous → stop, comment on the issue, set label status:needs-decision
+- If blocked by a dependency → label status:blocked, explain in a comment
 - If 3 cycles exhausted without resolution → write a summary to inbox and surface to coordinator
 ```
 
@@ -59,8 +57,8 @@ Example:
    before accepting it or spawning the next cycle.
 2. **Objective context forward**: each subsequent spawn includes a summary of what was tried
    and what is still missing — not just a repeat of the original task.
-3. **Cycle 3 exhausted** → escalate: write a summary to `.squad/decisions/inbox/`,
-   open/link a `blocks:human` decision issue, and notify the user.
+3. **Cycle 3 exhausted** → escalate: write a summary to `.squad/decisions/inbox/`, label the
+   issue `status:needs-decision`, and notify the user.
 
 ---
 

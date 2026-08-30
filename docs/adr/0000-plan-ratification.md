@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `f693e79456830af64077619563a1764943d93b70501062707049f3c68843f866`
+- **Current proposed Plan SHA-256:** `6f2f9769f684ac3211a383d0393ae00f6ac16b58cfb2f6ad3f7d7fe5f5fff355`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -178,12 +178,25 @@ not match the merged `docs/plan.md`.
   without weakening provider-neutral, self-hosted, offline, BYOK, portability,
   or user-owned-data boundaries.
 
-### 2026-08-27 — charter status-artifact hash refresh
+### 2026-08-29 — proposed keyless signing status-artifact hash refresh
+
+- **Tracking issue:** [#127](https://github.com/Jamula/Andreja/issues/127)
+- **Pull request:** pending
+- **Plan SHA-256:** `1827878653b67b3560334ae1c6dce8b58f52575971b8efdce14d1af33580eb1a`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/status amendment; no re-ratification,
+  release publication, production deployment, external spend, or Phase 1A exit
+  is authorized.
+- **Scope:** Refresh the canonical threat-model hash and issue pointer after
+  accepted ADR 0010 added the approved GitHub Actions OIDC and Sigstore trust
+  boundary. ADR 0010's acceptance is independent; this pending status-artifact
+  refresh does not accept other Proposed plan or ADR content.
+
+### 2026-08-30 — charter status-artifact hash refresh
 
 - **Tracking issue:** [#3](https://github.com/Jamula/Andreja/issues/3)
-- **Pull request:** Proposed ADR 0006 charter ratification instrument
-  (this amendment)
-- **Plan SHA-256:** `f693e79456830af64077619563a1764943d93b70501062707049f3c68843f866`
+- **Pull request:** [#50](https://github.com/Jamula/Andreja/pull/50)
+- **Plan SHA-256:** `6f2f9769f684ac3211a383d0393ae00f6ac16b58cfb2f6ad3f7d7fe5f5fff355`
 - **Approver:** Cyrus Jamula; **pending**
 - **Approver status:** No Cyrus acceptance is claimed. This entry only records
   that `docs/plan.md`'s status-artifact hash for `docs/charter.md` now matches

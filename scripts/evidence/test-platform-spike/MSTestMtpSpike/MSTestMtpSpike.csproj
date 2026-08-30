@@ -1,0 +1,21 @@
+<Project Sdk="MSTest.Sdk/4.3.3">
+  <PropertyGroup>
+    <TestingExtensionsProfile>Default</TestingExtensionsProfile>
+    <MicrosoftTestingExtensionsCodeCoverageVersion>18.10.0</MicrosoftTestingExtensionsCodeCoverageVersion>
+    <MSTestAnalysisMode>Recommended</MSTestAnalysisMode>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\Adapters\Andreja.Adapters\Andreja.Adapters.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Andreja.AppHost\Andreja.AppHost.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="AnalyzerProbe.cs" />
+    <Compile Include="AnalyzerProbe.cs" Condition="'$(RunAnalyzerProbe)' == 'true'" />
+    <Compile Remove="TimeoutProbe.cs" />
+    <Compile Include="TimeoutProbe.cs" Condition="'$(RunTimeoutProbe)' == 'true'" />
+    <Compile Remove="FrameworkEvidenceTests.cs" Condition="'$(RunTimeoutProbe)' == 'true'" />
+  </ItemGroup>
+</Project>

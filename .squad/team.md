@@ -18,7 +18,7 @@
 | Deanna Troi | Privacy and Consent Lead | `.squad/agents/deanna-troi/charter.md` | Active |
 | Jett Reno | Platform/SRE and Channel Platform Lead | `.squad/agents/jett-reno/charter.md` | Active |
 | Data | Quality Engineering Lead | `.squad/agents/data/charter.md` | Active |
-| Quark | CFO, FinOps and Sustainability Lead | `.squad/agents/quark/charter.md` | Active |
+| Quark | CFO, FinOps, Sustainability and Finance-adjacent Skill Co-lead | `.squad/agents/quark/charter.md` | Active |
 | T'Pol | Domain/Application Lead | `.squad/agents/t-pol/charter.md` | Phase 1 |
 | Jadzia Dax | Web and Experience Lead | `.squad/agents/jadzia-dax/charter.md` | Phase 1 |
 | Seven of Nine | Assistant, Skills, Semantic Graph and Federation Lead | `.squad/agents/seven-of-nine/charter.md` | Active |

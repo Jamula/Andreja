@@ -9,6 +9,25 @@
 - **Style:** Silent. Never speaks to the user. Works in the background.
 - **Mode:** Always spawned as `mode: "background"`. Never blocks the conversation.
 
+## Dedicated retrospective completion
+
+Generic Scribe work must not run while weekly-retrospective completion is
+pending, running, or awaiting canonical read-back. In dedicated completion mode,
+perform only the single canonical `squad_state_write` authorized by issue drain,
+then re-list and re-read exact content. Reuse an exact valid existing record
+without writing. Do not overwrite a conflicting key, retry an uncertain result,
+or run normal inbox/log/history maintenance. A conflict or incomplete
+best-effort repository reconciliation fails closed.
+
+## Issue-drain wave evidence
+
+When a spawn manifest belongs to issue drain, preserve its wave/batch ID,
+stable admission tokens, reservations, creation outcomes, ACK dispositions, and
+release state exactly as observed. The ACK barrier covers all and only
+successfully created children. Record a stopped partial wave separately from a
+negative or invalid/corrupt ACK set. Never infer release, next-wave admission,
+or replacement from silence, a failed create, or an uncertain child.
+
 ## What I Own
 
 - `.squad/log/` — session logs (what happened, who worked, what was decided)

@@ -3,6 +3,8 @@ name: OCI Supply Chain
 on:
   push:
     branches: [main]
+    tags:
+      - 'v*'
   pull_request:
     branches: [main]
   merge_group:
@@ -22,7 +24,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout without persisted credentials
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -41,7 +43,7 @@ jobs:
     needs: policy
     steps:
       - name: Checkout reviewed source without persisted credentials
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -68,9 +70,85 @@ jobs:
         run: >-
           ./scripts/supply-chain/Test-OciEvidence.ps1
           -BundleDirectory artifacts/supply-chain
+          -ExpectedSigningMode hosted-unsigned-validation
           -AllowUnsignedHostedEvidence
+
+      - if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        name: Retain unsigned evidence for the isolated signing job
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: oci-supply-chain-unsigned
+          path: artifacts/supply-chain
+          if-no-files-found: error
+          retention-days: 1
 
       - if: always()
         name: Remove private image layers and local reports
         shell: pwsh
         run: Remove-Item artifacts/supply-chain -Recurse -Force -ErrorAction SilentlyContinue
+
+  sign-keyless:
+    name: Keyless Sigstore signing and offline verification
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: build-scan
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout the exact tagged revision without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require the tagged revision to be on protected main
+        shell: bash
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Pre-position the authenticated Sigstore trusted root and pinned Cosign image
+        shell: pwsh
+        run: |
+          $cosign = (Get-Content supply-chain-policy.json -Raw | ConvertFrom-Json).tools.cosign.image
+          docker pull $cosign
+          New-Item -ItemType Directory -Path artifacts/trust -Force | Out-Null
+          docker run --rm `
+            --mount "type=bind,source=$((Resolve-Path artifacts/trust).Path),target=/trust" `
+            $cosign trusted-root create --with-default-services `
+            --out /trust/sigstore-trusted-root.json
+
+      - name: Download the digest-bound unsigned evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: oci-supply-chain-unsigned
+          path: artifacts/supply-chain
+
+      - name: Complete keyless signing with the GitHub Actions workload identity
+        shell: pwsh
+        run: >-
+          ./scripts/supply-chain/Complete-KeylessOciEvidence.ps1
+          -BundleDirectory artifacts/supply-chain
+          -TrustedRootPath artifacts/trust/sigstore-trusted-root.json
+
+      - name: Reverify bundle against the pre-positioned trusted root with network blocked
+        shell: pwsh
+        run: >-
+          ./scripts/supply-chain/Test-OciEvidence.ps1
+          -BundleDirectory artifacts/supply-chain
+          -TrustedPolicyPath supply-chain-policy.json
+          -TrustedRootPath artifacts/trust/sigstore-trusted-root.json
+          -ExpectedSigningMode keyless-sigstore
+
+      - name: Retain signed evidence for independent offline verification
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: oci-supply-chain-signed-${{ github.sha }}
+          path: artifacts/supply-chain
+          if-no-files-found: error
+          retention-days: 30
+
+      - if: always()
+        name: Remove signed evidence and private image layers
+        shell: pwsh
+        run: Remove-Item artifacts/supply-chain, artifacts/trust -Recurse -Force -ErrorAction SilentlyContinue

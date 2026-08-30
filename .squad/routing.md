@@ -13,6 +13,7 @@ How to decide who handles what.
 | Platform, channels and operations | Jett Reno | Hosting, OpenTofu, OTel, CI/CD, channel topology |
 | Quality and release evidence | Data | Tests, performance, accessibility, conformance, release gates |
 | FinOps and sustainability | Quark | Burn, budgets, AI usage, unit economics, sponsorship |
+| Finance-adjacent first-party skills | Seven of Nine and Quark | Finance Administration, Trading Research and Review, Lifestyle Rewards, Miles and Points, Employer Benefits |
 | Domain and application | T'Pol | .NET use cases, APIs, persistence, tenant data boundaries |
 | Web and public experience | Jadzia Dax | Blazor, accessibility, public/help, control planes |
 | Assistant, skills and semantic graph | Seven of Nine | Providers, tools, manifests, ontology, federation |
@@ -57,3 +58,7 @@ How to decide who handles what.
 10. **Dependent slices may stack** — create layers bottom-to-top and use GitHub native stack metadata when available; ordinary dependent PRs are the fallback.
 11. **Artifact gates, not votes** — specialists produce/challenge the required ADR, threat/privacy, cost, test or runbook evidence; Cyrus approves.
 12. **Critical path protection** — Phase 0 decisions and Phase 1A self-host MVP outrank later channels, skills and marketplace work.
+13. **Finance-adjacent co-lead boundary** — for the five named skills, Quark
+    advises within the ownership, ledger, custody, conflict and launch boundaries
+    in `docs/roadmap/first-party-skills.md`; Seven alone makes the product
+    recommendation.

@@ -59,7 +59,7 @@ weights, lanes, or gate checklists.
 | Prioritization, scoring, launch-stage gates | `docs/plan.md`; proposed operational expansion in `docs/frameworks/prioritization-launch.md` (issue #5) | Picard/Quark |
 | Charters, routing, ceremonies, non-negotiable directives | `.squad/directives.md`, `.squad/team.md`, `.squad/routing.md`, `.squad/ceremonies.md`, `.squad/agents/*/charter.md` | Coordinator (Squad) |
 | Who owns which work right now | This document's workstream table + `squad:{member}` / `area:*` labels | Picard (triage) |
-| Financial/cost evidence | Quark's session-close usage ledger and FinOps issues (`area:finops`) | Quark |
+| Company financial/cost evidence | Quark's session-close usage ledger and FinOps issues (`area:finops`) | Quark |
 | Legal/regulatory applicability | `docs/legal/regulatory-applicability.md` (pending ratification, issue #8) | Sarek |
 | Feedback/support lifecycle | Proposed operational expansion in `docs/frameworks/feedback-support.md` (review-ready draft, issue #10) | Guinan |
 
@@ -87,7 +87,7 @@ into synonyms for the same accountable scope.
 | 6 | Platform Operations, Hosting and FinOps | Jett Reno, Quark | Self-host package, cloud adapters, OpenTofu, CI/CD, reliability, OTel, incidents, backups/DR, cost/burn evidence | Jett Reno does not approve spend; Quark does not own runtime architecture |
 | 7 | Quality, Performance and Release | Data | Test architecture, E2E/accessibility, performance/scale, provider conformance, release evidence, regression prevention | Does not waive evidence for schedule pressure; does not set product goals |
 | 8 | Channels and Connectors | Jett Reno, Seven of Nine, Tuvok | Channel Development Framework, provider qualification, adapters, auth/scopes, channel runbooks, retirement | Does not own the Skill Development Framework (Seven+domain leads) though Seven co-owns both |
-| 9 | First-party Skills and Developer Ecosystem | Seven of Nine + domain leads | Skill Development Framework, manifests, first-party catalog, SDK/examples/conformance, third-party trust path | Does not approve marketplace/legal terms (Sarek) or connector qualification alone (Channels) |
+| 9 | First-party Skills and Developer Ecosystem | Seven of Nine + domain leads; Quark co-leads only the five finance-adjacent skills named in the catalog | Skill Development Framework, manifests, first-party catalog, SDK/examples/conformance, third-party trust path | Quark has no standing user-record access, launch authority, veto, or control over Seven's product recommendation; does not approve marketplace/legal terms (Sarek) or connector qualification alone (Channels) |
 | 10 | Trust, Security, Privacy and Legal | Tuvok, Deanna Troi, Sarek | Threat/privacy/legal artifacts, data classification, auth/grants, abuse/safety, terms/licensing/trademark, public claims, regulatory gates | Sarek's legal research is not binding advice or a public authorization; does not sign contracts |
 | 11 | Customer Success, Feedback and Support | Guinan | Intake/triage, support status, user communication, help gaps, resolution verification, feedback insights | Does not investigate security/privacy incidents in public channels; does not promise timelines before capacity is known |
 | 12 | Marketing, Community and Partnerships | Neelix, Picard, Quark | Positioning, Personal Brand Studio input, public/community content, sponsorship communication, partner ecosystem | Activates only after product claims have evidence and licensing/trademark clears (Sarek) |
@@ -407,7 +407,7 @@ not introduce a parallel prioritization taxonomy — that belongs to issue #5.
 | Platform Operations, Hosting and FinOps | `area:finops` (ops/hosting shares `area:architecture` until a dedicated label exists) | `squad:jett-reno`, `squad:quark` | Phase 0, 1A, 1B, 5 |
 | Quality, Performance and Release | none dedicated today (tag with the owning workstream's `area:*`) | `squad:data` | every phase |
 | Channels and Connectors | `area:architecture` (no dedicated `area:channels` label yet) | `squad:jett-reno`, `squad:seven-of-nine`, `squad:tuvok` | Phase 1B, 3A, 3B, 8 |
-| First-party Skills and Developer Ecosystem | `area:product` (no dedicated `area:skills` label yet) | `squad:seven-of-nine` | Phase 2, 7 |
+| First-party Skills and Developer Ecosystem | `area:product` (no dedicated `area:skills` label yet) | `squad:seven-of-nine`; `squad:quark` only for the five finance-adjacent skills named in the catalog | Phase 2, 7 |
 | Trust, Security, Privacy and Legal | `area:security`, `area:privacy`, `area:legal` | `squad:tuvok`, `squad:deanna-troi`, `squad:sarek` | every phase |
 | Customer Success, Feedback and Support | `area:product`, `area:privacy` (feedback intake) | `squad:guinan` | Phase 0, 1B onward |
 | Marketing, Community and Partnerships | `area:product` | `squad:neelix`, `squad:picard`, `squad:quark` | Phase 1B onward |

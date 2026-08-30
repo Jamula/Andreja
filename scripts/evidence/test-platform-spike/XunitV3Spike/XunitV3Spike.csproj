@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\Adapters\Andreja.Adapters\Andreja.Adapters.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Andreja.AppHost\Andreja.AppHost.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="AnalyzerProbe.cs" />
+    <Compile Include="AnalyzerProbe.cs" Condition="'$(RunAnalyzerProbe)' == 'true'" />
+    <Compile Remove="TimeoutProbe.cs" />
+    <Compile Include="TimeoutProbe.cs" Condition="'$(RunTimeoutProbe)' == 'true'" />
+    <Compile Remove="FrameworkEvidenceTests.cs" Condition="'$(RunTimeoutProbe)' == 'true'" />
+  </ItemGroup>
+</Project>

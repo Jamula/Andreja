@@ -11,7 +11,7 @@ the proposed [ADR 0006 ratification instrument](docs/adr/0006-charter-ratificati
 
 - Git.
 - .NET SDK 10.0.301, pinned by [`global.json`](global.json).
-- `dotnet-ef` 10.0.9 for migration inspection and script generation.
+- `dotnet-ef` 10.0.11 for migration inspection and script generation.
 - Python 3, available as `python`, for documentation consistency checks.
 - PowerShell 7 for repository validation scripts.
 - Node.js 22 and Microsoft Edge for browser, passkey, viewport, and telemetry
@@ -33,12 +33,12 @@ node --version
 
 $efVersion = dotnet ef --version 2>$null
 if ($LASTEXITCODE -ne 0) {
-  dotnet tool install --global dotnet-ef --version 10.0.9
+  dotnet tool install --global dotnet-ef --version 10.0.11
   $efVersion = dotnet ef --version
 }
 $efVersionText = $efVersion -join "`n"
-if ($LASTEXITCODE -ne 0 -or $efVersionText -notmatch "10\.0\.9") {
-  throw "Install or update the global dotnet-ef tool to version 10.0.9."
+if ($LASTEXITCODE -ne 0 -or $efVersionText -notmatch "10\.0\.11") {
+  throw "Install or update the global dotnet-ef tool to version 10.0.11."
 }
 ```
 
@@ -264,10 +264,19 @@ finally {
 
 pwsh -NoProfile -File scripts\supply-chain\Test-OciEvidence.ps1 `
   -BundleDirectory artifacts\supply-chain `
-  -TrustedPublicKeyPath $HOME\.andreja-signing\andreja.pub
+  -TrustedPublicKeyPath $HOME\.andreja-signing\andreja.pub `
+  -ExpectedSigningMode operator-held-key
 if ($LASTEXITCODE -ne 0) {
   throw "OCI evidence verification failed."
 }
+
+# For retained hosted keyless evidence, use independently acquired policy and
+# Sigstore root files outside the evidence directory; verification blocks networking.
+pwsh -NoProfile -File scripts\supply-chain\Test-OciEvidence.ps1 `
+  -BundleDirectory artifacts\supply-chain `
+  -TrustedPolicyPath D:\trusted\supply-chain-policy.json `
+  -TrustedRootPath D:\trusted\sigstore-trusted-root.json `
+  -ExpectedSigningMode keyless-sigstore
 
 $evidence = Get-Content artifacts\supply-chain\evidence.json -Raw |
   ConvertFrom-Json

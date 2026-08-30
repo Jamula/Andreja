@@ -83,6 +83,13 @@ def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def read_git_lf_bytes(path: Path) -> bytes:
+    """Return text bytes in the LF form stored and hashed by Git."""
+    if not path.exists():
+        fail(f"Required file not found: {path.relative_to(REPO_ROOT)}")
+    return path.read_bytes().replace(b"\r\n", b"\n")
+
+
 def parse_plan_hash_metadata(adr_text: str) -> tuple[str, str]:
     metadata = adr_text.split("## Decision", 1)[0]
     patterns = {
@@ -705,7 +712,9 @@ def check_status_artifact_hashes() -> None:
         validate_status_artifact_hashes(
             artifacts,
             EXPECTED_STATUS_ARTIFACTS,
-            lambda path: hashlib.sha256((REPO_ROOT / path).read_bytes()).hexdigest(),
+            lambda path: hashlib.sha256(
+                read_git_lf_bytes(REPO_ROOT / path)
+            ).hexdigest(),
         )
         validate_canonical_baseline_rows(plan_text)
         validate_canonical_baseline_documents(

@@ -43,6 +43,12 @@ agent did not generate or self-approve one. The image is audited and
 reproducible, but it is not authorized for release, update, or production
 startup.
 
+This is a historical record. Accepted
+[ADR 0010](../adr/0010-keyless-sigstore-github-oidc.md) and the later Cosign
+`3.1.3` policy do not retroactively sign this run. A reviewed hosted version-tag
+run must still produce and retain the keyless bundle/root copy and pass
+network-blocked verification against an independently held trusted root.
+
 The executed configuration hashes were:
 
 | Configuration | SHA-256 |

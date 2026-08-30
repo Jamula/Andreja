@@ -1,15 +1,20 @@
 # Phase 1A decision packet
 
-- **Status:** Proposed; Cyrus approval required
-- **Date:** 2026-08-23
-- **Issue:** [#9](https://github.com/Jamula/Andreja/issues/9)
+- **Status:** Provisionally accepted as the governing work target under #62; not
+  fully accepted; Phase 1A exit is not claimed
+- **Date:** 2026-08-28
+- **Issues:** Original packet [#9](https://github.com/Jamula/Andreja/issues/9);
+  provisional amendment [#62](https://github.com/Jamula/Andreja/issues/62)
 - **Scope:** Independent self-hosted assistant walking skeleton
-- **Governing:** [Platform plan](../plan.md), [company charter](../charter.md),
-  and [ADR 0000](../adr/0000-plan-ratification.md)
+- **Governing:** [Platform plan](../plan.md) and accepted
+  [ADR 0000](../adr/0000-plan-ratification.md)
 
-This packet narrows the ratified [platform plan](../plan.md) into decisions that
-are needed before Phase 1A implementation. It does not amend the plan or approve
-production launch.
+This packet originated under #9 and narrows the ratified
+[platform plan](../plan.md) into the Phase 1A work target. Cyrus provisionally
+accepted the evidence-reconciled packet under #62 so remaining work can proceed
+against one target. That decision does not fully accept Proposed ADRs 0001–0005,
+claim Phase 1A exit or readiness, amend the plan, authorize production, or
+authorize external spend.
 
 ## Packet
 
@@ -21,6 +26,7 @@ production launch.
 6. [Threat, privacy, cost, and test gates](evidence-gates.md)
 7. [Exit and decision checklist](exit-checklist.md)
 8. [BYOK security and privacy contract](byok-security-privacy.md)
+9. [Accepted ADR 0010 — keyless Sigstore signing](../adr/0010-keyless-sigstore-github-oidc.md)
 
 The canonical cross-phase [privacy baseline](../privacy.md) and
 [threat model](../threat-model.md) reconcile these Phase 1A overlays with current
@@ -42,37 +48,44 @@ provider, graph database, Kubernetes distribution, public connector, or managed
 control plane. It authorizes no provisioning, account creation, subscription,
 free tier, trial, package installation, or live paid model call.
 
-## Proposed inputs, not accepted dependencies
+## Current merged inputs, not accepted dependencies
 
 The packet was checked against ADR 0000, the plan, the static Squad directives,
-the Spock charter, issue #9, and these available Phase 0 drafts:
+the assigned charter, issues #9 and #62, and these merged Phase 0 inputs:
 
 - [PR #19 — catalog and launch frameworks](https://github.com/Jamula/Andreja/pull/19)
 - [PR #20 — burn and sponsorship controls](https://github.com/Jamula/Andreja/pull/20)
 - [PR #21 — regulatory applicability](https://github.com/Jamula/Andreja/pull/21)
 - [PR #25 — Phase 1A semantic graph contract](https://github.com/Jamula/Andreja/pull/25)
 
-Draft material is informative until separately reviewed and merged. In
-particular, this packet follows PR #25's proposed relational-source-of-truth
-boundary without making that draft authoritative.
+Merge supplies repository inputs, not automatic ratification or acceptance.
+These artifacts retain the authority stated in the plan and their canonical
+status metadata. In particular, the packet uses the relational-source-of-truth
+contract introduced by PR #25 without making every surrounding deferred semantic
+decision authoritative.
 
 ## Human decisions still required
 
-Cyrus must explicitly decide:
+Cyrus must explicitly decide or accept:
 
-1. whether to accept ADRs 0001–0005 and the residual risks in this packet;
-2. the supported WebAuthn relying-party origin/host matrix and final recovery
-   factors, device limits, and break-glass policy;
-3. the supported local OCI runtime/host matrix, TLS onboarding experience, key
-   custody UX, backup destination, and update/signing channel;
-4. the first OpenAI-compatible BYOK compatibility profile, credential storage
-   UX, allowed endpoints/models, and a numeric live-model spend envelope;
-5. the provisional internal SLO targets, evaluation windows, retention
-   defaults, and model-exposure consent defaults;
-6. the portable export v1 encoding and compatibility support window.
+1. final disposition of ADRs 0001–0005 after the named specialist reviews;
+2. one reviewed hosted tag run proving accepted ADR 0010's exact GitHub workload
+   identity, public transparency record, retained bundle/root copy, and
+   network-blocked verification against an independently held root; operator-held
+   local evidence cannot substitute for that run;
+3. encrypted PostgreSQL and Data Protection key recovery into a clean instance,
+   including restored passkey sign-in;
+4. a genuine second, separately approved and signed revision for both update and
+   rollback against preserved state;
+5. numeric internal SLO and RPO/RTO limits, numeric retention limits, and a
+   numeric Phase 1A model-spend envelope with an enforced hard stop; and
+6. final residual-risk acceptance after all blocking evidence is complete.
 
 Cloud runtime, managed database, CIAM, and graph database decisions are
 explicitly deferred and are not hidden prerequisites for Phase 1A.
+This amendment also does not choose among restoring local tooling, using an
+isolated equivalent evidence host, or stopping; any such technical
+evidence-host decision remains Cyrus's under #62.
 
 ## Ethics and sustainability impact assessment
 
@@ -124,13 +137,24 @@ skill execution and marketplace governance; managed/remote control plane; CIAM a
 cloud topology; graph infrastructure; public API compatibility; and provider PITR.
 These are remaining plan ADR topics, not silently approved by this packet.
 
-## Evidence gaps
+## Merged evidence and residual gaps
 
-No implementation evidence exists yet for WebAuthn bootstrap/recovery, database
-constraints, migration rollback, dump/restore, portable import, key restoration,
-offline startup after image acquisition, provider failure, container restart/update,
-grant/consent/disclosure and signed-envelope conformance, local OTel queries, content
-suppression, mobile viewport behavior, or production-auth isolation.
-The exact gaps and required proof are enumerated in
-[the evidence gates](evidence-gates.md) and block Phase 1A exit, not packet
-review.
+At the verified merged-main base,
+[`evidence-44.md`](evidence-44.md) records synthetic local proof for the
+PostgreSQL and architecture suites, explicit migrations, production passkey
+bootstrap/sign-in/recovery, the confirmed task lifecycle, local provider-failure
+conformance, contract-only skill/channel/grant/consent/peer and semantic seams,
+application export/import, offline start/restart/no-egress, OTel content
+suppression, basic 320/768/1280 and keyboard checks, and reproducible OCI audit
+artifacts. The canonical [testing matrix](../testing-matrix.md),
+[privacy baseline](../privacy.md), and [threat model](../threat-model.md) own the
+current classifications and exclusions.
+
+The passing local evidence does not supply trusted operator signing, combined
+encrypted PostgreSQL-and-key recovery with restored passkey sign-in, a separately
+signed update/rollback pair, approved numeric SLO/RPO/RTO and retention limits,
+an approved numeric model-spend envelope/hard stop, the required specialist
+reviews, or Cyrus's final residual-risk acceptance. The OCI evidence remains
+unsigned and basic accessibility evidence is not a human assistive-technology
+study. No external model call, provisioning, spend, release authorization,
+readiness, or Phase 1A exit is claimed.
