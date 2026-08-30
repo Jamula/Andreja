@@ -1,11 +1,5 @@
-# Current Focus
+# Current team state
 
-- Issue: #10 — feedback/support framework handoff (closed)
-- Pull request: #159, head `de54c2c720db4074d474cb3424ebe991d577ce8a`
-- Successor gates: #155, #156, #157, #158
-- Review state:
-  - Tuvok: APPROVE of Picard's four security/gate corrections.
-  - Deanna Troi: REJECT of Picard revision due tracking-secret custody contradiction in `docs/frameworks/feedback-support.md`.
-- Lockout: Guinan and Picard may not revise this artifact during the current revision cycle.
-- Active next revision: Tuvok must clarify that only one-way verifier/reference material is stored and recoverable raw tracking secrets are never persisted.
-- Updated: 2026-08-30T11:50:26.608-07:00
+**As of:** 2026-08-30T12:06:05.656-07:00
+
+Issue #10 framework handoff is complete and the issue is CLOSED/COMPLETED with explicit non-authorization language. PR #159 remains OPEN and awaits merge into `main` at head `139887dfba54fd4bd4836d580b45fc8e314fb243`; required checks succeeded and the signing check was intentionally skipped. Successor gates #155-#158 remain OPEN with valid owner labels and fail-closed dependencies. Deanna Troi and Tuvok both approved the final head; no material blockers remain.
