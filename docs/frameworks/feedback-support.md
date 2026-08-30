@@ -183,8 +183,11 @@ every relevant form and help page.
 ## `FeedbackEnvelope`
 
 `FeedbackEnvelope` is a versioned contract. Optional means "omit when not
-needed," not "collect speculatively." Raw contact destinations and tracking
-secrets are stored outside the envelope behind restricted references.
+needed," not "collect speculatively." Raw contact destinations remain outside
+the envelope behind restricted references. A raw tracking secret is disclosed
+only to the requester at issuance and is never persisted; the service stores
+only its one-way verifier, the non-secret `trackingRef`, and necessary lifecycle
+metadata.
 
 | Field | Required | Purpose and constraints |
 | --- | --- | --- |
@@ -278,9 +281,12 @@ an Andreja user data plane.
 4. The tenant-less endpoint enforces size, schema, origin, rate, and abuse
    controls; performs secret and high-risk-content screening; and returns the
    same non-revealing response for accepted or quarantined submissions.
-5. The service stores the envelope, contact record, consent receipts, and
-   tracking credential as separately protected records. It enqueues only an
-   internal `feedbackId` and content-free correlation metadata.
+5. The service stores the envelope, contact record, consent receipts, non-secret
+   `trackingRef`, one-way receipt-secret verifier, and only metadata necessary
+   for expiry, throttling, recovery, rotation, and revocation as separately
+   protected records. The raw receipt secret is disclosed only to the requester
+   at issuance and is never persisted. It enqueues only an internal `feedbackId`
+   and content-free correlation metadata.
 6. Guinan accesses the private triage view through least-privilege
    authorization. No direct database or queue browsing is the normal support
    workflow.
@@ -486,10 +492,13 @@ rejects reopen with a reason, and never requires a new public disclosure.
 - A status lookup requires a separate receipt secret containing at least 128
   bits of cryptographically secure random entropy, or a verified return
   channel. The display reference alone is not an authenticator.
-- Only a one-way verifier is stored for a receipt secret. The raw secret is
-  shown once, is never recoverable from storage, and never appears in a URL
-  path, query, fragment, browser history, referrer, log, trace, metric, alert,
-  queue field, or provider metadata.
+- The raw secret is disclosed only once to the requester at issuance and is
+  never persisted or recoverable from any system. Only a one-way verifier, the
+  non-secret `trackingRef`, and metadata strictly necessary for expiry,
+  failed-attempt throttling, recovery, rotation, and revocation may be stored.
+- The raw secret never appears in a URL path, query, fragment, browser history,
+  referrer, log, trace, metric, alert, queue field, provider metadata, backup,
+  replica, export, analytics dataset, or support tool.
 - Rotation and recovery require the approved proof mechanism or verified return
   channel, issue a new secret, and atomically revoke the old verifier. Recovery
   never reveals whether a record exists before proof succeeds, and a failed

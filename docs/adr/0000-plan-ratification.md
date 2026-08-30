@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `25f9291f4de0588e3129044403a229ef4a6a780359f71d2643df70a7c7c9a1bb`
+- **Current proposed Plan SHA-256:** `3c825b3a9f5d1e5327b1141a04a0516d7e2cd90facf4f6a5d0fcd0290b01c4ec`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -245,7 +245,7 @@ not match the merged `docs/plan.md`.
   and successor gates [#155](https://github.com/Jamula/Andreja/issues/155)
   through [#158](https://github.com/Jamula/Andreja/issues/158)
 - **Pull request:** [#159](https://github.com/Jamula/Andreja/pull/159)
-- **Plan SHA-256:** `25f9291f4de0588e3129044403a229ef4a6a780359f71d2643df70a7c7c9a1bb`
+- **Plan SHA-256:** `3c825b3a9f5d1e5327b1141a04a0516d7e2cd90facf4f6a5d0fcd0290b01c4ec`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed mechanical/status amendment; no plan
   re-ratification, gate approval, collection, publication, provider selection,
