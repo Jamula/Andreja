@@ -54,6 +54,10 @@ squad/{issue-number}-{kebab-case-slug}
 ```
 Example: `squad/42-fix-login-validation`
 
+The GitHub Copilot coding agent uses
+`copilot/{issue-number}-{slug}` so its branches remain issue-linked while
+retaining the platform-recognized prefix.
+
 ### Azure DevOps
 
 | ADO State | Squad Board State |
