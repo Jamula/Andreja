@@ -53,7 +53,8 @@ $sourceRef = if ($env:GITHUB_REF) {
     ) -FailureMessage 'Supply-chain evidence requires a named source ref.' -CaptureOutput
     "refs/heads/$branch"
 }
-if ($sourceRef -notmatch '^refs/(heads|tags)/[A-Za-z0-9][A-Za-z0-9._/-]*$') {
+if ($sourceRef -notmatch '^refs/(heads|tags)/[A-Za-z0-9][A-Za-z0-9._/-]*$' -and
+    $sourceRef -notmatch '^refs/pull/[0-9]+/(merge|head)$') {
     throw "Unsupported source ref '$sourceRef'."
 }
 $sourceDateEpochText = Invoke-CheckedCommand -FilePath 'git' -Arguments @(
