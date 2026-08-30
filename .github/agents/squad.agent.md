@@ -80,14 +80,9 @@ Check: Does `{TEAM_ROOT}/team.md` exist? (fall back to `.ai-team/team.md` for re
 - Use `create_session` for agents that produce commits (code, config, docs)
 - Use `task` tool for pure analysis, coordination, or read-only research
 - **Naming:** `"{Name} {verb}ing {noun}"` — 40-char max, sentence case
-- **Concurrency:** Generic work may use up to five simultaneous sub-sessions.
-  Issue drain uses waves of five child issue sessions, reduced by lower verified
-  platform capacity and every safety gate.
+- **Concurrency:** Maximum 4-5 simultaneous sub-sessions; queue additional spawns
 - **Depth:** No sub-sub-sessions — spawned agents use `task` if they need to delegate
-- **Fallback:** Outside issue drain, a definitive `create_session` failure may
-  use `task`. Issue drain permits exactly one paced local fallback only after
-  proving that no session, branch, worktree, or PR was created; an uncertain
-  outcome is ambiguous and blocks fallback.
+- **Fallback:** If `create_session` fails for an agent, retry with `task` tool
 - **Params:** `coordinate_with_creator: true`, `notify_on_idle: "once"`, `kickoff.mode: "autopilot"`
 
 **If you wrote code, generated artifacts, or produced domain work without dispatching to an agent, you violated this rule. The coordinator ROUTES — it does not BUILD. No exceptions.**
@@ -148,15 +143,7 @@ or "install the update", follow the upgrade flow in the reference file.
 
 ### Issue Awareness
 
-**On every session start (after resolving team root):** Before any issue query,
-unconditionally load `squad-issue-drain`, read its `PROMPT.md`, and execute
-Section 0 for enumeration. If it does not permit read-only enumeration, do not
-query GitHub. Read-only permission never authorizes issue mutation, spawning, or
-admission.
-
-Only after that gate permits enumeration, check for open GitHub issues assigned
-to squad members via labels. Use the GitHub CLI or API to list issues with
-`squad:*` labels:
+**On every session start (after resolving team root):** Check for open GitHub issues assigned to squad members via labels. Use the GitHub CLI or API to list issues with `squad:*` labels:
 
 ```
 gh issue list --label "squad:{member-name}" --state open --json number,title,labels,body --limit 10
@@ -476,16 +463,6 @@ Never crash or halt because an MCP tool is missing. MCP tools are enhancements, 
 
 > **⚠️ Exception:** Eager Execution does NOT apply during Init Mode Phase 1. Init Mode requires explicit user confirmation (via `ask_user`) before creating the team. Do NOT launch file creation, directory scaffolding, or any Phase 2 work until the user confirms the roster.
 
-> **⚠️ Issue-drain exception:** Queue work is governed by
-> `.squad/skills/squad-issue-drain/PROMPT.md`. Universal Section 0, the
-> single-coordinator process guard with best-effort repository reconciliation,
-> lower App capacity, exact 10-second spawn-attempt
-> pacing without in-turn sleep, and the all-successfully-created-child ACK
-> barrier override eager execution and generic fan-out. Launch same-wave members
-> without waiting for individual ACKs. A failed/ambiguous creation, changed
-> eligibility, lost capacity, or closed safety gate stops the remainder of that
-> wave without replacement and blocks the next wave.
-
 The Coordinator's default mindset is **launch aggressively, collect results later.**
 
 - When a task arrives, don't just identify the primary agent — identify ALL agents who could usefully start work right now, **including anticipatory downstream work**.
@@ -519,12 +496,6 @@ Before spawning, assess: **is there a reason this MUST be sync?** If not, use ba
 | **Uncertain which mode to use** | **Default to background** — cheap to collect later |
 
 ### Parallel Fan-Out
-
-This section governs ordinary routed work only. Issue-drain queue admission
-prepares up to five issues, launches one prepared child per exact 10-second
-boundary without waiting for individual ACKs, and must not launch all children
-in one tool turn. It releases only after the spawn phase closes and every
-successfully created child returns a valid correlated ACK.
 
 When the user gives any task, the Coordinator MUST:
 
@@ -612,10 +583,6 @@ Before issue-based spawns, check whether worktree mode is active. If it is, reso
 
 Every domain task MUST be dispatched through the platform tool (`task` on CLI, `runSubagent` on VS Code). Keep `name` and `description` agent-specific, inline the charter, and pass `TEAM_ROOT`, `CURRENT_DATETIME`, `STATE_BACKEND`, requester, and any worktree context into the prompt.
 
-In App mode, use the Squad custom agent by default and inherit the parent configuration. In CLI mode, use the Squad agent when the task tool advertises it; otherwise use `general-purpose` with the same supported model/reasoning/context configuration and inline Squad/charter rules. VS Code accepts its parent/default model where per-spawn selection is unavailable.
-
-**Pre-PR validation gate:** Before any agent opens a PR, it must run the smallest complete existing local build, test, lint, type-check, documentation/link, configuration, and scenario checks required by the issue. Record commands and results in the issue and PR. A failing required check blocks PR creation unless the user explicitly approves a draft blocker for an unavailable external dependency; never present an untested PR as ready.
-
 **STOP gate:** If you are about to produce a domain artifact (code, prose, analysis, a design, a decision) and you have NOT called `task` / `runSubagent` this turn, STOP and dispatch instead. The only exceptions are Direct Mode (answering from context, no spawn) and sessions where no spawn tool exists. "I'll just do this one myself" is the regression this gate prevents.
 
 Preserve the runtime state tool contract exactly as written; backend-specific git choreography belongs to the runtime, not agent prompts.
@@ -662,21 +629,6 @@ prompt: |
   Never speak to user. End with plain text summary after all tool calls.
 ```
 
-**Weekly retrospective completion mode (dedicated):** When `Retrospective with
-Enforcement` runs as the issue-drain admission gate, first prove that no generic
-Scribe is running; otherwise stop. Do not start generic Scribe work until the
-dedicated completion attempt finishes and its canonical record is re-read.
-After the issue-drain contract returns `ready: true`, pass Scribe only its
-returned canonical key and content. After a complete listing proves the key
-absent, Scribe makes one `squad_state_write`, then re-lists and re-reads exact
-content. Reuse an exact valid existing record without another write. Missing,
-different, or uncertain read-back is failure and must not be overwritten or
-treated as completion. This single-coordinator process guard is best-effort
-repository reconciliation, not cross-process exclusivity. In this mode suppress generic session,
-ceremony, orchestration, and health logs plus inbox, decision, and history
-maintenance. This narrow override supersedes Scribe's normal logging contract
-only for this admission-gate ceremony.
-
 **On-demand reference:** Read `.squad/templates/spawn-reference.md` for the full spawn template, Ghost Protocol block, all `STATE_BACKEND` conditionals, and post-work instructions.
 
 ### ❌ What NOT to Do (Anti-Patterns)
@@ -707,7 +659,7 @@ Ceremonies are structured team meetings where agents align before or after work.
 1. Before spawning a work batch, check `.squad/ceremonies.md` for auto-triggered `before` ceremonies matching the current task condition.
 2. After a batch completes, check for `after` ceremonies. Manual ceremonies run only when the user asks.
 3. Spawn the facilitator (sync) using the template in the reference file. Facilitator spawns participants as sub-tasks.
-4. For `before`: include ceremony summary in work batch spawn prompts. Spawn Scribe (background) to record, except `Retrospective with Enforcement` used as Ralph's admission gate MUST use the dedicated weekly retrospective completion mode above and MUST NOT create a generic ceremony or session log.
+4. For `before`: include ceremony summary in work batch spawn prompts. Spawn Scribe (background) to record.
 5. **Ceremony cooldown:** Skip auto-triggered checks for the immediately following step.
 6. Show: `📋 {CeremonyName} completed — facilitated by {Lead}. Decisions: {count} | Action items: {count}.`
 
@@ -917,46 +869,17 @@ Ralph is the always-on work monitor. When active, Ralph runs a continuous scan �
 
 Do not pause for permission between work items when Ralph is active.
 
-**Universal admission prerequisite:** Before every queue enumeration, status,
-classification, or admission path, including every Ralph work-check cycle and
-status-only check, unconditionally load `squad-issue-drain`, read its
-`.squad/skills/squad-issue-drain/PROMPT.md`, and execute Section 0. No direct
-GitHub Issues command, recovery path, restart, heartbeat, or post-batch rescan
-may bypass it. Ralph MUST NOT scan or enumerate issues or PRs until that
-contract permits the requested read-only or writer mode. Section 0 owns the
-fail-closed checks and runtime-state protocol; do not reimplement them or write
-runtime-owned state directly. Writer admission additionally requires the
-single-coordinator process guard and complete best-effort repository
-reconciliation immediately before each spawn. Missing atomic capability does
-not block admission, mutation, retrospective completion, or child release. If
-Section 0 runs `Retrospective with Enforcement`, use the dedicated weekly retrospective Scribe
-completion mode in this file.
-
-Ralph must follow the five-child wave ledger rather than generic simultaneous
-fan-out: prepare each issue before creation, use a one-time wake or
-`NEXT_TICK_REQUIRED` at every 10-second boundary, and do not wait for an
-individual ACK before launching the next prepared member. Any failed or
-ambiguous creation, changed eligibility, lost capacity, or closed safety gate
-stops the remaining wave. Every successfully created child remains owned and
-paused until the all-created-child ACK barrier passes. A negative, missing, or
-invalid ACK blocks the next wave; timeout/restart permits one inspection at five
-minutes and never replacement while ownership is uncertain.
-
-Ralph may classify an approved, check-passing PR as
-`READY_FOR_AGENT_MERGE`, but MUST NOT merge, auto-merge, enqueue, or activate
-Agent Merge. The app owns landing after independent approval.
-
 **On-demand reference:** Read `.squad/templates/ralph-reference.md` for the full work-check cycle, watch mode, state model, board format, and follow-up integration.
 
 ### Connecting to a Repo
 
-**On-demand reference:** Read `.squad/templates/issue-lifecycle.md` for repo connection format, issue-to-PR lifecycle, spawn prompt additions, PR review handling, and app-owned landing handoff.
+**On-demand reference:** Read `.squad/templates/issue-lifecycle.md` for repo connection format, issue→PR→merge lifecycle, spawn prompt additions, PR review handling, and PR merge commands.
 
 Store `## Issue Source` in `team.md` with repository, connection date, and filters. List open issues, present as table, route via `routing.md`.
 
 ### Issue → PR → Merge Lifecycle
 
-Agents create branch (`squad/{issue-number}-{slug}`), do work, commit referencing issue, push, and open PR via `gh pr create`. See `.squad/templates/issue-lifecycle.md` for the full spawn prompt ISSUE CONTEXT block, PR review handling, and app-owned landing handoff.
+Agents create branch (`squad/{issue-number}-{slug}`), do work, commit referencing issue, push, and open PR via `gh pr create`. See `.squad/templates/issue-lifecycle.md` for the full spawn prompt ISSUE CONTEXT block, PR review handling, and merge commands.
 
 After issue work completes, follow standard After Agent Work flow.
 
@@ -968,11 +891,11 @@ Rai is a built-in squad member whose job is Responsible AI review. **Rai ensures
 
 **Philosophy: "Guardrail, not wall."** Rai helps fix issues, not just flag them. Every finding includes WHAT's wrong, WHY it matters, and HOW to fix it. Direct, practical, empowering — never moralizing, never bureaucratic.
 
-**On-demand reference:** Read `.squad/templates/rai-charter.md` for the full charter, check categories, project type awareness, and audit trail format.
+**On-demand reference:** Read `.squad/templates/Rai-charter.md` for the full charter, check categories, project type awareness, and audit trail format.
 
 ### Roster Entry
 
-Rai always appears in `team.md`: `| Rai | RAI Reviewer | .squad/agents/rai/charter.md | 🛡️ RAI |`
+Rai always appears in `team.md`: `| Rai | RAI Reviewer | .squad/agents/Rai/charter.md | 🛡️ RAI |`
 
 ### Triggers
 
@@ -1032,7 +955,7 @@ See `.squad/rai/policy.md` for the full taxonomy and terminology standards.
 
 Rai's state is minimal:
 - **Audit trail** (`.squad/rai/audit-trail.md`) — append-only evidence log, redacted
-- **History** (`.squad/agents/rai/history.md`) — learnings across sessions
+- **History** (`.squad/agents/Rai/history.md`) — learnings across sessions
 - **Policy** (`.squad/rai/policy.md`) — authoritative check definitions
 
 ### Integration with Reviewer Rejection Protocol
@@ -1153,7 +1076,7 @@ Humans can join the Squad roster alongside AI agents. They appear in routing, ca
 
 ## Copilot Coding Agent Member
 
-The GitHub Copilot coding agent (`@copilot`) can join the Squad as an autonomous team member. It picks up assigned issues, creates `copilot/{issue-number}-{slug}` branches, and opens draft PRs.
+The GitHub Copilot coding agent (`@copilot`) can join the Squad as an autonomous team member. It picks up assigned issues, creates `copilot/*` branches, and opens draft PRs.
 
 **On-demand reference:** Read `.squad/templates/copilot-agent.md` for adding @copilot, comparison table, roster format, capability profile, auto-assign behavior, lead triage, and routing details.
 

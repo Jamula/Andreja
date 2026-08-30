@@ -33,9 +33,8 @@ Each platform tracks issue lifecycle differently. Squad normalizes these into a 
 |--------------|-------------------|-------------------|
 | Open, no assignee | `state: open`, `assignee: null` | `untriaged` |
 | Open, assigned, no branch | `state: open`, `assignee: @user`, no linked PR | `assigned` |
-| Open, branch exists | `state: open`, linked branch exists | `branchOnly` |
-| Open, draft PR | `state: open`, PR `isDraft: true` | `draft` |
-| Open, ready PR | `state: open`, PR `isDraft: false` | `needsReview` |
+| Open, branch exists | `state: open`, linked branch exists | `inProgress` |
+| Open, PR opened | `state: open`, PR exists, `reviewDecision: null` | `needsReview` |
 | Open, PR approved | `state: open`, PR `reviewDecision: APPROVED` | `readyToMerge` |
 | Open, changes requested | `state: open`, PR `reviewDecision: CHANGES_REQUESTED` | `changesRequested` |
 | Open, CI failure | `state: open`, PR `statusCheckRollup: FAILURE` | `ciFailure` |
@@ -48,21 +47,12 @@ Each platform tracks issue lifecycle differently. Squad normalizes these into a 
 - `go:needs-research` — Needs investigation before implementation
 - `priority:p{N}` — Priority level (0=critical, 1=high, 2=medium, 3=low)
 - `next-up` — Queued for next agent pickup
-- Exactly one lifecycle label: `status:backlog`, `status:branch-only`,
-  `status:pr-draft`, `status:ready`, `status:merged`, or `status:closed`
-- Independent dependency labels: `blocked:dependency`, `blocked:evidence`, and
-  `blocked:human`; classify blockers with `blocks:evidence` or `blocks:human`
 
 **Branch naming convention:**
 ```
 squad/{issue-number}-{kebab-case-slug}
 ```
 Example: `squad/42-fix-login-validation`
-
-App-created alternatives recognized by status automation are
-`copilot/{issue-number}-{slug}` and
-`u/{account}/{issue-number}-{slug}`. A bare number-leading branch is not issue
-evidence.
 
 ### Azure DevOps
 
@@ -258,16 +248,20 @@ gh pr ready {pr-number}
 
 **Merge strategies:**
 
-**GitHub:**
+**GitHub (merge commit):**
+```bash
+gh pr merge {pr-number} --merge --delete-branch
+```
 
-Ralph and issue-drain automation do not merge, auto-merge, enqueue, or activate
-Agent Merge. After independent approval and green required checks, report
-`READY_FOR_AGENT_MERGE` with the PR URL and evidence. The app owns landing.
+**GitHub (squash):**
+```bash
+gh pr merge {pr-number} --squash --delete-branch
+```
 
 **Azure DevOps:**
-
-Use the same reviewed handoff: report `READY_FOR_AGENT_MERGE` with evidence and
-leave completion to the app. Automation must not directly complete the PR.
+```bash
+az repos pr update --id {pr-id} --status completed --delete-source-branch true
+```
 
 **Post-merge actions:**
 1. Issue automatically closes (if "Closes #{number}" is in PR description)
@@ -293,26 +287,6 @@ git worktree remove ../worktrees/{issue-number}
 ## Spawn Prompt Additions for Issue Work
 
 When spawning an agent to work on an issue, include this context block:
-
-Issue-drain admissions also follow the stricter wave lifecycle before this
-ordinary implementation flow:
-
-1. Prepare up to five independent issues in the session ledger, reduced by the
-   lower confirmed platform limit.
-2. Immediately before each spawn, run the single-coordinator process guard and
-   best-effort repository reconciliation across sessions, branches, worktrees,
-   PRs, reservations/ledger, and issue readiness.
-3. Create one prepared child at each exact 10-second boundary using a one-time
-   wake or `NEXT_TICK_REQUIRED`, without waiting for the preceding ACK.
-4. Stop all later launches on failed/ambiguous creation, changed eligibility,
-   lost capacity, or a closed safety gate. Preserve created children; do not
-   replace uncertainty.
-5. Keep created children paused until every successfully created child returns
-   a valid correlated ACK. Missing or negative ACKs block; invalid/corrupt ACKs
-   are a distinct failure. Inspect once at five minutes or restart.
-6. A completed wave may advance after the barrier. A stopped partial wave may
-   release ACKed created children but cannot begin the next wave until its stop
-   reason and a fresh admission scan are reconciled.
 
 ```markdown
 ## ISSUE CONTEXT
@@ -353,7 +327,7 @@ Ralph (the work monitor) continuously checks issue and PR state:
 1. **Triage:** Detects untriaged issues, assigns `squad:{member}` labels
 2. **Spawn:** Launches agents for assigned issues
 3. **Monitor:** Tracks PR state transitions (needsReview → changesRequested → readyToMerge)
-4. **Handoff:** Reports approved, green PRs as `READY_FOR_AGENT_MERGE`
+4. **Merge:** Automatically merges approved PRs
 5. **Cleanup:** Marks issues as done when PRs merge
 
 **Ralph's work-check cycle:**
@@ -368,11 +342,10 @@ See `.squad/templates/ralph-reference.md` for Ralph's full lifecycle.
 ### Automated Approval (CI-only projects)
 
 If the project has no human reviewers configured:
-1. PR opens as draft.
-2. CI runs.
-3. The PR remains blocked pending independent approval.
-4. After approval and green checks, Ralph reports `READY_FOR_AGENT_MERGE`.
-5. The app decides whether and how to land it.
+1. PR opens
+2. CI runs
+3. If CI passes, Ralph auto-merges
+4. Issue closes
 
 ### Human Review Required
 
@@ -380,7 +353,7 @@ If the project requires human approval:
 1. PR opens
 2. Human reviewer is notified (GitHub/ADO notifications)
 3. Reviewer approves or requests changes
-4. If approved + CI passes, Ralph reports `READY_FOR_AGENT_MERGE`
+4. If approved + CI passes, Ralph merges
 5. If changes requested, agent addresses feedback
 
 ### Squad Member Review
@@ -392,18 +365,17 @@ If the issue was assigned to a squad member and they authored the PR:
 
 ## Common Issue Lifecycle Patterns
 
-### Pattern 1: Quick Fix
+### Pattern 1: Quick Fix (Single Agent, No Review)
 ```
 Issue created → Assigned to agent → Branch created → Code fixed → 
-Draft PR opened → CI passes → Independent approval → READY_FOR_AGENT_MERGE →
-App lands PR → Issue closed
+PR opened → CI passes → Auto-merged → Issue closed
 ```
 
 ### Pattern 2: Feature Development (Human Review)
 ```
 Issue created → Assigned to agent → Branch created → Feature implemented → 
 PR opened → Human reviews → Changes requested → Agent fixes → 
-Re-reviewed → Approved → READY_FOR_AGENT_MERGE → App lands PR → Issue closed
+Re-reviewed → Approved → Merged → Issue closed
 ```
 
 ### Pattern 3: Research-Then-Implement
@@ -429,8 +401,6 @@ All PRs reviewed → All PRs merged → Epic closed
 - ❌ Leaving feature branches undeleted after merge
 - ❌ Using `checkout -b` when parallel agents are active (causes working directory conflicts)
 - ❌ Manually transitioning issue states — let the platform and Squad automation handle it
-- ❌ Using `status:blocked` or `status:needs-decision` — blockers are independent
-  `blocked:*` labels and never replace lifecycle
 - ❌ Skipping the branch naming convention — breaks Ralph's tracking logic
 
 ## Migration Notes

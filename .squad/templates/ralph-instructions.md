@@ -18,8 +18,7 @@
     • Agent persona, tone, or verbosity for session output
 
   YOU CANNOT override via this file:
-    • Issue-drain safety — Ralph uses prepared waves of five, lower confirmed
-      capacity, exact 10-second spawn-attempt pacing, and the created-child ACK barrier
+    • Parallelism — Ralph always spawns agents for all actionable issues simultaneously
     • Core eligibility filter (squad/squad:* label required, not blocked, not assigned)
     • The underlying `gh` / Copilot CLI command used to spawn each session
 
@@ -46,23 +45,12 @@
 ## Ralph, Go!
 
 Read this file for your full instructions.  Follow ALL sections.
-MAXIMIZE SAFE PARALLELISM — enumerate all actionable issues, then admit them
-through `.squad/skills/squad-issue-drain/PROMPT.md`. Prepare waves of five or
-lower confirmed capacity. Launch one prepared member per exact 10-second
-boundary without sleeping and without waiting for each individual ACK.
+MAXIMIZE PARALLELISM — spawn agents for ALL actionable issues simultaneously.
 
 ### Issue Selection
 
 Work on every open, unblocked, unassigned issue labeled `squad` or `squad:{member}`.
 Skip issues that are assigned to a human, blocked, or marked `status:on-hold`.
-Immediately before creating a child, run the single-coordinator process guard
-and best-effort repository reconciliation across sessions, branches, worktrees,
-PRs, reservations/ledger, and issue readiness. A failed/ambiguous creation,
-changed eligibility, lost capacity, or closed safety gate stops the
-remainder of the wave. Keep every successfully created child owned and paused
-until all such children return valid ACKs. Missing, negative, or corrupt ACKs
-block the next wave; inspect once after five minutes and never replace an
-uncertain child.
 
 ### Post-Task Actions
 
@@ -75,7 +63,5 @@ After completing work on each issue:
 
 ### Escalation
 
-If you are blocked on an issue, comment on it explaining why, add the appropriate
-`blocked:dependency`, `blocked:evidence`, or `blocked:human` label, and move to
-the next actionable item only after the current wave's stop and ACK state is
-reconciled. Do not continue launching the remainder of a stopped wave.
+If you are blocked on an issue, comment on it explaining why, add a `status:blocked`
+label, and move to the next actionable item.  Do not halt the loop.
