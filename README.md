@@ -10,7 +10,7 @@ remains pending explicit ratification.
 
 - Git.
 - .NET SDK 10.0.301, pinned by [`global.json`](global.json).
-- `dotnet-ef` 10.0.9 for migration inspection and script generation.
+- `dotnet-ef` 10.0.11 for migration inspection and script generation.
 - Python 3, available as `python`, for documentation consistency checks.
 - PowerShell 7 for repository validation scripts.
 - Node.js 22 and Microsoft Edge for browser, passkey, viewport, and telemetry
@@ -32,12 +32,12 @@ node --version
 
 $efVersion = dotnet ef --version 2>$null
 if ($LASTEXITCODE -ne 0) {
-  dotnet tool install --global dotnet-ef --version 10.0.9
+  dotnet tool install --global dotnet-ef --version 10.0.11
   $efVersion = dotnet ef --version
 }
 $efVersionText = $efVersion -join "`n"
-if ($LASTEXITCODE -ne 0 -or $efVersionText -notmatch "10\.0\.9") {
-  throw "Install or update the global dotnet-ef tool to version 10.0.9."
+if ($LASTEXITCODE -ne 0 -or $efVersionText -notmatch "10\.0\.11") {
+  throw "Install or update the global dotnet-ef tool to version 10.0.11."
 }
 ```
 
