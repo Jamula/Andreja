@@ -126,9 +126,9 @@ explicit `andreja_test_*` database. Baseline/candidate Debug executions were
 14.66/14.61 seconds. Five additional candidate Debug runs took 14.69, 14.68,
 14.18, 14.30, and 14.54 seconds; all 22 tests passed every time. Debug,
 Release, and filtered runs covered migration, WAF/EF, concurrency, restart,
-crash, tenant isolation, and application portability behavior. After the runs, the configured database and generated
-`andreja_test_port_*` databases were absent, and the disposable container was
-removed.
+crash, tenant isolation, and application portability behavior. After the runs,
+the configured database and generated `andreja_test_port_*` databases were
+absent, and the disposable container was removed.
 
 ## Security, license, and support review
 
