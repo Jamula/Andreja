@@ -1,7 +1,10 @@
 # Current Focus
 
-- Issue: #10 — Define the privacy-safe feedback and support framework
-- Owner: Guinan
-- Decision: Close #10 now and track remaining approval gates in separate issues.
-- Current work: Strengthen `docs/frameworks/feedback-support.md`, create linked gate issues, and close #10 with a clear handoff.
-- Updated: 2026-08-30T10:50:03.358-07:00
+- Issue: #10 — feedback/support framework handoff (closed)
+- Pull request: #159
+- Successor gates: #155, #156, #157, #158
+- Review state: Deanna Troi rejected the privacy/legal handoff; Guinan is locked out of this revision.
+- Revision owner: Sarek
+- Required fixes: explicit Cyrus approval separate from issue closure; non-user-subject rights/remediation; ADR reference to PR #159.
+- Parallel review: Tuvok security review remains in progress.
+- Updated: 2026-08-30T11:06:20.916-07:00
