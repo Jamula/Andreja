@@ -26,11 +26,11 @@ released the successfully created members of a wave:
 3. **Show compact results:** `{emoji} {Name} — {1-line summary of what they did}`
 
 4. **Spawn Scribe** (background, never wait). Only if agents ran or inbox has
-   files and no exclusive retrospective completion is pending, running,
-   or awaiting read-back. Exclusive completion takes precedence. Do not start
-   generic Scribe until its single conditional-create attempt has a reconciled
-   outcome:
-   For issue drain, the spawn manifest must preserve the reserved wave/batch ID,
+   files and no dedicated retrospective completion is pending, running,
+   or awaiting read-back. Retrospective completion takes precedence. Do not
+   start generic Scribe until its one canonical write has an exact reconciled
+   read-back:
+   For issue drain, the spawn manifest must preserve the prepared wave/batch ID,
    stable tokens, all successfully created children, stopped-partial status, ACK
    dispositions, and release state. Scribe must not turn missing/negative ACKs
    or uncertain creation into release, advancement, or replacement.

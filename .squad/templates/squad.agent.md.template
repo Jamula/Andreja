@@ -477,8 +477,9 @@ Never crash or halt because an MCP tool is missing. MCP tools are enhancements, 
 > **⚠️ Exception:** Eager Execution does NOT apply during Init Mode Phase 1. Init Mode requires explicit user confirmation (via `ask_user`) before creating the team. Do NOT launch file creation, directory scaffolding, or any Phase 2 work until the user confirms the roster.
 
 > **⚠️ Issue-drain exception:** Queue work is governed by
-> `.squad/skills/squad-issue-drain/PROMPT.md`. Universal Section 0, verified
-> atomic issue reservations, lower App capacity, exact 10-second spawn-attempt
+> `.squad/skills/squad-issue-drain/PROMPT.md`. Universal Section 0, the
+> single-coordinator process guard with best-effort repository reconciliation,
+> lower App capacity, exact 10-second spawn-attempt
 > pacing without in-turn sleep, and the all-successfully-created-child ACK
 > barrier override eager execution and generic fan-out. Launch same-wave members
 > without waiting for individual ACKs. A failed/ambiguous creation, changed
@@ -520,7 +521,7 @@ Before spawning, assess: **is there a reason this MUST be sync?** If not, use ba
 ### Parallel Fan-Out
 
 This section governs ordinary routed work only. Issue-drain queue admission
-reserves up to five issues, launches one reserved child per exact 10-second
+prepares up to five issues, launches one prepared child per exact 10-second
 boundary without waiting for individual ACKs, and must not launch all children
 in one tool turn. It releases only after the spawn phase closes and every
 successfully created child returns a valid correlated ACK.
@@ -661,16 +662,17 @@ prompt: |
   Never speak to user. End with plain text summary after all tool calls.
 ```
 
-**Weekly retrospective completion mode (exclusive):** When `Retrospective with
+**Weekly retrospective completion mode (dedicated):** When `Retrospective with
 Enforcement` runs as the issue-drain admission gate, first prove that no generic
 Scribe is running; otherwise stop. Do not start generic Scribe work until the
-exclusive completion attempt finishes and its canonical record is re-read.
+dedicated completion attempt finishes and its canonical record is re-read.
 After the issue-drain contract returns `ready: true`, pass Scribe only its
-returned canonical key and content plus the exact verified repository-scoped
-atomic conditional-create tool. Scribe MUST make exactly one create-if-absent
-attempt; an existing key or uncertain result is failure and must not be
-overwritten or treated as completion. Plain `squad_state_write` does not
-establish exactly-once completion. In this mode suppress generic session,
+returned canonical key and content. After a complete listing proves the key
+absent, Scribe makes one `squad_state_write`, then re-lists and re-reads exact
+content. Reuse an exact valid existing record without another write. Missing,
+different, or uncertain read-back is failure and must not be overwritten or
+treated as completion. This single-coordinator process guard is best-effort
+repository reconciliation, not cross-process exclusivity. In this mode suppress generic session,
 ceremony, orchestration, and health logs plus inbox, decision, and history
 maintenance. This narrow override supersedes Scribe's normal logging contract
 only for this admission-gate ceremony.
@@ -705,7 +707,7 @@ Ceremonies are structured team meetings where agents align before or after work.
 1. Before spawning a work batch, check `.squad/ceremonies.md` for auto-triggered `before` ceremonies matching the current task condition.
 2. After a batch completes, check for `after` ceremonies. Manual ceremonies run only when the user asks.
 3. Spawn the facilitator (sync) using the template in the reference file. Facilitator spawns participants as sub-tasks.
-4. For `before`: include ceremony summary in work batch spawn prompts. Spawn Scribe (background) to record, except `Retrospective with Enforcement` used as Ralph's admission gate MUST use the exclusive weekly retrospective completion mode above and MUST NOT create a generic ceremony or session log.
+4. For `before`: include ceremony summary in work batch spawn prompts. Spawn Scribe (background) to record, except `Retrospective with Enforcement` used as Ralph's admission gate MUST use the dedicated weekly retrospective completion mode above and MUST NOT create a generic ceremony or session log.
 5. **Ceremony cooldown:** Skip auto-triggered checks for the immediately following step.
 6. Show: `📋 {CeremonyName} completed — facilitated by {Lead}. Decisions: {count} | Action items: {count}.`
 
@@ -923,16 +925,17 @@ GitHub Issues command, recovery path, restart, heartbeat, or post-batch rescan
 may bypass it. Ralph MUST NOT scan or enumerate issues or PRs until that
 contract permits the requested read-only or writer mode. Section 0 owns the
 fail-closed checks and runtime-state protocol; do not reimplement them or write
-runtime-owned state directly. Writer admission additionally requires verified
-existing repository-scoped atomic lease or conditional-create/CAS capability.
-Without it, remain read-only and claim no exclusivity. If Section 0 runs
-`Retrospective with Enforcement`, use the exclusive weekly retrospective Scribe
+runtime-owned state directly. Writer admission additionally requires the
+single-coordinator process guard and complete best-effort repository
+reconciliation immediately before each spawn. Missing atomic capability does
+not block admission, mutation, retrospective completion, or child release. If
+Section 0 runs `Retrospective with Enforcement`, use the dedicated weekly retrospective Scribe
 completion mode in this file.
 
 Ralph must follow the five-child wave ledger rather than generic simultaneous
-fan-out: reserve each issue before creation, use a one-time wake or
+fan-out: prepare each issue before creation, use a one-time wake or
 `NEXT_TICK_REQUIRED` at every 10-second boundary, and do not wait for an
-individual ACK before launching the next reserved member. Any failed or
+individual ACK before launching the next prepared member. Any failed or
 ambiguous creation, changed eligibility, lost capacity, or closed safety gate
 stops the remaining wave. Every successfully created child remains owned and
 paused until the all-created-child ACK barrier passes. A negative, missing, or

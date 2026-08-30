@@ -41,11 +41,14 @@ remain fail-closed before Step 1 and follow the contract's recovery path. Do not
 duplicate its state algorithm or write runtime-owned state directly. Exclusive
 retrospective completion must finish before generic Scribe work starts.
 
-**Issue-drain wave contract:** Reserve at most five independent `READY` issues
-before creation, reduced by the lower confirmed platform limit. Launch one
-reserved child at each exact 10-second boundary using a supported one-time wake
+**Issue-drain wave contract:** Prepare at most five independent `READY` issues
+in the session ledger before creation, reduced by the lower confirmed platform
+limit. Immediately before each spawn, run the single-coordinator process guard
+and best-effort repository reconciliation across sessions, branches, worktrees,
+PRs, reservations/ledger, and issue readiness. Launch one prepared child at each
+exact 10-second boundary using a supported one-time wake
 or `NEXT_TICK_REQUIRED`; never sleep in a turn. Do not wait for one child's ACK
-before launching the next reserved member. Failed/ambiguous creation, changed
+before launching the next prepared member. Failed/ambiguous creation, changed
 eligibility, lost capacity, or a closed safety gate stops the rest of the wave.
 Keep successfully created children owned and paused. Release only after every
 successfully created child returns a valid correlated ACK. Missing or negative
@@ -84,7 +87,7 @@ gh pr list --state open --draft --json number,title,author,labels,checks --limit
 **Step 3 — Act on highest-priority item:**
 - Process one category at a time, highest priority first (untriaged > assigned > CI failures > review feedback > approved PRs)
 - For ordinary work, spawn agents as needed and collect results. For issue
-  drain, use the reserved five-child wave contract above.
+  drain, use the prepared five-child wave contract above.
 - **⚡ CRITICAL: After results are collected, DO NOT stop. DO NOT wait for user input. IMMEDIATELY go back to Step 1 and scan again.** This is a loop — Ralph keeps cycling until the board is clear or the user says "idle". Each cycle is one "round".
 - If multiple items exist in the same category, process ordinary routed work in
   parallel. Issue-drain children are paced one spawn attempt per 10-second

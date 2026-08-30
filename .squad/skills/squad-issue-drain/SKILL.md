@@ -9,12 +9,12 @@ contract.
 
 Start with the fail-closed defaults:
 
-- writer operation only with verified existing repository-scoped atomic
-  ownership; otherwise read-only;
+- writer operation only after the single-coordinator process guard completes
+  best-effort repository reconciliation; otherwise blocked;
 - waves of up to five App child issue sessions, capped by lower verified
   capacity;
 - one issue, owner, session, branch/worktree, and PR;
-- reserve each selected issue before creation and wait exactly 10 seconds
+- prepare each selected issue in the session ledger and wait exactly 10 seconds
   between all spawn attempts without sleeping inside a turn;
 - continue same-wave launches without waiting for individual ACKs, then require
   a correlated valid ACK from every successfully created child before release
@@ -32,4 +32,6 @@ in `PROMPT.md`. It uses runtime state tools and remains active when the optional
 `retro-enforcement` component is missing.
 
 Always render the ready/active/blocked issue tree before starting work. Reconcile
-existing sessions, branches, worktrees, and PRs before every new admission.
+sessions, branches, worktrees, PRs, reservations/ledger, and issue readiness
+immediately before every spawn. The guard does not claim cross-process
+exclusivity.

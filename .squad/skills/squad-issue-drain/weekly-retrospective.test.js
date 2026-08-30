@@ -7,24 +7,34 @@ const test = require('node:test');
 const {
   assessAdmission,
   prepareCompletion: prepareCompletionForRepository,
+  reconcileCompletionWrite,
   resolveActionCandidates,
   validateCompletedLog,
 } = require('./weekly-retrospective');
 
 const now = '2026-08-28T22:03:38.453-07:00';
-const atomicCompletionCapability = {
-  verified: true,
-  repositoryScoped: true,
-  repository: 'Jamula/Andreja',
-  kind: 'conditional-create',
-  tool: 'test.conditionalCreate',
-  createIfAbsent: true,
-  conflictIsFailure: true,
-};
+
+function repositoryReconciliation(overrides = {}) {
+  return {
+    repository: 'Jamula/Andreja',
+    checkedAt: now,
+    complete: true,
+    sessions: [],
+    branches: [],
+    worktrees: [],
+    pullRequests: [],
+    reservations: [],
+    ledger: [],
+    issueReadiness: [],
+    ...overrides,
+  };
+}
 
 function prepareCompletion(input) {
   return prepareCompletionForRepository({
     repository: 'Jamula/Andreja',
+    coordinatorId: 'coordinator-1',
+    reconciliation: repositoryReconciliation(),
     ...input,
   });
 }
@@ -306,7 +316,6 @@ test('an interrupted ceremony cannot produce a completion write', () => {
       }),
       duplicateSearch: undefined,
     },
-    atomicCompletionCapability,
   });
 
   assert.equal(result.ready, false);
@@ -314,7 +323,7 @@ test('an interrupted ceremony cannot produce a completion write', () => {
   assert.equal(result.reason, 'duplicate-search-evidence-mismatch');
 });
 
-test('completion prepares one deterministic conditional create per UTC weekly cycle', () => {
+test('completion prepares one deterministic canonical write per UTC weekly cycle', () => {
   const blockers = ['#44', '#62'];
   const decisions = [{
     summary: 'Queue admission fails closed',
@@ -346,7 +355,6 @@ test('completion prepares one deterministic conditional create per UTC weekly cy
       decisions,
       actions,
     }),
-    atomicCompletionCapability,
   };
   const first = prepareCompletion(input);
   const second = prepareCompletion(input);
@@ -366,9 +374,21 @@ test('completion prepares one deterministic conditional create per UTC weekly cy
     ...input,
     logs: [first.write],
   });
-  assert.equal(afterWrite.ready, false);
-  assert.equal(afterWrite.reason, 'cycle-already-complete');
+  assert.equal(afterWrite.ready, true);
+  assert.equal(afterWrite.reason, 'completion-already-recorded');
   assert.equal(afterWrite.write, null);
+  assert.equal(afterWrite.key, first.write.key);
+
+  assert.deepEqual(reconcileCompletionWrite({
+    expected: first.write,
+    logs: [first.write],
+    stateAvailable: true,
+    enumerationComplete: true,
+  }), {
+    completed: true,
+    reason: 'completion-record-confirmed',
+    key: first.write.key,
+  });
 });
 
 test('state failures and malformed canonical records fail closed', () => {
@@ -514,7 +534,6 @@ test('completion preserves explicit no-item sentinels accepted by validation', (
     decisions: [],
     actions: [],
     verification: verificationFor({ shippedCount: 56, openCount: 27 }),
-    atomicCompletionCapability,
   });
 
   assert.equal(completion.ready, true);
@@ -556,7 +575,6 @@ test('completion fails closed on malformed caller entries for every section', ()
       decisions,
       actions,
     }),
-    atomicCompletionCapability,
   };
   const malformed = [
     { blockers: ['arbitrary text'] },
@@ -639,7 +657,6 @@ test('completion requires confirmed state availability and complete enumeration'
       openCount: 27,
     },
     verification: verificationFor({ shippedCount: 56, openCount: 27 }),
-    atomicCompletionCapability,
   };
 
   assert.deepEqual(prepareCompletion(input), {
@@ -690,7 +707,7 @@ test('completion requires confirmed state availability and complete enumeration'
   assert.equal(validateCompletedLog(completion.write).valid, true);
 });
 
-test('completion fails closed without verified atomic conditional create support', () => {
+test('completion does not depend on atomic capability and fails closed on guard conflict', () => {
   const input = {
     now,
     logs: [],
@@ -705,17 +722,45 @@ test('completion fails closed without verified atomic conditional create support
     verification: verificationFor(),
   };
 
-  assert.equal(prepareCompletion(input).reason, 'atomic-completion-unavailable');
-  assert.equal(
-    prepareCompletion({
-      ...input,
-      atomicCompletionCapability: {
-        ...atomicCompletionCapability,
-        repositoryScoped: false,
-      },
-    }).reason,
-    'atomic-completion-unavailable',
-  );
+  assert.equal(prepareCompletion(input).ready, true);
+  assert.equal(prepareCompletion({
+    ...input,
+    reconciliation: repositoryReconciliation({
+      ledger: [{
+        issue: 122,
+        state: 'active',
+        coordinatorId: 'coordinator-2',
+      }],
+    }),
+  }).reason, 'coordinator-reconciliation-conflict');
+});
+
+test('completion read-back distinguishes missing and conflicting state', () => {
+  const prepared = prepareCompletion({
+    now,
+    logs: [],
+    stateAvailable: true,
+    enumerationComplete: true,
+    evidence: {
+      windowStart: '2026-08-22T04:17:54.580Z',
+      windowEnd: '2026-08-29T04:17:54.580Z',
+      shippedCount: 0,
+      openCount: 0,
+    },
+    verification: verificationFor(),
+  }).write;
+  assert.equal(reconcileCompletionWrite({
+    expected: prepared,
+    logs: [],
+    stateAvailable: true,
+    enumerationComplete: true,
+  }).reason, 'completion-write-not-observed');
+  assert.equal(reconcileCompletionWrite({
+    expected: prepared,
+    logs: [{ ...prepared, content: `${prepared.content}\nconflict` }],
+    stateAvailable: true,
+    enumerationComplete: true,
+  }).reason, 'completion-write-conflict');
 });
 
 test('completion rejects stale or contradictory GitHub evidence', () => {
@@ -731,7 +776,6 @@ test('completion rejects stale or contradictory GitHub evidence', () => {
     stateAvailable: true,
     enumerationComplete: true,
     evidence,
-    atomicCompletionCapability,
   };
   const verification = verificationFor({ shippedCount: 1, openCount: 1 });
 
@@ -763,15 +807,6 @@ test('completion rejects stale or contradictory GitHub evidence', () => {
       github: { ...verification.github, repository: 'other/repository' },
     },
   }).reason, 'github-repository-mismatch');
-
-  assert.equal(prepareCompletion({
-    ...input,
-    atomicCompletionCapability: {
-      ...atomicCompletionCapability,
-      repository: 'other/repository',
-    },
-    verification,
-  }).reason, 'atomic-completion-unavailable');
 
   const duplicateIdentity = verification.github.shippedIssueUrls[0]
     .replace('/issues/1000', '/pull/01000');
@@ -815,8 +850,10 @@ test('the issue-drain contract and runbook require governed fail-closed recovery
   assert.match(prompt, /squad_state_list.*`log`/s);
   assert.match(prompt, /must not depend on the configured\s+`retro-enforcement` skill/i);
   assert.match(prompt, /orchestrator must not write `log\/` directly/i);
-  assert.match(prompt, /exactly one conditional-create attempt/i);
-  assert.match(prompt, /Plain `squad_state_write` is insufficient/i);
+  assert.match(prompt, /single-coordinator process guard/i);
+  assert.match(prompt, /best-effort repository reconciliation/i);
+  assert.match(prompt, /one `squad_state_write`/i);
+  assert.match(prompt, /re-lists and re-reads/i);
   assert.match(prompt, /limited\s+to millisecond precision/i);
   assert.match(prompt, /structured evidence, not caller-supplied/i);
   assert.match(
@@ -825,7 +862,7 @@ test('the issue-drain contract and runbook require governed fail-closed recovery
   );
   assert.match(
     coordinator,
-    /Weekly retrospective completion mode \(exclusive\)[\s\S]*atomic conditional-create tool/i,
+    /Weekly retrospective completion mode \(dedicated\)[\s\S]*one `squad_state_write`/i,
   );
   assert.match(
     coordinator,
@@ -842,8 +879,10 @@ test('the issue-drain contract and runbook require governed fail-closed recovery
     /Resume queue work only after the issue-drain\s+protocol confirms a valid durable completion record/i,
   );
   assert.match(runbook, /Operational owner.*Jett Reno/i);
-  assert.match(runbook, /Scribe alone completes the canonical `log\/` record/i);
-  assert.match(runbook, /interrupted before the final conditional create/i);
+  assert.match(runbook, /Scribe alone completes\s+the canonical `log\/` record/i);
+  assert.match(runbook, /interrupted before the final write/i);
+  assert.match(runbook, /single-coordinator process guard/i);
+  assert.match(runbook, /best-effort repository reconciliation/i);
   assert.match(runbook, /no more than three fractional-second\s+digits/i);
   assert.match(runbook, /caller self-assertion is not evidence/i);
   assert.match(runbook, /Never write.*runtime-owned.*directly/i);
