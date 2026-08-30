@@ -1,0 +1,1 @@
+📌 Team update (2026-08-30T17:09:11Z): Session checkpoint saved; two valid inbox decisions were merged into canonical decisions state; backlog admission remains blocked on unresolved blockers.
