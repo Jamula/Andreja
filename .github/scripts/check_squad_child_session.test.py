@@ -65,6 +65,19 @@ class SquadChildSessionContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "pinned Squad CLI"):
             CHECK.validate_contract(*contract)
 
+    def test_omitted_empty_environment_is_accepted(self) -> None:
+        contract = list(valid_contract())
+        del contract[1]["mcpServers"]["squad_state"]["env"]
+
+        CHECK.validate_contract(*contract)
+
+    def test_environment_credentials_are_rejected(self) -> None:
+        contract = list(valid_contract())
+        contract[1]["mcpServers"]["squad_state"]["env"] = {"TOKEN": "placeholder"}
+
+        with self.assertRaisesRegex(ValueError, "environment credentials"):
+            CHECK.validate_contract(*contract)
+
     def test_missing_or_unexpected_tool_is_rejected(self) -> None:
         for tools in (
             list(CHECK.SQUAD_STATE_TOOLS[:-1]),

@@ -76,7 +76,8 @@ def validate_contract(
         or tuple(args) != SQUAD_STATE_ARGS
     ):
         raise ValueError("squad_state must use the pinned Squad CLI state-mcp command.")
-    if server.get("env") != {}:
+    env = server.get("env", {})
+    if not isinstance(env, dict) or env:
         raise ValueError("squad_state must not receive environment credentials.")
 
     tools = server.get("tools")
