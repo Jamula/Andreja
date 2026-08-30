@@ -21,6 +21,13 @@ const RECONCILIATION_COLLECTIONS = [
   'ledger',
   'issueReadiness',
 ];
+const REPOSITORY_ARTIFACT_COLLECTIONS = new Set([
+  'sessions',
+  'branches',
+  'worktrees',
+  'pullRequests',
+]);
+const EXCLUDED_OWNERSHIP = new Set(['non-issue', 'out-of-scope']);
 const INACTIVE_STATES = new Set([
   'archived',
   'closed',
@@ -76,6 +83,54 @@ function activeRecord(record) {
     && !INACTIVE_STATES.has(String(record?.state || '').toLowerCase());
 }
 
+function ownershipEvidenceIssues(source, record) {
+  const issues = positiveInteger(record.issue) ? [record.issue] : [];
+  if (source !== 'pullRequests'
+      || !Object.prototype.hasOwnProperty.call(record, 'closingIssues')) {
+    return { valid: true, issues };
+  }
+  if (!Array.isArray(record.closingIssues)
+      || record.closingIssues.some((issue) => !positiveInteger(issue))
+      || new Set(record.closingIssues).size !== record.closingIssues.length) {
+    return { valid: false, reason: 'repository-reconciliation-ambiguous' };
+  }
+  return {
+    valid: true,
+    issues: [...new Set([...issues, ...record.closingIssues])],
+  };
+}
+
+function classifyReconciliationRecord(source, record) {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) {
+    return { valid: false, reason: 'repository-reconciliation-invalid' };
+  }
+
+  const evidence = ownershipEvidenceIssues(source, record);
+  if (!evidence.valid) return evidence;
+  if (evidence.issues.length > 0) {
+    if (source === 'worktrees'
+        && activeRecord(record)
+        && typeof record.dirty !== 'boolean') {
+      return { valid: false, reason: 'repository-reconciliation-ambiguous' };
+    }
+    return { valid: true, ownership: 'issue', issues: evidence.issues };
+  }
+
+  const explicitlyExcluded = REPOSITORY_ARTIFACT_COLLECTIONS.has(source)
+    && record.issue === null
+    && record.writing === false
+    && EXCLUDED_OWNERSHIP.has(record.ownership);
+  if (!explicitlyExcluded) {
+    return { valid: false, reason: 'repository-reconciliation-ambiguous' };
+  }
+  if (source === 'worktrees'
+      && activeRecord(record)
+      && typeof record.dirty !== 'boolean') {
+    return { valid: false, reason: 'repository-reconciliation-ambiguous' };
+  }
+  return { valid: true, ownership: record.ownership, excluded: true };
+}
+
 function assessSingleCoordinatorProcessGuard(reconciliation, {
   now,
   repository,
@@ -107,32 +162,60 @@ function assessSingleCoordinatorProcessGuard(reconciliation, {
     };
   }
 
-  const records = RECONCILIATION_COLLECTIONS
-    .flatMap((name) => reconciliation[name].map((record) => ({ name, record })));
-  if (records.some(({ record }) =>
-    !record
-    || typeof record !== 'object'
-    || Array.isArray(record)
-    || !positiveInteger(record.issue))) {
+  const records = RECONCILIATION_COLLECTIONS.flatMap((name) =>
+    reconciliation[name].map((record) => ({
+      name,
+      record,
+      classification: classifyReconciliationRecord(name, record),
+    })));
+  const invalid = records.find(({ classification }) => !classification.valid);
+  if (invalid) {
     return {
       available: false,
       mode: 'blocked',
-      reason: 'repository-reconciliation-invalid',
+      reason: invalid.classification.reason,
+      source: invalid.name,
     };
   }
 
-  for (const name of ['sessions', 'branches', 'worktrees', 'pullRequests']) {
-    const activeIssues = reconciliation[name]
-      .filter(activeRecord)
-      .map((record) => record.issue);
-    if (new Set(activeIssues).size !== activeIssues.length) {
-      return {
-        available: false,
-        mode: 'blocked',
-        reason: 'duplicate-reconciliation-conflict',
-        source: name,
-      };
-    }
+  const activeArtifacts = records.filter(({ name, record, classification }) =>
+    REPOSITORY_ARTIFACT_COLLECTIONS.has(name)
+      && classification.ownership === 'issue'
+      && activeRecord(record));
+  const activeOwnershipClaims = activeArtifacts.flatMap(
+    ({ name, classification }) =>
+      classification.issues.map((ownedIssue) => ({ name, issue: ownedIssue })),
+  );
+  const seenIssues = new Set();
+  const duplicateArtifact = activeOwnershipClaims.find(({ issue: ownedIssue }) => {
+    if (seenIssues.has(ownedIssue)) return true;
+    seenIssues.add(ownedIssue);
+    return false;
+  });
+  if (duplicateArtifact) {
+    return {
+      available: false,
+      mode: 'blocked',
+      reason: 'duplicate-reconciliation-conflict',
+      issue: duplicateArtifact.issue,
+      sources: activeOwnershipClaims
+        .filter(({ issue: ownedIssue }) => ownedIssue === duplicateArtifact.issue)
+        .map(({ name }) => name),
+    };
+  }
+
+  const dirtyIssueWorktree = records.find(({ name, record, classification }) =>
+    name === 'worktrees'
+      && classification.ownership === 'issue'
+      && activeRecord(record)
+      && record.dirty === true);
+  if (dirtyIssueWorktree) {
+    return {
+      available: false,
+      mode: 'blocked',
+      reason: 'dirty-issue-worktree-conflict',
+      issue: dirtyIssueWorktree.record.issue,
+    };
   }
 
   const activeCoordination = [
@@ -164,11 +247,16 @@ function assessSingleCoordinatorProcessGuard(reconciliation, {
     readiness.set(record.issue, record.ready === true);
   }
   const occupiedIssues = new Set(
-    ['sessions', 'branches', 'worktrees', 'pullRequests']
-      .flatMap((name) => reconciliation[name])
-      .filter(activeRecord)
-      .map((record) => record.issue),
+    activeOwnershipClaims.map(({ issue: ownedIssue }) => ownedIssue),
   );
+  const excludedRecords = records
+    .filter(({ classification }) => classification.excluded)
+    .map(({ name, record, classification }) => ({
+      source: name,
+      ownership: classification.ownership,
+      active: activeRecord(record),
+      ...(name === 'worktrees' ? { dirty: record.dirty } : {}),
+    }));
 
   if (issue !== null) {
     if (!positiveInteger(issue) || readiness.get(issue) !== true) {
@@ -220,6 +308,7 @@ function assessSingleCoordinatorProcessGuard(reconciliation, {
       .map(([readyIssue]) => readyIssue)
       .sort((left, right) => left - right),
     occupiedIssues: [...occupiedIssues].sort((left, right) => left - right),
+    excludedRecords,
   };
 }
 
@@ -275,6 +364,7 @@ function assessSectionZero({
       coordinatorId: guard.coordinatorId,
       readyIssues: guard.readyIssues,
       occupiedIssues: guard.occupiedIssues,
+      excludedRecords: guard.excludedRecords,
       batchId,
     },
   };

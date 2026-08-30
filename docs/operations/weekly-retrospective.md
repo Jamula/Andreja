@@ -68,6 +68,21 @@ does not disable or relax admission.
    reconciliation of sessions, branches, worktrees, PRs, reservations/ledger,
    and issue readiness. Incomplete, stale, duplicate, or conflicting evidence
    blocks completion.
+   - A repository artifact is issue-owned when it carries a positive `issue`.
+     That ownership cannot be suppressed by another marker.
+   - A session, branch, worktree, or PR without issue ownership is excluded only
+     with the complete explicit shape `issue: null`, `writing: false`, and
+     `ownership: non-issue|out-of-scope`. These records remain surfaced in
+     `excludedRecords`; they are not silently discarded.
+   - Every active worktree record also reports boolean `dirty`. Dirty
+     issue-owned worktrees block. Dirty worktrees explicitly proven non-writing
+     and non-issue or out-of-scope remain visible but do not block. Missing or
+     contradictory ownership or dirty-state evidence fails closed.
+   - A PR body reference such as `Refs #3` is evidence of relationship, not
+     issue ownership. Every verified closing issue link is ownership evidence
+     and takes precedence over exclusion markers; malformed closing-link
+     evidence fails closed. Duplicate positive issue ownership across active
+     sessions, branches, worktrees, and PRs blocks completion.
 9. Hand the returned key and content to dedicated Scribe. After a complete
    listing proves the key absent, Scribe makes one `squad_state_write`. The
    orchestrator never writes `log/` directly.

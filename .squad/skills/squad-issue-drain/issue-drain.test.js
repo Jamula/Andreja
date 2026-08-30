@@ -171,12 +171,24 @@ test('single-coordinator process guard requires complete current repository reco
 });
 
 test('process guard blocks duplicate artifacts and competing coordinator evidence', () => {
+  for (const source of ['sessions', 'branches', 'worktrees', 'pullRequests']) {
+    const records = [
+      { issue: 1, state: 'running' },
+      { issue: 1, state: 'running' },
+    ];
+    if (source === 'worktrees') {
+      records.forEach((record) => { record.dirty = false; });
+    }
+    assert.equal(assessSingleCoordinatorProcessGuard(
+      repositoryReconciliation({ [source]: records }),
+      { now, repository: 'Jamula/Andreja', coordinatorId: 'coordinator-1' },
+    ).reason, 'duplicate-reconciliation-conflict', source);
+  }
+
   assert.equal(assessSingleCoordinatorProcessGuard(
     repositoryReconciliation({
-      sessions: [
-        { issue: 1, state: 'running' },
-        { issue: 1, state: 'running' },
-      ],
+      sessions: [{ issue: 1, state: 'running' }],
+      pullRequests: [{ issue: 1, state: 'open' }],
     }),
     { now, repository: 'Jamula/Andreja', coordinatorId: 'coordinator-1' },
   ).reason, 'duplicate-reconciliation-conflict');
@@ -184,7 +196,7 @@ test('process guard blocks duplicate artifacts and competing coordinator evidenc
   for (const [source, record] of [
     ['sessions', { issue: 1, state: 'running' }],
     ['branches', { issue: 1, state: 'open' }],
-    ['worktrees', { issue: 1, state: 'active' }],
+    ['worktrees', { issue: 1, state: 'active', dirty: false }],
     ['pullRequests', { issue: 1, state: 'open' }],
   ]) {
     const result = assessSingleCoordinatorProcessGuard(
@@ -216,6 +228,148 @@ test('process guard blocks duplicate artifacts and competing coordinator evidenc
     );
     assert.equal(result.reason, 'coordinator-reconciliation-conflict', source);
   }
+});
+
+test('guard excludes only explicit non-writing and out-of-scope records', () => {
+  const result = assessSingleCoordinatorProcessGuard(
+    repositoryReconciliation({
+      sessions: [{
+        issue: null,
+        ownership: 'non-issue',
+        writing: false,
+        state: 'running',
+      }],
+      worktrees: [{
+        issue: null,
+        ownership: 'out-of-scope',
+        writing: false,
+        state: 'active',
+        branch: 'main',
+        dirty: true,
+      }],
+      pullRequests: [
+        {
+          issue: null,
+          ownership: 'non-issue',
+          writing: false,
+          state: 'open',
+          referenceIssues: [3],
+          number: 50,
+        },
+        {
+          issue: 3,
+          ownership: 'issue',
+          state: 'open',
+          closingIssues: [3],
+          number: 140,
+        },
+      ],
+    }),
+    { now, repository: 'Jamula/Andreja', coordinatorId: 'coordinator-1' },
+  );
+
+  assert.equal(result.available, true);
+  assert.deepEqual(result.occupiedIssues, [3]);
+  assert.deepEqual(result.excludedRecords, [
+    { source: 'sessions', ownership: 'non-issue', active: true },
+    {
+      source: 'worktrees',
+      ownership: 'out-of-scope',
+      active: true,
+      dirty: true,
+    },
+    { source: 'pullRequests', ownership: 'non-issue', active: true },
+  ]);
+});
+
+test('verified closing links override PR exclusion and expose duplicate ownership', () => {
+  const excludedOwner = {
+    issue: null,
+    ownership: 'non-issue',
+    writing: false,
+    state: 'open',
+    closingIssues: [3],
+    number: 50,
+  };
+  const ownership = assessSingleCoordinatorProcessGuard(
+    repositoryReconciliation({ pullRequests: [excludedOwner] }),
+    { now, repository: 'Jamula/Andreja', coordinatorId: 'coordinator-1' },
+  );
+  assert.equal(ownership.available, true);
+  assert.deepEqual(ownership.occupiedIssues, [3]);
+  assert.deepEqual(ownership.excludedRecords, []);
+
+  const positiveOwnership = assessSingleCoordinatorProcessGuard(
+    repositoryReconciliation({
+      branches: [{
+        issue: 4,
+        ownership: 'out-of-scope',
+        writing: false,
+        state: 'open',
+      }],
+    }),
+    { now, repository: 'Jamula/Andreja', coordinatorId: 'coordinator-1' },
+  );
+  assert.equal(positiveOwnership.available, true);
+  assert.deepEqual(positiveOwnership.occupiedIssues, [4]);
+  assert.deepEqual(positiveOwnership.excludedRecords, []);
+
+  const conflict = assessSingleCoordinatorProcessGuard(
+    repositoryReconciliation({
+      pullRequests: [
+        excludedOwner,
+        { issue: 3, state: 'open', number: 140 },
+      ],
+    }),
+    { now, repository: 'Jamula/Andreja', coordinatorId: 'coordinator-1' },
+  );
+  assert.equal(conflict.reason, 'duplicate-reconciliation-conflict');
+  assert.equal(conflict.issue, 3);
+  assert.deepEqual(conflict.sources, ['pullRequests', 'pullRequests']);
+});
+
+test('missing or inconsistent ownership and worktree state fail closed', () => {
+  for (const [source, record] of [
+    ['sessions', { state: 'running' }],
+    ['sessions', {
+      issue: null,
+      ownership: 'non-issue',
+      writing: true,
+      state: 'running',
+    }],
+    ['pullRequests', {
+      issue: null,
+      ownership: 'issue',
+      writing: false,
+      state: 'open',
+    }],
+    ['pullRequests', {
+      issue: null,
+      ownership: 'non-issue',
+      writing: false,
+      state: 'open',
+      closingIssues: [3, '4'],
+    }],
+    ['worktrees', {
+      issue: null,
+      ownership: 'out-of-scope',
+      writing: false,
+      state: 'active',
+    }],
+  ]) {
+    const result = assessSingleCoordinatorProcessGuard(
+      repositoryReconciliation({ [source]: [record] }),
+      { now, repository: 'Jamula/Andreja', coordinatorId: 'coordinator-1' },
+    );
+    assert.equal(result.reason, 'repository-reconciliation-ambiguous', source);
+  }
+
+  assert.equal(assessSingleCoordinatorProcessGuard(
+    repositoryReconciliation({
+      worktrees: [{ issue: 1, state: 'active', dirty: true }],
+    }),
+    { now, repository: 'Jamula/Andreja', coordinatorId: 'coordinator-1' },
+  ).reason, 'dirty-issue-worktree-conflict');
 });
 
 test('spawn re-runs best-effort repository reconciliation immediately before creation', () => {
@@ -268,6 +422,7 @@ test('writer admission does not depend on atomic runtime capabilities', () => {
       coordinatorId: 'coordinator-1',
       readyIssues: [1, 2, 3, 4, 5, 6, 7, 132],
       occupiedIssues: [],
+      excludedRecords: [],
       batchId: 'batch-1',
     },
   });
