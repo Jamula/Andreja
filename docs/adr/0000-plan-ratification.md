@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `3ae445de2e701cce3a048dfc250b3bbb2ae51c3b4c4e93a37e4802bb6c1c1405`
+- **Current proposed Plan SHA-256:** `8f4780d68843cf0a02d538baa5a9a15ebca3ee07c771f417f59ad0de19233e72`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -238,3 +238,19 @@ not match the merged `docs/plan.md`.
 - **Scope:** Reconcile the independently proposed charter and legal-gate
   status-artifact updates after merging their plan changes. Both underlying
   artifacts remain non-authoritative pending their respective required approvals.
+
+### 2026-08-29 — proposed license-evaluation re-verification hash refresh
+
+- **Tracking issue:** [#6](https://github.com/Jamula/Andreja/issues/6)
+- **Pull request:** pending
+- **Plan SHA-256:** `8f4780d68843cf0a02d538baa5a9a15ebca3ee07c771f417f59ad0de19233e72`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/status amendment; no re-ratification,
+  license change, visibility change, external contribution, trademark filing,
+  namespace reservation, publication, or external spend is authorized.
+- **Scope:** Refresh the `docs/legal/license-evaluation.md` status-artifact hash
+  after the packet recorded a dated 2026-08-29 repository re-verification,
+  including AI coding-agent `Co-authored-by` trailers in Git history, plus the
+  matching chain-of-title work-plan step and counsel question. The packet remains
+  counsel-ready research, not approved policy; issue #6 stays open pending
+  qualified counsel and Cyrus approval.
