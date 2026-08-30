@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `afe5afddf1aeb49f0fcbd12e05f422264f0e58a6b6bac6d3e0c06146934f4dcd`
+- **Current proposed Plan SHA-256:** `e67b688eda2104382d84d1e1978e7f1fe05dd0e444b06882766046737134d17d`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -244,7 +244,8 @@ not match the merged `docs/plan.md`.
 - **Tracking issues:** Framework [#10](https://github.com/Jamula/Andreja/issues/10)
   and successor gates [#155](https://github.com/Jamula/Andreja/issues/155)
   through [#158](https://github.com/Jamula/Andreja/issues/158)
-- **Plan SHA-256:** `afe5afddf1aeb49f0fcbd12e05f422264f0e58a6b6bac6d3e0c06146934f4dcd`
+- **Pull request:** [#159](https://github.com/Jamula/Andreja/pull/159)
+- **Plan SHA-256:** `e67b688eda2104382d84d1e1978e7f1fe05dd0e444b06882766046737134d17d`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed mechanical/status amendment; no plan
   re-ratification, gate approval, collection, publication, provider selection,
@@ -255,4 +256,6 @@ not match the merged `docs/plan.md`.
   unresolved policy, security, platform/vendor/cost, operational-readiness, and
   launch decisions to the four consolidated successor issues. Pending status
   applies only to this plan amendment; it does not reopen the separately recorded
-  framework handoff decision.
+  framework handoff decision. Successor issue closure or documentation merge does
+  not approve a gate package; each package requires Cyrus's explicit recorded
+  decision.

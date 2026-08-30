@@ -100,7 +100,7 @@ adds them explicitly.
 | FH-5 | Edge | If a gate output conflicts with this framework, execution stops and the conflict is escalated to Guinan and the gate owner; the narrower or more convenient interpretation does not win silently. |
 | FH-6 | Edge | If a dependency is unavailable, failed, stale, or cannot be exercised in Phase 0, the evidence records `Blocked` or `Unavailable`; it never records success, skip, or an equivalent success-shaped fallback. |
 | FH-7 | Dependency | Operational readiness issue #158 cannot receive a proceed recommendation until #155, #156, and #157 contain explicit approved outputs and the exact-release evidence satisfies all 14 Phase 1B scenarios. |
-| FH-8 | Dependency | Only Cyrus's explicit decision in the applicable gate issue can approve policy, provider/spend, residual risk, deployment stage, or launch; specialist approval cannot substitute for it. |
+| FH-8 | Dependency | Only Cyrus's explicit recorded decision in the applicable gate issue can approve policy, provider/spend, residual risk, deployment stage, or launch; issue closure, label changes, pull-request merge, or specialist approval cannot substitute for it. |
 
 The handoff is complete when FH-1 through FH-8 are true. Implementation and
 launch remain separate outcomes governed by the successor issues.
@@ -312,9 +312,12 @@ an Andreja user data plane.
 The tenant-less notice must name the controller/owner, purposes, fields,
 optional fields, recipients, publication possibility, approved legal
 basis/consent result, retention schedule, security contact, and access,
-correction, deletion, objection, and consent-withdrawal routes. Sarek and
-Deanna Troi must review the legal-basis/consent and notice decisions; this
-framework does not select them.
+correction, deletion, objection, and consent-withdrawal routes. Those routes
+must cover both submitters and non-user subjects: people identified, described,
+or otherwise represented in a submission or publication who did not submit it
+and may have no Andreja account, GitHub account, return channel, or tracking
+receipt. Sarek and Deanna Troi must review the legal-basis/consent and notice
+decisions; this framework does not select them.
 
 Every storage class has an approved retention trigger and purge behavior for
 active records, closed records, contact data, consent receipts, quarantines,
@@ -322,20 +325,43 @@ backups, email delivery events, abuse evidence, and aggregate metrics. No
 indefinite default is allowed. The schedule and any legal/security hold
 exceptions are Phase 0 decisions.
 
-A public submitter can request access, correction, or deletion using the
-tracking receipt plus an approved proof mechanism, or the verified return
-channel when one was supplied. The mechanism must not require an Andreja or
-GitHub account and must not disclose a record to someone who merely knows the
-display reference. The runbook records identity/proof decisions, request
-status, approved exception, propagation to backups/derived systems, completion
-evidence, and a safe response. Never place the request or its evidence in a
-GitHub issue.
+A submitter can request access, correction, or deletion using the tracking
+receipt plus an approved proof mechanism, or the verified return channel when
+one was supplied. A non-user subject can invoke the same rights through a
+private route without an account or tracking receipt. Each route uses
+proportionate identity and relationship proof for the requested action, avoids
+collecting new sensitive evidence when a less intrusive method suffices, and
+does not reveal the submitter, unrelated people, or whether a record exists
+beyond the approved response.
+
+When submitter and non-user-subject instructions conflict, or a request
+intersects another person's rights, a legal/security hold, incident evidence,
+or an unsafe disclosure risk, processing and publication of the disputed
+content remain restricted while Deanna Troi and Sarek apply the approved
+conflict rule. The decision records the controlling reason, partial
+access/correction/deletion or redaction result, denial basis, appeal route,
+backup/derived-store propagation, completion evidence, and a safe response.
+Implementation does not choose a winner or default to the submitter.
+
+The runbook records identity/proof decisions, request status, approved
+exception, propagation to backups/derived systems, completion evidence, and a
+safe response. Never place the request or its evidence in a GitHub issue.
 
 Deletion removes or irreversibly disassociates contact and source records and
-propagates to permitted derived stores. A previously consented public GitHub
-issue is a separate public artifact; the publication preview must explain the
-limits of later retraction, copies, notifications, and forks. Approved
-redaction/removal procedures apply when publication later proves unsafe.
+propagates to permitted derived stores. It also removes or redacts a non-user
+subject's personal data from controlled private and public artifacts unless an
+approved exception requires a narrower result. A previously consented public
+GitHub issue is a separate public artifact; the publication preview must
+explain the limits of later retraction, copies, notifications, and forks.
+
+If personal data is published to GitHub accidentally or outside the approved
+preview and consent, the publisher stops, the affected route is suspended, and
+authorized responders promptly remove or redact controlled issue, comment, and
+attachment content without reproducing it in a public incident record. They
+preserve only minimized incident evidence, notify the private incident owner,
+assess required subject/regulatory notice, seek cache or search-index removal
+where available, and record residual copies, notifications, forks, or other
+limits that Andreja cannot retract.
 
 ## Abuse and unsafe-content handling
 
@@ -685,9 +711,14 @@ reviewed artifacts, and a controlled live exercise demonstrate:
 3. Default-exclusion tests block or restrict representative secrets, prompts,
    task/file/connector content, raw logs, and sensitive personal context
    without echoing them into logs, traces, metrics, alerts, or errors.
-4. Public access, correction, deletion, and consent-withdrawal exercises work
-   without an Andreja or GitHub account and propagate to approved derived
-   stores, delivery records, and backup handling.
+4. Submitter and non-user-subject access, correction, deletion, objection, and
+   consent-withdrawal exercises work without an Andreja or GitHub account.
+   Tests cover a non-user subject with no tracking receipt or return channel,
+   proportionate identity/relationship proof, conflicting instructions,
+   non-disclosure of submitters and unrelated people, restriction while a
+   conflict is decided, denial/partial-response appeal, and propagation to
+   approved derived stores, delivery records, public-artifact
+   deletion/redaction, and backup handling.
 5. Abuse, burst, replay, enumeration, oversized-payload, injection, unsafe
    attachment, queue-failure, and accessible-alternative scenarios fail safely
    within approved cost and availability bounds.
@@ -695,7 +726,12 @@ reviewed artifacts, and a controlled live exercise demonstrate:
    independent status, follow-up, reopen, and verification.
 7. GitHub publication shows the exact final preview, requires dedicated
    consent, invalidates consent after a material edit, and publishes no private
-   identifiers, diagnostics, contacts, or tracking secrets.
+   identifiers, diagnostics, contacts, or tracking secrets. An accidental or
+   unauthorized publication exercise suspends the publisher and affected route;
+   removes or redacts controlled issue, comment, and attachment content; creates
+   no public incident or DSR evidence; preserves only minimized private evidence;
+   routes notification and legal assessment; seeks available cache/index
+   removal; and records copies or forks that cannot be retracted.
 8. A vulnerability and a suspected personal-data incident use the private
    route, expose no public issue, and produce only a safe ordinary-workflow
    acknowledgment.
@@ -724,12 +760,14 @@ their roles. Cyrus approves the Phase 1B launch decision and residual risks.
 ## Successor gate matrix
 
 A gate is complete only when its linked issue's binary criteria and required
-reviews are complete and Cyrus records the named decision. `Open` means the
-package is not approved and every behavior it controls remains blocked.
+reviews are complete and Cyrus records the named decision. Closing a gate issue
+is administrative state only and never substitutes for that decision. `Open`
+means the package is not approved and every behavior it controls remains
+blocked.
 
 | Gate package | Tracking issue | Accountable owner | Dependencies | Status and authority |
 | --- | --- | --- | --- | --- |
-| Privacy, legal, retention, and DSR | [#155](https://github.com/Jamula/Andreja/issues/155) | Deanna Troi, with Sarek | Framework #10; descriptive baselines #116/PR #117 | **Open / Blocked.** Cyrus approves controller role, lawful basis/consent, notice, retention, DSR proof/propagation, holds, and public-artifact handling. |
+| Privacy, legal, retention, and DSR | [#155](https://github.com/Jamula/Andreja/issues/155) | Deanna Troi, with Sarek | Framework #10; descriptive baselines #116/PR #117 | **Open / Blocked.** Cyrus explicitly records approve/amend/reject for controller role, lawful basis/consent, notice, retention, submitter and non-user-subject DSR proof/conflicts/propagation, holds, and public-artifact handling/remediation. Issue closure is not approval. |
 | Security, abuse, tracking, and incident routing | [#156](https://github.com/Jamula/Andreja/issues/156) | Tuvok, with Jett Reno | Framework #10; intake-specific privacy outputs from #155 | **Open / Blocked.** Cyrus accepts or rejects the consolidated control set and residual security risk. |
 | Platform, vendor, residency, transactional email, and cost | [#157](https://github.com/Jamula/Andreja/issues/157) | Jett Reno, with Quark | Approved requirements from #155 and #156; Phase 0 $0/no-cloud rule | **Open / Blocked.** Cyrus approves architecture/provider/cost choices and any separately bounded budget; the issue itself authorizes no account or spend. |
 | Operational readiness, commitments, evidence, and launch | [#158](https://github.com/Jamula/Andreja/issues/158) | Guinan, with Data | Approved outputs from #155-#157; canonical help may be delivered through [#93](https://github.com/Jamula/Andreja/issues/93); exact-release evidence for all 14 scenarios | **Open / Blocked.** Cyrus alone records proceed, extend-learning, de-scope, or stop and any residual-risk/launch approval. |
@@ -738,7 +776,7 @@ package is not approved and every behavior it controls remains blocked.
 
 | Decision or artifact | Owning gate | Required handoff |
 | --- | --- | --- |
-| Controller/processor roles, lawful basis/consent, notice, retention, DSR proof, holds, backups/derived stores, and public-artifact handling | #155 | Approved requirements and tests to #156, #157, and #158 |
+| Controller/processor roles, lawful basis/consent, notice, retention, submitter and non-user-subject DSR proof/conflicts, holds, backups/derived stores, and public-artifact handling/remediation | #155 | Explicitly approved requirements and tests to #156, #157, and #158 |
 | Intake data-flow, threat/abuse model, anti-abuse thresholds, evidence/appeal/degraded mode, tracking-secret lifecycle, incident route, and attachment prohibition/control set | #156 | Approved controls and negative-test requirements to #157 and #158 |
 | Tenant-less topology, encryption/key integration, residency, subprocessors, backups, restricted access, provider/sender/domain, delivery events, cost caps, and exit path | #157 | Approved architecture, provider terms, and bounded cost controls to #158 |
 | Numeric support/DSR targets, staffing and restricted coverage, metrics thresholds, testing matrix, canonical help, exercised runbooks, residual risks, and launch recommendation | #158 | One exact-revision evidence packet and explicit recommendation to Cyrus |

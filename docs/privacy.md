@@ -90,7 +90,7 @@ task schema is general.
 | Application export manifest/archive: supported records, audit, settings, provenance, checksums, exclusions, reauthorization instructions | Sensitive portable user data | User-controlled portability to a clean instance | Operator creates and encrypts the archive; current CLI uses authenticated AES-256-GCM packaging and a separately supplied key | Clean-instance round trip passed with synthetic data. Credentials, passkeys, recovery material, provider tokens, keys, caches, telemetry, secrets, and sensitive inference are excluded. **Implemented/current** |
 | PostgreSQL dump, key/config inventory, image/schema/config versions, recovery checksums | Restricted recovery set | Disaster recovery and safe migration/update | Separate operator-controlled artifacts and destinations | Database-only restore passed, but encrypted combined custody, matching key recovery, and restored sign-in did not. **Evidence-blocked** |
 | Public/help content and local search query | Public content; query may reveal interest | Explain approved public information and find it locally | Current prototype is loopback/private-review only; query remains in browser memory | No public hosting, analytics, feedback, third-party scripts, or remote search is authorized. Historical Pages exposure is contained but third-party copies/logs may remain. **Future/gated** |
-| Feedback/support submission, contact details, diagnostics, attachments | Potentially sensitive user/support content | Future intake and remediation | No intake is deployed; the framework is review-ready but unapproved | Purpose, fields, retention, access, redaction, deletion, and provider terms must be approved before collection. **Future/gated** |
+| Feedback/support submission, contact details, diagnostics, attachments, and personal data about non-user subjects | Potentially sensitive user/support and third-party content | Future intake and remediation | No intake is deployed; the Phase 0 lifecycle framework is complete, but privacy/legal gate #155 remains open and unapproved | Purpose, fields, retention, submitter and non-user-subject rights/proof/conflict handling, redaction/deletion, accidental-publication remediation, and provider terms require Cyrus's explicit recorded approval before collection. Issue closure is not approval. **Future/gated** |
 
 ## Purposes, minimization, and access
 
@@ -273,9 +273,11 @@ Do not attach database dumps, exports, screenshots with user content, prompts,
 provider responses, connector payloads, secrets, recovery material, raw identifiers,
 or private host details to issues, pull requests, feedback, or support. Use
 content-free time, operation, result class, version, and synthetic reproduction
-data. The Phase 0 feedback/support framework is accepted, but its privacy,
-security, platform/vendor, and operational-readiness gates remain open and no
-tenant-less intake is deployed.
+data. The Phase 0 feedback/support framework decision is recorded, but its
+privacy, security, platform/vendor, and operational-readiness gates remain open
+and no tenant-less intake is deployed. Closing a successor issue or merging its
+documentation does not approve its package; Cyrus must record the applicable
+decision explicitly.
 
 The public/help-site artifact is not the authenticated app. It must have no app
 cookies, tokens, product data, privileged route, analytics, remote search, feedback
