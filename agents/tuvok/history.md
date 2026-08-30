@@ -5,3 +5,5 @@
 
 ### 2026-08-28 — Issue #99 architecture correction
 Approved the final architecture/data-flow revision for security and trust boundaries.
+
+📌 Team update (2026-08-30T12:06:05.656-07:00): Tuvok identified PR #159's authorization/routing/secret/provenance defects, approved Picard's four corrections, then independently removed the remaining custody contradiction and added regression coverage at final head `139887dfba54fd4bd4836d580b45fc8e314fb243`. Deanna Troi also approved; gates #155-#158 remain fail-closed.
