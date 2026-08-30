@@ -73,6 +73,17 @@ other prompt or template may bypass it.
    all repository/runtime sources, and quiesce generic Scribe activity. While
    dedicated retrospective completion is active, do not spawn generic
    Scribe work. If an existing generic Scribe cannot be proven finished, stop.
+   Every session, branch, worktree, and pull-request record must either carry a
+   positive issue number or use the explicit non-owner shape
+   `issue: null`, `writing: false`, and `ownership: non-issue|out-of-scope`.
+   Positive issue numbers always win over exclusion markers. Active worktree
+   records must also carry a boolean `dirty` value. A dirty issue-owned
+   worktree blocks; a dirty explicit non-owner stays visible in the guard's
+   `excludedRecords` evidence but does not block. Missing or inconsistent
+   ownership or dirty-state evidence is ambiguous and fails closed. A PR that
+   merely references an issue is not its owner; a verified closing link is.
+   Duplicate positive issue ownership anywhere across active sessions,
+   branches, worktrees, and pull requests remains blocking.
 8. The orchestrator must not write `log/` directly. Hand the deterministic
    canonical key/content to the dedicated Scribe only after a complete listing
    confirms the key is absent. Scribe performs one `squad_state_write`, then

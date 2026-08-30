@@ -735,6 +735,72 @@ test('completion does not depend on atomic capability and fails closed on guard 
   }).reason, 'coordinator-reconciliation-conflict');
 });
 
+test('completion ignores only explicit non-writing records and preserves issue ownership', () => {
+  const input = {
+    now,
+    logs: [],
+    stateAvailable: true,
+    enumerationComplete: true,
+    evidence: {
+      windowStart: '2026-08-22T04:17:54.580Z',
+      windowEnd: '2026-08-29T04:17:54.580Z',
+      shippedCount: 0,
+      openCount: 0,
+    },
+    verification: verificationFor(),
+  };
+  const reconciliation = repositoryReconciliation({
+    sessions: [{
+      issue: null,
+      ownership: 'non-issue',
+      writing: false,
+      state: 'running',
+    }],
+    worktrees: [{
+      issue: null,
+      ownership: 'out-of-scope',
+      writing: false,
+      state: 'active',
+      dirty: true,
+    }],
+    pullRequests: [
+      {
+        issue: null,
+        ownership: 'non-issue',
+        writing: false,
+        state: 'open',
+        referenceIssues: [3],
+        number: 50,
+      },
+      {
+        issue: 3,
+        ownership: 'issue',
+        state: 'open',
+        closingIssues: [3],
+        number: 140,
+      },
+    ],
+  });
+  assert.equal(prepareCompletion({ ...input, reconciliation }).ready, true);
+
+  assert.equal(prepareCompletion({
+    ...input,
+    reconciliation: repositoryReconciliation({
+      sessions: [{ state: 'running' }],
+    }),
+  }).reason, 'repository-reconciliation-ambiguous');
+
+  assert.equal(prepareCompletion({
+    ...input,
+    reconciliation: repositoryReconciliation({
+      pullRequests: [
+        { issue: 3, state: 'open', number: 50 },
+        { issue: 3, state: 'open', number: 140 },
+      ],
+    }),
+  }).reason, 'duplicate-reconciliation-conflict');
+});
+
 test('completion read-back distinguishes missing and conflicting state', () => {
   const prepared = prepareCompletion({
     now,
