@@ -156,6 +156,34 @@ test('branch documentation requires issue-numbered Copilot branches', () => {
   }
 });
 
+test('squad issue assignment matches slugged multi-word member labels', () => {
+  const workflowPaths = [
+    path.join(__dirname, '..', 'workflows', 'squad-issue-assign.yml'),
+    path.join(
+      __dirname,
+      '..',
+      '..',
+      '.squad',
+      'templates',
+      'workflows',
+      'squad-issue-assign.yml'),
+  ];
+
+  for (const workflowPath of workflowPaths) {
+    const content = fs.readFileSync(workflowPath, 'utf8');
+    const slugifySource = content.match(
+      /function slugify\(value\) \{\s+return [^;]+;\s+\}/);
+    assert.ok(slugifySource, `${workflowPath} must define slugify`);
+    const slugify = Function(`return (${slugifySource[0]})`)();
+    assert.equal(slugify('Deanna Troi'), 'deanna-troi');
+    assert.equal(slugify('Jett Reno'), 'jett-reno');
+    assert.match(
+      content,
+      /slugify\(cells\[0\]\) === memberName/,
+      `${workflowPath} must match slugged labels for multi-word roster names`);
+  }
+});
+
 test('closing keyword parser accepts local and rejects cross-repository references', () => {
   assert.deepEqual(
     [...issueNumbersFromBody(
