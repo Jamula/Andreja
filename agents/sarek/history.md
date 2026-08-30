@@ -1,2 +1,3 @@
 
 📌 Team update (2026-08-30T10:54:18.410-07:00): ISSUE_73_DECISION_BRIEF_READY found inconsistent accepted/merged/proposed/counsel-gated statuses; repository visibility containment, status taxonomy reconciliation, feedback scope, artifact-hash decisions, charter sequencing, counsel path, #66 sequencing, ADR 0008 local-only scope, and Phase 0 exit remain for Cyrus.
+📌 Team update (2026-08-30T12:06:05.656-07:00): Sarek independently addressed the first PR #159 rejection at `e7539e2267cbba78437e71fb7a019bd30672a020`. Later independent revisions produced final approved head `139887dfba54fd4bd4836d580b45fc8e314fb243`; #155-#158 remain open, fail-closed gates.
