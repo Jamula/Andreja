@@ -24,37 +24,11 @@ Ralph always appears in `team.md`: `| Ralph | Work Monitor | — | 🔄 Monitor 
 | "Ralph, idle" / "Take a break" / "Stop monitoring" | Fully deactivate (stop loop + idle-watch) |
 | "Ralph, scope: just issues" / "Ralph, skip CI" | Adjust what Ralph monitors this session |
 | References PR feedback or changes requested | Spawn agent to address PR review feedback |
-| "merge PR #N" / "merge it" (recent context) | Report `READY_FOR_AGENT_MERGE`; the app owns landing |
+| "merge PR #N" / "merge it" (recent context) | Merge via `gh pr merge` |
 
 These are intent signals, not exact strings — match meaning, not words.
 
 When Ralph is active, run this check cycle after every batch of agent work completes (or immediately on activation):
-
-**Step 0 — Enforce queue admission** (mandatory):
-
-Before every queue enumeration, status, classification, or admission path,
-including every cycle and status-only check, load `squad-issue-drain`, read
-`.squad/skills/squad-issue-drain/PROMPT.md`, and execute its Section 0 admission
-contract. Do not scan or enumerate issues or PRs until that contract permits the
-requested read-only or writer mode. If it cannot conclusively permit work,
-remain fail-closed before Step 1 and follow the contract's recovery path. Do not
-duplicate its state algorithm or write runtime-owned state directly. Exclusive
-retrospective completion must finish before generic Scribe work starts.
-
-**Issue-drain wave contract:** Prepare at most five independent `READY` issues
-in the session ledger before creation, reduced by the lower confirmed platform
-limit. Immediately before each spawn, run the single-coordinator process guard
-and best-effort repository reconciliation across sessions, branches, worktrees,
-PRs, reservations/ledger, and issue readiness. Launch one prepared child at each
-exact 10-second boundary using a supported one-time wake
-or `NEXT_TICK_REQUIRED`; never sleep in a turn. Do not wait for one child's ACK
-before launching the next prepared member. Failed/ambiguous creation, changed
-eligibility, lost capacity, or a closed safety gate stops the rest of the wave.
-Keep successfully created children owned and paused. Release only after every
-successfully created child returns a valid correlated ACK. Missing or negative
-ACKs block; invalid/corrupt ACKs are reported separately. At five minutes or
-restart, inspect once and never replace while creation or ownership is
-uncertain. A stopped partial wave cannot begin the next wave.
 
 **Step 1 — Scan for work** (run these in parallel):
 
@@ -81,17 +55,14 @@ gh pr list --state open --draft --json number,title,author,labels,checks --limit
 | **Draft PRs** | PR in draft from squad member | Check if agent needs to continue; if stalled, nudge |
 | **Review feedback** | PR has `CHANGES_REQUESTED` review | Route feedback to PR author agent to address |
 | **CI failures** | PR checks failing | Notify assigned agent to fix, or create a fix issue |
-| **Approved PRs** | PR approved, CI green, ready to land | Report `READY_FOR_AGENT_MERGE`; do not merge, auto-merge, or enqueue |
+| **Approved PRs** | PR approved, CI green, ready to merge | Merge and close related issue |
 | **No work found** | All clear | Report: "📋 Board is clear. Ralph is idling." Suggest `npx @bradygaster/squad-cli watch` for persistent polling. |
 
 **Step 3 — Act on highest-priority item:**
 - Process one category at a time, highest priority first (untriaged > assigned > CI failures > review feedback > approved PRs)
-- For ordinary work, spawn agents as needed and collect results. For issue
-  drain, use the prepared five-child wave contract above.
+- Spawn agents as needed, collect results
 - **⚡ CRITICAL: After results are collected, DO NOT stop. DO NOT wait for user input. IMMEDIATELY go back to Step 1 and scan again.** This is a loop — Ralph keeps cycling until the board is clear or the user says "idle". Each cycle is one "round".
-- If multiple items exist in the same category, process ordinary routed work in
-  parallel. Issue-drain children are paced one spawn attempt per 10-second
-  boundary and use the all-successfully-created-child ACK barrier.
+- If multiple items exist in the same category, process them in parallel (spawn multiple agents)
 
 **Step 4 — Periodic check-in** (every 3-5 rounds):
 
@@ -99,7 +70,7 @@ After every 3-5 rounds, pause and report before continuing:
 
 ```
 🔄 Ralph: Round {N} complete.
-   ✅ {X} issues closed, {Y} PRs ready for Agent Merge
+   ✅ {X} issues closed, {Y} PRs merged
    📋 {Z} items remaining: {brief list}
    Continuing... (say "Ralph, idle" to stop)
 ```
@@ -136,7 +107,7 @@ Ralph's state is session-scoped (not persisted to disk):
 - **Active/idle** — whether the loop is running
 - **Round count** — how many check cycles completed
 - **Scope** — what categories to monitor (default: all)
-- **Stats** — issues closed, PRs handed to Agent Merge, items processed this session
+- **Stats** — issues closed, PRs merged, items processed this session
 
 ### Ralph on the Board
 

@@ -8,39 +8,20 @@ Squad runs on multiple Copilot surfaces. The coordinator MUST detect its platfor
 
 Before spawning agents, determine the platform by checking available tools:
 
-1. **App mode** — `create_session` is available → persistent child sessions.
-   Issue drain may use prepared waves of five only when the App confirms that
-   capacity; a lower confirmed limit reduces the wave.
+1. **CLI mode** — `task` tool is available → full spawning control. Use `task` with `agent_type`, `mode`, `model`, `description`, `prompt` parameters. Collect results via `read_agent`.
 
-2. **CLI mode** — `task` tool is available → full spawning control. Use `task` with `agent_type`, `mode`, `model`, `description`, `prompt` parameters. Collect results via `read_agent`.
+2. **VS Code mode** — `runSubagent` or `agent` tool is available → conditional behavior. Use `runSubagent` with the task prompt. Drop `agent_type`, `mode`, and `model` parameters. Multiple subagents in one turn run concurrently (equivalent to background mode). Results return automatically — no `read_agent` needed.
 
-3. **VS Code mode** — `runSubagent` or `agent` tool is available → conditional behavior. Use `runSubagent` with the task prompt. Drop `agent_type`, `mode`, and `model` parameters. Multiple subagents in one turn run concurrently (equivalent to background mode). Results return automatically — no `read_agent` needed.
+3. **Fallback mode** — neither `task` nor `runSubagent`/`agent` available → work inline. Do not apologize or explain the limitation. Execute the task directly.
 
-4. **Fallback mode** — none of the spawn tools above are available → work inline. Do not apologize or explain the limitation. Execute the task directly.
-
-Prefer `create_session` for issue-drain children. If both `task` and
-`runSubagent` are available outside App mode, prefer `task` (richer parameter
-surface).
-
-Issue-drain pacing overrides each client's generic fan-out behavior. Prepare
-each selected issue, launch one child at each exact 10-second boundary, and use
-a supported one-time wake or `NEXT_TICK_REQUIRED` instead of sleeping. Do not
-wait for an individual ACK before the next same-wave launch. Do not start the
-next wave until every successfully created child returns a valid correlated
-ACK. A client without complete best-effort repository reconciliation, confirmed
-capacity, or a supported wake/tick path must reduce capacity or remain blocked;
-it must never manufacture concurrency. Missing atomic capability is not a
-blocker under the single-coordinator process guard.
+If both `task` and `runSubagent` are available, prefer `task` (richer parameter surface).
 
 #### VS Code Spawn Adaptations
 
 When in VS Code mode, the coordinator changes behavior in these ways:
 
 - **Spawning tool:** Use `runSubagent` instead of `task`. The prompt is the only required parameter — pass the full agent prompt (charter, identity, task, hygiene, response order) exactly as you would on CLI.
-- **Parallelism:** For ordinary routed work, spawn all concurrent agents in a
-  single turn. Issue drain is the exception: it paces one prepared child per
-  10-second boundary and stops the remaining wave on failed/ambiguous creation,
-  changed eligibility, lost capacity, or a closed safety gate.
+- **Parallelism:** Spawn ALL concurrent agents in a SINGLE turn. They run in parallel automatically. This replaces `mode: "background"` + `read_agent` polling.
 - **Model selection:** Accept the session model. Do NOT attempt per-spawn model selection or fallback chains — they only work on CLI. In Phase 1, all subagents use whatever model the user selected in VS Code's model picker.
 - **Scribe:** Cannot fire-and-forget. Batch Scribe as the LAST subagent in any parallel group. Scribe is light work (file ops only), so the blocking is tolerable.
 - **Launch table:** Skip it. Results arrive with the response, not separately. By the time the coordinator speaks, the work is already done.
@@ -62,9 +43,4 @@ When in VS Code mode, the coordinator changes behavior in these ways:
 
 #### SQL Tool Caveat
 
-The `sql` tool is **CLI-only**. It does not exist on VS Code, JetBrains, or
-GitHub.com. Cross-platform code paths must not depend on SQL. For runtime-owned
-Squad state, use the configured `squad_state` bridge only; never substitute
-filesystem writes on a non-local backend. Issue drain uses the
-single-coordinator process guard with best-effort repository reconciliation;
-it does not claim cross-process exclusivity.
+The `sql` tool is **CLI-only**. It does not exist on VS Code, JetBrains, or GitHub.com. Any coordinator logic or agent workflow that depends on SQL (todo tracking, batch processing, session state) will silently fail on non-CLI surfaces. Cross-platform code paths must not depend on SQL. Use filesystem-based state (`.squad/` files) for anything that must work everywhere.
