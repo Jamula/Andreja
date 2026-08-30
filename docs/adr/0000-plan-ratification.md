@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `93348c96c52262a71c545df72088b7a26dc8b463fd97454831ca304008745d84`
+- **Current proposed Plan SHA-256:** `3ae445de2e701cce3a048dfc250b3bbb2ae51c3b4c4e93a37e4802bb6c1c1405`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -192,6 +192,23 @@ not match the merged `docs/plan.md`.
   boundary. ADR 0010's acceptance is independent; this pending status-artifact
   refresh does not accept other Proposed plan or ADR content.
 
+### 2026-08-30 — charter status-artifact hash refresh
+
+- **Tracking issue:** [#3](https://github.com/Jamula/Andreja/issues/3)
+- **Pull request:** [#50](https://github.com/Jamula/Andreja/pull/50)
+- **Plan SHA-256:** `6f2f9769f684ac3211a383d0393ae00f6ac16b58cfb2f6ad3f7d7fe5f5fff355`
+- **Approver:** Cyrus Jamula; **pending**
+- **Approver status:** No Cyrus acceptance is claimed. This entry only records
+  that `docs/plan.md`'s status-artifact hash for `docs/charter.md` now matches
+  the current, still-Proposed charter content referenced by Proposed ADR 0006.
+- **Classification:** Proposed editorial/status amendment; no re-ratification,
+  charter acceptance, or authority change.
+- **Scope:** Refresh the `docs/charter.md` status-artifact hash row to
+  `d030d985c5de8260035eb83b17bc3be74876700487575408cf9679a05b4fa843` and
+  reference the Proposed ADR 0006 ratification instrument alongside the
+  existing issue/PR sources. The charter remains Proposed and not
+  authoritative; no acceptance is claimed.
+
 ### 2026-08-29 — proposed legal-gate register status-artifact hash refresh
 
 - **Tracking issue:** [#8](https://github.com/Jamula/Andreja/issues/8)
@@ -207,3 +224,17 @@ not match the merged `docs/plan.md`.
   status-artifact hash left behind by the issue-drain change (#136). Neither the
   regulatory framework nor the operating model gains approval from this
   mechanical refresh.
+
+### 2026-08-30 — proposed charter and legal-gate reconciliation
+
+- **Tracking issues:** [#3](https://github.com/Jamula/Andreja/issues/3) and
+  [#8](https://github.com/Jamula/Andreja/issues/8)
+- **Pull request:** [#50](https://github.com/Jamula/Andreja/pull/50)
+- **Plan SHA-256:** `3ae445de2e701cce3a048dfc250b3bbb2ae51c3b4c4e93a37e4802bb6c1c1405`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/status amendment; no re-ratification,
+  charter acceptance, legal approval, release publication, production deployment,
+  external spend, or Phase 1A exit is authorized.
+- **Scope:** Reconcile the independently proposed charter and legal-gate
+  status-artifact updates after merging their plan changes. Both underlying
+  artifacts remain non-authoritative pending their respective required approvals.

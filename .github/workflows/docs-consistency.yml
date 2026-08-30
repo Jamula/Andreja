@@ -14,6 +14,10 @@ on:
       - '.github/scripts/check_docs_consistency.test.py'
       - '.github/scripts/check_squad_child_session.py'
       - '.github/scripts/check_squad_child_session.test.py'
+      - '.github/ISSUE_TEMPLATE/decision.yml'
+      - '.github/pull_request_template.md'
+      - 'README.md'
+      - 'tests/test_check_docs_consistency.py'
       - '.github/workflows/docs-consistency.yml'
       - 'scripts/docs/**'
   pull_request:
@@ -28,6 +32,10 @@ on:
       - '.github/scripts/check_docs_consistency.test.py'
       - '.github/scripts/check_squad_child_session.py'
       - '.github/scripts/check_squad_child_session.test.py'
+      - '.github/ISSUE_TEMPLATE/decision.yml'
+      - '.github/pull_request_template.md'
+      - 'README.md'
+      - 'tests/test_check_docs_consistency.py'
       - '.github/workflows/docs-consistency.yml'
       - 'scripts/docs/**'
 
@@ -45,6 +53,9 @@ jobs:
           python-version: '3.x'
 
       - name: Test documentation consistency checks
+        run: python3 -m unittest tests/test_check_docs_consistency.py
+
+      - name: Test plan/hash/catalog consistency checks
         run: python3 .github/scripts/check_docs_consistency.test.py
 
       - name: Check plan, artifact hashes, and catalog/seed-table consistency
