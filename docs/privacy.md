@@ -273,8 +273,9 @@ Do not attach database dumps, exports, screenshots with user content, prompts,
 provider responses, connector payloads, secrets, recovery material, raw identifiers,
 or private host details to issues, pull requests, feedback, or support. Use
 content-free time, operation, result class, version, and synthetic reproduction
-data. The feedback/support framework remains unapproved and no tenant-less intake is
-deployed.
+data. The Phase 0 feedback/support framework is accepted, but its privacy,
+security, platform/vendor, and operational-readiness gates remain open and no
+tenant-less intake is deployed.
 
 The public/help-site artifact is not the authenticated app. It must have no app
 cookies, tokens, product data, privileged route, analytics, remote search, feedback

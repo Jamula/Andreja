@@ -1,17 +1,25 @@
 # Feedback and support framework
 
-## Status and scope
+## Status and authority
 
-- **Status:** Review-ready draft; explicit Cyrus approval is not recorded
-- **Issue:** [#10](https://github.com/Jamula/Andreja/issues/10)
+- **Status:** Phase 0 framework decision complete; operational gates remain open
+- **Framework issue:** [#10](https://github.com/Jamula/Andreja/issues/10)
 - **Source PR:** [#16](https://github.com/Jamula/Andreja/pull/16)
+- **Framework owner:** Guinan
 - **Decision owner:** Cyrus Jamula
+- **Decision date:** 2026-08-30
+
+Cyrus directed that issue #10 close as the completed Phase 0 framework decision
+and delegated schemas, UX, triage, retention proposals, abuse controls, tests,
+metrics, and other implementation details to Guinan and the relevant
+specialists. Only the consolidated gate packages listed in the
+[gate matrix](#successor-gate-matrix) return to Cyrus for approval.
 
 This framework defines how Andreja receives, protects, triages, routes, tracks,
 publishes, resolves, verifies, and learns from feedback. It implements the
-feedback direction in the ratified `docs/plan.md`, but this operational
-expansion is not itself ratified. It does not amend the plan or authorize
-deployment.
+feedback direction in the ratified `docs/plan.md`. Acceptance of the framework
+settles the lifecycle and execution boundaries below; it is not deployment or
+launch approval and does not amend the plan.
 
 Guinan owns the feedback lifecycle and the user-visible loop. Feature and
 domain owners remain accountable for investigation and remediation. Security
@@ -21,6 +29,81 @@ feedback workflow immediately and use a private response path.
 Phase 0 is local and paper research only. This document creates no cloud
 account, subscription, free tier, trial, support commitment, legal basis, or
 provider selection.
+
+### Outcome
+
+An implementation team can prepare the feedback and support capability without
+reopening the lifecycle, minimization, consent, routing, tracking, publication,
+closure, or evidence model, while every unresolved policy, provider, control,
+capacity, and launch decision remains blocked behind a named successor issue.
+
+An outsider verifies the outcome by tracing every requirement in this document
+to either a validated framework decision or one of issues
+[#155](https://github.com/Jamula/Andreja/issues/155),
+[#156](https://github.com/Jamula/Andreja/issues/156),
+[#157](https://github.com/Jamula/Andreja/issues/157), and
+[#158](https://github.com/Jamula/Andreja/issues/158), with no unowned decision
+left to an implementer.
+
+### How to use this framework
+
+| Reader | Start here | Required next step |
+| --- | --- | --- |
+| Product, UX, and implementation | Outcome, scope, validated decisions, `FeedbackEnvelope`, lifecycle, and acceptance evidence | Implement only within approved gate outputs; do not invent policy defaults |
+| Privacy, legal, security, platform, and cost reviewers | Successor gate matrix and the sections mapped to their package | Produce one consolidated approve/amend/reject package in the linked issue |
+| Quality and operations | Acceptance criteria, failure conditions, Phase 1B acceptance evidence, help, and runbooks | Record exact-revision evidence and every unavailable dependency |
+| Cyrus | Gate matrix and issue decision records | Approve, amend, reject, de-scope, or stop each consolidated package |
+
+Annotations in this document use **Validated** for a settled framework choice,
+**Gate** for a choice that only the linked issue may approve, and **Blocked**
+for behavior that must not activate until its dependencies and decision
+authority are satisfied.
+
+### Scope boundary
+
+| In scope | Explicitly out of scope |
+| --- | --- |
+| Channel boundaries and normalization into one private lifecycle | General customer-service case management, live chat, and inbound support email |
+| Versioned `FeedbackEnvelope`, minimization, diagnostics preview, and consent receipts | Collecting task, file, prompt, connector, identity, health, finance, or raw-log content by default |
+| Tenant-less intake boundary, privacy screen, dedupe, severity, lifecycle, opaque tracking, publication preview/consent, verification, reopen, and aggregate support metrics | Provisioning a queue/store, selecting a provider, creating an account/free tier/trial, changing DNS/domain configuration, or spending money |
+| Outbound-only Phase 1B transactional-email requirements | Marketing, reminders, engagement analytics, targeted messaging, or using email as the only status/DSR route |
+| Artifact, test, help, runbook, and decision gates | Deployment, collection, publication, external email, public claims, launch, or support-time commitments before the successor gates pass |
+
+An adjacent capability is not implicitly included because it would make an
+approved framework item easier to implement. Attachments, analytics, inbound
+email, live chat, user profiling, public dashboards, and provider-specific
+optimizations remain excluded unless a linked gate or a later approved issue
+adds them explicitly.
+
+### Validated framework decisions
+
+| Decision | Settled direction |
+| --- | --- |
+| Private-first lifecycle | **Validated:** ordinary intake remains private through screening, sanitization, dedupe, preview, and dedicated publication consent |
+| Data minimization | **Validated:** diagnostics and attachments default empty; prohibited personal, tenant, content, credential, and raw-log classes are not collected speculatively |
+| Channel model | **Validated:** public, authenticated, repository, help-escalation, and private-incident routes keep distinct trust boundaries but normalize into the same controlled lifecycle |
+| User status | **Validated:** the submitter receives opaque tracking and a safe non-repository status path; a GitHub link is supplementary |
+| Publication | **Validated:** GitHub publication is optional, sanitized, exactly previewed, separately consented, and revalidated after material edits |
+| Triage and closure | **Validated:** privacy screening precedes dedupe; security/privacy incidents leave ordinary triage; delivery is not verification; silence never becomes `Verified` |
+| Transactional email | **Validated:** Phase 1B email is outbound-only, minimized, accessible, revocable, and never the sole tracking or DSR path |
+| Metrics | **Validated:** only controlled aggregate support-quality measures are allowed; content, identifiers, profiling, cross-domain joins, ranking, targeting, pricing, moderation, and personalization are prohibited |
+| Approval model | **Validated:** specialists own proposals and evidence; Cyrus approves only the consolidated gate packages and final residual-risk/launch disposition |
+
+### Framework handoff acceptance criteria
+
+| ID | Type | Binary criterion |
+| --- | --- | --- |
+| FH-1 | Behavioral | Every implementation issue identifies which framework section it implements and which successor gate outputs constrain it. |
+| FH-2 | Behavioral | Every unresolved policy, provider, control, capacity, or launch choice is decided in exactly one gate issue in the matrix, not in implementation code or an unreviewed pull request. |
+| FH-3 | Negative | Closing issue #10 or merging a documentation PR does not activate collection, publication, a provider, spend, deployment, launch, external email, or support-time commitments. |
+| FH-4 | Negative | No executor substitutes a convenient provider default, retention period, legal basis, abuse threshold, tracking-secret policy, or service-level target for an approved gate decision. |
+| FH-5 | Edge | If a gate output conflicts with this framework, execution stops and the conflict is escalated to Guinan and the gate owner; the narrower or more convenient interpretation does not win silently. |
+| FH-6 | Edge | If a dependency is unavailable, failed, stale, or cannot be exercised in Phase 0, the evidence records `Blocked` or `Unavailable`; it never records success, skip, or an equivalent success-shaped fallback. |
+| FH-7 | Dependency | Operational readiness issue #158 cannot receive a proceed recommendation until #155, #156, and #157 contain explicit approved outputs and the exact-release evidence satisfies all 14 Phase 1B scenarios. |
+| FH-8 | Dependency | Only Cyrus's explicit decision in the applicable gate issue can approve policy, provider/spend, residual risk, deployment stage, or launch; specialist approval cannot substitute for it. |
+
+The handoff is complete when FH-1 through FH-8 are true. Implementation and
+launch remain separate outcomes governed by the successor issues.
 
 ### Goals
 
@@ -638,25 +721,67 @@ reviewed artifacts, and a controlled live exercise demonstrate:
 Guinan, Deanna Troi, Tuvok, Data, and Cyrus review the evidence appropriate to
 their roles. Cyrus approves the Phase 1B launch decision and residual risks.
 
-## Phase 0 decisions and blocking artifacts
+## Successor gate matrix
 
-The following remain decisions, not assumptions:
+A gate is complete only when its linked issue's binary criteria and required
+reviews are complete and Cyrus records the named decision. `Open` means the
+package is not approved and every behavior it controls remains blocked.
 
-| Decision | Required owners/review |
-| --- | --- |
-| Numeric acknowledgment, update, escalation, aging, verification, closure, and DSR targets based on support capacity | Guinan and Data propose; Jett Reno and Quark assess operations/cost; Sarek reviews commitments; Cyrus approves |
-| Retention schedules, controller/processor roles, notice, legal basis/consent, DSR proof, hold exceptions, and public-artifact handling | Deanna Troi and Sarek lead; Tuvok reviews controls; Cyrus approves |
-| Tenant-less queue/store, encryption/key, residency, backup, restricted access, and isolation topology | Spock and Jett Reno lead; Tuvok and Deanna Troi challenge; Quark validates cost; Cyrus approves |
-| Transactional-email provider, sender identity/domain, delivery events, consent posture, subprocessors, cost cap, and support ownership | Jett Reno and Guinan lead; Tuvok, Deanna Troi, Sarek, Quark, and Data review; Cyrus approves |
-| Anti-abuse service/control set, thresholds, evidence retention, appeal, and degraded mode | Tuvok and Jett Reno lead; Guinan, Deanna Troi, Data, and Quark review; Cyrus approves |
-| Attachment support, types, size, scanning, quarantine, retention, and accessibility | Guinan and Tuvok lead; Deanna Troi, Data, Jett Reno, and Quark review; Cyrus approves |
-| Opaque tracking secret lifecycle, recovery, coarse status fields, and notification policy | Guinan leads; Tuvok, Deanna Troi, Data, and Jett Reno review; Cyrus approves |
-| Metric definitions, aggregation thresholds, retention, access, and prohibited-use enforcement | Guinan and Data lead; Deanna Troi, Tuvok, Picard, and Quark review; Cyrus approves |
-| Support hours/languages, staffing, restricted incident coverage, and externally stated commitments | Guinan and Picard lead; Tuvok, Deanna Troi, Sarek, Jett Reno, Quark, and Data review; Cyrus approves |
+| Gate package | Tracking issue | Accountable owner | Dependencies | Status and authority |
+| --- | --- | --- | --- | --- |
+| Privacy, legal, retention, and DSR | [#155](https://github.com/Jamula/Andreja/issues/155) | Deanna Troi, with Sarek | Framework #10; descriptive baselines #116/PR #117 | **Open / Blocked.** Cyrus approves controller role, lawful basis/consent, notice, retention, DSR proof/propagation, holds, and public-artifact handling. |
+| Security, abuse, tracking, and incident routing | [#156](https://github.com/Jamula/Andreja/issues/156) | Tuvok, with Jett Reno | Framework #10; intake-specific privacy outputs from #155 | **Open / Blocked.** Cyrus accepts or rejects the consolidated control set and residual security risk. |
+| Platform, vendor, residency, transactional email, and cost | [#157](https://github.com/Jamula/Andreja/issues/157) | Jett Reno, with Quark | Approved requirements from #155 and #156; Phase 0 $0/no-cloud rule | **Open / Blocked.** Cyrus approves architecture/provider/cost choices and any separately bounded budget; the issue itself authorizes no account or spend. |
+| Operational readiness, commitments, evidence, and launch | [#158](https://github.com/Jamula/Andreja/issues/158) | Guinan, with Data | Approved outputs from #155-#157; canonical help may be delivered through [#93](https://github.com/Jamula/Andreja/issues/93); exact-release evidence for all 14 scenarios | **Open / Blocked.** Cyrus alone records proceed, extend-learning, de-scope, or stop and any residual-risk/launch approval. |
 
-Required blocking artifacts are the data-flow and privacy artifact, threat/abuse
-model, provider-neutral architecture decision, retention/DSR decision,
-transactional-email decision, cost model and caps, testing-matrix scenarios,
-canonical help content, and exercised runbooks. Provider-specific work and any
-managed deployment wait for the separate Phase 1B budget, legal, isolation,
-SLO, and human approvals required by the ratified plan.
+### Decision coverage and handoffs
+
+| Decision or artifact | Owning gate | Required handoff |
+| --- | --- | --- |
+| Controller/processor roles, lawful basis/consent, notice, retention, DSR proof, holds, backups/derived stores, and public-artifact handling | #155 | Approved requirements and tests to #156, #157, and #158 |
+| Intake data-flow, threat/abuse model, anti-abuse thresholds, evidence/appeal/degraded mode, tracking-secret lifecycle, incident route, and attachment prohibition/control set | #156 | Approved controls and negative-test requirements to #157 and #158 |
+| Tenant-less topology, encryption/key integration, residency, subprocessors, backups, restricted access, provider/sender/domain, delivery events, cost caps, and exit path | #157 | Approved architecture, provider terms, and bounded cost controls to #158 |
+| Numeric support/DSR targets, staffing and restricted coverage, metrics thresholds, testing matrix, canonical help, exercised runbooks, residual risks, and launch recommendation | #158 | One exact-revision evidence packet and explicit recommendation to Cyrus |
+
+Provider-specific work and any managed deployment wait for the separate Phase
+1B budget, legal, isolation, SLO, and human approvals required by the ratified
+plan. Work may proceed in parallel only when it does not guess or pre-empt a
+dependency's decision.
+
+## Failure and escalation conditions
+
+| Signal | Required response | Owner |
+| --- | --- | --- |
+| An implementation needs an unapproved legal basis, retention period, provider term, control threshold, support target, or launch exception | **Stop.** Record the open choice in its existing gate issue; do not create a local default or duplicate decision issue. | Guinan and the gate owner |
+| Feedback content, contact data, diagnostics, tracking secrets, incident details, or DSR evidence reaches GitHub, logs, metrics, alerts, queue metadata, or provider metadata outside the approved contract | **Contain and escalate privately.** Suspend the affected route and follow the approved incident process; do not investigate publicly. | Tuvok or Deanna Troi |
+| Accepted records can be silently lost, duplicated without independent status, enumerated, or disclosed through response differences | **Block activation.** Treat the behavior as a failed security and operational-readiness criterion. | Tuvok, Guinan, and Data |
+| A provider, region, subprocessor, sender, cost unit, quota, or cancellation path cannot be evidenced | **Stop provider selection.** Keep Phase 0 paper/local and return the gap to #157. | Jett Reno and Quark |
+| Capacity cannot support a proposed public commitment or a required runbook has no owner/exercise evidence | **Do not publish the commitment or recommend launch.** De-scope or extend learning in #158. | Guinan and Data |
+| A specialist verdict conflicts with another gate or the framework | Record the conflict and alternatives in both affected issues; Cyrus resolves the consolidated tension. | Gate owners; Cyrus decides |
+
+## Assumptions and revision triggers
+
+| Assumption | Confidence | Invalidation signal |
+| --- | :---: | --- |
+| The five channel classes can normalize into one lifecycle without erasing their trust-boundary differences. | High | A channel requires lifecycle states or disclosure behavior incompatible with the common contract. |
+| Opaque tracking plus an approved proof mechanism can support account-free status and DSR without making the display reference an authenticator. | Medium | Threat testing cannot meet both recovery/accessibility and enumeration-resistance criteria. |
+| Outbound-only transactional email can remain content-minimized and optional. | Medium | A viable provider or operational model requires sensitive content, tracking, inbound case handling, or email-only access. |
+| Aggregate support metrics can be useful without content, identifiers, or cross-domain joins. | Medium | The approved operational questions cannot be answered within the prohibited-use and minimum-group rules. |
+
+Revise this framework, rather than silently widening an implementation, when:
+
+1. a gate proves that a validated lifecycle decision is infeasible or internally
+   conflicting;
+2. a new channel, recipient, diagnostic, attachment class, public destination,
+   metric use, or return channel is proposed;
+3. privacy, legal, security, provider, residency, accessibility, or cost
+   evidence invalidates an assumption above;
+4. the plan changes the Phase 0 $0/no-cloud boundary, Phase 1B scope, or final
+   decision authority; or
+5. an exercised failure path shows that accepted records, incident routing,
+   tracking, DSR, publication consent, or closure cannot meet the stated
+   criteria.
+
+Revision never retroactively authorizes collection or processing. The affected
+route remains blocked until the revised framework and gate outputs are
+approved.
