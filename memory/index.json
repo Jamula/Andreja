@@ -248,5 +248,15 @@
     "status": "active",
     "createdAt": "2026-08-30T03:44:48.563Z",
     "updatedAt": "2026-08-30T03:44:48.563Z"
+  },
+  {
+    "id": "2841208b-29e4-4a0f-adfb-5bcd8164d7dd",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Weekly reconciliation quiescence",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-squad-coordinator-weekly-reconciliation-quiescence-2841208b.md",
+    "status": "active",
+    "createdAt": "2026-08-30T04:05:19.163Z",
+    "updatedAt": "2026-08-30T04:05:19.163Z"
   }
 ]
