@@ -228,5 +228,15 @@
     "status": "active",
     "createdAt": "2026-08-29T20:04:50.512Z",
     "updatedAt": "2026-08-29T20:04:50.512Z"
+  },
+  {
+    "id": "34207416-60d2-48ff-9ce3-d6a13af24cb0",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Simplify issue admission ownership",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-simplify-issue-admission-ownership-34207416.md",
+    "status": "active",
+    "createdAt": "2026-08-30T02:49:19.827Z",
+    "updatedAt": "2026-08-30T02:49:19.827Z"
   }
 ]
