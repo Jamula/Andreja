@@ -65,9 +65,9 @@ authority are satisfied.
 | --- | --- |
 | Channel boundaries and normalization into one private lifecycle | General customer-service case management, live chat, and inbound support email |
 | Versioned `FeedbackEnvelope`, minimization, diagnostics preview, and consent receipts | Collecting task, file, prompt, connector, identity, health, finance, or raw-log content by default |
-| Tenant-less intake boundary, privacy screen, dedupe, severity, lifecycle, opaque tracking, publication preview/consent, verification, reopen, and aggregate support metrics | Provisioning a queue/store, selecting a provider, creating an account/free tier/trial, changing DNS/domain configuration, or spending money |
+| Tenant-less intake boundary, privacy screen, dedupe, severity, lifecycle, opaque tracking, publication preview/consent, verification, reopen, and aggregate support metrics | Provisioning a queue/store, selecting a provider, creating an account/free tier/trial, changing DNS/domain configuration, or spending money before the separately approved bounded evidence authorization or final launch decision |
 | Outbound-only Phase 1B transactional-email requirements | Marketing, reminders, engagement analytics, targeted messaging, or using email as the only status/DSR route |
-| Artifact, test, help, runbook, and decision gates | Deployment, collection, publication, external email, public claims, launch, or support-time commitments before the successor gates pass |
+| Artifact, test, help, runbook, and decision gates | Collection, publication, production/public deployment, public claims, launch, support-time commitments, or external email outside the separately approved synthetic evidence exercise before the successor gates pass |
 
 An adjacent capability is not implicitly included because it would make an
 approved framework item easier to implement. Attachments, analytics, inbound
@@ -99,7 +99,7 @@ adds them explicitly.
 | FH-4 | Negative | No executor substitutes a convenient provider default, retention period, legal basis, abuse threshold, tracking-secret policy, or service-level target for an approved gate decision. |
 | FH-5 | Edge | If a gate output conflicts with this framework, execution stops and the conflict is escalated to Guinan and the gate owner; the narrower or more convenient interpretation does not win silently. |
 | FH-6 | Edge | If a dependency is unavailable, failed, stale, or cannot be exercised in Phase 0, the evidence records `Blocked` or `Unavailable`; it never records success, skip, or an equivalent success-shaped fallback. |
-| FH-7 | Dependency | Operational readiness issue #158 cannot receive a proceed recommendation until #155, #156, and #157 contain explicit approved outputs and the exact-release evidence satisfies all 14 Phase 1B scenarios. |
+| FH-7 | Dependency | Operational readiness issue #158 cannot receive a final proceed recommendation until #155, #156, and #157 contain explicit approved outputs, Cyrus has separately approved the bounded staging/evidence authorization, and the exact-release evidence satisfies all 14 Phase 1B scenarios. |
 | FH-8 | Dependency | Only Cyrus's explicit recorded decision in the applicable gate issue can approve policy, provider/spend, residual risk, deployment stage, or launch; issue closure, label changes, pull-request merge, or specialist approval cannot substitute for it. |
 
 The handoff is complete when FH-1 through FH-8 are true. Implementation and
@@ -483,14 +483,31 @@ rejects reopen with a reason, and never requires a new public disclosure.
 
 - `trackingRef` is random, non-sequential, non-semantic, and contains no
   repository, tenant, user, severity, or category information.
-- A status lookup requires a separate high-entropy receipt secret or verified
-  return channel. The display reference alone is not an authenticator.
+- A status lookup requires a separate receipt secret containing at least 128
+  bits of cryptographically secure random entropy, or a verified return
+  channel. The display reference alone is not an authenticator.
+- Only a one-way verifier is stored for a receipt secret. The raw secret is
+  shown once, is never recoverable from storage, and never appears in a URL
+  path, query, fragment, browser history, referrer, log, trace, metric, alert,
+  queue field, or provider metadata.
+- Rotation and recovery require the approved proof mechanism or verified return
+  channel, issue a new secret, and atomically revoke the old verifier. Recovery
+  never reveals whether a record exists before proof succeeds, and a failed
+  rotation leaves exactly one previously valid credential valid.
+- Verify, reopen, recovery, rotation, and other state-changing requests require
+  CSRF protection for browser sessions, single-use or nonce-bound replay
+  protection, origin validation, and idempotency rules that cannot duplicate a
+  state transition.
 - The external view exposes only safe coarse status, last safe update,
   information requested, public release/help links, and reopen/verify actions.
 - Internal owners, private issue numbers, security classifications, other
   reporters, dedupe counts, and restricted evidence are not exposed.
-- Rotation, recovery, failed-attempt throttling, expiry, and retention are
-  Phase 0 decisions and must have test evidence.
+- Negative tests prove that a secret or authenticated session for one record,
+  tenant, or tenant-less boundary cannot read or mutate another record, tenant,
+  or boundary; tests include guessed references, replay, CSRF, stale verifiers,
+  concurrent rotation, recovery, and identifier collisions.
+- Rotation, recovery proof, failed-attempt throttling, expiry, revocation, and
+  verifier retention are Phase 0 decisions and must have test evidence.
 
 ### Safe return channels
 
@@ -641,7 +658,8 @@ scenario evidence are updated.
 - Dedupe, split, incorrect-merge recovery, and canonical issue changes.
 - GitHub preview/consent, grant failure, publication correction, and unsafe
   publication removal.
-- Opaque tracking credential rotation/recovery and suspected enumeration.
+- Opaque tracking verifier custody, atomic rotation/revocation, recovery proof,
+  replay/CSRF defense, cross-tenant isolation, and suspected enumeration.
 - Return-channel verification/revocation and transactional-email
   bounce/complaint/suppression.
 - Access, correction, deletion, objection, consent withdrawal, hold exception,
@@ -698,10 +716,53 @@ Controls:
 Dashboards beyond restricted operational support views remain deferred until
 the plan's business/product analytics gates are met.
 
+## Bounded pre-launch staging and evidence authorization
+
+Exact-release controlled-live and transactional-email evidence may be collected
+before the final launch review only under a separately recorded **Evidence
+Authorization** in issue
+[#158](https://github.com/Jamula/Andreja/issues/158). Cyrus Jamula is the sole
+approval authority. Issue state or closure, labels, pull-request merge,
+specialist verdicts, or approval of #155-#157 do not create this authorization.
+
+The authorization is binary and independently revocable. It must record:
+
+- Explicit approved outputs from #155, #156, and #157 as prerequisites; the
+  exact release commit and immutable artifact digest under test; Jett Reno as
+  staging operator; Data as evidence custodian; Tuvok and Deanna Troi as
+  security/privacy stop authorities; and the named reviewers and approvers.
+- An allowlisted inventory of non-production accounts, providers, regions,
+  resources, queues, stores, keys, sender identities, and dedicated staging DNS
+  records. No production tenant, production credential, public intake route,
+  public search indexing, or generally reachable launch endpoint is permitted.
+- Synthetic records only, with no real user, tenant, contact, support, security,
+  incident, or DSR data. Transactional email may go only to named,
+  verifier-controlled test recipients, from the authorized non-production
+  sender, within an explicit message cap; no user or public mailing is allowed.
+- A start time, an expiry no later than 14 days after issuance, the exact spend
+  cap already bounded by #157, hard resource/message/cost stops, credential
+  custody, content-free observability, and automatic denial after expiry.
+- Immediate revocation and containment on scope drift, real-data contact,
+  isolation failure, unauthorized recipient/domain, cost-cap breach, credential
+  compromise, or failed security/privacy control. Cyrus may revoke at any time;
+  Tuvok, Deanna Troi, and Jett Reno may stop the exercise within their named
+  containment authority without converting that stop into a launch decision.
+- Teardown, key and receipt-secret revocation, DNS/sender removal, queue/store
+  purge, provider cancellation or disablement, cost reconciliation, and
+  content-free completion evidence before the final readiness packet is
+  presented.
+
+This authorization permits only the enumerated temporary staging exercise. It
+does not authorize collection from users, production/public deployment,
+publication, external support commitments, general email, or launch. Any
+extension, resource substitution, recipient expansion, artifact change, or
+expiry requires a new explicit Evidence Authorization from Cyrus.
+
 ## Phase 1B acceptance evidence
 
 Phase 1B may claim this framework is implemented only when automated tests,
-reviewed artifacts, and a controlled live exercise demonstrate:
+reviewed artifacts, and a controlled-live exercise performed under the bounded
+Evidence Authorization demonstrate:
 
 1. A public submitter without Andreja or GitHub credentials receives an opaque
    tracking receipt; the record exists only in the tenant-less boundary and no
@@ -741,9 +802,10 @@ reviewed artifacts, and a controlled live exercise demonstrate:
 10. Every lifecycle transition, ownership transfer, decline, duplicate,
     delivered, verified, unverified close, and reopen path has authorization,
     audit, notification, and failure-path evidence.
-11. Minimal outbound email passes identity/alignment, accessibility,
-    idempotency, bounce/complaint/suppression, abuse, privacy, retention, cost,
-    and provider-failure tests without message or metadata content leakage.
+11. Minimal outbound email to the authorization's verifier-controlled recipient
+    allowlist passes identity/alignment, accessibility, idempotency,
+    bounce/complaint/suppression, abuse, privacy, retention, cost, and
+    provider-failure tests without message or metadata content leakage.
 12. Aggregate metrics reconcile to controlled test records, suppress
     disallowed small groups, contain no content or direct/pseudonymous
     identifiers, and cannot be joined through the supported interface to
@@ -770,16 +832,16 @@ blocked.
 | Privacy, legal, retention, and DSR | [#155](https://github.com/Jamula/Andreja/issues/155) | Deanna Troi, with Sarek | Framework #10; descriptive baselines #116/PR #117 | **Open / Blocked.** Cyrus explicitly records approve/amend/reject for controller role, lawful basis/consent, notice, retention, submitter and non-user-subject DSR proof/conflicts/propagation, holds, and public-artifact handling/remediation. Issue closure is not approval. |
 | Security, abuse, tracking, and incident routing | [#156](https://github.com/Jamula/Andreja/issues/156) | Tuvok, with Jett Reno | Framework #10; intake-specific privacy outputs from #155 | **Open / Blocked.** Cyrus accepts or rejects the consolidated control set and residual security risk. |
 | Platform, vendor, residency, transactional email, and cost | [#157](https://github.com/Jamula/Andreja/issues/157) | Jett Reno, with Quark | Approved requirements from #155 and #156; Phase 0 $0/no-cloud rule | **Open / Blocked.** Cyrus approves architecture/provider/cost choices and any separately bounded budget; the issue itself authorizes no account or spend. |
-| Operational readiness, commitments, evidence, and launch | [#158](https://github.com/Jamula/Andreja/issues/158) | Guinan, with Data | Approved outputs from #155-#157; canonical help may be delivered through [#93](https://github.com/Jamula/Andreja/issues/93); exact-release evidence for all 14 scenarios | **Open / Blocked.** Cyrus alone records proceed, extend-learning, de-scope, or stop and any residual-risk/launch approval. |
+| Operational readiness, commitments, evidence, and launch | [#158](https://github.com/Jamula/Andreja/issues/158) | Guinan, with Data | Approved outputs from #155-#157; a separate Cyrus-approved bounded Evidence Authorization; canonical help may be delivered through [#93](https://github.com/Jamula/Andreja/issues/93); exact-release evidence for all 14 scenarios | **Open / Blocked.** Cyrus separately authorizes the temporary staging exercise, then alone records proceed, extend-learning, de-scope, or stop and any residual-risk/launch approval. Neither decision implies the other. |
 
 ### Decision coverage and handoffs
 
 | Decision or artifact | Owning gate | Required handoff |
 | --- | --- | --- |
 | Controller/processor roles, lawful basis/consent, notice, retention, submitter and non-user-subject DSR proof/conflicts, holds, backups/derived stores, and public-artifact handling/remediation | #155 | Explicitly approved requirements and tests to #156, #157, and #158 |
-| Intake data-flow, threat/abuse model, anti-abuse thresholds, evidence/appeal/degraded mode, tracking-secret lifecycle, incident route, and attachment prohibition/control set | #156 | Approved controls and negative-test requirements to #157 and #158 |
+| Intake data-flow, threat/abuse model, anti-abuse thresholds, evidence/appeal/degraded mode, verifier-only tracking-secret lifecycle, replay/CSRF and cross-tenant isolation controls, incident route, and attachment prohibition/control set | #156 | Approved controls and negative-test requirements to #157 and #158 |
 | Tenant-less topology, encryption/key integration, residency, subprocessors, backups, restricted access, provider/sender/domain, delivery events, cost caps, and exit path | #157 | Approved architecture, provider terms, and bounded cost controls to #158 |
-| Numeric support/DSR targets, staffing and restricted coverage, metrics thresholds, testing matrix, canonical help, exercised runbooks, residual risks, and launch recommendation | #158 | One exact-revision evidence packet and explicit recommendation to Cyrus |
+| Bounded staging authorization; numeric support/DSR targets; staffing and restricted coverage; metrics thresholds; testing matrix; canonical help; exercised runbooks; residual risks; and launch recommendation | #158 | One independently approved, expiring Evidence Authorization; one exact-revision evidence packet; and a separate explicit launch recommendation to Cyrus |
 
 Provider-specific work and any managed deployment wait for the separate Phase
 1B budget, legal, isolation, SLO, and human approvals required by the ratified
@@ -794,6 +856,7 @@ dependency's decision.
 | Feedback content, contact data, diagnostics, tracking secrets, incident details, or DSR evidence reaches GitHub, logs, metrics, alerts, queue metadata, or provider metadata outside the approved contract | **Contain and escalate privately.** Suspend the affected route and follow the approved incident process; do not investigate publicly. | Tuvok or Deanna Troi |
 | Accepted records can be silently lost, duplicated without independent status, enumerated, or disclosed through response differences | **Block activation.** Treat the behavior as a failed security and operational-readiness criterion. | Tuvok, Guinan, and Data |
 | A provider, region, subprocessor, sender, cost unit, quota, or cancellation path cannot be evidenced | **Stop provider selection.** Keep Phase 0 paper/local and return the gap to #157. | Jett Reno and Quark |
+| A controlled-live exercise lacks an unexpired Evidence Authorization, exceeds its resource/recipient/time/spend scope, touches real data, or cannot prove teardown | **Stop and contain.** Revoke access, preserve only content-free evidence, and return to #158 for a new explicit Cyrus decision; never treat partial evidence as launch approval. | Jett Reno, Data, Tuvok, and Deanna Troi |
 | Capacity cannot support a proposed public commitment or a required runbook has no owner/exercise evidence | **Do not publish the commitment or recommend launch.** De-scope or extend learning in #158. | Guinan and Data |
 | A specialist verdict conflicts with another gate or the framework | Record the conflict and alternatives in both affected issues; Cyrus resolves the consolidated tension. | Gate owners; Cyrus decides |
 

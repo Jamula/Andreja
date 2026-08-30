@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `e67b688eda2104382d84d1e1978e7f1fe05dd0e444b06882766046737134d17d`
+- **Current proposed Plan SHA-256:** `25f9291f4de0588e3129044403a229ef4a6a780359f71d2643df70a7c7c9a1bb`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -245,7 +245,7 @@ not match the merged `docs/plan.md`.
   and successor gates [#155](https://github.com/Jamula/Andreja/issues/155)
   through [#158](https://github.com/Jamula/Andreja/issues/158)
 - **Pull request:** [#159](https://github.com/Jamula/Andreja/pull/159)
-- **Plan SHA-256:** `e67b688eda2104382d84d1e1978e7f1fe05dd0e444b06882766046737134d17d`
+- **Plan SHA-256:** `25f9291f4de0588e3129044403a229ef4a6a780359f71d2643df70a7c7c9a1bb`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed mechanical/status amendment; no plan
   re-ratification, gate approval, collection, publication, provider selection,
@@ -254,8 +254,11 @@ not match the merged `docs/plan.md`.
 - **Scope:** Record Cyrus's separate decision that the Phase 0 feedback framework
   is complete, close #10 independently of the documentation PR, and move all
   unresolved policy, security, platform/vendor/cost, operational-readiness, and
-  launch decisions to the four consolidated successor issues. Pending status
-  applies only to this plan amendment; it does not reopen the separately recorded
-  framework handoff decision. Successor issue closure or documentation merge does
-  not approve a gate package; each package requires Cyrus's explicit recorded
-  decision.
+  launch decisions to the four consolidated successor issues. Issue #158 owns a
+  separate, expiring Cyrus authorization for synthetic-only non-production
+  staging evidence after #155-#157 are approved; that evidence authorization is
+  not a production/public launch decision. Pending status applies only to this
+  plan amendment; it does not reopen the separately recorded framework handoff
+  decision. Successor issue closure, labels, specialist verdicts, or
+  documentation merge do not approve a gate package; each package requires
+  Cyrus's explicit recorded decision.
