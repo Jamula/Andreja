@@ -453,10 +453,87 @@ try {
             -Manifest $manifest -Config $config
     }
 
-    if ($passed -ne 35) {
-        throw "Expected 35 negative cases, observed $passed."
+    $evidenceSchemaPath = Join-Path $repositoryRoot 'docs\operations\oci-supply-chain-evidence-v1.1.schema.json'
+    function Get-MinimalEvidenceFixture {
+        param([Parameter(Mandatory)][string] $Ref)
+
+        $hex40 = 'a' * 40
+        $hex64 = 'b' * 64
+        [pscustomobject]@{
+            schemaVersion = '1.1'
+            policy = [pscustomobject]@{ path = 'supply-chain-policy.json'; sha256 = $hex64 }
+            source = [pscustomobject]@{
+                repository = 'https://github.com/Jamula/Andreja'
+                commit = $hex40
+                tree = $hex40
+                ref = $Ref
+            }
+            image = [pscustomobject]@{
+                name = 'andreja-local'
+                digest = "sha256:$hex64"
+                configDigest = "sha256:$hex64"
+                immutableReference = "andreja-local@sha256:$hex64"
+                platform = 'linux/amd64'
+                archive = [pscustomobject]@{ path = 'archive.tar'; sha256 = $hex64 }
+            }
+            build = [pscustomobject]@{
+                sourceDateEpoch = 1
+                firstDigest = "sha256:$hex64"
+                secondDigest = "sha256:$hex64"
+                reproducible = $true
+                baseImages = @("base@sha256:$hex64", "runtime@sha256:$hex64")
+            }
+            tools = @(1..5 | ForEach-Object { [pscustomobject]@{ name = "tool$_"; version = '1.0.0' } })
+            sboms = @(
+                [pscustomobject]@{ path = 'sbom.spdx.json'; sha256 = $hex64; format = 'SPDX-2.3' },
+                [pscustomobject]@{ path = 'sbom.cyclonedx.json'; sha256 = $hex64; format = 'CycloneDX-1.6' }
+            )
+            scans = @(
+                [pscustomobject]@{ path = 'scan.dependencies.json'; sha256 = $hex64; scope = 'dependencies'; scanner = 'grype'; forbiddenFindings = 0; passed = $true },
+                [pscustomobject]@{ path = 'scan.image.json'; sha256 = $hex64; scope = 'final-image'; scanner = 'grype'; forbiddenFindings = 0; passed = $true },
+                [pscustomobject]@{ path = 'scan.iac.json'; sha256 = $hex64; scope = 'container-iac'; scanner = 'trivy'; forbiddenFindings = 0; passed = $true }
+            )
+            migrationNotes = [pscustomobject]@{ path = 'oci-migration-notes.md'; sha256 = $hex64 }
+            provenance = [pscustomobject]@{ path = 'provenance.json'; sha256 = $hex64 }
+            signing = [pscustomobject]@{
+                mode = 'hosted-unsigned-validation'
+                status = 'unsigned'
+                trustedPublicKeySha256 = $null
+                signature = $null
+                bundle = $null
+                trustedRoot = $null
+                certificateIdentity = $null
+                oidcIssuer = $null
+                repository = $null
+                workflow = $null
+                workflowRevision = $null
+                ref = $null
+                trigger = $null
+                transparencyLogIncluded = $null
+                certificateTransparencyIncluded = $null
+                hostedDeferral = 'fixture'
+            }
+            artifacts = @(1..9 | ForEach-Object { [pscustomobject]@{ path = "artifact$_.bin"; sha256 = $hex64 } })
+        }
     }
-    Write-Output 'All 35 supply-chain negative cases failed closed as expected.'
+
+    foreach ($acceptedPullRef in @('refs/pull/137/merge', 'refs/pull/137/head')) {
+        $fixtureJson = Get-MinimalEvidenceFixture -Ref $acceptedPullRef | ConvertTo-Json -Depth 100
+        if (-not ($fixtureJson | Test-Json -SchemaFile $evidenceSchemaPath -ErrorAction Stop)) {
+            throw "Evidence schema unexpectedly rejected a pull-request source ref accepted by the generator: $acceptedPullRef."
+        }
+    }
+    Write-Output 'PASS (accepted): pull-request source refs accepted by both generator and schema'
+
+    Assert-Throw 'malformed pull-request source ref' {
+        $fixtureJson = Get-MinimalEvidenceFixture -Ref 'refs/pull/abc/merge' | ConvertTo-Json -Depth 100
+        $fixtureJson | Test-Json -SchemaFile $evidenceSchemaPath -ErrorAction Stop | Out-Null
+    }
+
+    if ($passed -ne 36) {
+        throw "Expected 36 negative cases, observed $passed."
+    }
+    Write-Output 'All 36 supply-chain negative cases failed closed as expected.'
 } finally {
     Remove-Item -LiteralPath $testRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
