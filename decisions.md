@@ -184,3 +184,41 @@ This is a security verdict only. It does not declare legal compliance and does n
 **What:** For the UTC cycle beginning 2026-08-24, the active squad-doctor session is quiescent and non-writing for weekly retrospective admission reconciliation. This evidence permits explicit non-issue exclusion for that session only; it does not authorize backlog work or weaken duplicate-writer checks.
 
 **Why:** Preserve the weekly reconciliation gate while allowing the active squad-doctor session to remain excluded from issue admission checks during this cycle.
+
+### 2026-08-30T10:52:40.063-07:00: Phase 1A evidence-gate decisions accepted
+**By:** Cyrus Jamula
+**References:** Jamula/Andreja#44, Jamula/Andreja#38
+
+**Decision:** Accept the complete decision set presented for issue #44:
+
+1. **Phase 1A model usage:** Keep live external model calls at a $0 spend limit; use deterministic fake or local providers for Phase 1A evidence. This does not authorize paid calls.
+2. **Identity scope:** Require recovery codes plus a second sign-in path. Defer operator break-glass recovery and external OIDC from Phase 1A.
+3. **Recovery custody:** Before the combined database/key recovery drill, explicitly select and record an encrypted backup destination, custodian, retention period, and restore cadence. This accepts the requirement and sequencing; it does not invent or preselect those concrete values.
+4. **Release trust:** Name an independent trusted-root holder, require protected branch/tag evidence, and define separate approval evidence for the update and rollback revisions before the release-trust gate may pass.
+5. **Evidence closure contract:** Require one final cumulative evidence run at the exact signed commit SHA; retain the signed artifact bundle and verification roots. Explicitly record the Phase 1A scope disposition for ARM64-only execution, local-only PostgreSQL integration testing, and automated-versus-human accessibility evidence before closure. This acceptance does not silently choose unspecified scope values.
+6. **Numeric limits:** Collect a local baseline first, then explicitly approve numeric SLO, RPO/RTO, retention, and hard usage limits. Candidate values remain unapproved until separately recorded.
+7. **Privacy assessment:** Require a dedicated, proportionate privacy impact assessment and explicit numeric retention/deletion rules before privacy sign-off.
+8. **Final governance:** After all nine named specialist verdicts are recorded, Cyrus will accept, amend, or reject ADRs 0001-0005; residual-risk acceptance follows only after all blocking evidence closes; the final Phase 1A disposition is then recorded as proceed, extend learning, de-scope, or stop.
+
+**Already-settled boundaries reaffirmed:** local-only evidence execution; no cloud provisioning or paid external model calls; keyless Sigstore/GitHub OIDC signing; no user data in telemetry, logs, tests, fixtures, GitHub, or Squad state; failures block and receive no success-shaped fallback.
+
+**Execution gates, not additional policy decisions:** the reviewed hosted signing run, combined encrypted PostgreSQL/Data Protection key restore with restored passkey sign-in, separately signed update/rollback exercise, final cumulative exact-SHA evidence rerun, and nine specialist reviews.
+
+**Routing:** Data owns the issue #44 evidence packet; Picard facilitates the final Phase Gate Review. No milestone exit, release, cloud provisioning, paid spend, or residual-risk acceptance is authorized by this decision alone.
+
+### 2026-08-30T10:55:17.502-07:00: Monthly spend ceiling and release policy
+**By:** Cyrus Jamula
+**References:** Jamula/Andreja#44, Jamula/Andreja#38
+
+**Decisions:**
+
+1. **Monthly spend ceiling:** Andreja may spend up to **$50 per month**. This is a hard ceiling, not a spending target or automatic authorization. The exact budget scope remains to be clarified before implementation or paid usage; until then, existing narrower no-spend controls remain in force where applicable.
+2. **Release versioning:** The first release version is **0.0.1**.
+3. **Release threshold:** Release only when the product contains compelling functionality. Do not release merely because a date, cadence, or increment has arrived. Each proposed release must identify the compelling user outcome and provide its required evidence before approval.
+
+**Boundary:** This record does not authorize cloud provisioning, a specific vendor, subscription, trial, purchase, or immediate external model call. Release approval remains with Cyrus and continues to require completed evidence and risk gates.
+
+### 2026-08-30T10:50:03.358-07:00: User directive
+**By:** Cyrus Jamula (via Copilot)
+**What:** For the privacy-safe feedback and support framework, schemas, UX, triage, retention proposals, abuse controls, tests, metrics, and other implementation details are delegated to Guinan and the relevant specialists. Cyrus retains approval of consolidated gate packages.
+**Why:** User explicitly delegated these details while deciding how to disposition issue #10.
