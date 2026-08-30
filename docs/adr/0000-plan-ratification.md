@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `d19227df4190280f0d71de046a2c9f23c3d9bec5fa116e4cf07041d0661620e6`
+- **Current proposed Plan SHA-256:** `d3063f008e7fff3e20dba568d370871cea49bf02d9b762b9c248a8c63ef2bb6f`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -238,6 +238,24 @@ not match the merged `docs/plan.md`.
 - **Scope:** Reconcile the independently proposed charter and legal-gate
   status-artifact updates after merging their plan changes. Both underlying
   artifacts remain non-authoritative pending their respective required approvals.
+
+### 2026-08-30 — proposed feedback-framework handoff status
+
+- **Tracking issues:** Framework [#10](https://github.com/Jamula/Andreja/issues/10)
+  and successor gates [#155](https://github.com/Jamula/Andreja/issues/155)
+  through [#158](https://github.com/Jamula/Andreja/issues/158)
+- **Plan SHA-256:** `afe5afddf1aeb49f0fcbd12e05f422264f0e58a6b6bac6d3e0c06146934f4dcd`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/status amendment; no plan
+  re-ratification, gate approval, collection, publication, provider selection,
+  spend, deployment, launch, external email, or support-time commitment is
+  authorized.
+- **Scope:** Record Cyrus's separate decision that the Phase 0 feedback framework
+  is complete, close #10 independently of the documentation PR, and move all
+  unresolved policy, security, platform/vendor/cost, operational-readiness, and
+  launch decisions to the four consolidated successor issues. Pending status
+  applies only to this plan amendment; it does not reopen the separately recorded
+  framework handoff decision.
 
 ### 2026-09-07 — proposed Markdown formatting normalization
 
