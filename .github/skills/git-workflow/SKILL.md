@@ -1,204 +1,110 @@
 ---
 name: "git-workflow"
-description: "Squad branching model: dev-first workflow with insiders preview channel"
+description: "Andreja protected-main, worktree, stacked-PR, and validation workflow"
 domain: "version-control"
 confidence: "high"
 source: "team-decision"
 ---
 
-## Context
+# Andreja Git Workflow
 
-Squad uses a three-branch model. **All feature work starts from `dev`, not `main`.**
+## Integration model
 
-| Branch | Purpose | Publishes |
-|--------|---------|-----------|
-| `main` | Released, tagged, in-npm code only | `npm publish` on tag |
-| `dev` | Integration branch — all feature work lands here | `npm publish --tag preview` on merge |
-| `insiders` | Early-access channel — synced from dev | `npm publish --tag insiders` on sync |
+- `main` is the integration and release branch.
+- Never commit or push directly to `main`.
+- One GitHub issue owns one `squad/{issue-number}-{slug}` branch, isolated
+  worktree, accountable agent, and PR.
+- Independent ready issues run in parallel worktrees.
+- Dependent slices use ordinary dependent PRs and GitHub native stack metadata
+  when the preview/API/entitlement supports it.
 
-## Branch Naming Convention
+## Start-of-work preflight
 
-Issue branches MUST use: `squad/{issue-number}-{kebab-case-slug}`
+Before creating or reusing an issue worktree:
 
-Examples:
-- `squad/195-fix-version-stamp-bug`
-- `squad/42-add-profile-api`
+1. Require a clean current/target worktree. Stop rather than move or overwrite
+   somebody else's changes.
+2. Validate the configured remote and run `git fetch --prune origin`.
+3. Resolve and record the live base ref/SHA:
+   - Independent work: `origin/main`.
+   - Stacked work: the verified remote parent branch named by the issue.
+4. Create a new worktree from that remote ref, or rebase a clean existing issue
+   branch onto it.
+5. On conflict, changed remote tip, missing parent, or force-with-lease failure,
+   stop and restart preflight. Never force over concurrent work.
 
-## Workflow for Issue Work
+Example:
 
-1. **Branch from dev:**
-   ```bash
-   git checkout dev
-   git pull origin dev
-   git checkout -b squad/{issue-number}-{slug}
-   ```
-
-2. **Mark issue in-progress:**
-   ```bash
-   gh issue edit {number} --add-label "status:in-progress"
-   ```
-
-3. **Create draft PR targeting dev:**
-   ```bash
-   gh pr create --base dev --title "{description}" --body "Closes #{issue-number}" --draft
-   ```
-
-4. **Do the work.** Make changes, write tests, commit with issue reference.
-
-5. **Push and mark ready:**
-   ```bash
-   git push -u origin squad/{issue-number}-{slug}
-   gh pr ready
-   ```
-
-6. **After merge to dev:**
-   ```bash
-   git checkout dev
-   git pull origin dev
-   git branch -d squad/{issue-number}-{slug}
-   git push origin --delete squad/{issue-number}-{slug}
-   ```
-
-## Parallel Multi-Issue Work (Worktrees)
-
-When the coordinator routes multiple issues simultaneously (e.g., "fix bugs X, Y, and Z"), use `git worktree` to give each agent an isolated working directory. No filesystem collisions, no branch-switching overhead.
-
-### When to Use Worktrees vs Sequential
-
-| Scenario | Strategy |
-|----------|----------|
-| Single issue | Standard workflow above — no worktree needed |
-| 2+ simultaneous issues in same repo | Worktrees — one per issue |
-| Work spanning multiple repos | Separate clones as siblings (see Multi-Repo below) |
-
-### Setup
-
-From the main clone (must be on dev or any branch):
-
-```bash
-# Ensure dev is current
-git fetch origin dev
-
-# Create a worktree per issue — siblings to the main clone
-git worktree add ../squad-195 -b squad/195-fix-stamp-bug origin/dev
-git worktree add ../squad-193 -b squad/193-refactor-loader origin/dev
+```powershell
+git fetch --prune origin
+git worktree add ..\Andreja-42 -b squad/42-fix-login origin/main
 ```
 
-**Naming convention:** `../{repo-name}-{issue-number}` (e.g., `../squad-195`, `../squad-pr-42`).
+## Sub-session configuration
 
-Each worktree:
-- Has its own working directory and index
-- Is on its own `squad/{issue-number}-{slug}` branch from dev
-- Shares the same `.git` object store (disk-efficient)
+- In Copilot App, default new sub-sessions to the `Squad` custom agent.
+- Preserve the parent model, context tier, reasoning effort, and mode when the
+  child surface/model supports them.
+- Diverge only for availability, explicit user direction, or a documented task
+  need; report the fallback.
+- The kickoff prompt still names the accountable crew specialist and includes
+  their charter, issue, base ref/SHA, worktree path, and validation commands.
 
-### Per-Worktree Agent Workflow
+## Issue workflow
 
-Each agent operates inside its worktree exactly like the single-issue workflow:
+1. Add the accountable `squad:{member}` label. Do not manually replace the
+   issue's single lifecycle `status:*` label.
+2. Create or reuse the isolated issue worktree after preflight, using the
+   documented issue-number branch convention so status automation exposes
+   `status:branch-only`.
+3. Open a draft PR only after an initial coherent commit and required local
+   validation.
+4. Keep issue and PR updated with dependencies, evidence, risks, and blockers.
+5. Merge through native protections/queue when available, or the documented
+   reviewed-PR procedural fallback.
+6. After merge, remove the worktree, prune metadata, delete the issue branch,
+   and update the issue/milestone.
 
-```bash
-cd ../squad-195
+## Local validation before PR
 
-# Work normally — commits, tests, pushes
-git add -A && git commit -m "fix: stamp bug (#195)"
-git push -u origin squad/195-fix-stamp-bug
+Before creating or marking a PR ready:
 
-# Create PR targeting dev
-gh pr create --base dev --title "fix: stamp bug" --body "Closes #195" --draft
-```
+- Run the smallest complete existing checks required by the issue: build, unit
+  and integration tests, lint/format/type-check, docs/link/config validation,
+  targeted E2E/scenario checks, and security/privacy evidence as applicable.
+- Record exact commands and results in the issue and PR.
+- A failing required check blocks PR creation/readiness unless Cyrus explicitly
+  approves a draft blocker for an unavailable external dependency.
+- Never describe untested work as ready to merge.
 
-All PRs target `dev` independently. Agents never interfere with each other's filesystem.
+## Stacked PR rules
 
-### .squad/ State in Worktrees
+- Bottom PR targets `main`; each higher PR targets the branch immediately below.
+- Create layers sequentially bottom-to-top after the lower branch is pushed.
+- Register stack metadata only after every PR is open, same-repository, not
+  queued/auto-merging, and has the exact verified base/head chain.
+- Preserve stack identity after partial merges; append only above the verified
+  top.
+- Rebase/sync inside each layer's owning worktree. Use explicit
+  `--force-with-lease` only after recording and revalidating the remote tip.
+- If native stacks are unavailable, keep the ordinary dependent-PR chain.
 
-The `.squad/` directory exists in each worktree as a copy. This is safe because:
-- `.gitattributes` declares `merge=union` on append-only files (history.md, decisions.md, logs)
-- Each agent appends to its own section; union merge reconciles on PR merge to dev
-- **Rule:** Never rewrite or reorder `.squad/` files in a worktree — append only
+## Multi-repository work
 
-### Cleanup After Merge
+- Use separate sibling clones for separate repositories, not worktrees across
+  repositories.
+- Give each repository its own issue branch and PR.
+- Link dependencies and merge dependency repositories first.
+- Remove local package links/replacements before commit; CI must verify using
+  published or PR-specific references.
 
-After a worktree's PR is merged to dev:
+## Anti-patterns
 
-```bash
-# From the main clone
-git worktree remove ../squad-195
-git worktree prune          # clean stale metadata
-git branch -d squad/195-fix-stamp-bug
-git push origin --delete squad/195-fix-stamp-bug
-```
-
-If a worktree was deleted manually (rm -rf), `git worktree prune` recovers the state.
-
----
-
-## Multi-Repo Downstream Scenarios
-
-When work spans multiple repositories (e.g., squad-cli changes need squad-sdk changes, or a user's app depends on squad):
-
-### Setup
-
-Clone downstream repos as siblings to the main repo:
-
-```
-~/work/
-  squad-pr/          # main repo
-  squad-sdk/         # downstream dependency
-  user-app/          # consumer project
-```
-
-Each repo gets its own issue branch following its own naming convention. If the downstream repo also uses Squad conventions, use `squad/{issue-number}-{slug}`.
-
-### Coordinated PRs
-
-- Create PRs in each repo independently
-- Link them in PR descriptions:
-  ```
-  Closes #42
-
-  **Depends on:** squad-sdk PR #17 (squad-sdk changes required for this feature)
-  ```
-- Merge order: dependencies first (e.g., squad-sdk), then dependents (e.g., squad-cli)
-
-### Local Linking for Testing
-
-Before pushing, verify cross-repo changes work together:
-
-```bash
-# Node.js / npm
-cd ../squad-sdk && npm link
-cd ../squad-pr && npm link squad-sdk
-
-# Go
-# Use replace directive in go.mod:
-# replace github.com/org/squad-sdk => ../squad-sdk
-
-# Python
-cd ../squad-sdk && pip install -e .
-```
-
-**Important:** Remove local links before committing. `npm link` and `go replace` are dev-only — CI must use published packages or PR-specific refs.
-
-### Worktrees + Multi-Repo
-
-These compose naturally. You can have:
-- Multiple worktrees in the main repo (parallel issues)
-- Separate clones for downstream repos
-- Each combination operates independently
-
----
-
-## Anti-Patterns
-
-- ❌ Branching from main (branch from dev)
-- ❌ PR targeting main directly (target dev)
-- ❌ Non-conforming branch names (must be squad/{number}-{slug})
-- ❌ Committing directly to main or dev (use PRs)
-- ❌ Switching branches in the main clone while worktrees are active (use worktrees instead)
-- ❌ Using worktrees for cross-repo work (use separate clones)
-- ❌ Leaving stale worktrees after PR merge (clean up immediately)
-
-## Promotion Pipeline
-
-- dev → insiders: Automated sync on green build
-- dev → main: Manual merge when ready for stable release, then tag
-- Hotfixes: Branch from main as `hotfix/{slug}`, PR to dev, cherry-pick to main if urgent
+- Starting from stale local `main` or an unverified parent branch.
+- Working in a dirty or somebody else's worktree.
+- Multiple independent issues sharing one branch/PR.
+- Opening a PR before running applicable local validation.
+- Force-pushing without an explicit lease.
+- Rebasing or pushing another active worktree's branch.
+- Hiding test failures, dependency drift, or stacked-PR order.
+- Leaving merged worktrees/branches behind.
