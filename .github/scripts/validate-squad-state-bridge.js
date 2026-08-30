@@ -24,9 +24,17 @@ const PROTECTED_PATHS = [
 ];
 const REQUIRED_IGNORES = PROTECTED_PATHS.map(([ignorePattern]) => ignorePattern);
 
-function readJson(file, errors) {
+function readJson(file, errors, description) {
   try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
+    const value = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (value === null ||
+        Array.isArray(value) ||
+        typeof value !== 'object' ||
+        Object.getPrototypeOf(value) !== Object.prototype) {
+      errors.push(`${description} top-level value must be a non-null, non-array JSON object`);
+      return null;
+    }
+    return value;
   } catch (error) {
     errors.push(`${path.relative(path.dirname(file), file) || path.basename(file)} is not valid JSON: ${error.message}`);
     return null;
@@ -88,7 +96,7 @@ function validateRepository(root) {
   const mcpPath = path.join(root, '.mcp.json');
   const coordinatorPath = path.join(root, '.github', 'agents', 'squad.agent.md');
 
-  const config = readJson(configPath, errors);
+  const config = readJson(configPath, errors, '.squad/config.json');
   if (config) {
     if (config.version !== 1) {
       errors.push('.squad/config.json must keep version 1');
@@ -98,7 +106,7 @@ function validateRepository(root) {
     }
   }
 
-  const mcp = readJson(mcpPath, errors);
+  const mcp = readJson(mcpPath, errors, '.mcp.json');
   if (mcp) {
     const serverNames = Object.keys(mcp.mcpServers || {});
     if (serverNames.length !== 1 || serverNames[0] !== 'squad_state') {

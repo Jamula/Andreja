@@ -79,6 +79,48 @@ test('rejects an absent MCP bridge', (t) => {
   assert.match(validateRepository(root).join('\n'), /not valid JSON/);
 });
 
+test('preserves controlled malformed-JSON errors for static bridge configuration', (t) => {
+  const files = [
+    [path.join('.squad', 'config.json'), 'config.json'],
+    ['.mcp.json', '.mcp.json'],
+  ];
+
+  for (const [relativePath, description] of files) {
+    const root = fixture(t);
+    fs.writeFileSync(path.join(root, relativePath), '{');
+    const errors = validateRepository(root);
+    assert.equal(errors.length, 1);
+    assert.equal(errors[0].startsWith(`${description} is not valid JSON:`), true);
+  }
+});
+
+test('rejects non-object JSON roots for static bridge configuration', (t) => {
+  const cases = [
+    ['null', null],
+    ['false', false],
+    ['zero', 0],
+    ['empty string', ''],
+    ['array', []],
+    ['non-empty array', ['value']],
+  ];
+  const files = [
+    [path.join('.squad', 'config.json'), '.squad/config.json'],
+    ['.mcp.json', '.mcp.json'],
+  ];
+
+  for (const [relativePath, description] of files) {
+    for (const [name, value] of cases) {
+      const root = fixture(t);
+      writeJson(root, relativePath, value);
+      assert.deepEqual(
+        validateRepository(root),
+        [`${description} top-level value must be a non-null, non-array JSON object`],
+        `${description} should reject a ${name} root`,
+      );
+    }
+  }
+});
+
 test('rejects a broadened MCP bridge', (t) => {
   const root = fixture(t);
   writeJson(root, '.mcp.json', {
