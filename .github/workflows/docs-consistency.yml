@@ -5,8 +5,15 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
+      - '.gitignore'
+      - '.mcp.json'
+      - '.squad/config.json'
+      - '.squad/templates/copilot-instructions.md'
+      - '.squad/templates/squad.agent.md.template'
       - '.github/scripts/check_docs_consistency.py'
       - '.github/scripts/check_docs_consistency.test.py'
+      - '.github/scripts/check_squad_child_session.py'
+      - '.github/scripts/check_squad_child_session.test.py'
       - '.github/ISSUE_TEMPLATE/decision.yml'
       - '.github/pull_request_template.md'
       - 'README.md'
@@ -16,8 +23,15 @@ on:
   pull_request:
     paths:
       - 'docs/**'
+      - '.gitignore'
+      - '.mcp.json'
+      - '.squad/config.json'
+      - '.squad/templates/copilot-instructions.md'
+      - '.squad/templates/squad.agent.md.template'
       - '.github/scripts/check_docs_consistency.py'
       - '.github/scripts/check_docs_consistency.test.py'
+      - '.github/scripts/check_squad_child_session.py'
+      - '.github/scripts/check_squad_child_session.test.py'
       - '.github/ISSUE_TEMPLATE/decision.yml'
       - '.github/pull_request_template.md'
       - 'README.md'
@@ -52,3 +66,9 @@ jobs:
 
       - name: Test architecture PNG structural policy
         run: python3 scripts/docs/test_architecture_diagram.py
+
+      - name: Test Squad child-session contract
+        run: python3 .github/scripts/check_squad_child_session.test.py
+
+      - name: Check Squad child-session contract
+        run: python3 .github/scripts/check_squad_child_session.py
