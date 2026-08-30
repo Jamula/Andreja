@@ -258,5 +258,15 @@
     "status": "active",
     "createdAt": "2026-08-30T04:05:19.163Z",
     "updatedAt": "2026-08-30T04:05:19.163Z"
+  },
+  {
+    "id": "8bff050f-0ca8-4d58-b61d-26185cc4b2de",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Delegate feedback framework details",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-delegate-feedback-framework-details-8bff050f.md",
+    "status": "active",
+    "createdAt": "2026-08-30T17:50:18.565Z",
+    "updatedAt": "2026-08-30T17:50:18.565Z"
   }
 ]
