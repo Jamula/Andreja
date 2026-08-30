@@ -238,5 +238,15 @@
     "status": "active",
     "createdAt": "2026-08-30T02:49:19.827Z",
     "updatedAt": "2026-08-30T02:49:19.827Z"
+  },
+  {
+    "id": "c6d366b4-f362-4e00-982e-88995557fc1f",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Exclude Squad tooling from .NET migration",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-exclude-squad-tooling-from-net-migration-c6d366b4.md",
+    "status": "active",
+    "createdAt": "2026-08-30T03:44:48.563Z",
+    "updatedAt": "2026-08-30T03:44:48.563Z"
   }
 ]
