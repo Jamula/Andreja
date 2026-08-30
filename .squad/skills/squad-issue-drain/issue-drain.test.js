@@ -8,10 +8,10 @@ const {
   ACK_TIMEOUT_MILLISECONDS,
   MAX_BATCH_SIZE,
   MIN_SPAWN_SPACING_MILLISECONDS,
-  assessAtomicOwnership,
   assessBatchAdvance,
   assessLocalFallback,
   assessSectionZero,
+  assessSingleCoordinatorProcessGuard,
   assessSpawnAttempt,
   createBatch,
   mergeDisposition,
@@ -21,34 +21,49 @@ const {
 } = require('./issue-drain');
 
 const now = '2026-08-29T19:00:00.000Z';
-const writerCapability = {
-  verified: true,
-  repositoryScoped: true,
-  repository: 'Jamula/Andreja',
-  ownerId: 'coordinator-1',
-  grantId: 'grant-1',
-  verifiedAt: '2026-08-29T18:00:00.000Z',
-  validUntil: '2026-08-29T20:00:00.000Z',
-  kind: 'conditional-create',
-  tool: 'runtime.conditionalCreate',
-  createIfAbsent: true,
-  conflictIsFailure: true,
-};
+
+function repositoryReconciliation({
+  checkedAt = now,
+  sessions = [],
+  branches = [],
+  worktrees = [],
+  pullRequests = [],
+  reservations = [],
+  ledger = [],
+  issueReadiness = [1, 2, 3, 4, 5, 6, 7, 132]
+    .map((issue) => ({ issue, ready: true })),
+  ...overrides
+} = {}) {
+  return {
+    repository: 'Jamula/Andreja',
+    checkedAt,
+    complete: true,
+    sessions,
+    branches,
+    worktrees,
+    pullRequests,
+    reservations,
+    ledger,
+    issueReadiness,
+    ...overrides,
+  };
+}
 
 function writerSection(
   operation = 'admit',
   checkedAt = now,
   batchId = 'batch-1',
+  reconciliation = repositoryReconciliation({ checkedAt }),
 ) {
   return assessSectionZero({
     operation,
     stateAvailable: true,
     enumerationComplete: true,
     retrospectiveAllowed: true,
-    ownershipCapability: writerCapability,
+    reconciliation,
     now: checkedAt,
     repository: 'Jamula/Andreja',
-    ownerId: 'coordinator-1',
+    coordinatorId: 'coordinator-1',
     batchId,
   });
 }
@@ -77,18 +92,18 @@ function ackFor(expected, override = {}) {
   };
 }
 
-function reserveBatch(
+function prepareBatch(
   issues = [1, 2],
   batchId = 'batch-1',
   verifiedCapacity = 5,
-  reservedAt = '2026-08-29T18:59:00.000Z',
+  preparedAt = '2026-08-29T18:59:00.000Z',
 ) {
   const result = createBatch({
     batchId,
     candidates: issues.map(admission),
     verifiedCapacity,
-    sectionZero: writerSection('admit', reservedAt, batchId),
-    now: reservedAt,
+    sectionZero: writerSection('admit', preparedAt, batchId),
+    now: preparedAt,
   });
   assert.equal(result.ready, true);
   return result.batch;
@@ -129,61 +144,141 @@ function closeCreatedWave(batch, attemptedAt = now) {
   }, batch);
 }
 
-test('atomic ownership must be explicit, scoped, current, and verified', () => {
-  assert.deepEqual(assessAtomicOwnership(), {
+test('single-coordinator process guard requires complete current repository reconciliation', () => {
+  assert.deepEqual(assessSingleCoordinatorProcessGuard(), {
     available: false,
-    mode: 'read-only',
-    reason: 'atomic-ownership-unavailable',
+    mode: 'blocked',
+    reason: 'repository-reconciliation-incomplete',
   });
-  for (const override of [
-    { verified: false },
-    { repositoryScoped: false },
-    { createIfAbsent: false },
-    { conflictIsFailure: false },
-    { repository: 'other/repository' },
-    { ownerId: 'other-owner' },
-    { grantId: '' },
-    { validUntil: now },
+  for (const reconciliation of [
+    repositoryReconciliation({ complete: false }),
+    repositoryReconciliation({ repository: 'other/repository' }),
+    repositoryReconciliation({ checkedAt: '2026-08-29T18:59:59.999Z' }),
+    repositoryReconciliation({ sessions: null }),
   ]) {
     assert.equal(
-      assessAtomicOwnership(
-        { ...writerCapability, ...override },
-        { now, repository: 'Jamula/Andreja', ownerId: 'coordinator-1' },
+      assessSingleCoordinatorProcessGuard(
+        reconciliation,
+        { now, repository: 'Jamula/Andreja', coordinatorId: 'coordinator-1' },
       ).available,
       false,
     );
   }
-  assert.equal(assessAtomicOwnership(
-    writerCapability,
-    { now, repository: 'Jamula/Andreja', ownerId: 'coordinator-1' },
+  assert.equal(assessSingleCoordinatorProcessGuard(
+    repositoryReconciliation(),
+    { now, repository: 'Jamula/Andreja', coordinatorId: 'coordinator-1' },
   ).available, true);
 });
 
-test('the installed runtime exposes no atomic ownership tool and therefore stays read-only', () => {
-  const root = path.resolve(__dirname, '../../..');
-  const config = JSON.parse(fs.readFileSync(path.join(root, '.mcp.json'), 'utf8'));
-  const tools = config.mcpServers.squad_state.tools;
-  assert.equal(
-    tools.some((name) => /lease|compare|conditional|create.?if.?absent/i.test(name)),
-    false,
-  );
+test('process guard blocks duplicate artifacts and competing coordinator evidence', () => {
+  assert.equal(assessSingleCoordinatorProcessGuard(
+    repositoryReconciliation({
+      sessions: [
+        { issue: 1, state: 'running' },
+        { issue: 1, state: 'running' },
+      ],
+    }),
+    { now, repository: 'Jamula/Andreja', coordinatorId: 'coordinator-1' },
+  ).reason, 'duplicate-reconciliation-conflict');
+
+  for (const [source, record] of [
+    ['sessions', { issue: 1, state: 'running' }],
+    ['branches', { issue: 1, state: 'open' }],
+    ['worktrees', { issue: 1, state: 'active' }],
+    ['pullRequests', { issue: 1, state: 'open' }],
+  ]) {
+    const result = assessSingleCoordinatorProcessGuard(
+      repositoryReconciliation({ [source]: [record] }),
+      {
+        now,
+        repository: 'Jamula/Andreja',
+        coordinatorId: 'coordinator-1',
+        batchId: 'batch-1',
+        issue: 1,
+        admissionToken: 'batch-1:1',
+      },
+    );
+    assert.equal(result.reason, 'issue-already-active', source);
+  }
+
+  for (const source of ['reservations', 'ledger']) {
+    const result = assessSingleCoordinatorProcessGuard(
+      repositoryReconciliation({
+        [source]: [{
+          issue: 1,
+          state: 'active',
+          coordinatorId: 'coordinator-2',
+          batchId: 'other-batch',
+          admissionToken: 'other-token',
+        }],
+      }),
+      { now, repository: 'Jamula/Andreja', coordinatorId: 'coordinator-1' },
+    );
+    assert.equal(result.reason, 'coordinator-reconciliation-conflict', source);
+  }
+});
+
+test('spawn re-runs best-effort repository reconciliation immediately before creation', () => {
+  const batch = prepareBatch([1]);
+  const base = {
+    now,
+    previousAttemptAt: null,
+    sectionZero: writerSection(),
+    batchId: batch.id,
+    admission: batch.admissions[0],
+    duplicateCheck: true,
+    collisionCheck: true,
+    issueReady: true,
+    capacityAvailable: true,
+  };
+  assert.equal(assessSpawnAttempt({
+    ...base,
+    reconciliation: repositoryReconciliation({
+      sessions: [{ issue: 1, state: 'running' }],
+    }),
+  }).reason, 'issue-already-active');
+  assert.equal(assessSpawnAttempt({
+    ...base,
+    reconciliation: repositoryReconciliation({
+      issueReadiness: [{ issue: 1, ready: false }],
+    }),
+  }).reason, 'issue-eligibility-changed');
+});
+
+test('writer admission does not depend on atomic runtime capabilities', () => {
   assert.deepEqual(assessSectionZero({
     operation: 'admit',
     stateAvailable: true,
     enumerationComplete: true,
     retrospectiveAllowed: true,
+    now,
+    repository: 'Jamula/Andreja',
+    coordinatorId: 'coordinator-1',
+    batchId: 'batch-1',
+    reconciliation: repositoryReconciliation(),
   }), {
-    allowed: false,
-    mode: 'read-only',
-    reason: 'atomic-ownership-unavailable',
+    allowed: true,
+    mode: 'writer',
+    reason: 'section-zero-passed',
+    checkedAt: now,
+    authorization: {
+      mechanism: 'single-coordinator-process-guard',
+      guardId: `Jamula/Andreja:coordinator-1:${now}`,
+      repository: 'Jamula/Andreja',
+      coordinatorId: 'coordinator-1',
+      readyIssues: [1, 2, 3, 4, 5, 6, 7, 132],
+      occupiedIssues: [],
+      batchId: 'batch-1',
+    },
   });
 });
 
 test('Section 0 is mandatory for every queue operation', () => {
-  for (const operation of ['enumerate', 'status', 'classify', 'admit']) {
+  for (const operation of ['enumerate', 'status', 'classify', 'admit', 'mutate', 'release']) {
     assert.equal(assessSectionZero({ operation }).allowed, false);
     assert.equal(writerSection(operation).allowed, true);
   }
+  assert.equal(writerSection('status').mode, 'read-only');
   assert.equal(assessSectionZero({
     operation: 'status',
     stateAvailable: true,
@@ -202,12 +297,12 @@ test('batch size is five and lower verified capacity overrides it', () => {
     now,
   });
   assert.equal(MAX_BATCH_SIZE, 5);
-  assert.equal(full.reason, 'wave-reserved');
+  assert.equal(full.reason, 'wave-prepared');
   assert.equal(full.batch.admissions.length, 5);
   assert.equal(full.batch.launchState, 'launching');
   assert.ok(full.batch.admissions.every(
-    (item) => item.state === 'reserved'
-      && item.reservationId === item.admissionToken,
+    (item) => item.state === 'prepared'
+      && item.guardToken === item.admissionToken,
   ));
 
   const lower = createBatch({
@@ -222,7 +317,7 @@ test('batch size is five and lower verified capacity overrides it', () => {
 });
 
 test('spawn attempts require ten elapsed seconds and all safety checks', () => {
-  const batch = reserveBatch([1]);
+  const batch = prepareBatch([1]);
   const base = {
     now,
     previousAttemptAt: '2026-08-29T18:59:50.001Z',
@@ -233,6 +328,7 @@ test('spawn attempts require ten elapsed seconds and all safety checks', () => {
     collisionCheck: true,
     issueReady: true,
     capacityAvailable: true,
+    reconciliation: repositoryReconciliation(),
   };
   assert.equal(MIN_SPAWN_SPACING_MILLISECONDS, 10_000);
   assert.equal(ACK_TIMEOUT_MILLISECONDS, 300_000);
@@ -262,7 +358,7 @@ test('spawn attempts require ten elapsed seconds and all safety checks', () => {
       ...base,
       admission: { ...base.admission, state: 'created' },
     }).reason,
-    'issue-reservation-invalid',
+    'issue-guard-token-invalid',
   );
 });
 
@@ -295,7 +391,7 @@ test('ACKs are correlated to issue, admission token, ownership, and base', () =>
 });
 
 test('same-wave spawning continues without waiting for individual ACKs', () => {
-  let batch = reserveBatch([1, 2]);
+  let batch = prepareBatch([1, 2]);
   batch = recordCreated(
     batch,
     batch.admissions[0].admissionToken,
@@ -320,11 +416,12 @@ test('same-wave spawning continues without waiting for individual ACKs', () => {
     collisionCheck: true,
     issueReady: true,
     capacityAvailable: true,
+    reconciliation: repositoryReconciliation(),
   }).allowed, true);
 });
 
 test('every successfully created child ACK is required before wave advancement', () => {
-  const batch = closeCreatedWave(reserveBatch([1, 2, 3]));
+  const batch = closeCreatedWave(prepareBatch([1, 2, 3]));
   const pending = assessBatchAdvance({
     batch,
     acknowledgements: batch.admissions.slice(0, 2).map(ackFor),
@@ -340,7 +437,7 @@ test('every successfully created child ACK is required before wave advancement',
     batch,
     acknowledgements: batch.admissions.map(ackFor),
     now,
-    sectionZero: writerSection(),
+    sectionZero: writerSection('release'),
   });
   assert.equal(complete.allowed, true);
   assert.equal(complete.releaseChildren, true);
@@ -356,7 +453,7 @@ test('failed, ambiguous, or ineligible creation stops the remainder of a wave', 
     'capacity-lost',
     'safety-gate-failed',
   ]) {
-    let batch = reserveBatch([1, 2, 3]);
+    let batch = prepareBatch([1, 2, 3]);
     batch = recordCreated(
       batch,
       batch.admissions[0].admissionToken,
@@ -389,7 +486,7 @@ test('failed, ambiguous, or ineligible creation stops the remainder of a wave', 
 });
 
 test('stopped partial waves remain distinct from negative and corrupt ACKs', () => {
-  let batch = reserveBatch([1, 2, 3]);
+  let batch = prepareBatch([1, 2, 3]);
   batch = recordCreated(
     batch,
     batch.admissions[0].admissionToken,
@@ -425,7 +522,7 @@ test('stopped partial waves remain distinct from negative and corrupt ACKs', () 
 });
 
 test('a stopped wave with no created child cannot advance vacuously', () => {
-  let batch = reserveBatch([1, 2]);
+  let batch = prepareBatch([1, 2]);
   batch = recordCreationOutcome({
     batch,
     admissionToken: batch.admissions[0].admissionToken,
@@ -444,7 +541,7 @@ test('a stopped wave with no created child cannot advance vacuously', () => {
 });
 
 test('ACK timeout is derived from wave closure and inspected exactly once', () => {
-  let batch = closeCreatedWave(reserveBatch([1, 2]));
+  let batch = closeCreatedWave(prepareBatch([1, 2]));
   const acknowledgements = [ackFor(batch.admissions[0])];
   assert.equal(assessBatchAdvance({
     batch,
@@ -489,7 +586,7 @@ test('ACK timeout is derived from wave closure and inspected exactly once', () =
 });
 
 test('restart requires the same inspect-once path and never replacement', () => {
-  const batch = closeCreatedWave(reserveBatch([1, 2]));
+  const batch = closeCreatedWave(prepareBatch([1, 2]));
   const result = assessBatchAdvance({
     batch,
     acknowledgements: [ackFor(batch.admissions[0])],
@@ -503,7 +600,7 @@ test('restart requires the same inspect-once path and never replacement', () => 
 });
 
 test('batch release requires current writer authorization', () => {
-  const batch = closeCreatedWave(reserveBatch([1]));
+  const batch = closeCreatedWave(prepareBatch([1]));
   const result = assessBatchAdvance({
     batch,
     acknowledgements: batch.admissions.map(ackFor),
@@ -515,7 +612,7 @@ test('batch release requires current writer authorization', () => {
       retrospectiveAllowed: true,
       now,
       repository: 'Jamula/Andreja',
-      ownerId: 'coordinator-1',
+      coordinatorId: 'coordinator-1',
       batchId: 'batch-1',
     }),
   });
@@ -525,7 +622,7 @@ test('batch release requires current writer authorization', () => {
 });
 
 test('batch release rejects mismatched embedded batch identity', () => {
-  const valid = closeCreatedWave(reserveBatch([1]));
+  const valid = closeCreatedWave(prepareBatch([1]));
   for (const batch of [
     {
       ...valid,
@@ -561,7 +658,7 @@ test('batch creation and spawning reject stale or unbound writer authorization',
   }).ready, false);
 
   const statusAuthorization = writerSection('status');
-  const batch = reserveBatch([1]);
+  const batch = prepareBatch([1]);
   assert.equal(assessSpawnAttempt({
     now,
     previousAttemptAt: null,
@@ -572,11 +669,12 @@ test('batch creation and spawning reject stale or unbound writer authorization',
     collisionCheck: true,
     issueReady: true,
     capacityAvailable: true,
+    reconciliation: repositoryReconciliation(),
   }).allowed, false);
 });
 
 test('ambiguous creation blocks fallback and definitive non-creation permits one same-token fallback', () => {
-  const batch = reserveBatch([1]);
+  const batch = prepareBatch([1]);
   const cloudAttemptAt = '2026-08-29T18:59:50.000Z';
   const spawnAttempt = assessSpawnAttempt({
     now,
@@ -589,6 +687,7 @@ test('ambiguous creation blocks fallback and definitive non-creation permits one
     capacityAvailable: true,
     batchId: 'batch-1',
     creationOutcome: 'definitive-non-creation',
+    reconciliation: repositoryReconciliation(),
   });
   assert.equal(assessLocalFallback({
     admissionToken: batch.admissions[0].admissionToken,
@@ -624,7 +723,7 @@ test('ambiguous creation blocks fallback and definitive non-creation permits one
   }).reason, 'fallback-attempt-correlation-invalid');
 });
 
-test('writer timestamps require timezone-qualified RFC 3339 values', () => {
+test('process guard timestamps require timezone-qualified RFC 3339 values', () => {
   for (const malformed of [
     '2026-08-29',
     '2026-08-29T19:00:00',
@@ -632,9 +731,9 @@ test('writer timestamps require timezone-qualified RFC 3339 values', () => {
     '2026-08-29T25:00:00.000Z',
     '2026-08-29T19:00:00.0000Z',
   ]) {
-    assert.equal(assessAtomicOwnership(
-      { ...writerCapability, verifiedAt: malformed },
-      { now, repository: 'Jamula/Andreja', ownerId: 'coordinator-1' },
+    assert.equal(assessSingleCoordinatorProcessGuard(
+      repositoryReconciliation({ checkedAt: malformed }),
+      { now, repository: 'Jamula/Andreja', coordinatorId: 'coordinator-1' },
     ).available, false);
   }
 });
@@ -679,9 +778,10 @@ test('prompt and every orchestration contract carry the five-child wave rules', 
   assert.match(prompt, /NEXT_TICK_REQUIRED/);
   assert.match(prompt, /useful N\/5 target/);
   assert.match(prompt, /read-only/i);
-  assert.match(prompt, /atomic.*capabilit/i);
+  assert.match(prompt, /single-coordinator process guard/i);
+  assert.match(prompt, /best-effort repository reconciliation/i);
   assert.match(prompt, /generic Scribe/i);
-  assert.match(spawn, /Reserve five child issues/i);
+  assert.match(spawn, /Prepare five child issues/i);
   assert.match(spawn, /ambiguous.*creation/is);
   assert.match(client, /never\s+manufacture concurrency/i);
   assert.match(lifecycle, /every successfully created child returns/i);
@@ -718,5 +818,5 @@ test('prompt and every orchestration contract carry the five-child wave rules', 
     );
     assert.match(content, /READY_FOR_AGENT_MERGE/);
   }
-  assert.match(scribe, /exclusive retrospective completion/i);
+  assert.match(scribe, /dedicated retrospective completion/i);
 });

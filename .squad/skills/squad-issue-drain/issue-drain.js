@@ -8,6 +8,27 @@ const QUEUE_OPERATIONS = new Set([
   'status',
   'classify',
   'admit',
+  'mutate',
+  'release',
+]);
+const WRITER_OPERATIONS = new Set(['admit', 'mutate', 'release']);
+const RECONCILIATION_COLLECTIONS = [
+  'sessions',
+  'branches',
+  'worktrees',
+  'pullRequests',
+  'reservations',
+  'ledger',
+  'issueReadiness',
+];
+const INACTIVE_STATES = new Set([
+  'archived',
+  'closed',
+  'failed',
+  'ineligible',
+  'merged',
+  'released',
+  'unlaunched',
 ]);
 
 function validDate(value) {
@@ -40,69 +61,165 @@ function positiveInteger(value) {
 function writerAuthorizationCurrent(sectionZero, now, batchId = null) {
   const current = validDate(now);
   const checkedAt = validDate(sectionZero?.checkedAt);
-  const validUntil = validDate(sectionZero?.authorization?.validUntil);
   return Boolean(
     sectionZero?.allowed === true
     && sectionZero.mode === 'writer'
+    && sectionZero.authorization?.mechanism === 'single-coordinator-process-guard'
     && current !== null
     && checkedAt === current
-    && validUntil !== null
-    && current < validUntil
     && (batchId === null || sectionZero.authorization.batchId === batchId),
   );
 }
 
-function assessAtomicOwnership(capability, {
+function activeRecord(record) {
+  return record?.active !== false
+    && !INACTIVE_STATES.has(String(record?.state || '').toLowerCase());
+}
+
+function assessSingleCoordinatorProcessGuard(reconciliation, {
   now,
   repository,
-  ownerId,
+  coordinatorId,
+  batchId = null,
+  issue = null,
+  admissionToken = null,
 } = {}) {
-  if (!capability || typeof capability !== 'object' || Array.isArray(capability)) {
-    return { available: false, mode: 'read-only', reason: 'atomic-ownership-unavailable' };
+  const current = validDate(now);
+  const checkedAt = validDate(reconciliation?.checkedAt);
+  const shapeValid = reconciliation
+    && typeof reconciliation === 'object'
+    && !Array.isArray(reconciliation)
+    && reconciliation.complete === true
+    && reconciliation.repository === repository
+    && /^[^/\s]+\/[^/\s]+$/.test(repository || '')
+    && typeof coordinatorId === 'string'
+    && coordinatorId.trim()
+    && current !== null
+    && checkedAt === current
+    && RECONCILIATION_COLLECTIONS.every(
+      (name) => Array.isArray(reconciliation[name]),
+    );
+  if (!shapeValid) {
+    return {
+      available: false,
+      mode: 'blocked',
+      reason: 'repository-reconciliation-incomplete',
+    };
   }
 
-  const common =
-    capability.verified === true
-    && capability.repositoryScoped === true
-    && capability.repository === repository
-    && capability.ownerId === ownerId
-    && typeof capability.grantId === 'string'
-    && capability.grantId.length > 0
-    && typeof capability.tool === 'string'
-    && capability.tool.length > 0;
-  const lease =
-    capability.kind === 'lease'
-    && capability.acquire === true
-    && capability.renew === true
-    && capability.release === true;
-  const conditionalCreate =
-    capability.kind === 'conditional-create'
-    && capability.createIfAbsent === true
-    && capability.conflictIsFailure === true;
+  const records = RECONCILIATION_COLLECTIONS
+    .flatMap((name) => reconciliation[name].map((record) => ({ name, record })));
+  if (records.some(({ record }) =>
+    !record
+    || typeof record !== 'object'
+    || Array.isArray(record)
+    || !positiveInteger(record.issue))) {
+    return {
+      available: false,
+      mode: 'blocked',
+      reason: 'repository-reconciliation-invalid',
+    };
+  }
 
-  const current = validDate(now);
-  const verifiedAt = validDate(capability.verifiedAt);
-  const validUntil = validDate(capability.validUntil);
-  const currentGrant = current !== null
-    && verifiedAt !== null
-    && validUntil !== null
-    && verifiedAt <= current
-    && current < validUntil;
+  for (const name of ['sessions', 'branches', 'worktrees', 'pullRequests']) {
+    const activeIssues = reconciliation[name]
+      .filter(activeRecord)
+      .map((record) => record.issue);
+    if (new Set(activeIssues).size !== activeIssues.length) {
+      return {
+        available: false,
+        mode: 'blocked',
+        reason: 'duplicate-reconciliation-conflict',
+        source: name,
+      };
+    }
+  }
 
-  if (!common || !currentGrant || (!lease && !conditionalCreate)) {
-    return { available: false, mode: 'read-only', reason: 'atomic-ownership-unavailable' };
+  const activeCoordination = [
+    ...reconciliation.reservations,
+    ...reconciliation.ledger,
+  ].filter(activeRecord);
+  const foreign = activeCoordination.find(
+    (record) => record.coordinatorId !== coordinatorId,
+  );
+  if (foreign) {
+    return {
+      available: false,
+      mode: 'blocked',
+      reason: 'coordinator-reconciliation-conflict',
+      issue: foreign.issue,
+    };
+  }
+
+  const readiness = new Map();
+  for (const record of reconciliation.issueReadiness) {
+    if (readiness.has(record.issue)) {
+      return {
+        available: false,
+        mode: 'blocked',
+        reason: 'issue-readiness-duplicate',
+        issue: record.issue,
+      };
+    }
+    readiness.set(record.issue, record.ready === true);
+  }
+  const occupiedIssues = new Set(
+    ['sessions', 'branches', 'worktrees', 'pullRequests']
+      .flatMap((name) => reconciliation[name])
+      .filter(activeRecord)
+      .map((record) => record.issue),
+  );
+
+  if (issue !== null) {
+    if (!positiveInteger(issue) || readiness.get(issue) !== true) {
+      return {
+        available: false,
+        mode: 'blocked',
+        reason: 'issue-eligibility-changed',
+        issue,
+      };
+    }
+    if (occupiedIssues.has(issue)) {
+      return {
+        available: false,
+        mode: 'blocked',
+        reason: 'issue-already-active',
+        issue,
+      };
+    }
+    for (const name of ['reservations', 'ledger']) {
+      const matching = reconciliation[name]
+        .filter(activeRecord)
+        .filter((record) => record.issue === issue);
+      if (matching.length > 1 || matching.some((record) =>
+        record.coordinatorId !== coordinatorId
+        || (batchId !== null && record.batchId !== batchId)
+        || (admissionToken !== null && record.admissionToken !== admissionToken))) {
+        return {
+          available: false,
+          mode: 'blocked',
+          reason: 'admission-reconciliation-conflict',
+          source: name,
+          issue,
+        };
+      }
+    }
   }
 
   return {
     available: true,
     mode: 'writer',
-    reason: 'atomic-ownership-verified',
-    kind: capability.kind,
-    tool: capability.tool,
+    reason: 'single-coordinator-process-guard-clear',
+    mechanism: 'single-coordinator-process-guard',
+    checkedAt: new Date(current).toISOString(),
+    guardId: `${repository}:${coordinatorId}:${new Date(current).toISOString()}`,
     repository,
-    ownerId,
-    grantId: capability.grantId,
-    validUntil: new Date(validUntil).toISOString(),
+    coordinatorId,
+    readyIssues: [...readiness.entries()]
+      .filter(([, ready]) => ready)
+      .map(([readyIssue]) => readyIssue)
+      .sort((left, right) => left - right),
+    occupiedIssues: [...occupiedIssues].sort((left, right) => left - right),
   };
 }
 
@@ -111,10 +228,10 @@ function assessSectionZero({
   stateAvailable = false,
   enumerationComplete = false,
   retrospectiveAllowed = false,
-  ownershipCapability,
+  reconciliation,
   now,
   repository,
-  ownerId,
+  coordinatorId,
   batchId,
 }) {
   if (!QUEUE_OPERATIONS.has(operation)) {
@@ -130,32 +247,35 @@ function assessSectionZero({
     return { allowed: false, mode: 'blocked', reason: 'retrospective-not-current' };
   }
 
-  const ownership = assessAtomicOwnership(ownershipCapability, {
-    now,
-    repository,
-    ownerId,
-  });
-  if (!ownership.available) {
-    if (operation === 'admit') {
-      return { allowed: false, mode: 'read-only', reason: ownership.reason };
-    }
-    return { allowed: true, mode: 'read-only', reason: ownership.reason };
+  if (!WRITER_OPERATIONS.has(operation)) {
+    return { allowed: true, mode: 'read-only', reason: 'section-zero-passed' };
   }
 
-  if (operation === 'admit' && (typeof batchId !== 'string' || !batchId.trim())) {
+  if (typeof batchId !== 'string' || !batchId.trim()) {
     return { allowed: false, mode: 'blocked', reason: 'batch-id-required' };
+  }
+  const guard = assessSingleCoordinatorProcessGuard(reconciliation, {
+    now,
+    repository,
+    coordinatorId,
+    batchId,
+  });
+  if (!guard.available) {
+    return { allowed: false, mode: 'blocked', reason: guard.reason };
   }
   return {
     allowed: true,
     mode: 'writer',
     reason: 'section-zero-passed',
-    checkedAt: new Date(validDate(now)).toISOString(),
+    checkedAt: guard.checkedAt,
     authorization: {
-      repository: ownership.repository,
-      ownerId: ownership.ownerId,
-      grantId: ownership.grantId,
-      validUntil: ownership.validUntil,
-      batchId: operation === 'admit' ? batchId : null,
+      mechanism: guard.mechanism,
+      guardId: guard.guardId,
+      repository: guard.repository,
+      coordinatorId: guard.coordinatorId,
+      readyIssues: guard.readyIssues,
+      occupiedIssues: guard.occupiedIssues,
+      batchId,
     },
   };
 }
@@ -197,26 +317,31 @@ function createBatch({
       || new Set(selected.map((candidate) => candidate.admissionToken)).size !== selected.length) {
     return { ready: false, reason: 'candidate-correlation-duplicate', batch: null };
   }
+  if (selected.some((candidate) =>
+    !sectionZero.authorization.readyIssues.includes(candidate.issue)
+    || sectionZero.authorization.occupiedIssues.includes(candidate.issue))) {
+    return { ready: false, reason: 'candidate-reconciliation-conflict', batch: null };
+  }
 
-  const reservedAt = new Date(validDate(now)).toISOString();
+  const preparedAt = new Date(validDate(now)).toISOString();
   return {
     ready: true,
-    reason: 'wave-reserved',
+    reason: 'wave-prepared',
     batch: {
       id: batchId,
       limit,
       authorization: { ...sectionZero.authorization },
       launchState: 'launching',
-      reservedAt,
+      preparedAt,
       launchClosedAt: null,
       stopReason: null,
       ackInspectionAt: null,
       admissions: selected.map((candidate) => ({
         ...candidate,
         batchId,
-        reservationId: candidate.admissionToken,
-        state: 'reserved',
-        reservedAt,
+        guardToken: candidate.admissionToken,
+        state: 'prepared',
+        preparedAt,
         attemptedAt: null,
         createdAt: null,
       })),
@@ -235,6 +360,7 @@ function assessSpawnAttempt({
   issueReady = false,
   capacityAvailable = false,
   creationOutcome = 'not-started',
+  reconciliation,
 }) {
   if (!writerAuthorizationCurrent(sectionZero, now, batchId)) {
     return { allowed: false, reason: 'writer-admission-not-authorized' };
@@ -251,13 +377,24 @@ function assessSpawnAttempt({
   if (capacityAvailable !== true) {
     return { allowed: false, reason: 'verified-capacity-unavailable' };
   }
+  const guard = assessSingleCoordinatorProcessGuard(reconciliation, {
+    now,
+    repository: sectionZero.authorization.repository,
+    coordinatorId: sectionZero.authorization.coordinatorId,
+    batchId,
+    issue: admission?.issue,
+    admissionToken: admission?.admissionToken,
+  });
+  if (!guard.available) {
+    return { allowed: false, reason: guard.reason };
+  }
   if (!admission
       || admission.batchId !== batchId
-      || admission.state !== 'reserved'
-      || admission.reservationId !== admission.admissionToken
+      || admission.state !== 'prepared'
+      || admission.guardToken !== admission.admissionToken
       || typeof admission.admissionToken !== 'string'
       || !admission.admissionToken) {
-    return { allowed: false, reason: 'issue-reservation-invalid' };
+    return { allowed: false, reason: 'issue-guard-token-invalid' };
   }
   if (!['not-started', 'definitive-non-creation'].includes(creationOutcome)) {
     return { allowed: false, reason: 'creation-outcome-ambiguous' };
@@ -302,14 +439,14 @@ function recordCreationOutcome({
     (admission) => admission.admissionToken === admissionToken,
   );
   if (index < 0) {
-    return { recorded: false, reason: 'reservation-not-found', batch: null };
+    return { recorded: false, reason: 'admission-not-found', batch: null };
   }
 
   const current = batch.admissions[index];
-  const stateAllowed = current.state === 'reserved'
+  const stateAllowed = current.state === 'prepared'
     || (fallback === true && current.state === 'failed');
   if (!stateAllowed) {
-    return { recorded: false, reason: 'reservation-already-resolved', batch: null };
+    return { recorded: false, reason: 'admission-already-resolved', batch: null };
   }
   const supported = new Set([
     'created',
@@ -322,9 +459,9 @@ function recordCreationOutcome({
   if (!supported.has(outcome)) {
     return { recorded: false, reason: 'creation-outcome-invalid', batch: null };
   }
-  const reserved = validDate(current.reservedAt);
-  if (reserved === null || attempt < reserved) {
-    return { recorded: false, reason: 'attempt-precedes-reservation', batch: null };
+  const prepared = validDate(current.preparedAt);
+  if (prepared === null || attempt < prepared) {
+    return { recorded: false, reason: 'attempt-precedes-admission', batch: null };
   }
   if (['created', 'definitive-non-creation', 'uncertain'].includes(outcome)) {
     const previousAttempts = batch.admissions
@@ -356,7 +493,7 @@ function recordCreationOutcome({
       createdAt: admission.attemptedAt,
     });
     if (next.launchState !== 'stopped'
-        && next.admissions.every((item) => item.state !== 'reserved')) {
+        && next.admissions.every((item) => item.state !== 'prepared')) {
       next.launchState = 'complete';
       next.launchClosedAt = admission.attemptedAt;
     }
@@ -372,7 +509,7 @@ function recordCreationOutcome({
   };
   admission.state = stateByOutcome[outcome];
   for (let remaining = index + 1; remaining < next.admissions.length; remaining += 1) {
-    if (next.admissions[remaining].state === 'reserved') {
+    if (next.admissions[remaining].state === 'prepared') {
       next.admissions[remaining].state = 'unlaunched';
     }
   }
@@ -476,13 +613,11 @@ function assessBatchAdvance({
   const batchAuthorization = batch.authorization;
   const authorizationCurrent =
     validDate(sectionZero.checkedAt) === current
-    && validDate(authorization?.validUntil) !== null
-    && current < validDate(authorization.validUntil)
+    && authorization?.mechanism === 'single-coordinator-process-guard'
     && authorization?.batchId === batch.id
     && batchAuthorization?.batchId === batch.id
     && authorization?.repository === batchAuthorization?.repository
-    && authorization?.ownerId === batchAuthorization?.ownerId
-    && authorization?.grantId === batchAuthorization?.grantId;
+    && authorization?.coordinatorId === batchAuthorization?.coordinatorId;
   if (!authorizationCurrent) {
     return {
       allowed: false,
@@ -648,10 +783,10 @@ module.exports = {
   ACK_TIMEOUT_MILLISECONDS,
   MAX_BATCH_SIZE,
   MIN_SPAWN_SPACING_MILLISECONDS,
-  assessAtomicOwnership,
   assessBatchAdvance,
   assessLocalFallback,
   assessSectionZero,
+  assessSingleCoordinatorProcessGuard,
   assessSpawnAttempt,
   createBatch,
   mergeDisposition,

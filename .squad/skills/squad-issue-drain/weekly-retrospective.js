@@ -1,5 +1,9 @@
 'use strict';
 
+const {
+  assessSingleCoordinatorProcessGuard,
+} = require('./issue-drain');
+
 const WINDOW_MILLISECONDS = 7 * 24 * 60 * 60 * 1000;
 const CANONICAL_PREFIX = 'log/weekly-retrospective-';
 const SCHEMA_MARKER = '<!-- weekly-retrospective:v1 -->';
@@ -428,22 +432,6 @@ function validateCompletionEvidence({
   return { valid: true };
 }
 
-function validateAtomicCompletionCapability(capability, repository) {
-  return Boolean(
-    capability
-    && typeof capability === 'object'
-    && !Array.isArray(capability)
-    && capability.verified === true
-    && capability.repositoryScoped === true
-    && capability.repository === repository
-    && capability.kind === 'conditional-create'
-    && typeof capability.tool === 'string'
-    && capability.tool.length > 0
-    && capability.createIfAbsent === true
-    && capability.conflictIsFailure === true,
-  );
-}
-
 function oneLine(value, name) {
   if (typeof value !== 'string') {
     throw new Error(`${name} must be a non-empty single line`);
@@ -480,8 +468,21 @@ function prepareCompletion({
   decisions = [],
   actions = [],
   verification,
-  atomicCompletionCapability,
+  coordinatorId,
+  reconciliation,
 }) {
+  if (!/^[^/\s]+\/[^/\s]+$/.test(repository || '')) {
+    return { ready: false, reason: 'repository-invalid', write: null };
+  }
+  const guard = assessSingleCoordinatorProcessGuard(reconciliation, {
+    now,
+    repository,
+    coordinatorId,
+  });
+  if (!guard.available) {
+    return { ready: false, reason: guard.reason, write: null };
+  }
+
   const admission = assessAdmission({
     now,
     logs,
@@ -489,17 +490,15 @@ function prepareCompletion({
     enumerationComplete,
   });
   if (admission.allowed) {
-    return { ready: false, reason: 'cycle-already-complete', write: null };
+    return {
+      ready: true,
+      reason: 'completion-already-recorded',
+      write: null,
+      key: admission.completionKey,
+    };
   }
   if (!admission.ceremonyRequired) {
     return { ready: false, reason: admission.reason, write: null };
-  }
-
-  if (!/^[^/\s]+\/[^/\s]+$/.test(repository || '')) {
-    return { ready: false, reason: 'repository-invalid', write: null };
-  }
-  if (!validateAtomicCompletionCapability(atomicCompletionCapability, repository)) {
-    return { ready: false, reason: 'atomic-completion-unavailable', write: null };
   }
 
   if (!evidence
@@ -611,6 +610,47 @@ function prepareCompletion({
   return { ready: true, reason: 'completion-ready', write: { key, content } };
 }
 
+function reconcileCompletionWrite({
+  expected,
+  logs = [],
+  stateAvailable = false,
+  enumerationComplete = false,
+}) {
+  if (stateAvailable !== true) {
+    return { completed: false, reason: 'state-backend-unavailable' };
+  }
+  if (enumerationComplete !== true) {
+    return { completed: false, reason: 'log-enumeration-incomplete' };
+  }
+  if (!expected
+      || typeof expected.key !== 'string'
+      || typeof expected.content !== 'string'
+      || !validateCompletedLog(expected).valid) {
+    return { completed: false, reason: 'expected-completion-invalid' };
+  }
+
+  const matches = logs.filter((log) => log?.key === expected.key);
+  if (matches.length === 0) {
+    return { completed: false, reason: 'completion-write-not-observed' };
+  }
+  if (matches.length !== 1 || matches[0].content !== expected.content) {
+    return { completed: false, reason: 'completion-write-conflict' };
+  }
+  const validation = validateCompletedLog(matches[0]);
+  if (!validation.valid) {
+    return {
+      completed: false,
+      reason: 'completion-write-invalid',
+      detail: validation.reason,
+    };
+  }
+  return {
+    completed: true,
+    reason: 'completion-record-confirmed',
+    key: expected.key,
+  };
+}
+
 module.exports = {
   CANONICAL_PREFIX,
   MAX_GITHUB_EVIDENCE_AGE_MILLISECONDS,
@@ -619,8 +659,8 @@ module.exports = {
   completionKey,
   cycleStart,
   prepareCompletion,
+  reconcileCompletionWrite,
   resolveActionCandidates,
-  validateAtomicCompletionCapability,
   validateCompletionEvidence,
   validateCompletedLog,
 };

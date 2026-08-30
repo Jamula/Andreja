@@ -36,19 +36,24 @@ When `create_session` is available, spawn commit-producing agents as **sub-sessi
 
 **Constraints:**
 - **Max depth:** 1 — no sub-sub-sessions. If an agent needs to delegate, it uses `task` tool.
-- **Issue-drain wave cap:** Reserve five child issues before creation, reduced
+- **Issue-drain wave cap:** Prepare five child issues in the session ledger
+  before creation, reduced
   by lower verified platform capacity and every safety gate. Do not infer
   capacity from configured limits or prior success.
-- **Pacing:** Launch one reserved child at each exact 10-second boundary,
+- **Process guard:** Immediately before each spawn, run the single-coordinator
+  process guard and best-effort repository reconciliation across sessions,
+  branches, worktrees, PRs, reservations/ledger, and issue readiness.
+- **Pacing:** Launch one prepared child at each exact 10-second boundary,
   including boundaries after failures and fallback attempts. Use a supported
   one-time wake or `NEXT_TICK_REQUIRED`; never sleep inside a turn.
-- **ACK gate:** Preallocate a wave/batch ID and admission token per reservation.
+- **ACK gate:** Preallocate a wave/batch ID and admission token per prepared
+  ledger entry.
   Launch the next same-wave member without waiting for an individual ACK. Keep
   every created child paused until the spawn phase closes and all successfully
   created children return correlated valid ACKs.
 - **Partial wave:** Failed/ambiguous creation, changed eligibility, lost
   capacity, or a closed safety gate stops every later launch. Preserve created
-  children and their reservations. A stopped partial wave is not an
+  children and their ledger entries. A stopped partial wave is not an
   invalid/corrupt ACK set and cannot begin the next wave.
 - **Fallback:** A failed `create_session` may fall back exactly once only after
   definitive evidence that no session, branch, worktree, or PR was created.

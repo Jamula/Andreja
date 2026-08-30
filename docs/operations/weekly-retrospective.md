@@ -4,10 +4,12 @@
 
 **Operational owner:** Jett Reno owns the admission mechanism and this runbook.
 Ralph enforces the check before queue work, Picard facilitates the ceremony, and
-the Squad coordinator requests governed state operations. Scribe alone completes the canonical `log/` record through a verified,
-repository-scoped atomic conditional create supplied by the existing runtime.
-Plain state writes do not establish exclusivity. GitHub issues remain the
-action source of truth.
+the Squad coordinator requests governed state operations. Scribe alone completes
+the canonical `log/` record through a single `squad_state_write` followed by
+exact read-back under the single-coordinator process guard. The guard uses
+best-effort repository
+reconciliation; it is not distributed mutual exclusion or cross-process
+exclusivity. GitHub issues remain the action source of truth.
 
 Queue admission requires one valid completed retrospective no more than seven
 elapsed days old. Each UTC Monday-through-Sunday cycle has at most one durable
@@ -62,13 +64,16 @@ does not disable or relax admission.
    evidence fails closed; caller self-assertion is not evidence.
 7. Prove that generic Scribe work is quiescent. If it cannot be proven finished,
    stop. Do not start generic Scribe until completion is reconciled.
-8. Capability-detect an existing verified repository-scoped atomic
-   conditional-create operation. Without it, remain read-only and blocked; do
-   not substitute `squad_state_write`.
-9. Hand the returned key and content to exclusive Scribe. Scribe makes one
-   create-if-absent attempt. Conflict or uncertainty is failure, not overwrite
-   or success. The orchestrator never writes `log/` directly.
-10. Re-list and re-read the record, then resume queue work.
+8. Run the single-coordinator process guard and complete best-effort repository
+   reconciliation of sessions, branches, worktrees, PRs, reservations/ledger,
+   and issue readiness. Incomplete, stale, duplicate, or conflicting evidence
+   blocks completion.
+9. Hand the returned key and content to dedicated Scribe. After a complete
+   listing proves the key absent, Scribe makes one `squad_state_write`. The
+   orchestrator never writes `log/` directly.
+10. Re-list and re-read the record. Exact valid content confirms completion. An
+    exact valid existing record is reused idempotently without another write.
+    Missing or different content is a conflict and remains blocked.
 
 The completion record contains only the evidence window, shipped/open counts,
 blocker references, decision summaries/references, and action issue links. Do
@@ -92,9 +97,9 @@ with other entries invalidate the record and keep admission closed.
   the configured runtime state bridge, then rerun the round-start check.
 - **Optional enforcement component unavailable:** continue with the built-in
   issue-drain protocol; do not bypass the ceremony.
-- **Ceremony interrupted before the final conditional create:** rerun it. The absence of a
+- **Ceremony interrupted before the final write:** rerun it. The absence of a
   valid record intentionally keeps admission blocked.
-- **Interruption after the conditional create:** re-read and reuse the valid canonical
+- **Interruption after the write:** re-read and reuse the valid canonical
   record. Never create a second log.
 - **Existing malformed canonical key or duplicate cycle records:** stop
   admission and escalate to the Squad coordinator. Preserve the records for
@@ -102,8 +107,14 @@ with other entries invalidate the record and keep admission closed.
   approved recovery policy.
 - **GitHub evidence or duplicate search incomplete:** keep the ceremony open and
   admission blocked. Do not infer completion or create speculative actions.
-- **Atomic conditional-create unavailable:** remain read-only. Do not claim a
-  lease, write completion, admit children, or replace atomicity with convention.
+- **Atomic CAS, lease, or conditional-create unavailable:** continue under the
+  single-coordinator process guard. Capability absence alone does not block
+  completion. This is best-effort repository reconciliation, not a cross-process
+  safety claim.
+- **Guard conflict or incomplete reconciliation:** keep admission blocked.
+  Preserve state, re-enumerate every source, and escalate persistent conflicts.
+- **Uncertain write outcome:** re-list and re-read. Treat exact valid content as
+  completed; treat missing or different content as blocked. Never overwrite.
 
 Never write, edit, delete, or copy runtime-owned Squad state directly, and never
 use git-notes choreography. Recovery uses `squad_state_*` or governed memory

@@ -9,7 +9,7 @@ Squad runs on multiple Copilot surfaces. The coordinator MUST detect its platfor
 Before spawning agents, determine the platform by checking available tools:
 
 1. **App mode** — `create_session` is available → persistent child sessions.
-   Issue drain may use reserved waves of five only when the App confirms that
+   Issue drain may use prepared waves of five only when the App confirms that
    capacity; a lower confirmed limit reduces the wave.
 
 2. **CLI mode** — `task` tool is available → full spawning control. Use `task` with `agent_type`, `mode`, `model`, `description`, `prompt` parameters. Collect results via `read_agent`.
@@ -22,14 +22,15 @@ Prefer `create_session` for issue-drain children. If both `task` and
 `runSubagent` are available outside App mode, prefer `task` (richer parameter
 surface).
 
-Issue-drain pacing overrides each client's generic fan-out behavior. Reserve
+Issue-drain pacing overrides each client's generic fan-out behavior. Prepare
 each selected issue, launch one child at each exact 10-second boundary, and use
 a supported one-time wake or `NEXT_TICK_REQUIRED` instead of sleeping. Do not
 wait for an individual ACK before the next same-wave launch. Do not start the
 next wave until every successfully created child returns a valid correlated
-ACK. A client without atomic reservation, confirmed capacity, or a supported
-wake/tick path must reduce capacity or remain read-only; it must never
-manufacture concurrency.
+ACK. A client without complete best-effort repository reconciliation, confirmed
+capacity, or a supported wake/tick path must reduce capacity or remain blocked;
+it must never manufacture concurrency. Missing atomic capability is not a
+blocker under the single-coordinator process guard.
 
 #### VS Code Spawn Adaptations
 
@@ -37,7 +38,7 @@ When in VS Code mode, the coordinator changes behavior in these ways:
 
 - **Spawning tool:** Use `runSubagent` instead of `task`. The prompt is the only required parameter — pass the full agent prompt (charter, identity, task, hygiene, response order) exactly as you would on CLI.
 - **Parallelism:** For ordinary routed work, spawn all concurrent agents in a
-  single turn. Issue drain is the exception: it paces one reserved child per
+  single turn. Issue drain is the exception: it paces one prepared child per
   10-second boundary and stops the remaining wave on failed/ambiguous creation,
   changed eligibility, lost capacity, or a closed safety gate.
 - **Model selection:** Accept the session model. Do NOT attempt per-spawn model selection or fallback chains — they only work on CLI. In Phase 1, all subagents use whatever model the user selected in VS Code's model picker.
@@ -64,6 +65,6 @@ When in VS Code mode, the coordinator changes behavior in these ways:
 The `sql` tool is **CLI-only**. It does not exist on VS Code, JetBrains, or
 GitHub.com. Cross-platform code paths must not depend on SQL. For runtime-owned
 Squad state, use the configured `squad_state` bridge only; never substitute
-filesystem writes on a non-local backend. If a surface cannot expose the
-verified repository-scoped atomic operation required by issue-drain, that
-surface remains read-only and makes no exclusivity claim.
+filesystem writes on a non-local backend. Issue drain uses the
+single-coordinator process guard with best-effort repository reconciliation;
+it does not claim cross-process exclusivity.
