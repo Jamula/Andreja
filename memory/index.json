@@ -278,5 +278,15 @@
     "status": "active",
     "createdAt": "2026-08-30T17:53:04.740Z",
     "updatedAt": "2026-08-30T17:53:04.740Z"
+  },
+  {
+    "id": "68a6c136-fecd-4911-8db3-24c9e3a6a4fe",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Monthly spend ceiling and release policy",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-monthly-spend-ceiling-and-release-policy-68a6c136.md",
+    "status": "active",
+    "createdAt": "2026-08-30T17:55:39.083Z",
+    "updatedAt": "2026-08-30T17:55:39.083Z"
   }
 ]
