@@ -5,3 +5,5 @@
 
 ### 2026-08-28 — Issue #99 architecture correction
 Approved the final architecture/data-flow revision for privacy and consent behavior.
+
+📌 Team update (2026-08-30T12:06:05.656-07:00): Deanna Troi's review chain ended in APPROVE after Tuvok removed contradictory tracking-secret custody language at PR #159 head `139887dfba54fd4bd4836d580b45fc8e314fb243`. Gates #155-#158 remain fail-closed and separately require explicit Cyrus approvals.
