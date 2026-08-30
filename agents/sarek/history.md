@@ -1,0 +1,2 @@
+
+📌 Team update (2026-08-30T10:54:18.410-07:00): ISSUE_73_DECISION_BRIEF_READY found inconsistent accepted/merged/proposed/counsel-gated statuses; repository visibility containment, status taxonomy reconciliation, feedback scope, artifact-hash decisions, charter sequencing, counsel path, #66 sequencing, ADR 0008 local-only scope, and Phase 0 exit remain for Cyrus.
