@@ -24,13 +24,17 @@ const PROTECTED_PATHS = [
 ];
 const REQUIRED_IGNORES = PROTECTED_PATHS.map(([ignorePattern]) => ignorePattern);
 
+function isPlainObject(value) {
+  return value !== null &&
+    !Array.isArray(value) &&
+    typeof value === 'object' &&
+    Object.getPrototypeOf(value) === Object.prototype;
+}
+
 function readJson(file, errors, description) {
   try {
     const value = JSON.parse(fs.readFileSync(file, 'utf8'));
-    if (value === null ||
-        Array.isArray(value) ||
-        typeof value !== 'object' ||
-        Object.getPrototypeOf(value) !== Object.prototype) {
+    if (!isPlainObject(value)) {
       errors.push(`${description} top-level value must be a non-null, non-array JSON object`);
       return null;
     }
@@ -108,22 +112,29 @@ function validateRepository(root) {
 
   const mcp = readJson(mcpPath, errors, '.mcp.json');
   if (mcp) {
-    const serverNames = Object.keys(mcp.mcpServers || {});
-    if (serverNames.length !== 1 || serverNames[0] !== 'squad_state') {
-      errors.push('.mcp.json must declare only the squad_state MCP server');
+    if (!isPlainObject(mcp.mcpServers)) {
+      errors.push('.mcp.json mcpServers must be a non-null, non-array JSON object');
     } else {
-      const server = mcp.mcpServers.squad_state;
-      const expectedArgs = ['-y', `@bradygaster/squad-cli@${SQUAD_VERSION}`, 'state-mcp'];
-      if (server.command !== 'npx' ||
-          JSON.stringify(server.args) !== JSON.stringify(expectedArgs)) {
-        errors.push(`squad_state must run npx ${expectedArgs.join(' ')}`);
-      }
-      if (!server.env || Array.isArray(server.env) ||
-          typeof server.env !== 'object' || Object.keys(server.env).length !== 0) {
-        errors.push('squad_state must not inject environment values');
-      }
-      if (JSON.stringify(server.tools) !== JSON.stringify(['*'])) {
-        errors.push('squad_state must expose its governed state and memory tool surface');
+      const serverNames = Object.keys(mcp.mcpServers);
+      if (serverNames.length !== 1 || serverNames[0] !== 'squad_state') {
+        errors.push('.mcp.json must declare only the squad_state MCP server');
+      } else {
+        const server = mcp.mcpServers.squad_state;
+        if (!isPlainObject(server)) {
+          errors.push('squad_state MCP server must be a non-null, non-array JSON object');
+        } else {
+          const expectedArgs = ['-y', `@bradygaster/squad-cli@${SQUAD_VERSION}`, 'state-mcp'];
+          if (server.command !== 'npx' ||
+              JSON.stringify(server.args) !== JSON.stringify(expectedArgs)) {
+            errors.push(`squad_state must run npx ${expectedArgs.join(' ')}`);
+          }
+          if (!isPlainObject(server.env) || Object.keys(server.env).length !== 0) {
+            errors.push('squad_state must not inject environment values');
+          }
+          if (JSON.stringify(server.tools) !== JSON.stringify(['*'])) {
+            errors.push('squad_state must expose its governed state and memory tool surface');
+          }
+        }
       }
     }
   }

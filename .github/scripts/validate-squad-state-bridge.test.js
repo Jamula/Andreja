@@ -121,6 +121,64 @@ test('rejects non-object JSON roots for static bridge configuration', (t) => {
   }
 });
 
+test('rejects non-object mcpServers containers without throwing', (t) => {
+  const cases = [
+    ['null', null],
+    ['empty array', []],
+    ['non-empty array', ['value']],
+    ['string', 'value'],
+    ['number', 1],
+    ['boolean', true],
+  ];
+
+  for (const [name, value] of cases) {
+    const root = fixture(t);
+    writeJson(root, '.mcp.json', { mcpServers: value });
+    let errors;
+    assert.doesNotThrow(
+      () => {
+        errors = validateRepository(root);
+      },
+      `.mcp.json should handle a ${name} mcpServers container`,
+    );
+    assert.deepEqual(
+      errors,
+      ['.mcp.json mcpServers must be a non-null, non-array JSON object'],
+    );
+  }
+});
+
+test('rejects non-object squad_state server values without throwing', (t) => {
+  const cases = [
+    ['null', null],
+    ['empty array', []],
+    ['non-empty array', ['value']],
+    ['string', 'value'],
+    ['number', 1],
+    ['boolean', true],
+  ];
+
+  for (const [name, value] of cases) {
+    const root = fixture(t);
+    writeJson(root, '.mcp.json', {
+      mcpServers: {
+        squad_state: value,
+      },
+    });
+    let errors;
+    assert.doesNotThrow(
+      () => {
+        errors = validateRepository(root);
+      },
+      `.mcp.json should handle a ${name} squad_state server`,
+    );
+    assert.deepEqual(
+      errors,
+      ['squad_state MCP server must be a non-null, non-array JSON object'],
+    );
+  }
+});
+
 test('rejects a broadened MCP bridge', (t) => {
   const root = fixture(t);
   writeJson(root, '.mcp.json', {
