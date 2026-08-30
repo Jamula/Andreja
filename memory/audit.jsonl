@@ -82,3 +82,4 @@
 {"timestamp":"2026-08-30T04:40:18.922Z","action":"search","reason":"Search returned 0 result(s)"}
 {"timestamp":"2026-08-30T04:47:10.039Z","action":"search","reason":"Search returned 1 result(s)"}
 {"timestamp":"2026-08-30T04:47:36.173Z","action":"search","reason":"Search returned 1 result(s)"}
+{"timestamp":"2026-08-30T17:50:21.574Z","action":"write","id":"8bff050f-0ca8-4d58-b61d-26185cc4b2de","class":"DECISION","title":"Delegate feedback framework details","path":".squad\\decisions\\inbox\\cyrus-jamula-delegate-feedback-framework-details-8bff050f.md","reason":"Content is allowed for governed local memory","actor":"Cyrus Jamula","provider":"local"}
