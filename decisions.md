@@ -222,3 +222,9 @@ This is a security verdict only. It does not declare legal compliance and does n
 **By:** Cyrus Jamula (via Copilot)
 **What:** For the privacy-safe feedback and support framework, schemas, UX, triage, retention proposals, abuse controls, tests, metrics, and other implementation details are delegated to Guinan and the relevant specialists. Cyrus retains approval of consolidated gate packages.
 **Why:** User explicitly delegated these details while deciding how to disposition issue #10.
+
+### 2026-08-30T18-35-15: Use an independently approved bounded evidence authorization inside feedback gate #158
+**By:** Picard
+**What:** Use an independently approved bounded evidence authorization inside feedback gate #158
+**References:** PR #159, Issue #155, Issue #156, Issue #157, Issue #158, Tuvok rejection findings
+**Why:** Tuvok's deadlock finding is resolved without a fifth gate issue. After #155-#157 have explicit Cyrus approvals, #158 owns a separate Evidence Authorization decision. Cyrus alone may authorize an enumerated synthetic-only non-production exercise for the exact release commit/artifact, limited to allowlisted staging resources, dedicated staging DNS/sender records, verifier-controlled recipients, explicit hard caps, and no more than 14 days. Security, privacy, or platform owners may stop and contain the exercise but cannot approve it or convert evidence into launch authority. Teardown and revocation evidence are required before a separate final launch decision. Issue closure, labels, PR merge, or specialist verdicts do not substitute for either Cyrus decision.
