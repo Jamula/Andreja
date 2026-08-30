@@ -1,1 +1,2 @@
 📌 Team update (2026-08-30T17:09:11Z): Scribe persisted the checkpoint after Picard's RETRO_READY_FOR_SCRIBE run and merged the valid decision inbox entries; the canonical retrospective was not overwritten.
+📌 Team update (2026-08-30T10:54:18.410-07:00): ISSUE_66_DECISION_BRIEF_READY confirmed Phase 1A evidence exists, but ADRs 0001–0005, nine specialist verdicts, hosted signing, combined restore, update/rollback, numeric limits, accessibility evidence, exact-SHA rerun, and residual-risk exit remain open; six bounded Cyrus decisions are ready.
