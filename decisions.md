@@ -170,3 +170,17 @@ This is a security verdict only. It does not declare legal compliance and does n
 **What:** Prefer .NET for Squad tools and skills
 **References:** u/cyrusjamula/simplify-issue-admission, Jett Reno
 **Why:** Cyrus Jamula requested moving the relevant Squad tooling and skill implementation from JavaScript or Python to .NET. Apply this preference to the current single-coordinator admission/weekly-retrospective change when a complete, idiomatic migration fits existing repository patterns; do not ship a partial conversion or weaken behavior.
+
+### 2026-08-30T03:44:47.223Z: Exclude Squad tooling from .NET migration
+**By:** Cyrus Jamula
+
+**What:** Exclude all Squad-related tools and scripts from the JavaScript/Python-to-.NET migration. The migration scope covers non-Squad repository tooling only, with one independently tracked GitHub issue per migrated tool and before/after validation.
+
+**Why:** Keep Squad tooling outside the language migration scope so the coordination and state layers remain stable while non-Squad tooling is migrated under its own tracked validation.
+
+### 2026-08-30T04:05:18.022Z: Weekly reconciliation quiescence
+**By:** Cyrus Jamula via Squad coordinator
+
+**What:** For the UTC cycle beginning 2026-08-24, the active squad-doctor session is quiescent and non-writing for weekly retrospective admission reconciliation. This evidence permits explicit non-issue exclusion for that session only; it does not authorize backlog work or weaken duplicate-writer checks.
+
+**Why:** Preserve the weekly reconciliation gate while allowing the active squad-doctor session to remain excluded from issue admission checks during this cycle.
