@@ -10,6 +10,7 @@ const {
   EOF_CANARY,
   HEAD_CANARY,
   REQUIRED_IGNORES,
+  REQUIRED_MCP_TOOLS,
   SQUAD_VERSION,
   validateRepository,
 } = require('./validate-squad-state-bridge');
@@ -34,7 +35,7 @@ function fixture(t) {
         command: 'npx',
         args: ['-y', `@bradygaster/squad-cli@${SQUAD_VERSION}`, 'state-mcp'],
         env: {},
-        tools: ['*'],
+        tools: REQUIRED_MCP_TOOLS,
       },
     },
   }));
@@ -47,7 +48,7 @@ function fixture(t) {
       'Static config (charters, team.md, routing.md) always lives on disk.',
       'The runtime owns persistence and you MUST NOT touch mutable files.',
       'Do not silently fall back to raw file ops.',
-      EOF_CANARY,
+      `<!-- ${EOF_CANARY} -->`,
     ].join('\n'),
   );
   fs.writeFileSync(path.join(root, '.gitignore'), REQUIRED_IGNORES.join('\n'));
@@ -76,12 +77,12 @@ test('rejects a local-backend fallback', (t) => {
 test('rejects an absent MCP bridge', (t) => {
   const root = fixture(t);
   fs.rmSync(path.join(root, '.mcp.json'));
-  assert.match(validateRepository(root).join('\n'), /not valid JSON/);
+  assert.match(validateRepository(root).join('\n'), /\.mcp\.json is unreadable:/);
 });
 
 test('preserves controlled malformed-JSON errors for static bridge configuration', (t) => {
   const files = [
-    [path.join('.squad', 'config.json'), 'config.json'],
+    [path.join('.squad', 'config.json'), '.squad/config.json'],
     ['.mcp.json', '.mcp.json'],
   ];
 
@@ -187,7 +188,7 @@ test('rejects a broadened MCP bridge', (t) => {
         command: 'npx',
         args: ['-y', `@bradygaster/squad-cli@${SQUAD_VERSION}`, 'state-mcp'],
         env: {},
-        tools: ['*'],
+        tools: REQUIRED_MCP_TOOLS,
       },
       unrelated: { command: 'other' },
     },
@@ -203,11 +204,41 @@ test('rejects a mismatched bridge package version', (t) => {
         command: 'npx',
         args: ['-y', '@bradygaster/squad-cli@0.11.0', 'state-mcp'],
         env: {},
-        tools: ['*'],
+        tools: REQUIRED_MCP_TOOLS,
       },
     },
   });
   assert.match(validateRepository(root).join('\n'), /squad-cli@0\.12\.0/);
+});
+
+test('rejects a wildcard MCP tool grant', (t) => {
+  const root = fixture(t);
+  writeJson(root, '.mcp.json', {
+    mcpServers: {
+      squad_state: {
+        command: 'npx',
+        args: ['-y', `@bradygaster/squad-cli@${SQUAD_VERSION}`, 'state-mcp'],
+        env: {},
+        tools: ['*'],
+      },
+    },
+  });
+  assert.match(validateRepository(root).join('\n'), /tools must exactly match/);
+});
+
+test('rejects an incomplete MCP tool grant', (t) => {
+  const root = fixture(t);
+  writeJson(root, '.mcp.json', {
+    mcpServers: {
+      squad_state: {
+        command: 'npx',
+        args: ['-y', `@bradygaster/squad-cli@${SQUAD_VERSION}`, 'state-mcp'],
+        env: {},
+        tools: REQUIRED_MCP_TOOLS.slice(0, -1),
+      },
+    },
+  });
+  assert.match(validateRepository(root).join('\n'), /tools must exactly match/);
 });
 
 test('rejects truncated coordinator instructions', (t) => {
@@ -218,6 +249,13 @@ test('rejects truncated coordinator instructions', (t) => {
     fs.readFileSync(coordinator, 'utf8').replace(EOF_CANARY, ''),
   );
   assert.match(validateRepository(root).join('\n'), /HEAD and EOF canary/);
+});
+
+test('rejects coordinator content after the EOF canary', (t) => {
+  const root = fixture(t);
+  const coordinator = path.join(root, '.github', 'agents', 'squad.agent.md');
+  fs.appendFileSync(coordinator, '\ntruncated-at-runtime content\n');
+  assert.match(validateRepository(root).join('\n'), /must end with the EOF canary marker/);
 });
 
 test('rejects an empty readable coordinator file', (t) => {
@@ -235,6 +273,19 @@ test('rejects loss of the fail-closed ownership contract', (t) => {
       .replace('Do not silently fall back to raw file ops.', ''),
   );
   assert.match(validateRepository(root).join('\n'), /ownership and fail-closed rules/);
+});
+
+test('rejects state-backend downgrade recovery advice', (t) => {
+  const root = fixture(t);
+  const coordinator = path.join(root, '.github', 'agents', 'squad.agent.md');
+  fs.writeFileSync(
+    coordinator,
+    fs.readFileSync(coordinator, 'utf8').replace(
+      `<!-- ${EOF_CANARY} -->`,
+      `Change recovery: change \`stateBackend\` to \`local\`.\n<!-- ${EOF_CANARY} -->`,
+    ),
+  );
+  assert.match(validateRepository(root).join('\n'), /must not advise downgrading/);
 });
 
 test('rejects a later gitignore negation of runtime-owned state', (t) => {
@@ -312,6 +363,34 @@ test('rejects every active gitignore negation rule', (t) => {
   assert.match(
     validateRepository(root).join('\n'),
     /must not contain negation rules \(line \d+: !docs\/example\.md\)/,
+  );
+});
+
+test('rejects an info exclude as the only protected-state ignore source', (t) => {
+  const root = fixture(t);
+  fs.writeFileSync(
+    path.join(root, '.gitignore'),
+    REQUIRED_IGNORES.filter(rule => rule !== '.squad/decisions.md').join('\n'),
+  );
+  fs.appendFileSync(path.join(root, '.git', 'info', 'exclude'), '\n.squad/decisions.md\n');
+  assert.match(
+    validateRepository(root).join('\n'),
+    /matched by non-repository rule \.git\/info\/exclude/,
+  );
+});
+
+test('rejects a configured global exclude as the only protected-state ignore source', (t) => {
+  const root = fixture(t);
+  const globalExclude = path.join(root, 'global-ignore');
+  fs.writeFileSync(
+    path.join(root, '.gitignore'),
+    REQUIRED_IGNORES.filter(rule => rule !== '.squad/decisions.md').join('\n'),
+  );
+  fs.writeFileSync(globalExclude, '.squad/decisions.md\n');
+  execFileSync('git', ['config', 'core.excludesFile', globalExclude], { cwd: root });
+  assert.match(
+    validateRepository(root).join('\n'),
+    /matched by non-repository rule .*global-ignore/,
   );
 });
 

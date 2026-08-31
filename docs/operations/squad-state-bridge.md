@@ -68,7 +68,7 @@ the static GitHub Actions job as an automated runtime gate.
 | Failure | Required response |
 | --- | --- |
 | Static validator fails | Stop. Review the reported tracked-file drift; do not change `stateBackend` or add MCP servers to make the check pass. |
-| `squad_state_health` is missing or errors | Stop before state mutation. End the child, restart the app/session so project `.mcp.json` is loaded, and rerun fresh-child acceptance. Do not fall back to raw files or a standard agent. |
+| `squad_state_health` is missing or errors | Stop before repository or mutable-state mutation and end the child. Restart the app/session so project `.mcp.json` is loaded, then rerun fresh-child acceptance. For ordinary task recovery, a standard/general-purpose fallback may proceed only after that Squad-first child stops cleanly; fallback work is recovery only and cannot count as successful Squad bridge acceptance. Never fall back to raw state files. |
 | Probe write outcome is uncertain | Read the exact unique probe key through `squad_state_read`. If present and exact, delete that key through `squad_state_delete`; then verify key-not-found. Never overwrite unknown content. |
 | Disallowed `verification/` write succeeds | Stop all probes and escalate as a state-boundary failure. Do not broaden access or invent success. |
 | No-op child mutates or falls back | Treat acceptance as failed, preserve the clean baseline evidence, and investigate the app/session bridge before retrying in another fresh child. |

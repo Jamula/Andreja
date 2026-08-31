@@ -7,6 +7,21 @@ const { spawnSync } = require('node:child_process');
 const SQUAD_VERSION = '0.12.0';
 const HEAD_CANARY = 'SQUAD_COORDINATOR_CANARY_HEAD_b7d2';
 const EOF_CANARY = 'SQUAD_COORDINATOR_CANARY_a8f3';
+const REQUIRED_MCP_TOOLS = [
+  'squad_decide',
+  'squad_state_read',
+  'squad_state_write',
+  'squad_state_append',
+  'squad_state_delete',
+  'squad_state_list',
+  'squad_state_health',
+  'memory.classify',
+  'memory.write',
+  'memory.search',
+  'memory.promote',
+  'memory.delete',
+  'memory.audit',
+];
 const PROTECTED_PATHS = [
   ['.squad/orchestration-log/', '.squad/orchestration-log/.state-bridge-validation', ':(glob).squad/orchestration-log/**'],
   ['.squad/log/', '.squad/log/.state-bridge-validation', ':(glob).squad/log/**'],
@@ -32,15 +47,23 @@ function isPlainObject(value) {
 }
 
 function readJson(file, errors, description) {
+  let text;
   try {
-    const value = JSON.parse(fs.readFileSync(file, 'utf8'));
+    text = fs.readFileSync(file, 'utf8');
+  } catch (error) {
+    errors.push(`${description} is unreadable: ${error.message}`);
+    return null;
+  }
+
+  try {
+    const value = JSON.parse(text);
     if (!isPlainObject(value)) {
       errors.push(`${description} top-level value must be a non-null, non-array JSON object`);
       return null;
     }
     return value;
   } catch (error) {
-    errors.push(`${path.relative(path.dirname(file), file) || path.basename(file)} is not valid JSON: ${error.message}`);
+    errors.push(`${description} is not valid JSON: ${error.message}`);
     return null;
   }
 }
@@ -49,12 +72,20 @@ function count(text, value) {
   return text.split(value).length - 1;
 }
 
-function git(root, args) {
+function git(root, args, input) {
   return spawnSync('git', args, {
     cwd: root,
     encoding: 'utf8',
+    input,
     windowsHide: true,
   });
+}
+
+function hasExactValues(value, expected) {
+  return Array.isArray(value) &&
+    value.length === expected.length &&
+    new Set(value).size === expected.length &&
+    expected.every(item => value.includes(item));
 }
 
 function gitignoreNegationRules(gitignore) {
@@ -131,8 +162,8 @@ function validateRepository(root) {
           if (!isPlainObject(server.env) || Object.keys(server.env).length !== 0) {
             errors.push('squad_state must not inject environment values');
           }
-          if (JSON.stringify(server.tools) !== JSON.stringify(['*'])) {
-            errors.push('squad_state must expose its governed state and memory tool surface');
+          if (!hasExactValues(server.tools, REQUIRED_MCP_TOOLS)) {
+            errors.push(`squad_state tools must exactly match the v${SQUAD_VERSION} governed surface: ${REQUIRED_MCP_TOOLS.join(', ')}`);
           }
         }
       }
@@ -153,6 +184,9 @@ function validateRepository(root) {
         coordinator.indexOf(HEAD_CANARY) > coordinator.indexOf(EOF_CANARY)) {
       errors.push('squad.agent.md must contain one ordered HEAD and EOF canary');
     }
+    if (!coordinator.trimEnd().endsWith(`<!-- ${EOF_CANARY} -->`)) {
+      errors.push('squad.agent.md must end with the EOF canary marker');
+    }
     if (!coordinator.includes(`<!-- version: ${SQUAD_VERSION} -->`) ||
         !coordinator.includes(`Squad v${SQUAD_VERSION}`)) {
       errors.push(`squad.agent.md must retain the ${SQUAD_VERSION} version stamp`);
@@ -162,9 +196,16 @@ function validateRepository(root) {
         !coordinator.includes('Do not silently fall back to raw file ops.')) {
       errors.push('squad.agent.md must retain static/mutable ownership and fail-closed rules');
     }
+    if (coordinator.includes('change `stateBackend` to `local`')) {
+      errors.push('squad.agent.md must not advise downgrading the configured state backend');
+    }
   }
 
-  for (const gitignorePath of repositoryGitignorePaths(root, errors)) {
+  const gitignorePaths = repositoryGitignorePaths(root, errors);
+  const repositoryGitignoreFiles = new Set(
+    gitignorePaths.map(gitignorePath => path.resolve(root, gitignorePath)),
+  );
+  for (const gitignorePath of gitignorePaths) {
     const absolutePath = path.resolve(root, gitignorePath);
     const relativePath = path.relative(root, absolutePath);
     if (relativePath === '' ||
@@ -196,7 +237,11 @@ function validateRepository(root) {
   }
 
   for (const [ignorePattern, probePath] of PROTECTED_PATHS) {
-    const result = git(root, ['check-ignore', '--quiet', '--no-index', '--', probePath]);
+    const result = git(
+      root,
+      ['check-ignore', '--verbose', '-z', '--no-index', '--stdin'],
+      `${probePath}\0`,
+    );
     if (result.error) {
       errors.push(`git is required to validate runtime-owned state: ${result.error.message}`);
       break;
@@ -205,6 +250,23 @@ function validateRepository(root) {
       errors.push(`.gitignore must effectively exclude runtime-owned state: ${ignorePattern}`);
     } else if (result.status !== 0) {
       errors.push(`git check-ignore failed for ${probePath}: ${(result.stderr || '').trim() || `exit ${result.status}`}`);
+    } else {
+      const fields = result.stdout.split('\0');
+      if (fields.at(-1) === '') {
+        fields.pop();
+      }
+      if (fields.length !== 4) {
+        errors.push(`git check-ignore returned an invalid verbose record for ${probePath}`);
+        continue;
+      }
+      const [source, , pattern] = fields;
+      if (pattern.startsWith('!')) {
+        errors.push(`.gitignore must effectively exclude runtime-owned state: ${ignorePattern}`);
+      } else if (!repositoryGitignoreFiles.has(path.resolve(root, source))) {
+        errors.push(
+          `.gitignore must effectively exclude runtime-owned state: ${ignorePattern} (matched by non-repository rule ${source})`,
+        );
+      }
     }
   }
 
@@ -251,6 +313,7 @@ module.exports = {
   EOF_CANARY,
   HEAD_CANARY,
   REQUIRED_IGNORES,
+  REQUIRED_MCP_TOOLS,
   SQUAD_VERSION,
   validateRepository,
 };
