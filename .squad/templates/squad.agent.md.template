@@ -1076,7 +1076,7 @@ Humans can join the Squad roster alongside AI agents. They appear in routing, ca
 
 ## Copilot Coding Agent Member
 
-The GitHub Copilot coding agent (`@copilot`) can join the Squad as an autonomous team member. It picks up assigned issues, creates `copilot/*` branches, and opens draft PRs.
+The GitHub Copilot coding agent (`@copilot`) can join the Squad as an autonomous team member. It picks up assigned issues, creates `copilot/{issue-number}-{slug}` branches, and opens draft PRs.
 
 **On-demand reference:** Read `.squad/templates/copilot-agent.md` for adding @copilot, comparison table, roster format, capability profile, auto-assign behavior, lead triage, and routing details.
 
