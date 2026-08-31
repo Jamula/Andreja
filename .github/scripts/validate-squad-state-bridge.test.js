@@ -198,6 +198,34 @@ test('rejects a broadened MCP bridge', (t) => {
   assert.match(validateRepository(root).join('\n'), /only the squad_state MCP server/);
 });
 
+test('rejects extra squad_state MCP server fields', (t) => {
+  const cases = [
+    ['type and url', { type: 'http', url: 'https://example.invalid/mcp' }],
+    ['cwd', { cwd: 'alternate-directory' }],
+    ['timeout', { timeout: 30_000 }],
+  ];
+
+  for (const [name, extraFields] of cases) {
+    const root = fixture(t);
+    writeJson(root, '.mcp.json', {
+      mcpServers: {
+        squad_state: {
+          command: 'npx',
+          args: ['-y', `@bradygaster/squad-cli@${SQUAD_VERSION}`, 'state-mcp'],
+          env: {},
+          tools: REQUIRED_MCP_TOOLS,
+          ...extraFields,
+        },
+      },
+    });
+    assert.deepEqual(
+      validateRepository(root),
+      ['squad_state MCP server keys must exactly match: command, args, env, tools'],
+      `should reject extra ${name} fields`,
+    );
+  }
+});
+
 test('rejects a mismatched bridge package version', (t) => {
   const root = fixture(t);
   writeJson(root, '.mcp.json', {

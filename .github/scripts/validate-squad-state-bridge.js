@@ -25,6 +25,7 @@ const REQUIRED_MCP_TOOLS = [
   'memory.delete',
   'memory.audit',
 ];
+const REQUIRED_MCP_SERVER_KEYS = ['command', 'args', 'env', 'tools'];
 const REQUIRED_IGNORES = PROTECTED_PATHS.map(([ignorePattern]) => ignorePattern);
 
 function isPlainObject(value) {
@@ -142,6 +143,9 @@ function validateRepository(root) {
         if (!isPlainObject(server)) {
           errors.push('squad_state MCP server must be a non-null, non-array JSON object');
         } else {
+          if (!hasExactValues(Object.keys(server), REQUIRED_MCP_SERVER_KEYS)) {
+            errors.push(`squad_state MCP server keys must exactly match: ${REQUIRED_MCP_SERVER_KEYS.join(', ')}`);
+          }
           const expectedArgs = ['-y', `@bradygaster/squad-cli@${SQUAD_VERSION}`, 'state-mcp'];
           if (server.command !== 'npx' ||
               JSON.stringify(server.args) !== JSON.stringify(expectedArgs)) {
