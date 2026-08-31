@@ -27,6 +27,10 @@ const REQUIRED_MCP_TOOLS = [
 ];
 const REQUIRED_MCP_SERVER_KEYS = ['command', 'args', 'env', 'tools'];
 const REQUIRED_IGNORES = PROTECTED_PATHS.map(([ignorePattern]) => ignorePattern);
+const NON_LOCAL_RAW_FILE_PROHIBITION_HEADING = '**HARD RULE — Backend contract enforcement:**';
+const REQUIRED_NON_LOCAL_RAW_FILE_PROHIBITIONS = [
+  '.squad/agents/*/history-archive.md',
+];
 
 function isPlainObject(value) {
   return value !== null &&
@@ -59,6 +63,43 @@ function readJson(file, errors, description) {
 
 function count(text, value) {
   return text.split(value).length - 1;
+}
+
+function parseBoundedBulletList(text, heading) {
+  const lines = text.split(/\r?\n/u);
+  const headingIndexes = lines.flatMap((line, index) =>
+    line.startsWith(heading) ? [index] : []);
+  if (headingIndexes.length !== 1 || lines[headingIndexes[0] + 1] !== '') {
+    return null;
+  }
+
+  const bullets = [];
+  let index = headingIndexes[0] + 2;
+  while (index < lines.length && lines[index].startsWith('- ')) {
+    bullets.push(lines[index]);
+    index += 1;
+  }
+
+  if (bullets.length === 0 || lines[index] !== '') {
+    return null;
+  }
+  return bullets;
+}
+
+function parseBoundedNumberedStep(text, stepNumber, nextStepNumber) {
+  const lines = text.split(/\r?\n/u);
+  const stepPattern = new RegExp(`^${stepNumber}\\.\\s`, 'u');
+  const nextStepPattern = new RegExp(`^${nextStepNumber}\\.\\s`, 'u');
+  const stepIndexes = lines.flatMap((line, index) =>
+    stepPattern.test(line) ? [index] : []);
+  const nextStepIndexes = lines.flatMap((line, index) =>
+    nextStepPattern.test(line) ? [index] : []);
+  if (stepIndexes.length !== 1 ||
+      nextStepIndexes.length !== 1 ||
+      nextStepIndexes[0] <= stepIndexes[0]) {
+    return null;
+  }
+  return lines.slice(stepIndexes[0], nextStepIndexes[0]).join('\n');
 }
 
 function git(root, args, input) {
@@ -201,6 +242,22 @@ function validateRepository(root) {
         !coordinator.includes('Do not silently fall back to raw file ops.')) {
       errors.push('squad.agent.md must retain static/mutable ownership and fail-closed rules');
     }
+    const rawFileProhibitions = parseBoundedBulletList(
+      coordinator,
+      NON_LOCAL_RAW_FILE_PROHIBITION_HEADING,
+    );
+    if (rawFileProhibitions === null) {
+      errors.push('squad.agent.md must retain one bounded non-local raw-file prohibition list');
+    } else {
+      for (const protectedPath of REQUIRED_NON_LOCAL_RAW_FILE_PROHIBITIONS) {
+        const requiredLine = `- \`${protectedPath}\``;
+        if (rawFileProhibitions.filter(line => line === requiredLine).length !== 1) {
+          errors.push(
+            `squad.agent.md non-local raw-file prohibition list must contain exactly once: ${protectedPath}`,
+          );
+        }
+      }
+    }
     const probeFailureParagraphs = coordinator.split(/\r?\n/u)
       .filter(line => line.startsWith('3. **If the probe fails**'));
     if (probeFailureParagraphs.length !== 1 ||
@@ -332,9 +389,13 @@ module.exports = {
   EOF_CANARY,
   HEAD_CANARY,
   HOST_NEUTRAL_RECOVERY_SENTENCE,
+  NON_LOCAL_RAW_FILE_PROHIBITION_HEADING,
   PROBE_FAILURE_RECOVERY_PARAGRAPH,
   REQUIRED_IGNORES,
   REQUIRED_MCP_TOOLS,
+  REQUIRED_NON_LOCAL_RAW_FILE_PROHIBITIONS,
   SQUAD_VERSION,
+  parseBoundedBulletList,
+  parseBoundedNumberedStep,
   validateRepository,
 };

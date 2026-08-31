@@ -10,14 +10,61 @@ const {
   EOF_CANARY,
   HEAD_CANARY,
   HOST_NEUTRAL_RECOVERY_SENTENCE,
+  NON_LOCAL_RAW_FILE_PROHIBITION_HEADING,
   PROBE_FAILURE_RECOVERY_PARAGRAPH,
   REQUIRED_IGNORES,
   REQUIRED_MCP_TOOLS,
+  REQUIRED_NON_LOCAL_RAW_FILE_PROHIBITIONS,
   SQUAD_VERSION,
+  parseBoundedBulletList,
+  parseBoundedNumberedStep,
   validateRepository,
 } = require('./validate-squad-state-bridge');
 
 let sequence = 0;
+
+const CANONICAL_FRESH_CHILD_PROBE_STEP = [
+  '5. With a unique, non-sensitive',
+  '.scratch/state-bridge-probe-<session-id>.md key in the explicitly',
+  'ephemeral governed .scratch/ namespace, use squad_state_write, read back',
+  'the exact value, delete it with squad_state_delete, and confirm a final',
+  'read reports key-not-found.',
+].join(' ');
+
+function normalizeMarkdownAndWhitespace(markdown) {
+  return markdown
+    .replace(/`([^`\r\n]+)`/gu, '$1')
+    .replace(/\*\*([^*\r\n]+)\*\*/gu, '$1')
+    .replace(/__([^_\r\n]+)__/gu, '$1')
+    .replace(/~~([^~\r\n]+)~~/gu, '$1')
+    .replace(/(?<!\*)\*([^*\r\n]+)\*(?!\*)/gu, '$1')
+    .replace(/\s+/gu, ' ')
+    .trim();
+}
+
+function freshChildProbeStepErrors(runbook) {
+  const step = parseBoundedNumberedStep(runbook, 5, 6);
+  if (step === null) {
+    return ['fresh-child acceptance must contain one step 5 bounded by step 6'];
+  }
+
+  const errors = [];
+  if (/~~/u.test(step)) {
+    errors.push(
+      'fresh-child acceptance step 5 must not contain Markdown strikethrough markup',
+    );
+  }
+  const normalizedStep = normalizeMarkdownAndWhitespace(step);
+  if (/(?:^|[^A-Za-z0-9_.-])log\//iu.test(normalizedStep)) {
+    errors.push('fresh-child acceptance step 5 must not use a log/ probe path');
+  }
+  if (normalizedStep !== CANONICAL_FRESH_CHILD_PROBE_STEP) {
+    errors.push(
+      'fresh-child acceptance step 5 must retain the canonical affirmative probe sequence',
+    );
+  }
+  return errors;
+}
 
 function fixture(t) {
   sequence += 1;
@@ -49,6 +96,12 @@ function fixture(t) {
       `Report \`Squad v${SQUAD_VERSION}\`.`,
       'Static config (charters, team.md, routing.md) always lives on disk.',
       'The runtime owns persistence and you MUST NOT touch mutable files.',
+      NON_LOCAL_RAW_FILE_PROHIBITION_HEADING,
+      '',
+      '- `.squad/agents/*/history.md`',
+      '- `.squad/agents/*/history-archive.md`',
+      '',
+      'These are runtime-managed paths under non-local backends.',
       PROBE_FAILURE_RECOVERY_PARAGRAPH,
       `<!-- ${EOF_CANARY} -->`,
     ].join('\n'),
@@ -311,6 +364,29 @@ test('checked-in coordinator and template retain synchronized host-neutral recov
   assert.equal(recoveryParagraphs[0][0], recoveryParagraphs[1][0]);
 });
 
+test('checked-in coordinator and template prohibit raw archived-history writes', () => {
+  const repositoryRoot = path.resolve(__dirname, '..', '..');
+  const sources = [
+    path.join(repositoryRoot, '.github', 'agents', 'squad.agent.md'),
+    path.join(repositoryRoot, '.squad', 'templates', 'squad.agent.md.template'),
+  ];
+  const prohibitionLists = sources.map(source => parseBoundedBulletList(
+    fs.readFileSync(source, 'utf8'),
+    NON_LOCAL_RAW_FILE_PROHIBITION_HEADING,
+  ));
+  const requiredLines = REQUIRED_NON_LOCAL_RAW_FILE_PROHIBITIONS.map(
+    protectedPath => `- \`${protectedPath}\``,
+  );
+
+  for (const prohibitionList of prohibitionLists) {
+    assert.notEqual(prohibitionList, null);
+    for (const requiredLine of requiredLines) {
+      assert.equal(prohibitionList.filter(line => line === requiredLine).length, 1);
+    }
+  }
+  assert.deepEqual(prohibitionLists[0], prohibitionLists[1]);
+});
+
 test('rejects loss of the fail-closed ownership contract', (t) => {
   const root = fixture(t);
   const coordinator = path.join(root, '.github', 'agents', 'squad.agent.md');
@@ -320,6 +396,95 @@ test('rejects loss of the fail-closed ownership contract', (t) => {
       .replace('Do not silently fall back to raw file ops.', ''),
   );
   assert.match(validateRepository(root).join('\n'), /ownership and fail-closed rules/);
+});
+
+test('rejects an archived-history prohibition moved outside its bounded list', (t) => {
+  const root = fixture(t);
+  const coordinator = path.join(root, '.github', 'agents', 'squad.agent.md');
+  const archiveLine = '- `.squad/agents/*/history-archive.md`';
+  fs.writeFileSync(
+    coordinator,
+    fs.readFileSync(coordinator, 'utf8')
+      .replace(`${archiveLine}\n\n`, `\n${archiveLine}\n`),
+  );
+  assert.match(
+    validateRepository(root).join('\n'),
+    /prohibition list must contain exactly once.*\.squad\/agents\/\*\/history-archive\.md/,
+  );
+});
+
+test('fresh-child acceptance uses only the ephemeral governed probe namespace', () => {
+  const runbook = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'docs', 'operations', 'squad-state-bridge.md'),
+    'utf8',
+  );
+  assert.deepEqual(freshChildProbeStepErrors(runbook), []);
+});
+
+test('fresh-child step rejects negated governed probe operations', () => {
+  const runbook = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'docs', 'operations', 'squad-state-bridge.md'),
+    'utf8',
+  );
+  const negatedInstructions = [
+    [/use `squad_state_write`/u, 'do not use `squad_state_write`'],
+    [/delete it with `squad_state_delete`/u, 'do not delete it with `squad_state_delete`'],
+    [
+      /confirm a final\r?\n   read reports key-not-found/u,
+      'do not confirm a final\n   read reports key-not-found',
+    ],
+  ];
+
+  for (const [affirmativePattern, negated] of negatedInstructions) {
+    const variant = runbook.replace(affirmativePattern, negated);
+    assert.notEqual(variant, runbook);
+    assert.deepEqual(
+      freshChildProbeStepErrors(variant),
+      ['fresh-child acceptance step 5 must retain the canonical affirmative probe sequence'],
+    );
+  }
+});
+
+test('fresh-child step rejects struck-through governed probe operations', () => {
+  const runbook = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'docs', 'operations', 'squad-state-bridge.md'),
+    'utf8',
+  );
+  const struckInstructions = [
+    [/use `squad_state_write`/u, '~~use `squad_state_write`~~'],
+    [
+      /delete it with `squad_state_delete`/u,
+      '~~delete it with `squad_state_delete`~~',
+    ],
+  ];
+
+  for (const [affirmativePattern, struck] of struckInstructions) {
+    const variant = runbook.replace(affirmativePattern, struck);
+    assert.notEqual(variant, runbook);
+    assert.deepEqual(
+      freshChildProbeStepErrors(variant),
+      ['fresh-child acceptance step 5 must not contain Markdown strikethrough markup'],
+    );
+  }
+});
+
+test('fresh-child step rejects a rendered Markdown-obscured log probe path', () => {
+  const runbook = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'docs', 'operations', 'squad-state-bridge.md'),
+    'utf8',
+  );
+  const variant = runbook.replace(
+    '\n6. Attempt a non-sensitive write',
+    '\n   Also probe **log**/probe.md.\n6. Attempt a non-sensitive write',
+  );
+
+  assert.deepEqual(
+    freshChildProbeStepErrors(variant),
+    [
+      'fresh-child acceptance step 5 must not use a log/ probe path',
+      'fresh-child acceptance step 5 must retain the canonical affirmative probe sequence',
+    ],
+  );
 });
 
 test('rejects CLI-only probe-failure recovery advice', (t) => {

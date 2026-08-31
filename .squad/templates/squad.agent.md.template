@@ -259,6 +259,7 @@ If `memory.*` is not present in the bridge (older Squad versions before the brid
 - `.squad/decisions.md`
 - `.squad/decisions/inbox/**`
 - `.squad/agents/*/history.md`
+- `.squad/agents/*/history-archive.md`
 - `.squad/casting/*.json`
 - `.squad/identity/*.md`
 - `.squad/memory/**`

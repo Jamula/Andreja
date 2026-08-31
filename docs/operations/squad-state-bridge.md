@@ -55,9 +55,11 @@ the app version and child-session ID, then require this evidence:
 3. `squad_state_health` returns `StateBackendStorageAdapter`.
 4. Static `team.md`, `routing.md`, and the assigned charter are read from disk.
    Mutable `decisions.md` is read only through `squad_state_read`.
-5. With a unique, non-sensitive `log/state-bridge-probe-<session-id>.md` key,
-   use `squad_state_write`, read back the exact value, delete it with
-   `squad_state_delete`, and confirm a final read reports key-not-found.
+5. With a unique, non-sensitive
+   `.scratch/state-bridge-probe-<session-id>.md` key in the explicitly
+   ephemeral governed `.scratch/` namespace, use `squad_state_write`, read back
+   the exact value, delete it with `squad_state_delete`, and confirm a final
+   read reports key-not-found.
 6. Attempt a non-sensitive write under disallowed `verification/`. The adapter
    must reject it. Do not use file operations or another namespace to retry.
 7. After the probes, compare the same baseline and retain the Git check:
