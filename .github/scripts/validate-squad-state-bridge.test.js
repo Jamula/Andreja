@@ -9,6 +9,8 @@ const test = require('node:test');
 const {
   EOF_CANARY,
   HEAD_CANARY,
+  HOST_NEUTRAL_RECOVERY_SENTENCE,
+  PROBE_FAILURE_RECOVERY_PARAGRAPH,
   REQUIRED_IGNORES,
   REQUIRED_MCP_TOOLS,
   SQUAD_VERSION,
@@ -44,10 +46,10 @@ function fixture(t) {
     [
       HEAD_CANARY,
       `<!-- version: ${SQUAD_VERSION} -->`,
-      `Report Squad v${SQUAD_VERSION}.`,
+      `Report \`Squad v${SQUAD_VERSION}\`.`,
       'Static config (charters, team.md, routing.md) always lives on disk.',
       'The runtime owns persistence and you MUST NOT touch mutable files.',
-      'Do not silently fall back to raw file ops.',
+      PROBE_FAILURE_RECOVERY_PARAGRAPH,
       `<!-- ${EOF_CANARY} -->`,
     ].join('\n'),
   );
@@ -264,6 +266,23 @@ test('rejects an empty readable coordinator file', (t) => {
   assert.match(validateRepository(root).join('\n'), /squad\.agent\.md must not be empty/);
 });
 
+test('checked-in coordinator and template retain synchronized host-neutral recovery wording', () => {
+  const repositoryRoot = path.resolve(__dirname, '..', '..');
+  const sources = [
+    path.join(repositoryRoot, '.github', 'agents', 'squad.agent.md'),
+    path.join(repositoryRoot, '.squad', 'templates', 'squad.agent.md.template'),
+  ];
+  const recoveryParagraphs = sources.map(source => fs.readFileSync(source, 'utf8')
+    .split(/\r?\n/u)
+    .filter(line => line.startsWith('3. **If the probe fails**')));
+
+  for (const paragraphs of recoveryParagraphs) {
+    assert.deepEqual(paragraphs, [PROBE_FAILURE_RECOVERY_PARAGRAPH]);
+    assert.equal(paragraphs[0].includes(HOST_NEUTRAL_RECOVERY_SENTENCE), true);
+  }
+  assert.equal(recoveryParagraphs[0][0], recoveryParagraphs[1][0]);
+});
+
 test('rejects loss of the fail-closed ownership contract', (t) => {
   const root = fixture(t);
   const coordinator = path.join(root, '.github', 'agents', 'squad.agent.md');
@@ -275,17 +294,96 @@ test('rejects loss of the fail-closed ownership contract', (t) => {
   assert.match(validateRepository(root).join('\n'), /ownership and fail-closed rules/);
 });
 
-test('rejects state-backend downgrade recovery advice', (t) => {
+test('rejects CLI-only probe-failure recovery advice', (t) => {
   const root = fixture(t);
   const coordinator = path.join(root, '.github', 'agents', 'squad.agent.md');
   fs.writeFileSync(
     coordinator,
     fs.readFileSync(coordinator, 'utf8').replace(
-      `<!-- ${EOF_CANARY} -->`,
-      `Change recovery: change \`stateBackend\` to \`local\`.\n<!-- ${EOF_CANARY} -->`,
+      HOST_NEUTRAL_RECOVERY_SENTENCE,
+      'Restart Copilot CLI so `.mcp.json` is loaded, then start a fresh session.',
     ),
   );
-  assert.match(validateRepository(root).join('\n'), /must not advise downgrading/);
+  assert.match(validateRepository(root).join('\n'), /host-neutral probe-failure recovery paragraph/);
+});
+
+test('rejects a state-backend downgrade paraphrase as probe-failure recovery', (t) => {
+  const root = fixture(t);
+  const coordinator = path.join(root, '.github', 'agents', 'squad.agent.md');
+  fs.writeFileSync(
+    coordinator,
+    fs.readFileSync(coordinator, 'utf8').replace(
+      PROBE_FAILURE_RECOVERY_PARAGRAPH,
+      '3. **If the probe fails**: HALT before any state write. Set stateBackend to local and retry.',
+    ),
+  );
+  assert.match(validateRepository(root).join('\n'), /host-neutral probe-failure recovery paragraph/);
+});
+
+test('rejects duplicate or conflicting coordinator version markers', (t) => {
+  for (const additionalVersion of [SQUAD_VERSION, '0.13.0']) {
+    const root = fixture(t);
+    const coordinator = path.join(root, '.github', 'agents', 'squad.agent.md');
+    fs.writeFileSync(
+      coordinator,
+      fs.readFileSync(coordinator, 'utf8').replace(
+        `<!-- version: ${SQUAD_VERSION} -->`,
+        `<!-- version: ${SQUAD_VERSION} -->\n<!-- version: ${additionalVersion} -->`,
+      ),
+    );
+    assert.match(validateRepository(root).join('\n'), /exactly one version marker/);
+  }
+});
+
+test('rejects a conflicting reported Squad version', (t) => {
+  const root = fixture(t);
+  const coordinator = path.join(root, '.github', 'agents', 'squad.agent.md');
+  fs.writeFileSync(
+    coordinator,
+    fs.readFileSync(coordinator, 'utf8').replace(
+      `Report \`Squad v${SQUAD_VERSION}\`.`,
+      `Report \`Squad v${SQUAD_VERSION}\`, then report \`Squad v0.13.0\`.`,
+    ),
+  );
+  assert.match(validateRepository(root).join('\n'), /must report only Squad v0\.12\.0/);
+});
+
+test('rejects prefixed conflicting numeric Squad versions', (t) => {
+  const root = fixture(t);
+  const coordinator = path.join(root, '.github', 'agents', 'squad.agent.md');
+  fs.writeFileSync(
+    coordinator,
+    fs.readFileSync(coordinator, 'utf8').replace(
+      `Report \`Squad v${SQUAD_VERSION}\`.`,
+      `Report \`Squad v${SQUAD_VERSION}\`, \`_Squad v0.13.0\`, and \`xSquad v0.13.0\`.`,
+    ),
+  );
+  assert.match(validateRepository(root).join('\n'), /must report only Squad v0\.12\.0/);
+});
+
+test('rejects canonical plus malformed reported Squad version tokens', (t) => {
+  const malformedVersions = [
+    `${SQUAD_VERSION}.1`,
+    `${SQUAD_VERSION}+`,
+    `${SQUAD_VERSION}-`,
+  ];
+
+  for (const malformedVersion of malformedVersions) {
+    const root = fixture(t);
+    const coordinator = path.join(root, '.github', 'agents', 'squad.agent.md');
+    fs.writeFileSync(
+      coordinator,
+      fs.readFileSync(coordinator, 'utf8').replace(
+        `Report \`Squad v${SQUAD_VERSION}\`.`,
+        `Report \`Squad v${SQUAD_VERSION}\`, then report \`Squad v${malformedVersion}\`.`,
+      ),
+    );
+    assert.match(
+      validateRepository(root).join('\n'),
+      /must report only Squad v0\.12\.0/,
+      `should reject Squad v${malformedVersion}`,
+    );
+  }
 });
 
 test('rejects a later gitignore negation of runtime-owned state', (t) => {

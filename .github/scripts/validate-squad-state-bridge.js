@@ -7,6 +7,8 @@ const { spawnSync } = require('node:child_process');
 const SQUAD_VERSION = '0.12.0';
 const HEAD_CANARY = 'SQUAD_COORDINATOR_CANARY_HEAD_b7d2';
 const EOF_CANARY = 'SQUAD_COORDINATOR_CANARY_a8f3';
+const HOST_NEUTRAL_RECOVERY_SENTENCE = 'Restart the app/session so project `.mcp.json` is loaded, then start a fresh child session.';
+const PROBE_FAILURE_RECOVERY_PARAGRAPH = `3. **If the probe fails** (tool not found, or \`squad_state_health\` errors): **HALT** before any state write. Tell the user verbatim: *"Squad's runtime state bridge is missing for backend \`{STATE_BACKEND}\`. The \`squad_state\` MCP server in \`.mcp.json\` is not reachable in this Copilot session. ${HOST_NEUTRAL_RECOVERY_SENTENCE}"* — and stop until the user acknowledges. Do not silently fall back to raw file ops.`;
 const REQUIRED_MCP_TOOLS = [
   'squad_decide',
   'squad_state_read',
@@ -188,17 +190,33 @@ function validateRepository(root) {
     if (!coordinator.trimEnd().endsWith(`<!-- ${EOF_CANARY} -->`)) {
       errors.push('squad.agent.md must end with the EOF canary marker');
     }
-    if (!coordinator.includes(`<!-- version: ${SQUAD_VERSION} -->`) ||
-        !coordinator.includes(`Squad v${SQUAD_VERSION}`)) {
-      errors.push(`squad.agent.md must retain the ${SQUAD_VERSION} version stamp`);
+    const versionMarkers = [
+      ...coordinator.matchAll(/<!--\s*version:\s*([\s\S]*?)-->/gu),
+    ].map(match => match[1].trim());
+    if (versionMarkers.length !== 1 || versionMarkers[0] !== SQUAD_VERSION) {
+      errors.push(`squad.agent.md must contain exactly one version marker for ${SQUAD_VERSION}`);
+    }
+    const reportedVersionOccurrences = [
+      ...coordinator.matchAll(/Squad v(?=\d)/gu),
+    ].length;
+    const reportedVersions = [
+      ...coordinator.matchAll(/Squad v(\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?)(?![0-9A-Za-z._+-])/gu),
+    ].map(match => match[1]);
+    if (reportedVersionOccurrences === 0 ||
+        reportedVersions.length !== reportedVersionOccurrences ||
+        reportedVersions.some(version => version !== SQUAD_VERSION)) {
+      errors.push(`squad.agent.md must report only Squad v${SQUAD_VERSION}`);
     }
     if (!coordinator.includes('Static config (charters, team.md, routing.md) always lives on disk') ||
         !coordinator.includes('runtime owns persistence and you MUST NOT touch') ||
         !coordinator.includes('Do not silently fall back to raw file ops.')) {
       errors.push('squad.agent.md must retain static/mutable ownership and fail-closed rules');
     }
-    if (coordinator.includes('change `stateBackend` to `local`')) {
-      errors.push('squad.agent.md must not advise downgrading the configured state backend');
+    const probeFailureParagraphs = coordinator.split(/\r?\n/u)
+      .filter(line => line.startsWith('3. **If the probe fails**'));
+    if (probeFailureParagraphs.length !== 1 ||
+        probeFailureParagraphs[0] !== PROBE_FAILURE_RECOVERY_PARAGRAPH) {
+      errors.push('squad.agent.md must retain the approved host-neutral probe-failure recovery paragraph');
     }
   }
 
@@ -324,6 +342,8 @@ if (require.main === module) {
 module.exports = {
   EOF_CANARY,
   HEAD_CANARY,
+  HOST_NEUTRAL_RECOVERY_SENTENCE,
+  PROBE_FAILURE_RECOVERY_PARAGRAPH,
   REQUIRED_IGNORES,
   REQUIRED_MCP_TOOLS,
   SQUAD_VERSION,
