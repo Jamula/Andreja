@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { PROTECTED_PATHS } = require('./squad-state-protected-paths');
 
 const SQUAD_VERSION = '0.12.0';
 const HEAD_CANARY = 'SQUAD_COORDINATOR_CANARY_HEAD_b7d2';
@@ -23,22 +24,6 @@ const REQUIRED_MCP_TOOLS = [
   'memory.promote',
   'memory.delete',
   'memory.audit',
-];
-const PROTECTED_PATHS = [
-  ['.squad/orchestration-log/', '.squad/orchestration-log/.state-bridge-validation', ':(glob).squad/orchestration-log/**'],
-  ['.squad/log/', '.squad/log/.state-bridge-validation', ':(glob).squad/log/**'],
-  ['.squad/decisions/inbox/', '.squad/decisions/inbox/.state-bridge-validation', ':(glob).squad/decisions/inbox/**'],
-  ['.squad/sessions/', '.squad/sessions/.state-bridge-validation', ':(glob).squad/sessions/**'],
-  ['.squad/.scratch/', '.squad/.scratch/.state-bridge-validation', ':(glob).squad/.scratch/**'],
-  ['.squad/.cache/', '.squad/.cache/.state-bridge-validation', ':(glob).squad/.cache/**'],
-  ['.squad/decisions.md', '.squad/decisions.md', '.squad/decisions.md'],
-  ['.squad/agents/*/history.md', '.squad/agents/state-bridge-validation/history.md', ':(glob).squad/agents/*/history.md'],
-  ['.squad/agents/*/history-archive.md', '.squad/agents/state-bridge-validation/history-archive.md', ':(glob).squad/agents/*/history-archive.md'],
-  ['.squad/casting/history.json', '.squad/casting/history.json', '.squad/casting/history.json'],
-  ['.squad/identity/', '.squad/identity/.state-bridge-validation', ':(glob).squad/identity/**'],
-  ['.squad/memory/', '.squad/memory/.state-bridge-validation', ':(glob).squad/memory/**'],
-  ['.squad/rai/audit-trail.md', '.squad/rai/audit-trail.md', '.squad/rai/audit-trail.md'],
-  ['.squad/fact-checker/audit-trail.md', '.squad/fact-checker/audit-trail.md', '.squad/fact-checker/audit-trail.md'],
 ];
 const REQUIRED_IGNORES = PROTECTED_PATHS.map(([ignorePattern]) => ignorePattern);
 

@@ -7,6 +7,9 @@ on:
       - '.github/agents/squad.agent.md'
       - '.github/scripts/validate-squad-state-bridge.js'
       - '.github/scripts/validate-squad-state-bridge.test.js'
+      - '.github/scripts/squad-state-protected-manifest.js'
+      - '.github/scripts/squad-state-protected-manifest.test.js'
+      - '.github/scripts/squad-state-protected-paths.js'
       - '.github/workflows/squad-state-bridge-tests.yml'
       - '.mcp.json'
       - '.squad/**'
@@ -20,6 +23,9 @@ on:
       - '.github/agents/squad.agent.md'
       - '.github/scripts/validate-squad-state-bridge.js'
       - '.github/scripts/validate-squad-state-bridge.test.js'
+      - '.github/scripts/squad-state-protected-manifest.js'
+      - '.github/scripts/squad-state-protected-manifest.test.js'
+      - '.github/scripts/squad-state-protected-paths.js'
       - '.github/workflows/squad-state-bridge-tests.yml'
       - '.mcp.json'
       - '.squad/**'
@@ -50,3 +56,6 @@ jobs:
 
       - name: Test failure handling
         run: node --test .github/scripts/validate-squad-state-bridge.test.js
+
+      - name: Test private-safe protected-state manifest
+        run: node --test .github/scripts/squad-state-protected-manifest.test.js
