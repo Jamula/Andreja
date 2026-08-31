@@ -31,6 +31,7 @@ const PROTECTED_PATHS = [
   ['.squad/.cache/', '.squad/.cache/.state-bridge-validation', ':(glob).squad/.cache/**'],
   ['.squad/decisions.md', '.squad/decisions.md', '.squad/decisions.md'],
   ['.squad/agents/*/history.md', '.squad/agents/state-bridge-validation/history.md', ':(glob).squad/agents/*/history.md'],
+  ['.squad/agents/*/history-archive.md', '.squad/agents/state-bridge-validation/history-archive.md', ':(glob).squad/agents/*/history-archive.md'],
   ['.squad/casting/history.json', '.squad/casting/history.json', '.squad/casting/history.json'],
   ['.squad/identity/', '.squad/identity/.state-bridge-validation', ':(glob).squad/identity/**'],
   ['.squad/memory/', '.squad/memory/.state-bridge-validation', ':(glob).squad/memory/**'],
@@ -205,6 +206,7 @@ function validateRepository(root) {
   const repositoryGitignoreFiles = new Set(
     gitignorePaths.map(gitignorePath => path.resolve(root, gitignorePath)),
   );
+  let rootGitignoreRules = new Set();
   for (const gitignorePath of gitignorePaths) {
     const absolutePath = path.resolve(root, gitignorePath);
     const relativePath = path.relative(root, absolutePath);
@@ -228,11 +230,21 @@ function validateRepository(root) {
       errors.push(`${gitignorePath} is unreadable: ${error.message}`);
     }
     if (gitignore !== null) {
+      if (gitignorePath === '.gitignore') {
+        const normalized = gitignore.startsWith('\uFEFF') ? gitignore.slice(1) : gitignore;
+        rootGitignoreRules = new Set(normalized.split(/\r?\n/u));
+      }
       for (const negation of gitignoreNegationRules(gitignore)) {
         errors.push(
           `${gitignorePath} must not contain negation rules (line ${negation.line}: ${negation.rule})`,
         );
       }
+    }
+  }
+
+  for (const ignorePattern of REQUIRED_IGNORES) {
+    if (!rootGitignoreRules.has(ignorePattern)) {
+      errors.push(`.gitignore must contain canonical protected ignore rule: ${ignorePattern}`);
     }
   }
 

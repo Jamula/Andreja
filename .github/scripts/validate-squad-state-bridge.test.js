@@ -3,7 +3,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 const test = require('node:test');
 
 const {
@@ -297,6 +297,28 @@ test('rejects a later gitignore negation of runtime-owned state', (t) => {
   );
 });
 
+test('rejects a sentinel-only ignore that leaves the agent history namespace exposed', (t) => {
+  const root = fixture(t);
+  const gitignore = path.join(root, '.gitignore');
+  fs.writeFileSync(
+    gitignore,
+    fs.readFileSync(gitignore, 'utf8').replace(
+      '.squad/agents/*/history.md',
+      '.squad/agents/state-bridge-validation/history.md',
+    ),
+  );
+  const exposed = spawnSync(
+    'git',
+    ['check-ignore', '--quiet', '--no-index', '.squad/agents/data/history.md'],
+    { cwd: root },
+  );
+  assert.equal(exposed.status, 1);
+  assert.match(
+    validateRepository(root).join('\n'),
+    /must contain canonical protected ignore rule: \.squad\/agents\/\*\/history\.md/,
+  );
+});
+
 test('rejects a targeted agent history negation', (t) => {
   const root = fixture(t);
   fs.appendFileSync(path.join(root, '.gitignore'), '\n!.squad/agents/data/history.md\n');
@@ -402,5 +424,17 @@ test('rejects force-tracked runtime-owned state', (t) => {
   assert.match(
     validateRepository(root).join('\n'),
     /runtime-owned state must not be tracked: \.squad\/decisions\.md/,
+  );
+});
+
+test('rejects force-tracked archived agent history', (t) => {
+  const root = fixture(t);
+  const archive = path.join(root, '.squad', 'agents', 'data', 'history-archive.md');
+  fs.mkdirSync(path.dirname(archive), { recursive: true });
+  fs.writeFileSync(archive, 'runtime-owned\n');
+  execFileSync('git', ['add', '--force', '.squad/agents/data/history-archive.md'], { cwd: root });
+  assert.match(
+    validateRepository(root).join('\n'),
+    /runtime-owned state must not be tracked: \.squad\/agents\/data\/history-archive\.md/,
   );
 });

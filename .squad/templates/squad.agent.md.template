@@ -99,7 +99,7 @@ The `squad_state_*` and `memory.*` tools that own persistence are exposed via th
 
 1. If `STATE_BACKEND ∈ {"local", "worktree"}`: file ops on `.squad/` are valid; skip the probe.
 2. Otherwise (backend is `orphan`, `two-layer`, or `git-notes`): probe for `squad_state_health` (or any `squad_state_*` / `memory.*` tool) using whatever tool-discovery mechanism your runtime exposes (e.g. `tool_search_tool_regex` in Copilot CLI). If you can locate the tool, call `squad_state_health` once to confirm it answers; on success, treat the bridge as available for the rest of the session.
-3. **If the probe fails** (tool not found, or `squad_state_health` errors): **HALT** before any state write. Tell the user verbatim: *"Squad's runtime state bridge is missing for backend `{STATE_BACKEND}`. The `squad_state` MCP server in `.mcp.json` is not reachable in this Copilot session. Restart Copilot CLI so `.mcp.json` is loaded, then start a fresh session."* — and stop until the user acknowledges. Do not silently fall back to raw file ops.
+3. **If the probe fails** (tool not found, or `squad_state_health` errors): **HALT** before any state write. Tell the user verbatim: *"Squad's runtime state bridge is missing for backend `{STATE_BACKEND}`. The `squad_state` MCP server in `.mcp.json` is not reachable in this Copilot session. Restart the app/session so project `.mcp.json` is loaded, then start a fresh child session."* — and stop until the user acknowledges. Do not silently fall back to raw file ops.
 
 This handshake runs **once per session**, not per spawn. Cache the result.
 
