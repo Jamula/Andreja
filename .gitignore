@@ -74,6 +74,7 @@ nunit-*.xml
 # Squad: state owned by squad-state branch (two-layer/orphan backend)
 .squad/decisions.md
 .squad/agents/*/history.md
+.squad/agents/*/history-archive.md
 .squad/casting/history.json
 .squad/identity/
 .squad/memory/

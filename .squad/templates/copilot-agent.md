@@ -33,7 +33,7 @@ When the user says "add copilot", "add the coding agent", or "use @copilot for i
 | | Spawned Agent | @copilot |
 |---|--------------|----------|
 | Execution model | Sync sub-task within session | Async — picks up assigned issues |
-| Branch convention | `squad/{issue}-{slug}` | `copilot/{slug}` |
+| Branch convention | `squad/{issue}-{slug}` | `copilot/{issue-number}-{slug}` |
 | Trigger | Coordinator spawns directly | Issue assignment |
 | Charter source | `.squad/agents/{name}/charter.md` | `.github/copilot-instructions.md` |
 | Context window | Inherits full session context | Fresh context per issue |
@@ -92,5 +92,5 @@ Work that routes to @copilot:
 ## Monitoring @copilot Work
 
 On each watch cycle (or when user asks "status"):
-- Check for open PRs from `copilot/*` branches.
+- Check for open PRs from `copilot/{issue-number}-{slug}` branches.
 - Report: "🤖 @copilot: {N} PRs open ({list}). {M} issues assigned, pending."
