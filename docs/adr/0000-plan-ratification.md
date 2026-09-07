@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `45570b6b53ae13b4d7c4963921fabae13ae8a7f675332dd1e4088da2f831466a`
+- **Current proposed Plan SHA-256:** `b3479ab5a5960bc862e5ff411fdd2b6cffacdbfd89dfd392a57c5b53ae6327aa`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -250,3 +250,17 @@ not match the merged `docs/plan.md`.
   external spend, or phase exit is authorized.
 - **Scope:** Normalize Markdown table delimiter spacing and nested help-list
   indentation without changing the plan's meaning, status, scope, or gates.
+
+### 2026-09-07 — proposed feedback privacy decision references
+
+- **Tracking issue:** [#155](https://github.com/Jamula/Andreja/issues/155)
+- **Pull request:** [#172](https://github.com/Jamula/Andreja/pull/172)
+- **Plan SHA-256:** `b3479ab5a5960bc862e5ff411fdd2b6cffacdbfd89dfd392a57c5b53ae6327aa`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed policy/status amendment; no re-ratification,
+  privacy or legal approval, collection, GitHub publication, provider, spend,
+  deployment, launch, support commitment, or phase exit is authorized.
+- **Scope:** Refresh the enforced hashes and source references for the feedback
+  framework and privacy baseline after linking the proposed feedback privacy,
+  retention, and data-subject rights package. The package remains gated until
+  Cyrus records an explicit decision.
