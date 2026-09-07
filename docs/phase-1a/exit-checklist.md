@@ -38,7 +38,10 @@ remain unchecked and name what is still missing.
 
 Every item records a reproducible proof link in the canonical artifact indexed by
 [the evidence gates](evidence-gates.md), including build/config/schema versions,
-owner, command/test ID, result, and known exclusions.
+owner, command/test ID, result, and known exclusions. The
+[current cumulative rerun](evidence-44.md#current-cumulative-rerun) enumerates
+every included, excluded, unavailable, human-owned, and externally gated suite
+against one exact commit and source tree.
 
 - [x] After image/source acquisition, a clean host with networking disabled starts
       and restarts the pinned Compose bundle from a preloaded image, a locally built
@@ -48,9 +51,10 @@ owner, command/test ID, result, and known exclusions.
       Sigstore bundle and retained root copy, exact-matches issuer, repository,
       workflow identity/revision, trigger, and tag ref, then verifies with networking
       blocked against an independently authenticated root outside the evidence.
-      The implementation and historical unsigned bundle do not themselves
-      authorize release, update, or startup; local operator-key evidence cannot
-      substitute for the hosted run.
+      The workflow and fail-closed policy are implemented, but no qualifying tag
+      artifact exists. The implementation and historical unsigned bundle do not
+      themselves authorize release, update, or startup; local operator-key evidence
+      cannot substitute for the hosted run.
 - [x] Passkey first-admin bootstrap works once; collision, replay, origin, rate-limit,
       recovery-code, and session-invalidation cases pass. Second-passkey enrollment
       is tested only when configured; break-glass is tested only if Cyrus approves

@@ -16,6 +16,42 @@ cookie, recovery code, private key, database dump, or private OCI layer is
 committed or attached. Ignored runtime artifacts were destroyed after recording
 the bounded results below.
 
+## Current cumulative rerun
+
+Data reran every gate available on the issue #44 worktree on 2026-09-07 PDT.
+This rerun is bound to commit
+`0b8edac57e050cb5d51e0b4597b690cbd76b26c3`, source tree
+`87d334312617791ca4430fbc51bbc38fe2f02816`, and .NET SDK `10.0.301`.
+The canonical artifact is this section; linked hosted runs are retained by GitHub
+under their stated artifact-retention policies. Historical runtime results later
+in this file remain evidence for their recorded revisions only and are not
+silently generalized to this revision.
+
+| Gate | Owner | Command or artifact | Current result and boundary |
+| --- | --- | --- | --- |
+| Service-free Debug tests | Data | `dotnet test Andreja.slnx --configuration Debug --logger "console;verbosity=minimal"` | **PASS:** 257 unit and 18 architecture tests; zero failed or skipped. The PostgreSQL project is outside `Andreja.slnx` and is not included. |
+| Service-free Release tests | Data | `dotnet test Andreja.slnx --configuration Release --logger "console;verbosity=minimal"` | **PASS WITH RECORDED WARNING:** 253 unit and 18 architecture tests; zero failed or skipped. MSBuild retried a contended `apphost.exe` copy seven times before succeeding, so this is not represented as a warning-free build. The PostgreSQL project is not included. |
+| PostgreSQL project compile | Data | `dotnet build tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --configuration Release` | **PASS (compile only):** zero warnings and errors. This does not execute the live PostgreSQL tests. |
+| Formatting, dependency advisories, and documentation contracts | Data | `dotnet format` for the solution and PostgreSQL project; `.github\scripts\invoke-nuget-vulnerability-scan.ps1`; the five commands in `.github\workflows\docs-consistency.yml` | **PASS:** both format checks, the direct/transitive advisory scan, 19 docs-consistency unit tests, 20 plan/hash/catalog tests, nine status-artifact hashes, deterministic architecture rendering, and 21 PNG structural tests passed. |
+| Supply-chain policy and fail-closed vectors | Data / Tuvok | `pwsh -NoProfile -File scripts\supply-chain\Test-SupplyChainPolicy.ps1`; `pwsh -NoProfile -File scripts\supply-chain\Invoke-NegativeTests.ps1` | **PASS:** pins and policy passed; all 36 negative cases produced their expected rejection or bounded acceptance. This proves policy behavior, not a signed release. |
+| Evidence harness static validity | Data | `node --check scripts\evidence\browser-e2e.mjs`; PowerShell parser checks for `Test-OfflineEvidence.ps1` and `Test-TelemetryEvidence.ps1` | **PASS (syntax only):** all three scripts parsed. No browser, Compose, offline, or telemetry runtime result is inferred. |
+| Hosted OCI build/audit at the cumulative source revision | Jett Reno / Data | [OCI Supply Chain run 34153528772](https://github.com/Jamula/Andreja/actions/runs/34153528772) | **PASS (unsigned audit only):** the `push` run for the exact cumulative commit passed. It was not a version-tag event, so the keyless signing job did not run and cannot authorize release, startup, or update. |
+| Keyless version-tag signing and offline verification | Tuvok / Jett Reno | `.github\workflows\oci-supply-chain.yml`; `Test-OciEvidence.ps1 -ExpectedSigningMode keyless-sigstore` | **BLOCKED:** ADR 0010's implementation and 36 policy vectors are present, but repository history contains no qualifying `v*` push run or retained signed bundle for this revision. A reviewed tag decision and independently authenticated root are external prerequisites. |
+| PostgreSQL integration and application import | Data | `dotnet test tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj` | **UNAVAILABLE, NOT RUN:** Docker client `29.7.2` was installed but no server responded; `pg_dump`, `pg_restore`, and `psql` were unavailable. No database result is claimed for this revision. |
+| Compose browser, passkey, viewport, reconnect, provider-failure, offline, and all-signal OTel evidence | Data / Jett Reno | `node scripts\evidence\browser-e2e.mjs`; `Test-OfflineEvidence.ps1`; `Test-TelemetryEvidence.ps1` | **UNAVAILABLE, NOT RUN:** these require the unavailable evidence stack. The prior run below remains bounded to its historical digest. Human assistive-technology review also remains unavailable. |
+| Encrypted database plus Data Protection recovery and restored sign-in | Jett Reno / Tuvok / Data | Backup, key-custody, clean restore, then real passkey sign-in drill in `docs\operations\self-hosting.md` | **BLOCKED:** neither a current runtime drill nor approved recovery custody exists. Database-only restore is insufficient. |
+| Approved update and rollback pair | Jett Reno / Tuvok / Data | Two separately approved and signed immutable revisions, preserving state in both directions | **BLOCKED:** there is no approved signed pair. Restart evidence and an unsigned image replacement cannot substitute. |
+| Numeric SLO, RPO/RTO, retention, and model-spend limits | Cyrus / Quark / Jett Reno | Candidate queries in `evidence-gates.md`; canonical `docs\cost-model.md` and `docs\privacy.md` | **BLOCKED ON HUMAN DECISION:** candidates exist, but no governing numeric limits or Phase 1A model-spend envelope/hard stop are approved. No external model call or spend occurred in this rerun. |
+| Specialist challenge and residual-risk acceptance | Named packet reviewers / Cyrus | `exit-checklist.md` | **BLOCKED ON REVIEW:** unchecked packet-approval rows remain open. Data does not waive or self-approve another owner's gate. |
+
+The rerun therefore includes the service-free unit/architecture projects,
+out-of-solution PostgreSQL compilation, format/advisory/documentation checks,
+supply-chain policy vectors, evidence-script syntax, and the exact-revision hosted
+OCI audit. It explicitly excludes PostgreSQL runtime execution, all
+Compose/browser/operations runtime drills, a qualifying keyless tag run, and human
+approvals. An unavailable gate is a milestone blocker, never a skip or a
+success-shaped fallback.
+
 ## Provenance and versions
 
 | Item | Recorded value |
