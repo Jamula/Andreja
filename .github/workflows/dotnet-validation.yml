@@ -260,7 +260,7 @@ jobs:
             "devskim_analysis":"${{ steps.analyze.outcome }}",
             "finding_gate":"${{ steps.findings.outcome }}",
             "baseline_exclusions":"DS137138-loopback-URLs;DS162092-Debug-guard-false-positives",
-            "codeql_entitlement":"unavailable-private-repository-code-security-disabled"}
+            "codeql_entitlement":"public-repository-code-scanning-api-returns-200-committed-workflow-manually-disabled-by-decision"}
         run: >-
           ./.github/scripts/write-dotnet-validation-report.ps1
           -Kind sast

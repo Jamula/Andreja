@@ -135,8 +135,12 @@ Before a ruleset write:
 3. Build the candidate from the full live body. Preserve every rule and
    parameter not explicitly approved for change.
 4. Abort if a second read has a different ETag or body.
-5. Apply the smallest approved change.
-6. Re-read the ruleset and effective branch rules.
+5. Apply the smallest approved change with the write request itself carrying
+   `If-Match: <live-etag>`. A re-read before the write does not close the race:
+   another operator could change the ruleset between the read and the write,
+   and an unconditional write would silently overwrite that change. If the
+   write is rejected because the ETag no longer matches, restart from step 1.
+6. Re-read the ruleset and effective branch rules, and confirm the new ETag.
 7. Run the negative canary.
 
 Do not add a bypass actor, reduce required contexts, disable strict checking,
@@ -159,8 +163,11 @@ ruleset compatibility.
 
 When a second qualified human maintainer is active:
 
-1. add path-based `CODEOWNERS` entries with at least one available owner per
-   protected path;
+1. add path-based `CODEOWNERS` entries with at least two qualified, active
+   owners (or a team containing both) for every protected path. One owner per
+   path can deadlock that owner's own pull requests, because self-review
+   cannot satisfy required code-owner review and no other owner exists to
+   approve it;
 2. require one human approval and code-owner review;
 3. require fresh review after the latest reviewable push, or dismiss stale
    approvals;
