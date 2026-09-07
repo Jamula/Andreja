@@ -228,3 +228,9 @@ This is a security verdict only. It does not declare legal compliance and does n
 **What:** Use an independently approved bounded evidence authorization inside feedback gate #158
 **References:** PR #159, Issue #155, Issue #156, Issue #157, Issue #158, Tuvok rejection findings
 **Why:** Tuvok's deadlock finding is resolved without a fifth gate issue. After #155-#157 have explicit Cyrus approvals, #158 owns a separate Evidence Authorization decision. Cyrus alone may authorize an enumerated synthetic-only non-production exercise for the exact release commit/artifact, limited to allowlisted staging resources, dedicated staging DNS/sender records, verifier-controlled recipients, explicit hard caps, and no more than 14 days. Security, privacy, or platform owners may stop and contain the exercise but cannot approve it or convert evidence into launch authority. Teardown and revocation evidence are required before a separate final launch decision. Issue closure, labels, PR merge, or specialist verdicts do not substitute for either Cyrus decision.
+
+
+### 2026-09-07: Activate weekly dependency automation
+**By:** Jett Reno
+**What:** Replace the inert Dependabot placeholder with weekly update checks for root and spike NuGet manifests, the Squad template npm manifest, GitHub Actions, and the root Dockerfile.
+**Why:** These are the dependency ecosystems present in the repository. Automated coverage prevents the test spike and supply-chain dependencies from drifting while preserving the repository's existing manifest boundaries.
