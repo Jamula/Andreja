@@ -1,0 +1,6 @@
+# Dependency maintenance pass — 2026-09-07T10:46:00.725-07:00
+
+- **Who:** Data, Jett Reno, Scribe.
+- **What:** Investigated failing server tests and refreshed dependency automation/spike harness. Jett updated `.github/dependabot.yml`, `scripts/evidence/test-platform-spike/MSTestMtpSpike/MSTestMtpSpike.csproj`, and its README. Versions: MSTest.Sdk 4.3.3→4.4.0, code coverage 18.10.0→18.11.0, MTP 2.3.3→2.4.0. Root central NuGet/npm manifests were already current. Dependency commit `3d96923` was cherry-picked and rebased into parent as `883d3b5`.
+- **Decisions:** Keep weekly Dependabot coverage for root/spike NuGet manifests, Squad template npm, GitHub Actions, and root Dockerfile; preserve existing manifest boundaries.
+- **Outcomes:** Unit 257/257 and architecture 18/18 passed before and after dependencies. PostgreSQL integration project build passed; runtime tests remain blocked by missing Docker daemon/`ANDREJA_TEST_POSTGRES` per repository policy. Full Release solution validation passed 271/271 and the upgraded spike harness passed. No source fix was needed.
