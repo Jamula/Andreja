@@ -143,6 +143,23 @@ test('branch documentation uses the Squad v0.13.0 issue convention', () => {
   assert.match(statusDocumentation, /squad\/\{issue-number\}-\{slug\}/);
   assert.match(statusDocumentation, /copilot\/\{issue-number\}-\{slug\}/);
   assert.match(statusDocumentation, /u\/\{account\}\/\{issue-number\}-\{slug\}/);
+
+  const workflowPaths = [
+    path.join(__dirname, '..', 'workflows', 'squad-issue-assign.yml'),
+    path.join(
+      __dirname,
+      '..',
+      '..',
+      '.squad',
+      'templates',
+      'workflows',
+      'squad-issue-assign.yml'),
+  ];
+  for (const workflowPath of workflowPaths) {
+    const content = fs.readFileSync(workflowPath, 'utf8');
+    assert.match(content, /copilot\/\$\{issue\.number\}-\{slug\}/);
+    assert.doesNotMatch(content, /copilot\/\*/);
+  }
 });
 
 test('Copilot instruction sources use the Squad v0.13.0 branch convention', () => {

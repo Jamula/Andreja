@@ -295,7 +295,7 @@ test('rejects a mismatched bridge package version', (t) => {
   assert.match(validateRepository(root).join('\n'), /squad-cli@0\.13\.0/);
 });
 
-test('rejects additions to the v0.13.0 wildcard MCP tool grant', (t) => {
+test('rejects a wildcard MCP tool grant', (t) => {
   const root = fixture(t);
   writeJson(root, '.mcp.json', {
     mcpServers: {
@@ -303,7 +303,7 @@ test('rejects additions to the v0.13.0 wildcard MCP tool grant', (t) => {
         command: 'npx',
         args: ['-y', `@bradygaster/squad-cli@${SQUAD_VERSION}`, 'state-mcp'],
         env: {},
-        tools: ['*', 'squad_state_read'],
+        tools: ['*'],
       },
     },
   });
@@ -377,6 +377,10 @@ test('checked-in coordinator and template retain the exact v0.13.0 prohibition l
   ));
   const requiredLines = REQUIRED_NON_LOCAL_RAW_FILE_PROHIBITIONS.map(
     protectedPath => `- \`${protectedPath}\``,
+  );
+  assert.equal(
+    requiredLines.includes('- `.squad/agents/*/history-archive.md`'),
+    true,
   );
 
   for (const prohibitionList of prohibitionLists) {
@@ -514,6 +518,26 @@ test('rejects a state-backend downgrade paraphrase as probe-failure recovery', (
     ),
   );
   assert.match(validateRepository(root).join('\n'), /host-neutral probe-failure recovery paragraph/);
+});
+
+test('approved probe-failure recovery preserves the two-layer backend', () => {
+  assert.match(PROBE_FAILURE_RECOVERY_SENTENCE, /stateBackend.*two-layer/u);
+  assert.match(PROBE_FAILURE_RECOVERY_SENTENCE, /reloaded/u);
+  assert.doesNotMatch(PROBE_FAILURE_RECOVERY_SENTENCE, /stateBackend.*local/u);
+});
+
+test('runbook recovery permits acceptance only after restoring two-layer', () => {
+  const runbook = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'docs', 'operations', 'squad-state-bridge.md'),
+    'utf8',
+  );
+  const healthFailureRow = runbook.split(/\r?\n/u)
+    .find(line => line.startsWith('| `squad_state_health` is missing or errors |'));
+
+  assert.notEqual(healthFailureRow, undefined);
+  assert.match(healthFailureRow, /restore `stateBackend` to `two-layer`/u);
+  assert.match(healthFailureRow, /Only after.*two-layer.*rerun fresh-child acceptance/u);
+  assert.doesNotMatch(healthFailureRow, /stateBackend` to `local`/u);
 });
 
 test('rejects duplicate or conflicting coordinator version markers', (t) => {

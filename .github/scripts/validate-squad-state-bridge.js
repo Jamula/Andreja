@@ -8,9 +8,23 @@ const { PROTECTED_PATHS } = require('./squad-state-protected-paths');
 const SQUAD_VERSION = '0.13.0';
 const HEAD_CANARY = 'SQUAD_COORDINATOR_CANARY_HEAD_b7d2';
 const EOF_CANARY = 'SQUAD_COORDINATOR_CANARY_a8f3';
-const PROBE_FAILURE_RECOVERY_SENTENCE = 'Restart Copilot CLI so `.mcp.json` is loaded, or change `stateBackend` to `local` in `.squad/config.json`.';
+const PROBE_FAILURE_RECOVERY_SENTENCE = 'Preserve or restore `stateBackend` as `two-layer` in `.squad/config.json`, then restart the app/session so project `.mcp.json` and the two-layer bridge are reloaded before starting a fresh child session.';
 const PROBE_FAILURE_RECOVERY_PARAGRAPH = `3. **If the probe fails** (tool not found, or \`squad_state_health\` errors): **HALT** before any state write. Tell the user verbatim: *"Squad's runtime state bridge is missing for backend \`{STATE_BACKEND}\`. The \`squad_state\` MCP server in \`.mcp.json\` is not reachable in this Copilot session. ${PROBE_FAILURE_RECOVERY_SENTENCE}"* — and stop until the user acknowledges. Do not silently fall back to raw file ops.`;
-const REQUIRED_MCP_TOOLS = ['*'];
+const REQUIRED_MCP_TOOLS = [
+  'squad_decide',
+  'squad_state_read',
+  'squad_state_write',
+  'squad_state_append',
+  'squad_state_delete',
+  'squad_state_list',
+  'squad_state_health',
+  'memory.classify',
+  'memory.write',
+  'memory.search',
+  'memory.promote',
+  'memory.delete',
+  'memory.audit',
+];
 const REQUIRED_MCP_SERVER_KEYS = ['command', 'args', 'env', 'tools'];
 const REQUIRED_IGNORES = PROTECTED_PATHS.map(([ignorePattern]) => ignorePattern);
 const NON_LOCAL_RAW_FILE_PROHIBITION_HEADING = '**HARD RULE — Backend contract enforcement:**';
@@ -18,6 +32,7 @@ const REQUIRED_NON_LOCAL_RAW_FILE_PROHIBITIONS = [
   '.squad/decisions.md',
   '.squad/decisions/inbox/**',
   '.squad/agents/*/history.md',
+  '.squad/agents/*/history-archive.md',
   '.squad/casting/*.json',
   '.squad/identity/*.md',
   '.squad/memory/**',

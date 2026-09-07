@@ -18,8 +18,8 @@ The check fails closed unless all of these remain true:
 
 - `.squad/config.json` selects `two-layer`.
 - `.mcp.json` declares only `squad_state`, backed by
-  `@bradygaster/squad-cli@0.13.0 state-mcp`, with the exact v0.13.0 wildcard
-  tool grant.
+  `@bradygaster/squad-cli@0.13.0 state-mcp`, with the exact v0.13.0 governed
+  tool allowlist.
 - the checked-in coordinator has its ordered HEAD/EOF canaries and matching
   version stamp;
 - coordinator ownership rules keep static team configuration on disk and
@@ -92,7 +92,7 @@ the static GitHub Actions job as an automated runtime gate.
 | --- | --- |
 | Static validator fails | Stop. Review the reported tracked-file drift; do not change `stateBackend` or add MCP servers to make the check pass. |
 | Protected-state manifest capture or comparison errors, or reports `CHANGED` | Stop and treat acceptance as failed. Do not inspect protected file contents to diagnose it; retain only the reported path identities and clean up the external baseline after recording the result. |
-| `squad_state_health` is missing or errors | Stop before repository or mutable-state mutation and end the child. Restart Copilot CLI so `.mcp.json` is loaded, or explicitly change `stateBackend` to `local` in `.squad/config.json`; never change it implicitly. Then rerun fresh-child acceptance. For ordinary task recovery, a standard/general-purpose fallback may proceed only after that Squad-first child stops cleanly; fallback work is recovery only and cannot count as successful Squad bridge acceptance. Never fall back to raw state files. |
+| `squad_state_health` is missing or errors | Stop before repository or mutable-state mutation and end the child. Preserve or restore `stateBackend` to `two-layer` in `.squad/config.json`, then restart the app/session so project `.mcp.json` and the two-layer bridge are reloaded. Only after the fresh child reports the restored `two-layer` backend may you rerun fresh-child acceptance. For ordinary task recovery, a standard/general-purpose fallback may proceed only after that Squad-first child stops cleanly; fallback work is recovery only and cannot count as successful Squad bridge acceptance. Never fall back to raw state files. |
 | Probe write outcome is uncertain | Read the exact unique probe key through `squad_state_read`. If present and exact, delete that key through `squad_state_delete`; then verify key-not-found. Never overwrite unknown content. |
 | Disallowed `verification/` write succeeds | Stop all probes and escalate as a state-boundary failure. Do not broaden access or invent success. |
 | No-op child mutates or falls back | Treat acceptance as failed, preserve the clean baseline evidence, and investigate the app/session bridge before retrying in another fresh child. |
