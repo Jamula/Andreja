@@ -12,9 +12,10 @@ This is a phase-scoped acceptance index, not a replacement threat model, privacy
 inventory, testing matrix, or financial ledger. These are internal dogfood gates,
 not public SLAs or production claims.
 
-The current merged implementation run is recorded in
-[`evidence-44.md`](evidence-44.md). Its passing rows reconcile this index with
-implemented local evidence; its partial and blocked rows remain blocking.
+The current cumulative rerun and the earlier merged implementation run are
+recorded in [`evidence-44.md`](evidence-44.md). Each result is bound to its exact
+commit/tree or artifact digest. Passing rows reconcile this index only within
+their recorded boundary; partial, unavailable, and blocked rows remain blocking.
 Acceptance under #66 makes this the governing architecture target and is recorded
 in [`packet-decision-66.md`](packet-decision-66.md). It does not approve launch or
 readiness, authorize external spend, accept remaining exit risks, or claim Phase
@@ -48,8 +49,9 @@ Phase 1A remains blocked on all of the following:
 
 1. a reviewed hosted version-tag run producing accepted ADR 0010's keyless
    Sigstore bundle and retained root copy, followed by exact-claim,
-   network-blocked verification against an independently held root; the retained operator-key path is local-only
-   and cannot substitute;
+   network-blocked verification against an independently held root; the workflow
+   and fail-closed policy are implemented, but no qualifying tag artifact exists,
+   and the retained operator-key path is local-only and cannot substitute;
 2. encrypted PostgreSQL and recoverable Data Protection keys restored together
    into a clean instance, followed by restored passkey sign-in;
 3. a genuine second, separately approved and signed revision completing both
