@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `45570b6b53ae13b4d7c4963921fabae13ae8a7f675332dd1e4088da2f831466a`
+- **Current proposed Plan SHA-256:** `14d0dadf6c159ce12096eb3d7848dd42b5f85ff06a0964de2927271a5838f7de`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -250,3 +250,21 @@ not match the merged `docs/plan.md`.
   external spend, or phase exit is authorized.
 - **Scope:** Normalize Markdown table delimiter spacing and nested help-list
   indentation without changing the plan's meaning, status, scope, or gates.
+
+### 2026-09-07 — proposed charter prerequisite reconciliation
+
+- **Tracking issue:** [#3](https://github.com/Jamula/Andreja/issues/3)
+- **Pull request:** Pending
+- **Plan SHA-256:** `14d0dadf6c159ce12096eb3d7848dd42b5f85ff06a0964de2927271a5838f7de`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed charter-seed reconciliation amendment; explicit
+  plan re-ratification required.
+- **Candidate charter:** Proposed ADR 0006 SHA-256
+  `d030d985c5de8260035eb83b17bc3be74876700487575408cf9679a05b4fa843`.
+- **Scope:** Align the ratified plan's charter seed with the proposed charter's
+  human-agency language and measurable-indicator regime. Reconcile the draft
+  feedback framework's legal-routing and incident RACI text with the proposed
+  charter's conflict-class bypass, Cyrus recusal, and no-agent-privilege rules.
+  This proposal does not ratify the plan amendment, charter, or feedback
+  framework; authorize a reporting or privileged channel; provide legal advice;
+  or approve public culture publication.
