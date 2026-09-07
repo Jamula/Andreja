@@ -32,6 +32,12 @@ The canonical cross-phase [privacy baseline](../privacy.md) and
 [threat model](../threat-model.md) reconcile these Phase 1A overlays with current
 implementation evidence and future gates.
 
+The [packet decision record](packet-decision-66.md) reconciles this packet, the
+recorded specialist-challenge state, and the residual-risk register into the
+decision-ready form required by
+[#66](https://github.com/Jamula/Andreja/issues/66). It is preparation for Cyrus's
+accept/amend/reject decision, not that decision.
+
 ## Decision boundary
 
 The packet selects only the smallest reversible Phase 1A seams:
@@ -66,7 +72,10 @@ decision authoritative.
 
 ## Human decisions still required
 
-Cyrus must explicitly decide or accept:
+Cyrus must explicitly decide or accept the items below; the
+[packet decision record](packet-decision-66.md) enumerates their owners,
+evidence, stop conditions, and re-review triggers and supplies the
+accept/amend/reject template:
 
 1. final disposition of ADRs 0001–0005 after the named specialist reviews;
 2. one reviewed hosted tag run proving accepted ADR 0010's exact GitHub workload

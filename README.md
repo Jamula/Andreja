@@ -398,5 +398,6 @@ runtime state, or user content.
 - [Open Loops help](docs/help/open-loops.md)
 - [Testing matrix](docs/testing-matrix.md)
 - [Phase 1A evidence](docs/phase-1a/evidence-44.md)
+- [Phase 1A packet decision record](docs/phase-1a/packet-decision-66.md)
 
 Phase 0 provisions no cloud accounts, subscriptions, free tiers, or trials.
