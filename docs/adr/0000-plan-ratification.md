@@ -254,7 +254,7 @@ not match the merged `docs/plan.md`.
 ### 2026-09-07 — Phase 1A architecture acceptance status
 
 - **Tracking issue:** [#66](https://github.com/Jamula/Andreja/issues/66)
-- **Pull request:** Acceptance pull request for #66
+- **Pull request:** [#174](https://github.com/Jamula/Andreja/pull/174)
 - **Plan SHA-256:** `67c5d06cbf755f14d36094ab5a876b07e1b1c0187d93bdd0ac333ef6e7eaeea9`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed Phase 1A status roll-up; no re-ratification.
