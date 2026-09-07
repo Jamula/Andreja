@@ -159,11 +159,13 @@ GitHub may also attach a platform-managed dynamic `Analyze (csharp)` CodeQL
 check to a pull request. That supplementary check ran successfully while this
 gate was introduced, but it is not a repository-owned substitute: the committed
 CodeQL workflow remains manually disabled, and the dynamic check does not
-establish committed push-to-`main` or `merge_group` coverage. The repository is
-now public: the code-scanning default-setup and alerts API endpoints return
-`200` and list `csharp`, so the earlier `403` entitlement denial no longer
-applies. Re-enabling the committed C#/Python CodeQL workflow is a separate,
-not-yet-authorized change; it is not implied or claimed by this correction.
+establish committed push-to-`main` or `merge_group` coverage. As observed on
+2026-09-07, the repository is public and the code-scanning default-setup and
+alerts API endpoints returned `200` and listed `csharp`, so the earlier `403`
+entitlement denial no longer applied at that time; re-verify live before
+relying on this, since visibility or entitlement can change. Re-enabling the
+committed C#/Python CodeQL workflow is a separate, not-yet-authorized change;
+it is not implied or claimed by this correction.
 
 Default-branch required-check enforcement and the entitlement-aware merge
 procedure are defined by

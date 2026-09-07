@@ -125,7 +125,7 @@ $report = [ordered]@{
     }
     boundaries = [ordered]@{
         untrusted_pull_requests = 'No secrets or write-capable token; checkout credentials are not persisted.'
-        codeql_entitlement = 'The repository is public; the code-scanning default-setup and alerts endpoints return HTTP 200 and list csharp. The committed CodeQL workflow remains manually disabled by decision, not by denied entitlement; re-enabling it for C#/Python is a separate, not-yet-authorized change.'
+        codeql_entitlement = 'Snapshot observed 2026-09-07, not re-verified by this workflow run: the repository was public and the code-scanning default-setup and alerts endpoints returned HTTP 200 and listed csharp. The committed CodeQL workflow was manually disabled by decision, not by denied entitlement, as of that date. Re-verify live before relying on this value; visibility or entitlement can change.'
         devskim_baseline = 'DS137138 excludes intentional loopback HTTP test/development URLs; DS162092 excludes false positives on explicit Debug/Development safeguards.'
         ruleset_enforcement = 'Enforced by repository ruleset 21199927 per ADR 0011 (docs/adr/0011-default-branch-required-gates.md) and docs/operations/default-branch-protection.md.'
         sbom_and_provenance = 'Tracked separately in GitHub issue #71.'
