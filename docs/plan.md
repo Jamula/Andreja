@@ -58,7 +58,7 @@ explicit Cyrus decision.
 | --- | --- | --- |
 | [`docs/operating-model.md`](operating-model.md) | Issue [#14](https://github.com/Jamula/Andreja/issues/14), PR [#17](https://github.com/Jamula/Andreja/pull/17); `f10ab3a27d076e5eba407f5530366caa70c0e4aae45d695b1a7fb9c96c73eb85` | **Draft for ratification.** The issue and PR merged/closed, but no separate explicit Cyrus ratification record was found; it is advisory and the plan remains authoritative. |
 | [`docs/cost-model.md`](cost-model.md) | Issue [#11](https://github.com/Jamula/Andreja/issues/11), PR [#20](https://github.com/Jamula/Andreja/pull/20); provider-allowance proposal [#74](https://github.com/Jamula/Andreja/issues/74), PR [#119](https://github.com/Jamula/Andreja/pull/119); `8f7c708d63d389481c1e88964dba883ae6dc3ad7a73215ac5317471e55e1f13c` | **Draft for ratification.** It recommends controls but authorizes no spend; issue closure and merge are not approval. |
-| [`docs/frameworks/feedback-support.md`](frameworks/feedback-support.md) | Issue [#10](https://github.com/Jamula/Andreja/issues/10), PR [#16](https://github.com/Jamula/Andreja/pull/16); `758ed2eedf765d8a6a875b53af21b72fc0af4212fc06e06d54876c076ccb83ed` | **Review-ready draft.** The source PR merged, but issue #10 and explicit Cyrus approval remain open; no intake deployment or support commitment is authorized. |
+| [`docs/frameworks/feedback-support.md`](frameworks/feedback-support.md) | Issue [#10](https://github.com/Jamula/Andreja/issues/10), PR [#16](https://github.com/Jamula/Andreja/pull/16), and issue [#3](https://github.com/Jamula/Andreja/issues/3) prerequisite reconciliation; `1a264a2b54c4e9424558532f6e5db3f97c36d755a38644bad3013fd0417e5dde` | **Review-ready draft.** The source PR merged, but issue #10 and explicit Cyrus approval remain open; no intake deployment, privileged channel, legal advice, or support commitment is authorized. |
 | [`docs/frameworks/prioritization-launch.md`](frameworks/prioritization-launch.md) | Issue [#5](https://github.com/Jamula/Andreja/issues/5), PR [#19](https://github.com/Jamula/Andreja/pull/19); `7ba4d30a901e881cf167afe8964c9c2e6ba2584ac94151f2e4f8bc9b2e79104c` | **Review-ready draft.** Its operational mechanics are advisory until explicitly ratified; the plan owns phased scope and exits. |
 | [`docs/charter.md`](charter.md) | Issue [#3](https://github.com/Jamula/Andreja/issues/3), PRs [#15](https://github.com/Jamula/Andreja/pull/15), [#27](https://github.com/Jamula/Andreja/pull/27), and the [ADR 0006 ratification instrument](adr/0006-charter-ratification.md); `d030d985c5de8260035eb83b17bc3be74876700487575408cf9679a05b4fa843` | **Proposed; not authoritative.** Issue #3 remains open and the file becomes effective only after Cyrus explicitly ratifies it through Proposed ADR 0006. The charter section in this ratified plan remains the seed summary. |
 | [`docs/privacy.md`](privacy.md) | Issue [#116](https://github.com/Jamula/Andreja/issues/116), PR [#117](https://github.com/Jamula/Andreja/pull/117); `03f50c948cf07ee32360944be9c1c3d9ba6274467a02d158960ca4abd6a424a1` | **Canonical descriptive baseline; not ratified.** Required challenge: Deanna Troi (privacy), Tuvok (security), Rai (AI safety); pending. Cyrus residual-risk acceptance remains pending. The classification/impact assessment remains open unless explicitly approved with cited evidence. |
@@ -228,7 +228,7 @@ Empower people to understand and improve their lives through a trustworthy, user
 
 ### Commitments
 
-- **Human agency:** people set goals, control data, inspect reasoning, approve consequential actions and can leave with their information.
+- **Human agency:** people set their own goals, control their data, understand material recommendations, approve consequential actions, correct mistakes and can leave with their information.
 - **Respect and inclusion:** design for varied abilities, cultures, families, identities, resources and technical comfort; treat every person affected by the system with dignity.
 - **Integrity and accountability:** tell the truth about capabilities, uncertainty, evidence, cost, sponsorship, incidents and limits; own outcomes and correct harm.
 - **Growth mindset:** assume people and teams can learn; cultivate curiosity, experimentation, mentorship, collaboration, shared accountability and learning from mistakes.
@@ -243,7 +243,7 @@ Empower people to understand and improve their lives through a trustworthy, user
 
 - Every major ADR, launch gate, sponsorship/partner decision and public claim includes an ethics/sustainability impact section.
 - Tuvok, Deanna Troi, Quark, Sarek, Data and Rai challenge security, privacy, cost/sustainability, legal/evidence and responsible-AI effects; Cyrus retains final human accountability.
-- Publish measurable indicators for accessibility, privacy incidents, security, user control, support quality, AI/cloud efficiency, cost/runway and vendor concentration before GA.
+- Before GA, every charter indicator area has a named human owner, definition, baseline, target, cadence, evidence source and stop or remediation threshold; targets are not presented as achieved until measured.
 - Provide confidential reporting, non-retaliation, incident/remediation and partner/sponsor exit mechanisms.
 - The charter outranks growth, launch dates, sponsor requests, cost savings and agent recommendations.
 
@@ -1271,7 +1271,15 @@ Squad is already initialized, but the specialist roster and routing are empty. K
 | Neelix | Marketing/Community and Personal Brand Advisor | Personal Brand Studio requirements, positioning, product story, adoption, ecosystem community, transparent sponsorship communication | Brand dogfood and evidence-ready public communication |
 | Guinan | User Feedback and Support Lead | Intake, privacy screening, dedupe, severity, routing, user communication, resolution verification, feedback insights | Phase 0 framework; Phase 1 channels |
 
-Cyrus remains the human founder/product owner and sole legal decision-maker unless formal governance changes. CEO/CFO and other crew titles describe accountable advisory/operating roles for Squad; they do not grant agents authority to sign contracts, spend funds, make legal representations, or publish without human approval.
+Cyrus remains the human founder/product owner and final business, governance,
+ratification, and risk-acceptance decision-maker unless formal governance
+changes. Qualified counsel, not Cyrus or an agent, provides legal advice,
+privilege, clearance, and jurisdiction-specific legal opinions. Cyrus records
+whether an exposure is material and decides whether Andreja proceeds after any
+required counsel review. CEO/CFO and other crew titles describe accountable
+advisory/operating roles for Squad; they do not grant agents authority to sign
+contracts, spend funds, make legal representations, or publish without human
+approval.
 
 Star Trek character names are internal/private Squad codenames pending trademark/licensing review. Any repository visibility change re-reviews committed codename usage. Do not use them in public product branding, marketplace roles, endorsements or commercial claims without counsel approval.
 
