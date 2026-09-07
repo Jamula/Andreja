@@ -51,9 +51,8 @@ Each platform tracks issue lifecycle differently. Squad normalizes these into a 
 **Branch naming convention:**
 ```
 squad/{issue-number}-{kebab-case-slug}
-copilot/{issue-number}-{slug}
 ```
-Examples: `squad/42-fix-login-validation`, `copilot/42-fix-login-validation`
+Example: `squad/42-fix-login-validation`
 
 ### Azure DevOps
 
