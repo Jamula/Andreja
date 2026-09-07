@@ -394,7 +394,7 @@ def build_diagram() -> Diagram:
     d.text(
         35,
         82,
-        "Ratified-plan evidence view • ADRs 0001–0005 + 0008 are Proposed • one modular-monolith deployable",
+        "Ratified-plan evidence view • ADRs 0001–0005 Accepted; ADR 0008 Proposed • one modular-monolith deployable",
         size=22,
         width=1260,
         role="subtitle",

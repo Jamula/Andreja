@@ -1,20 +1,23 @@
 # Phase 1A decision packet
 
-- **Status:** Provisionally accepted as the governing work target under #62; not
-  fully accepted; Phase 1A exit is not claimed
-- **Date:** 2026-08-28
+- **Status:** Accepted as the bounded Phase 1A architecture baseline under #66;
+  Phase 1A exit is not claimed
+- **Date accepted:** 2026-09-07
+- **Approver:** Cyrus Jamula
 - **Issues:** Original packet [#9](https://github.com/Jamula/Andreja/issues/9);
-  provisional amendment [#62](https://github.com/Jamula/Andreja/issues/62)
+  provisional amendment [#62](https://github.com/Jamula/Andreja/issues/62);
+  final architecture decision [#66](https://github.com/Jamula/Andreja/issues/66)
 - **Scope:** Independent self-hosted assistant walking skeleton
 - **Governing:** [Platform plan](../plan.md) and accepted
   [ADR 0000](../adr/0000-plan-ratification.md)
 
 This packet originated under #9 and narrows the ratified
-[platform plan](../plan.md) into the Phase 1A work target. Cyrus provisionally
-accepted the evidence-reconciled packet under #62 so remaining work can proceed
-against one target. That decision does not fully accept Proposed ADRs 0001–0005,
-claim Phase 1A exit or readiness, amend the plan, authorize production, or
-authorize external spend.
+[platform plan](../plan.md) into the Phase 1A work target. After provisional use
+under #62, Cyrus accepted the amended ADRs 0001–0005 under #66 as the private,
+reversible architecture baseline. The
+[decision record](packet-decision-66.md) binds the accepted content and specialist
+challenge. Acceptance does not claim Phase 1A exit or readiness, amend the plan,
+authorize production or external distribution, or authorize external spend.
 
 ## Packet
 
@@ -27,10 +30,15 @@ authorize external spend.
 7. [Exit and decision checklist](exit-checklist.md)
 8. [BYOK security and privacy contract](byok-security-privacy.md)
 9. [Accepted ADR 0010 — keyless Sigstore signing](../adr/0010-keyless-sigstore-github-oidc.md)
+10. [Issue #66 acceptance and residual-risk record](packet-decision-66.md)
 
 The canonical cross-phase [privacy baseline](../privacy.md) and
 [threat model](../threat-model.md) reconcile these Phase 1A overlays with current
 implementation evidence and future gates.
+
+The [packet decision record](packet-decision-66.md) records Cyrus's bounded
+acceptance, the specialist challenges, the accepted amendments, and the residual
+risks that remain blocked.
 
 ## Decision boundary
 
@@ -48,6 +56,13 @@ provider, graph database, Kubernetes distribution, public connector, or managed
 control plane. It authorizes no provisioning, account creation, subscription,
 free tier, trial, package installation, or live paid model call.
 
+The accepted privacy and human-authority invariants are purpose limitation,
+data-class minimization, no inferred consent, no shadow profile or cross-tenant
+identity merge, deny-by-default sensitive inference/model exposure, explicit
+export/delete exclusions, and human confirmation before assistant-proposed writes.
+Confirmation proves the bound action was confirmed; it does not prove informed,
+voluntary, accessible, or uncoerced consent.
+
 ## Current merged inputs, not accepted dependencies
 
 The packet was checked against ADR 0000, the plan, the static Squad directives,
@@ -64,22 +79,23 @@ status metadata. In particular, the packet uses the relational-source-of-truth
 contract introduced by PR #25 without making every surrounding deferred semantic
 decision authoritative.
 
-## Human decisions still required
+## Exit and activation decisions still required
 
-Cyrus must explicitly decide or accept:
+Cyrus must explicitly decide or accept the items below; the
+[packet decision record](packet-decision-66.md) enumerates their owners,
+evidence, stop conditions, and re-review triggers:
 
-1. final disposition of ADRs 0001–0005 after the named specialist reviews;
-2. one reviewed hosted tag run proving accepted ADR 0010's exact GitHub workload
+1. one reviewed hosted tag run proving accepted ADR 0010's exact GitHub workload
    identity, public transparency record, retained bundle/root copy, and
    network-blocked verification against an independently held root; operator-held
    local evidence cannot substitute for that run;
-3. encrypted PostgreSQL and Data Protection key recovery into a clean instance,
+2. encrypted PostgreSQL and Data Protection key recovery into a clean instance,
    including restored passkey sign-in;
-4. a genuine second, separately approved and signed revision for both update and
+3. a genuine second, separately approved and signed revision for both update and
    rollback against preserved state;
-5. numeric internal SLO and RPO/RTO limits, numeric retention limits, and a
+4. numeric internal SLO and RPO/RTO limits, numeric retention limits, and a
    numeric Phase 1A model-spend envelope with an enforced hard stop; and
-6. final residual-risk acceptance after all blocking evidence is complete.
+5. final residual-risk acceptance after all blocking evidence is complete.
 
 Cloud runtime, managed database, CIAM, and graph database decisions are
 explicitly deferred and are not hidden prerequisites for Phase 1A.
@@ -150,11 +166,11 @@ artifacts. The canonical [testing matrix](../testing-matrix.md),
 [privacy baseline](../privacy.md), and [threat model](../threat-model.md) own the
 current classifications and exclusions.
 
-The passing local evidence does not supply trusted operator signing, combined
+The passing local evidence does not supply trusted hosted signing, combined
 encrypted PostgreSQL-and-key recovery with restored passkey sign-in, a separately
 signed update/rollback pair, approved numeric SLO/RPO/RTO and retention limits,
-an approved numeric model-spend envelope/hard stop, the required specialist
-reviews, or Cyrus's final residual-risk acceptance. The OCI evidence remains
+an approved numeric model-spend envelope/hard stop, or Cyrus's final exit
+residual-risk acceptance. The OCI evidence remains
 unsigned and basic accessibility evidence is not a human assistive-technology
 study. No external model call, provisioning, spend, release authorization,
 readiness, or Phase 1A exit is claimed.

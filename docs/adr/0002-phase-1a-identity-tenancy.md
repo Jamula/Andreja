@@ -1,13 +1,18 @@
 # ADR 0002: Phase 1A identity and tenant isolation
 
-- **Status:** Proposed
-- **Date:** 2026-08-23
-- **Issue:** [#9](https://github.com/Jamula/Andreja/issues/9)
-- **Governing:** [Platform plan](../plan.md#identity-tenancy-and-authorization-foundations),
-  [company charter](../charter.md#commitments), and
-  [ADR 0000](0000-plan-ratification.md)
+- **Status:** Accepted
+- **Date proposed:** 2026-08-23
+- **Date accepted:** 2026-09-07
+- **Issues:** [#9](https://github.com/Jamula/Andreja/issues/9),
+  [#66](https://github.com/Jamula/Andreja/issues/66)
+- **Approver:** Cyrus Jamula
+- **Governing:** [Platform plan](../plan.md#identity-tenancy-and-authorization-foundations)
+  and [ADR 0000](0000-plan-ratification.md)
+- **Non-authoritative input:** Proposed [company charter](../charter.md#commitments)
 - **Proposed by:** Tuvok
 - **Decision owner:** Cyrus
+- **Decision record:** [Phase 1A packet decision record](../phase-1a/packet-decision-66.md)
+  under [#66](https://github.com/Jamula/Andreja/issues/66)
 
 ## Context
 
@@ -65,6 +70,19 @@ in source, image, logs, telemetry, database backup, or application export.
 Passkeys are not automatically treated as attested hardware or as MFA. Optional
 bring-your-own OIDC remains behind the identity port. No CIAM provider is selected.
 
+For the accepted Phase 1A baseline:
+
+- each installation supplies its exact HTTPS origin and matching relying-party
+  domain; there is no universal production hostname;
+- bootstrap issues 10 single-use recovery codes with a 90-day lifetime;
+- a user may register at most 10 passkeys;
+- the operator break-glass path is not approved or implemented; and
+- no optional OIDC profile is approved.
+
+Changing those values or enabling break-glass/OIDC requires security and privacy
+re-review. Combined encrypted database and key recovery with restored passkey
+sign-in remains an exit gate, not a consequence of accepting this ADR.
+
 ## Consequences
 
 Cross-tenant references fail in PostgreSQL even if application filtering regresses.
@@ -81,8 +99,8 @@ admin UX is intentionally unavailable on an already initialized database.
   pending usability and custody evidence. Recovery codes are required; a second
   passkey is recommended, and break-glass is conditional on separate Cyrus approval.
 
-## Human decision
+## Cost delta
 
-Cyrus must approve RP IDs/origins, recovery-code count/lifetime, passkey device
-limits, operator break-glass custody, and which optional OIDC profile Phase 1A
-supports.
+Passkeys avoid a hosted CIAM dependency and recurring identity-provider spend, but
+shift device compatibility, recovery, key custody, support, and operator labor to
+the self-host. Phase 1A authorizes no CIAM account or paid identity service.
