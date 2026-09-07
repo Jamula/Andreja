@@ -148,16 +148,26 @@ or lower secret protection as an incident workaround.
 
 ## Merge-queue activation gate
 
-Before adding a `merge_queue` rule, verify all five required contexts are
-emitted by `merge_group: checks_requested`. Start with squash, build
-concurrency `1`, group size `1`, and only non-failing pull requests. Record a
-real generated merge-group SHA and constituent pull request. If any context is
-missing, timeouts occur, or the queue cannot drain, restore the pre-change
-ruleset body and continue serialized merges.
+GitHub only creates a `merge_group` and emits `checks_requested` after a pull
+request is actually added to an enabled merge queue. The precondition below
+cannot be exercised before the rule exists, so treat activation itself as part
+of the canary, with an immediate rollback path:
+
+1. Capture and save the complete pre-change ruleset body and ETag outside the
+   repository (see the safe ruleset change procedure above).
+2. Add the `merge_queue` rule with squash, build concurrency `1`, group size
+   `1`, and only non-failing pull requests eligible.
+3. Enqueue one real pull request and record its generated merge-group SHA.
+4. Verify all five required contexts are actually emitted and pass for that
+   merge-group SHA, and that the queue drains to merge.
+5. If any context is missing, times out, or the queue cannot drain, restore
+   the exact saved pre-change ruleset body immediately and continue serialized
+   merges.
 
 Do not infer queue readiness from a workflow file containing a `merge_group`
 trigger. Only a real queue run proves event delivery, context identity, and
-ruleset compatibility.
+ruleset compatibility. Do not leave the `merge_queue` rule active after a
+failed canary while investigating; roll back first, then investigate.
 
 ## Human-review activation gate
 

@@ -93,8 +93,11 @@ operator, reason, and follow-up issue.
 
 - A pull request with a failing required .NET gate cannot merge.
 - The current one-human repository remains operable without fictitious review.
-- Review independence becomes stronger automatically when the documented
-  maintainer-count threshold is met; it is not silently claimed today.
+- Review independence becomes eligible for strengthening, not automatically
+  stronger, when the documented maintainer-count threshold is met: GitHub
+  settings do not change by themselves, and the runbook's human-review
+  activation gate still requires a separate operator change and canary before
+  any approval requirement takes effect. It is not silently claimed today.
 - Secret detection and supported push blocking are active without new paid
   services or production resources.
 - Merge throughput remains serialized until queue behavior is proven.
