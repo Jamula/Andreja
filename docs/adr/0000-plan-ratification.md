@@ -301,7 +301,7 @@ not match the merged `docs/plan.md`.
 ### 2026-09-07 — accepted assistant-provider scope status reconciliation
 
 - **Tracking issue:** [#74](https://github.com/Jamula/Andreja/issues/74)
-- **Pull request:** pending
+- **Pull request:** [#171](https://github.com/Jamula/Andreja/pull/171)
 - **Plan SHA-256:** `97ba17c3fa816a6f83f86afdecca00419f08e7d855362bda3f11770aff7904af`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed editorial/status amendment reflecting the
