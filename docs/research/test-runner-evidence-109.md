@@ -2,9 +2,11 @@
 
 - **Issue:** [#109](https://github.com/Jamula/Andreja/issues/109)
 - **Evaluated:** 2026-08-30
+- **Revalidated:** 2026-09-07
 - **Quality owner:** Data
 - **CI/operations reviewer:** Jett Reno
-- **Pinned SDK:** .NET SDK 10.0.301 on Ubuntu 24.04
+- **Original host:** .NET SDK 10.0.301 on Ubuntu 24.04
+- **Revalidation host:** .NET SDK 10.0.301 on Windows ARM64
 - **Outcome:** Retain `xunit.runner.visualstudio` 4.0.0 and
   `Microsoft.NET.Test.Sdk` 18.9.0 with xUnit 2.9.3.
 
@@ -29,6 +31,31 @@ declared package dependency. `Microsoft.NET.Test.Sdk` supplies TestHost and
 CodeCoverage 18.9.0, and TestHost supplies ObjectModel 18.9.0. The adapter's
 `Microsoft.TestPlatform.ObjectModel >= 17.13.0` dependency applies only to its
 .NET Framework 4.7.2 asset group.
+
+## Authorization and current-main revalidation
+
+On 2026-09-07, decision owner Cyrus Jamula explicitly directed issue #109 to
+completion after it was marked ready and assigned to Data. That instruction
+narrowly releases this dependency evaluation from ADR 0007's original backlog
+prerequisite; it does not accept the Proposed ADR or authorize the separately
+tracked framework migration.
+
+The evidence was then replayed on `origin/main` commit `2697352`. NuGet still
+listed 18.9.0, 4.0.0, and xUnit 2.9.3 as the latest stable releases. Debug and
+Release restores and builds completed with zero warnings and errors. Fresh
+per-assembly discovery and TRX execution reproduced the recorded unit and
+architecture counts exactly; PostgreSQL discovery also remained 22 tests in
+both configurations. Three additional Debug service-free runs passed all 275
+tests with no skips, and the 39-test semantic-conformance and 8-test
+architecture filters retained exact selection and pass counts. Format and
+documentation checks passed, the resolved graph retained `xunit.analyzers`
+1.18.0, and the direct/transitive NuGet advisory scan remained clean.
+
+Docker was unavailable on the Windows revalidation host, so it did not repeat
+the live PostgreSQL execution or replace the original disposable-PostgreSQL
+evidence. The original Ubuntu run remains the execution and cleanup evidence
+for that acceptance criterion; the fresh host only confirms unchanged
+discovery, compilation, and package resolution.
 
 ## Resolved test infrastructure
 
