@@ -8,6 +8,8 @@
   [ADR 0000](0000-plan-ratification.md)
 - **Proposed by:** Spock and Jett Reno
 - **Decision owner:** Cyrus
+- **Decision record:** [Phase 1A packet decision record](../phase-1a/packet-decision-66.md)
+  under [#66](https://github.com/Jamula/Andreja/issues/66); preparation only, not acceptance
 
 ## Context
 

@@ -13,6 +13,10 @@ remain unchecked and name what is still missing.
 
 ## Packet approval
 
+The [packet decision record](packet-decision-66.md) reconciles the rows below
+into one decision-ready artifact and records that no packet-specific specialist
+challenge is currently recorded for any of the nine named challengers.
+
 - [ ] Cyrus accepts or amends ADRs 0001–0005.
 - [ ] Spock challenges architecture boundaries, portability, alternatives, and
       federation coherence.

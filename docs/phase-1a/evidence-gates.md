@@ -59,7 +59,10 @@ Phase 1A remains blocked on all of the following:
 
 This index does not choose among restoring local tooling, using an isolated
 equivalent evidence host, or stopping. #62 remains provisional pending the
-technical evidence-host decision and completion of the gates above.
+technical evidence-host decision and completion of the gates above. The
+[packet decision record](packet-decision-66.md) carries these blockers into the
+residual-risk register prepared for Cyrus's decision under
+[#66](https://github.com/Jamula/Andreja/issues/66).
 
 ## Threat gate
 
