@@ -61,7 +61,7 @@ weights, lanes, or gate checklists.
 | Who owns which work right now | This document's workstream table + `squad:{member}` / `area:*` labels | Picard (triage) |
 | Company financial/cost evidence | Quark's session-close usage ledger and FinOps issues (`area:finops`) | Quark |
 | Legal/regulatory applicability | `docs/legal/regulatory-applicability.md` (pending ratification, issue #8) | Sarek |
-| Feedback/support lifecycle | Proposed operational expansion in `docs/frameworks/feedback-support.md` (review-ready draft, issue #10) | Guinan |
+| Feedback/support lifecycle | Cyrus-recorded Phase 0 framework handoff in `docs/frameworks/feedback-support.md` (issue #10); policy approval and operational activation remain gated by explicit Cyrus decisions in issues #155-#158, not issue closure | Guinan |
 
 Squad runtime state (`.squad/`) supports routing and learning; it is never a
 competing backlog to GitHub Issues, and workstreams do not maintain private plans
@@ -444,7 +444,9 @@ use `type:chore` plus a link to the retrospective issue for retro-action items.
 - Prioritization, scorecard, and launch-stage gates (owned by issue #5, not
   duplicated here): `docs/plan.md` `## Roadmap prioritization and launch
   framework`, future `docs/frameworks/prioritization-launch.md`.
-- Feedback and support lifecycle (review-ready draft under issue #10):
+- Feedback and support lifecycle (Cyrus-recorded Phase 0 framework handoff under
+  issue #10; policy and operational gates require explicit Cyrus decisions in
+  issues #155-#158, and closure alone has no approval effect):
   `docs/frameworks/feedback-support.md`.
 - Cost model and sponsorship policy (pending ratification under issue #11):
   `docs/plan.md` `## Cost and FinOps`; future `docs/cost-model.md` and

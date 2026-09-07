@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `45570b6b53ae13b4d7c4963921fabae13ae8a7f675332dd1e4088da2f831466a`
+- **Current proposed Plan SHA-256:** `04da6e0a359493b86f48e0f100feea4cd335a4c758b939efdfcbf89fd9feb758`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -239,11 +239,35 @@ not match the merged `docs/plan.md`.
   status-artifact updates after merging their plan changes. Both underlying
   artifacts remain non-authoritative pending their respective required approvals.
 
+### 2026-08-30 — proposed feedback-framework handoff status
+
+- **Tracking issues:** Framework [#10](https://github.com/Jamula/Andreja/issues/10)
+  and successor gates [#155](https://github.com/Jamula/Andreja/issues/155)
+  through [#158](https://github.com/Jamula/Andreja/issues/158)
+- **Pull request:** [#159](https://github.com/Jamula/Andreja/pull/159)
+- **Plan SHA-256:** `04da6e0a359493b86f48e0f100feea4cd335a4c758b939efdfcbf89fd9feb758`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/status amendment; no plan
+  re-ratification, gate approval, collection, publication, provider selection,
+  spend, deployment, launch, external email, or support-time commitment is
+  authorized.
+- **Scope:** Record Cyrus's separate decision that the Phase 0 feedback framework
+  is complete, close #10 independently of the documentation PR, and move all
+  unresolved policy, security, platform/vendor/cost, operational-readiness, and
+  launch decisions to the four consolidated successor issues. Issue #158 owns a
+  separate, expiring Cyrus authorization for synthetic-only non-production
+  staging evidence after #155-#157 are approved; that evidence authorization is
+  not a production/public launch decision. Pending status applies only to this
+  plan amendment; it does not reopen the separately recorded framework handoff
+  decision. Successor issue closure, labels, specialist verdicts, or
+  documentation merge do not approve a gate package; each package requires
+  Cyrus's explicit recorded decision.
+
 ### 2026-09-07 — proposed Markdown formatting normalization
 
 - **Tracking issue:** None; documentation-only maintenance.
 - **Pull request:** [#161](https://github.com/Jamula/Andreja/pull/161)
-- **Plan SHA-256:** `45570b6b53ae13b4d7c4963921fabae13ae8a7f675332dd1e4088da2f831466a`
+- **Plan SHA-256:** `04da6e0a359493b86f48e0f100feea4cd335a4c758b939efdfcbf89fd9feb758`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed mechanical/editorial amendment; no
   re-ratification, authority change, release publication, production deployment,

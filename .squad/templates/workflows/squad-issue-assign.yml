@@ -24,7 +24,11 @@ jobs:
             const issue = context.payload.issue;
             const label = context.payload.label.name;
 
-            // Extract member name from label (e.g., "squad:ripley" → "ripley")
+            function slugify(value) {
+              return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+            }
+
+            // Extract member slug from label (e.g., "squad:deanna-troi" → "deanna-troi")
             const memberName = label.replace('squad:', '').toLowerCase();
 
             const teamFile = '.squad/team.md';
@@ -54,7 +58,7 @@ jobs:
                 }
                 if (inMembersTable && line.startsWith('|') && !line.includes('---') && !line.includes('Name')) {
                   const cells = line.split('|').map(c => c.trim()).filter(Boolean);
-                  if (cells.length >= 2 && cells[0].toLowerCase() === memberName) {
+                  if (cells.length >= 2 && slugify(cells[0]) === memberName) {
                     assignedMember = { name: cells[0], role: cells[1] };
                     break;
                   }
