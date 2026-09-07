@@ -104,6 +104,28 @@ Never use a credential-shaped value for a branch-rules canary. Push-protection
 testing needs a separately approved synthetic-pattern procedure because a
 provider token can be live, reported to its issuer, or copied into audit data.
 
+### 2026-09-07 enforcement evidence
+
+Pull request
+[#170](https://github.com/Jamula/Andreja/pull/170) used head
+`fa55e5b863a532242be9937e9d6548187a9dc366` to add an intentional C# syntax
+error. Required workflow run
+[`34157536408`](https://github.com/Jamula/Andreja/actions/runs/34157536408)
+reported:
+
+- `Build and test (Debug)`: failure;
+- `Build and test (Release)`: failure;
+- `Format verification`: success;
+- `NuGet vulnerability audit`: success; and
+- `C# SAST (DevSkim)`: success.
+
+With the pull request ready for review, GitHub reported
+`mergeStateStatus: BLOCKED` while the Git commit graph itself remained
+`mergeable: MERGEABLE`. That distinction proves ruleset enforcement, rather
+than a merge conflict or draft state, blocked the pull request. The intentional
+failure was then removed on the same branch; the clean successor head must
+receive all five required contexts before merge.
+
 ## Safe ruleset change
 
 Before a ruleset write:
