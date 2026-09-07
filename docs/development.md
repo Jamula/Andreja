@@ -163,9 +163,12 @@ establish committed push-to-`main` or `merge_group` coverage. As observed on
 2026-09-07, the repository is public and the code-scanning default-setup and
 alerts API endpoints returned `200` and listed `csharp`, so the earlier `403`
 entitlement denial no longer applied at that time; re-verify live before
-relying on this, since visibility or entitlement can change. Re-enabling the
-committed C#/Python CodeQL workflow is a separate, not-yet-authorized change;
-it is not implied or claimed by this correction.
+relying on this, since visibility or entitlement can change. The committed
+`.github/workflows/codeql.yml` matrix currently analyzes only `actions` and
+`javascript-typescript`; it does not scan C# or Python today. Re-enabling that
+workflow as-is and extending its matrix to add `csharp`/`python` are two
+separate, not-yet-authorized changes; neither is implied or claimed by this
+correction.
 
 Default-branch required-check enforcement and the entitlement-aware merge
 procedure are defined by

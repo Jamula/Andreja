@@ -123,8 +123,13 @@ With the pull request ready for review, GitHub reported
 `mergeStateStatus: BLOCKED` while the Git commit graph itself remained
 `mergeable: MERGEABLE`. That distinction proves ruleset enforcement, rather
 than a merge conflict or draft state, blocked the pull request. The intentional
-failure was then removed on the same branch; the clean successor head must
-receive all five required contexts before merge.
+failure was then removed on the same branch. Required workflow run
+[`34157956090`](https://github.com/Jamula/Andreja/actions/runs/34157956090)
+on the resulting clean head `ed07de9db7323a1bfe94bf84e7568b28a86fac73`
+confirmed recovery: `Build and test (Debug)`, `Build and test (Release)`,
+`Format verification`, `NuGet vulnerability audit`, and `C# SAST (DevSkim)`
+all reported success, so the negative canary demonstrates both rejection and
+recovery as required by step 5 above.
 
 ## Safe ruleset change
 
