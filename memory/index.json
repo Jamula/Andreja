@@ -288,5 +288,15 @@
     "status": "active",
     "createdAt": "2026-08-30T17:55:39.083Z",
     "updatedAt": "2026-08-30T17:55:39.083Z"
+  },
+  {
+    "id": "60f83105-49a1-42fa-86ae-6555e4c0e0e1",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Prefer GPT models for Squad tasks",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-prefer-gpt-models-for-squad-tasks-60f83105.md",
+    "status": "active",
+    "createdAt": "2026-09-07T18:04:51.652Z",
+    "updatedAt": "2026-09-07T18:04:51.652Z"
   }
 ]
