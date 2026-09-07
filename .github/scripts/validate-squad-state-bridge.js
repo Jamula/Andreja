@@ -5,31 +5,26 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { PROTECTED_PATHS } = require('./squad-state-protected-paths');
 
-const SQUAD_VERSION = '0.12.0';
+const SQUAD_VERSION = '0.13.0';
 const HEAD_CANARY = 'SQUAD_COORDINATOR_CANARY_HEAD_b7d2';
 const EOF_CANARY = 'SQUAD_COORDINATOR_CANARY_a8f3';
-const HOST_NEUTRAL_RECOVERY_SENTENCE = 'Restart the app/session so project `.mcp.json` is loaded, then start a fresh child session.';
-const PROBE_FAILURE_RECOVERY_PARAGRAPH = `3. **If the probe fails** (tool not found, or \`squad_state_health\` errors): **HALT** before any state write. Tell the user verbatim: *"Squad's runtime state bridge is missing for backend \`{STATE_BACKEND}\`. The \`squad_state\` MCP server in \`.mcp.json\` is not reachable in this Copilot session. ${HOST_NEUTRAL_RECOVERY_SENTENCE}"* — and stop until the user acknowledges. Do not silently fall back to raw file ops.`;
-const REQUIRED_MCP_TOOLS = [
-  'squad_decide',
-  'squad_state_read',
-  'squad_state_write',
-  'squad_state_append',
-  'squad_state_delete',
-  'squad_state_list',
-  'squad_state_health',
-  'memory.classify',
-  'memory.write',
-  'memory.search',
-  'memory.promote',
-  'memory.delete',
-  'memory.audit',
-];
+const PROBE_FAILURE_RECOVERY_SENTENCE = 'Restart Copilot CLI so `.mcp.json` is loaded, or change `stateBackend` to `local` in `.squad/config.json`.';
+const PROBE_FAILURE_RECOVERY_PARAGRAPH = `3. **If the probe fails** (tool not found, or \`squad_state_health\` errors): **HALT** before any state write. Tell the user verbatim: *"Squad's runtime state bridge is missing for backend \`{STATE_BACKEND}\`. The \`squad_state\` MCP server in \`.mcp.json\` is not reachable in this Copilot session. ${PROBE_FAILURE_RECOVERY_SENTENCE}"* — and stop until the user acknowledges. Do not silently fall back to raw file ops.`;
+const REQUIRED_MCP_TOOLS = ['*'];
 const REQUIRED_MCP_SERVER_KEYS = ['command', 'args', 'env', 'tools'];
 const REQUIRED_IGNORES = PROTECTED_PATHS.map(([ignorePattern]) => ignorePattern);
 const NON_LOCAL_RAW_FILE_PROHIBITION_HEADING = '**HARD RULE — Backend contract enforcement:**';
 const REQUIRED_NON_LOCAL_RAW_FILE_PROHIBITIONS = [
-  '.squad/agents/*/history-archive.md',
+  '.squad/decisions.md',
+  '.squad/decisions/inbox/**',
+  '.squad/agents/*/history.md',
+  '.squad/casting/*.json',
+  '.squad/identity/*.md',
+  '.squad/memory/**',
+  '.squad/orchestration-log/**',
+  '.squad/log/**',
+  '.squad/rai/audit-trail.md',
+  '.squad/fact-checker/audit-trail.md',
 ];
 
 function isPlainObject(value) {
@@ -249,13 +244,13 @@ function validateRepository(root) {
     if (rawFileProhibitions === null) {
       errors.push('squad.agent.md must retain one bounded non-local raw-file prohibition list');
     } else {
-      for (const protectedPath of REQUIRED_NON_LOCAL_RAW_FILE_PROHIBITIONS) {
-        const requiredLine = `- \`${protectedPath}\``;
-        if (rawFileProhibitions.filter(line => line === requiredLine).length !== 1) {
-          errors.push(
-            `squad.agent.md non-local raw-file prohibition list must contain exactly once: ${protectedPath}`,
-          );
-        }
+      const requiredLines = REQUIRED_NON_LOCAL_RAW_FILE_PROHIBITIONS.map(
+        protectedPath => `- \`${protectedPath}\``,
+      );
+      if (!hasExactValues(rawFileProhibitions, requiredLines)) {
+        errors.push(
+          `squad.agent.md non-local raw-file prohibition list must exactly match the v${SQUAD_VERSION} contract`,
+        );
       }
     }
     const probeFailureParagraphs = coordinator.split(/\r?\n/u)
@@ -388,8 +383,8 @@ if (require.main === module) {
 module.exports = {
   EOF_CANARY,
   HEAD_CANARY,
-  HOST_NEUTRAL_RECOVERY_SENTENCE,
   NON_LOCAL_RAW_FILE_PROHIBITION_HEADING,
+  PROBE_FAILURE_RECOVERY_SENTENCE,
   PROBE_FAILURE_RECOVERY_PARAGRAPH,
   REQUIRED_IGNORES,
   REQUIRED_MCP_TOOLS,
