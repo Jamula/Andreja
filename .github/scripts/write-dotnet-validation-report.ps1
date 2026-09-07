@@ -127,7 +127,7 @@ $report = [ordered]@{
         untrusted_pull_requests = 'No secrets or write-capable token; checkout credentials are not persisted.'
         codeql_entitlement = 'Snapshot observed 2026-09-07, not re-verified by this workflow run: the repository was public and the code-scanning default-setup and alerts endpoints returned HTTP 200 and listed csharp. The committed CodeQL workflow was manually disabled by decision, not by denied entitlement, as of that date. Re-verify live before relying on this value; visibility or entitlement can change.'
         devskim_baseline = 'DS137138 excludes intentional loopback HTTP test/development URLs; DS162092 excludes false positives on explicit Debug/Development safeguards.'
-        ruleset_enforcement = 'Snapshot observed 2026-09-07, not re-verified by this workflow run: repository ruleset 21199927 enforced ADR 0011 (docs/adr/0011-default-branch-required-gates.md) and docs/operations/default-branch-protection.md as of that date. Re-verify live via the ruleset API before relying on this value; the ruleset can change or be recreated.'
+        ruleset_enforcement = 'Snapshot observed 2026-09-07, not re-verified by this workflow run: live repository ruleset 21199927 required these five contexts as of that date. Proposed ADR 0011 (docs/adr/0011-default-branch-required-gates.md) and docs/operations/default-branch-protection.md record and describe that live configuration; ADR 0011 remains Proposed and neither a closed issue nor a merged PR is itself Cyrus ratification. Re-verify live via the ruleset API before relying on this value.'
         sbom_and_provenance = 'Tracked separately in GitHub issue #71.'
     }
 }

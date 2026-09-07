@@ -4,6 +4,11 @@
 - **Date:** 2026-09-07
 - **Issue:** [#67](https://github.com/Jamula/Andreja/issues/67)
 - **Decision owner:** Cyrus Jamula
+- **Acceptance:** Not yet recorded. Closing issue #67 or merging the pull
+  request that introduces this file is not itself Cyrus's ratification
+  (`docs/plan.md:51-55`). This ADR remains Proposed, neither ratified nor
+  normative (`docs/architecture/andreja-high-level.md:7-11`), until an
+  explicit acceptance record naming the approver is added here.
 - **Governing:** [Platform plan](../plan.md) and
   [default-branch operations](../operations/default-branch-protection.md)
 
@@ -81,7 +86,9 @@ Until merge queue is activated, the maintainer serializes merges:
 3. verify every required check on the current head SHA;
 4. resolve all review threads;
 5. confirm no other merge changed `main` after the checks completed; and
-6. use GitHub squash merge or auto-merge, never a direct push.
+6. use GitHub squash merge only after a human confirms every required rule is
+   satisfied; never push directly to `main` and never use auto-merge (see
+   "Consequences" below).
 
 Emergency remediation follows the same pull-request and required-check path.
 If GitHub cannot enforce the rules, stop merges. Do not create a bypass actor
@@ -101,6 +108,10 @@ operator, reason, and follow-up issue.
 - Secret detection and supported push blocking are active without new paid
   services or production resources.
 - Merge throughput remains serialized until queue behavior is proven.
+- Repository `allow_auto_merge` remains `false` for as long as
+  [#104](https://github.com/Jamula/Andreja/issues/104)'s premature-auto-merge
+  race is open, per `docs/plan.md:134-146`. This ADR does not authorize
+  auto-merge and does not weaken that containment.
 - The repository depends on GitHub-hosted enforcement. The runbook therefore
   requires live API inspection, ETag-aware rollback evidence, and periodic
   negative canaries rather than relying on repository text alone.
