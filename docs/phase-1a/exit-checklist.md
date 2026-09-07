@@ -109,8 +109,9 @@ De-scope in this order:
 
 1. any optional second external provider beyond required BYOK; real GitHub
    Copilot is excluded from Phase 1A under
-   [Accepted ADR 0009](../adr/0009-copilot-provider-phase-scope.md) and cannot be
-   treated as optional Phase 1A exit evidence;
+   [Proposed ADR 0009](../adr/0009-copilot-provider-phase-scope.md), which remains
+   pending Cyrus acceptance, and cannot be treated as optional Phase 1A exit
+   evidence;
 2. inactive channel/federation contract persistence beyond conformance fixtures
    (the required contracts and in-memory signed-envelope tests remain);
 3. noncritical UI polish;
