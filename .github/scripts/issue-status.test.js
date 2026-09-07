@@ -119,8 +119,16 @@ test('branch parser accepts the documented convention only', () => {
 
 test('branch documentation requires issue-numbered Copilot branches', () => {
   const documentedPaths = [
+    path.join(__dirname, '..', 'copilot-instructions.md'),
     path.join(__dirname, '..', 'agents', 'squad.agent.md'),
     path.join(__dirname, '..', '..', '.squad', 'templates', 'copilot-agent.md'),
+    path.join(
+      __dirname,
+      '..',
+      '..',
+      '.squad',
+      'templates',
+      'copilot-instructions.md'),
     path.join(__dirname, '..', '..', '.squad', 'templates', 'issue-lifecycle.md'),
     path.join(
       __dirname,
@@ -153,6 +161,27 @@ test('branch documentation requires issue-numbered Copilot branches', () => {
     const content = fs.readFileSync(workflowPath, 'utf8');
     assert.match(content, /copilot\/\$\{issue\.number\}-\{slug\}/);
     assert.doesNotMatch(content, /copilot\/\*/);
+  }
+});
+
+test('Copilot instruction sources use the coding-agent branch convention', () => {
+  const instructionPaths = [
+    path.join(__dirname, '..', 'copilot-instructions.md'),
+    path.join(
+      __dirname,
+      '..',
+      '..',
+      '.squad',
+      'templates',
+      'copilot-instructions.md'),
+  ];
+
+  for (const instructionPath of instructionPaths) {
+    const content = fs.readFileSync(instructionPath, 'utf8');
+    assert.match(
+      content,
+      /Use the Copilot coding-agent branch convention:\s*```\s*copilot\/\{issue-number\}-\{slug\}\s*```/);
+    assert.doesNotMatch(content, /Use the squad branch convention:/i);
   }
 });
 

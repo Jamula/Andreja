@@ -3541,17 +3541,41 @@ test('selective CI runbook preserves the approved sample and budget gates', () =
   assert.match(runbook, /32924008713[\s\S]+fab046f6608fc93b032ed7e618b57f2547c88bdc[\s\S]+pre-trusted-classifier-gate/);
   assert.doesNotMatch(runbook, /ordinary\s+unlabelled bootstrap/);
   assert.doesNotMatch(runbook, /cb7a434|95d7450|N <= 25|N >= 20|81 minutes|94 minutes|118 minutes|1,060|every 12 hours|remaining seven|five eligible docs|five full/);
-  assert.match(testingMatrix, /maximum of smoke, docs, and full trusted runs/);
-  assert.match(testingMatrix, /only `labeled` and `repository_dispatch: selective-ci-smoke`/);
-  assert.match(testingMatrix, /38 planned \/ 51 fail-closed ceiling \/ 64 with 25% headroom/);
-  assert.match(testingMatrix, /N<=2/);
-  assert.match(testingMatrix, /timeout-derived full-run bound is 200 job-minutes/);
-  assert.match(testingMatrix, /all six label-write-capable workflows/);
-  assert.match(testingMatrix, /`F=3` is an uncertainty budget ceiling/);
+  assert.match(testingMatrix, /Feasibility terminated; `blocked:evidence`/);
+  assert.match(testingMatrix, /no smoke or sample ran \(`S=0`, `N=0`\)/);
+  assert.match(testingMatrix, /workflow is `disabled_manually`/);
+  assert.match(testingMatrix, /five pre-merge runs/);
+  assert.match(testingMatrix, /No savings or promotion is claimed/);
   assert.match(testingMatrix, /eight-concurrent Markdown Contents cap/);
   assert.match(testingMatrix, /Markdown-only generic docs/);
-  assert.match(testingMatrix, /No qualifying natural prose candidate terminally disables without dispatching or spending `S`/);
   assert.doesNotMatch(testingMatrix, /opened|N<=25|81 planned|94 fail-closed|remaining seven|5 docs \+ 5 full/);
+});
+
+test('records the terminated feasibility window without collection or savings claims', () => {
+  const evidence = require('./evidence/selective-ci-feasibility-termination.json');
+  const replay = require('./evidence/recent-merged-pr-replay.json');
+  assert.equal(evidence.recordType, 'administrative-termination');
+  assert.equal(evidence.outcome, 'blocked:evidence');
+  assert.equal(evidence.controllerSha, 'd87ecc4b49a80356549ec01b3a9f91944950f8b9');
+  assert.equal(evidence.reason, 'no-qualifying-natural-prose-candidate');
+  assert.equal(evidence.collection.dispatches, 0);
+  assert.equal(evidence.collection.labeledRuns, 0);
+  assert.equal(evidence.collection.actionsVariablesProvisioned, false);
+  assert.equal(evidence.collection.sampleLabelProvisioned, false);
+  assert.equal(evidence.collection.collectionEvidenceAvailable, false);
+  assert.equal(evidence.collection.runnerMinutes, null);
+  assert.equal(evidence.collection.costUsd, null);
+  assert.equal(evidence.collection.savingsClaimed, false);
+  assert.equal(evidence.workflow.state, 'disabled_manually');
+  assert.equal(evidence.workflow.preMergeRunCount, 5);
+  assert.equal(evidence.workflow.trustedPostMergeRunCount, 0);
+  assert.equal(evidence.ruleset.changed, false);
+  assert.equal(evidence.autoMergeEnabled, false);
+  assert.equal(evidence.promotionAuthorized, false);
+  assert.ok(replay.pullRequests.every((pull) => !Object.hasOwn(pull, 'title')));
+  assert.equal(capturedLabeledRun.actor.login, 'sample-operator');
+  assert.equal(capturedLabeledRun.head_branch, 'sample-head');
+  assert.equal(capturedLabeledRun.pull_requests[0].head.ref, 'sample-head');
 });
 
 test('historical replay economics use the documented per-domain model', () => {

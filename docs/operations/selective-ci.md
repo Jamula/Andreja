@@ -1,7 +1,31 @@
 # Fail-closed selective CI
 
-Status: **shadow only**. The existing required workflows and repository ruleset
+Status: **feasibility terminated; promotion blocked**. The shadow workflow is
+manually disabled. The existing required workflows and repository ruleset
 remain unchanged. Auto-merge remains disabled.
+
+## Recorded feasibility outcome
+
+The post-merge preflight ended the feasibility window on 2026-08-26 without
+collection spend. PR #118 established
+`d87ecc4b49a80356549ec01b3a9f91944950f8b9` as the only trusted controller
+revision, but the only open candidate, PR #50, classified full-suite and no
+naturally useful prose-only candidate existed. No synthetic or no-op change was
+created.
+
+No Actions variables or sample label were provisioned, and no post-merge
+repository dispatch or labeled sample ran (`S=0`, `N=0`). The workflow API
+reported only five pre-merge runs, ending with run `32931733394`, and zero
+trusted post-merge controller runs. `Selective CI (Shadow)` is
+`disabled_manually`; ruleset `21199927` and repository auto-merge remain
+unchanged.
+
+The gate is `blocked:evidence`. There is no feasibility-derived runner-minute,
+cost, savings, docs-only, full-sample, or merge-group evidence, and no promotion
+is authorized. Re-enablement requires a new approved budget/window, a naturally
+useful prose-only candidate classified with the exact trusted controller, and a
+new charged smoke. The machine-readable administrative record is
+`.github/ci/evidence/selective-ci-feasibility-termination.json`.
 
 ## Trust and classification
 
@@ -511,7 +535,10 @@ authorize a later 5+5 evidence collection or any promotion. That later work
 requires a new, independently reviewed budget/window; there is no automatic
 continuation.
 
-## Shadow rollout and promotion hold
+## Historical shadow rollout protocol and promotion hold
+
+The following protocol records the terminated window. It is not authorization
+to resume collection.
 
 1. Merge only this shadow workflow while existing required checks continue.
    Before merge, inventory the six label-write-capable workflows listed above

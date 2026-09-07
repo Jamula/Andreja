@@ -5,13 +5,16 @@ Fails the build when:
   1. The current or current-proposed plan SHA-256 content hash recorded in
      docs/adr/0000-plan-ratification.md no longer matches docs/plan.md. An
      accepted hash remains separate while a proposed amendment awaits approval.
-  2. The seed skill names in docs/plan.md's "Initial first-party skill
+  2. ADR 0006 and the charter/template ratification state are inconsistent, or
+     an Accepted ADR's charter SHA-256 no longer matches docs/charter.md. A
+     Proposed ADR does not enforce its candidate hash.
+  3. The seed skill names in docs/plan.md's "Initial first-party skill
      catalog" table drift from the authoritative
      docs/roadmap/first-party-skills.md catalog.
-  3. The seed connector categories in docs/plan.md's "Connector catalog and
+  4. The seed connector categories in docs/plan.md's "Connector catalog and
      release bands" table drift from the authoritative
      docs/roadmap/channel-connectors.md catalog.
-  4. A status-artifact row in docs/plan.md is missing, unexpected, malformed,
+  5. A status-artifact row in docs/plan.md is missing, unexpected, malformed,
        or has a SHA-256 value that does not match the referenced file.
 
 Per docs/plan.md and docs/frameworks/prioritization-launch.md, the roadmap
@@ -27,6 +30,11 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PLAN_PATH = REPO_ROOT / "docs" / "plan.md"
 ADR_PATH = REPO_ROOT / "docs" / "adr" / "0000-plan-ratification.md"
+CHARTER_PATH = REPO_ROOT / "docs" / "charter.md"
+CHARTER_ADR_PATH = REPO_ROOT / "docs" / "adr" / "0006-charter-ratification.md"
+README_PATH = REPO_ROOT / "README.md"
+DECISION_TEMPLATE_PATH = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "decision.yml"
+PR_TEMPLATE_PATH = REPO_ROOT / ".github" / "pull_request_template.md"
 SKILLS_PATH = REPO_ROOT / "docs" / "roadmap" / "first-party-skills.md"
 CONNECTORS_PATH = REPO_ROOT / "docs" / "roadmap" / "channel-connectors.md"
 EXPECTED_STATUS_ARTIFACTS = {
@@ -222,6 +230,293 @@ def check_plan_hash() -> None:
         "OK: docs/plan.md content hash matches ADR 0000 "
         f"({hash_state}; hash state does not imply approval)."
     )
+
+
+def charter_adr_status(adr_text: str) -> str:
+    matches = re.findall(
+        r"^- \*\*Status:\*\*\s*(Proposed|Accepted)\s*$", adr_text, re.MULTILINE
+    )
+    if len(matches) != 1:
+        fail(
+            f"{CHARTER_ADR_PATH.relative_to(REPO_ROOT)} must contain exactly one "
+            "'- **Status:** Proposed' or '- **Status:** Accepted' metadata line."
+        )
+    return matches[0]
+
+
+def charter_status(charter_text: str) -> str:
+    matches = re.findall(
+        r"^- \*\*Status:\*\*\s*(.+?)\s*$", charter_text, re.MULTILINE
+    )
+    if len(matches) != 1:
+        fail(
+            f"{CHARTER_PATH.relative_to(REPO_ROOT)} must contain exactly one "
+            "'- **Status:** <status>' metadata line."
+        )
+    return matches[0]
+
+
+def issue_form_field_is_required(form_text: str, field_id: str) -> bool:
+    """Inspect one issue-form body entry without matching another field's validation."""
+    lines = form_text.splitlines()
+    matching_entries: list[list[str]] = []
+
+    for index, line in enumerate(lines):
+        entry_match = re.fullmatch(r"(\s*)-\s+type:\s*\S+\s*", line)
+        if not entry_match:
+            continue
+
+        entry_indent = len(entry_match.group(1))
+        end = index + 1
+        while end < len(lines):
+            sibling = re.match(r"^(\s*)-\s+type:", lines[end])
+            if sibling and len(sibling.group(1)) == entry_indent:
+                break
+            end += 1
+
+        entry = lines[index:end]
+        if any(
+            re.fullmatch(rf"\s*id:\s*{re.escape(field_id)}\s*", item)
+            for item in entry
+        ):
+            matching_entries.append(entry)
+
+    if len(matching_entries) != 1:
+        return False
+
+    entry = matching_entries[0]
+    id_line = next(
+        item
+        for item in entry
+        if re.fullmatch(rf"\s*id:\s*{re.escape(field_id)}\s*", item)
+    )
+    field_property_indent = len(id_line) - len(id_line.lstrip())
+    for index, line in enumerate(entry):
+        validations_match = re.fullmatch(r"(\s*)validations:\s*", line)
+        if (
+            not validations_match
+            or len(validations_match.group(1)) != field_property_indent
+        ):
+            continue
+        validations_indent = len(validations_match.group(1))
+        for item in entry[index + 1 :]:
+            item_indent = len(item) - len(item.lstrip())
+            if item.strip() and item_indent <= validations_indent:
+                break
+            if re.fullmatch(r"\s*required:\s*true\s*", item):
+                return True
+    return False
+
+
+def markdown_h2_section(text: str, heading: str) -> str:
+    matches = list(
+        re.finditer(rf"^## {re.escape(heading)}\s*$", text, re.MULTILINE)
+    )
+    if len(matches) != 1:
+        fail(
+            f"{PR_TEMPLATE_PATH.relative_to(REPO_ROOT)} must contain exactly one "
+            f"'## {heading}' section."
+        )
+    start = matches[0].end()
+    next_heading = re.search(r"^##\s+", text[start:], re.MULTILINE)
+    end = start + next_heading.start() if next_heading else len(text)
+    return text[start:end]
+
+
+def markdown_checkbox_text(section: str, label_prefix: str) -> str | None:
+    lines = section.splitlines()
+    matches: list[str] = []
+    index = 0
+    while index < len(lines):
+        item = re.match(r"^- \[ \]\s+(.+)$", lines[index])
+        if not item:
+            index += 1
+            continue
+
+        content = [item.group(1).strip()]
+        index += 1
+        while index < len(lines) and not re.match(r"^- \[ \]\s+", lines[index]):
+            if lines[index].strip():
+                content.append(lines[index].strip())
+            index += 1
+        normalized = " ".join(content)
+        if normalized.startswith(label_prefix):
+            matches.append(normalized)
+
+    return matches[0] if len(matches) == 1 else None
+
+
+def check_pr_template_state(pr_template_text: str, adr_status: str) -> None:
+    impact_section = markdown_h2_section(pr_template_text, "Charter impact")
+    gates_section = markdown_h2_section(pr_template_text, "Gates")
+    markers = re.findall(
+        r"<!--\s*charter-impact-state:\s*(proposed|required)\s*-->",
+        impact_section,
+    )
+    marker = markers[0] if len(markers) == 1 else None
+    impact_text = " ".join(impact_section.split())
+    gate_text = markdown_checkbox_text(
+        gates_section, "Company charter impact recorded or not applicable"
+    )
+
+    if adr_status == "Proposed":
+        required_sentence = (
+            "This section is optional while ADR 0006 is Proposed and required "
+            "after it is Accepted."
+        )
+        required_gate = (
+            "Company charter impact recorded or not applicable "
+            "(required after ADR 0006 acceptance)"
+        )
+        if (
+            marker != "proposed"
+            or required_sentence not in impact_text
+            or gate_text != required_gate
+        ):
+            fail(
+                "While ADR 0006 is Proposed, .github/pull_request_template.md "
+                "must retain the 'charter-impact-state: proposed' marker, the "
+                "explicit optional-before/required-after wording, and the "
+                "pre-ratification charter gate."
+            )
+        return
+
+    required_gate = "Company charter impact recorded or not applicable (required)"
+    if (
+        marker != "required"
+        or "This section is required." not in impact_text
+        or "optional while ADR 0006 is Proposed" in impact_text
+        or gate_text != required_gate
+    ):
+        fail(
+            "When ADR 0006 is Accepted, .github/pull_request_template.md must "
+            "use the 'charter-impact-state: required' marker, state that the "
+            "Charter impact section is required, and make its checklist gate "
+            "unconditionally required."
+        )
+
+
+def check_readme_atomicity_content(readme_text: str, adr_status: str) -> None:
+    charter_pending = re.search(r"charter[^.]*\bpending\b", readme_text, re.IGNORECASE)
+    charter_ratified = re.search(
+        r"charter[^.]*\bratified\b", readme_text, re.IGNORECASE
+    )
+
+    if adr_status == "Proposed":
+        if not charter_pending or charter_ratified:
+            fail(
+                "While ADR 0006 is Proposed, README.md must describe the "
+                "charter as pending ratification and must not yet call it "
+                "ratified."
+            )
+        return
+
+    if charter_pending or not charter_ratified:
+        fail(
+            "When ADR 0006 is Accepted, README.md must describe the charter "
+            "as ratified and must no longer call it pending."
+        )
+
+
+def check_charter_atomicity_content(
+    charter_text: str,
+    adr_text: str,
+    decision_form_text: str,
+    pr_template_text: str,
+    readme_text: str,
+) -> None:
+    adr_status = charter_adr_status(adr_text)
+    status_text = charter_status(charter_text)
+    says_proposed = re.search(r"\bproposed\b", status_text, re.IGNORECASE)
+    says_not_authoritative = re.search(
+        r"\bnot\s+(?:yet\s+)?authoritative\b", status_text, re.IGNORECASE
+    )
+
+    if adr_status == "Proposed":
+        if not says_proposed or not says_not_authoritative:
+            fail(
+                "While ADR 0006 is Proposed, docs/charter.md must remain "
+                "explicitly Proposed and not authoritative."
+            )
+        if issue_form_field_is_required(decision_form_text, "charter"):
+            fail(
+                "While ADR 0006 is Proposed, the 'charter' field in "
+                ".github/ISSUE_TEMPLATE/decision.yml must not be required; "
+                "that change belongs to the atomic acceptance pull request."
+            )
+        check_pr_template_state(pr_template_text, adr_status)
+        check_readme_atomicity_content(readme_text, adr_status)
+        print(
+            "OK: Proposed ADR 0006 keeps the charter non-authoritative, the "
+            "decision form optional, README pending, and the PR template in "
+            "its pre-ratification state."
+        )
+        return
+
+    if (
+        says_proposed
+        or says_not_authoritative
+        or not re.match(r"(?i)^(?:accepted|ratified)\b", status_text)
+    ):
+        fail(
+            "When ADR 0006 is Accepted, docs/charter.md status must start "
+            "with Accepted or Ratified and must no longer say Proposed or "
+            "not authoritative."
+        )
+    if not issue_form_field_is_required(decision_form_text, "charter"):
+        fail(
+            "When ADR 0006 is Accepted, the 'charter' field in "
+            ".github/ISSUE_TEMPLATE/decision.yml must have "
+            "'validations: required: true'."
+        )
+    check_pr_template_state(pr_template_text, adr_status)
+    check_readme_atomicity_content(readme_text, adr_status)
+    print(
+        "OK: Accepted ADR 0006 has atomic charter, decision-form, "
+        "README, and PR-template state."
+    )
+
+
+def check_charter_hash_content(charter_text: str, adr_text: str) -> None:
+    if charter_adr_status(adr_text) == "Proposed":
+        print("OK: ADR 0006 is Proposed; charter hash enforcement is deferred.")
+        return
+
+    actual_hash = hashlib.sha256(charter_text.encode("utf-8")).hexdigest()
+    hash_matches = re.findall(
+        r"^- \*\*Charter SHA-256:\*\*\s*`([0-9a-fA-F]{64})`\s*$",
+        adr_text,
+        re.MULTILINE,
+    )
+    if len(hash_matches) != 1:
+        fail(
+            "Accepted ADR 0006 must contain exactly one "
+            "'- **Charter SHA-256:** `<64-character hash>`' line."
+        )
+
+    recorded_hash = hash_matches[0].lower()
+    if recorded_hash != actual_hash:
+        fail(
+            "docs/charter.md has changed since ADR 0006 was accepted.\n"
+            f"  Recorded hash: {recorded_hash}\n"
+            f"  Actual hash:   {actual_hash}\n"
+            "Log an amendment (or re-ratify) in "
+            f"{CHARTER_ADR_PATH.relative_to(REPO_ROOT)} with the new hash."
+        )
+    print("OK: docs/charter.md hash matches Accepted ADR 0006.")
+
+
+def check_charter_hash() -> None:
+    charter_text = read(CHARTER_PATH)
+    adr_text = read(CHARTER_ADR_PATH)
+    check_charter_atomicity_content(
+        charter_text,
+        adr_text,
+        read(DECISION_TEMPLATE_PATH),
+        read(PR_TEMPLATE_PATH),
+        read(README_PATH),
+    )
+    check_charter_hash_content(charter_text, adr_text)
 
 
 def extract_table_rows(text: str, section_heading: str, header_prefix: str) -> list[list[str]]:
@@ -489,6 +784,7 @@ def check_connector_catalog() -> None:
 
 def main() -> None:
     check_plan_hash()
+    check_charter_hash()
     check_status_artifact_hashes()
     check_skill_catalog()
     check_connector_catalog()

@@ -99,7 +99,7 @@ The `squad_state_*` and `memory.*` tools that own persistence are exposed via th
 
 1. If `STATE_BACKEND ∈ {"local", "worktree"}`: file ops on `.squad/` are valid; skip the probe.
 2. Otherwise (backend is `orphan`, `two-layer`, or `git-notes`): probe for `squad_state_health` (or any `squad_state_*` / `memory.*` tool) using whatever tool-discovery mechanism your runtime exposes (e.g. `tool_search_tool_regex` in Copilot CLI). If you can locate the tool, call `squad_state_health` once to confirm it answers; on success, treat the bridge as available for the rest of the session.
-3. **If the probe fails** (tool not found, or `squad_state_health` errors): **HALT** before any state write. Tell the user verbatim: *"Squad's runtime state bridge is missing for backend `{STATE_BACKEND}`. The `squad_state` MCP server in `.mcp.json` is not reachable in this Copilot session. Restart Copilot CLI so `.mcp.json` is loaded, or change `stateBackend` to `local` in `.squad/config.json`."* — and stop until the user acknowledges. Do not silently fall back to raw file ops.
+3. **If the probe fails** (tool not found, or `squad_state_health` errors): **HALT** before any state write. Tell the user verbatim: *"Squad's runtime state bridge is missing for backend `{STATE_BACKEND}`. The `squad_state` MCP server in `.mcp.json` is not reachable in this Copilot session. Restart the app/session so project `.mcp.json` is loaded, then start a fresh child session."* — and stop until the user acknowledges. Do not silently fall back to raw file ops.
 
 This handshake runs **once per session**, not per spawn. Cache the result.
 
@@ -259,6 +259,7 @@ If `memory.*` is not present in the bridge (older Squad versions before the brid
 - `.squad/decisions.md`
 - `.squad/decisions/inbox/**`
 - `.squad/agents/*/history.md`
+- `.squad/agents/*/history-archive.md`
 - `.squad/casting/*.json`
 - `.squad/identity/*.md`
 - `.squad/memory/**`
@@ -1076,7 +1077,7 @@ Humans can join the Squad roster alongside AI agents. They appear in routing, ca
 
 ## Copilot Coding Agent Member
 
-The GitHub Copilot coding agent (`@copilot`) can join the Squad as an autonomous team member. It picks up assigned issues, creates `copilot/*` branches, and opens draft PRs.
+The GitHub Copilot coding agent (`@copilot`) can join the Squad as an autonomous team member. It picks up assigned issues, creates `copilot/{issue-number}-{slug}` branches, and opens draft PRs.
 
 **On-demand reference:** Read `.squad/templates/copilot-agent.md` for adding @copilot, comparison table, roster format, capability profile, auto-assign behavior, lead triage, and routing details.
 

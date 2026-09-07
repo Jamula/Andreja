@@ -809,12 +809,84 @@ coordination); and Personal Brand Studio (Early band, but carrying FTC
 endorsement/authenticity, marketing, and platform-terms exposure — sections 4, 6, and 16).
 Skills that are neither
 Regulated/Sensitive/Business-sensitive by Band nor implicated by a specific domain today —
-for example Personal Semantic Profile and Travel and Social Planning, both
-"Research/early"/"Early" band with no sensitive-data or regulated-transaction capability
-currently defined — are intentionally not given a dedicated per-skill gate here; re-run
-this cross-reference check if their Band classification or capabilities change. Qualified
+Open Loops and Tasks, Travel and Social Planning, and Hobbies and Social Groups Manager, at
+their currently defined capabilities — carry baseline privacy/security hygiene rather than a
+domain-specific gate, and appear in the register below as "Open (baseline)" with an explicit
+re-open trigger; re-run this cross-reference check if their Band classification or
+capabilities change. Qualified
 counsel approval of this framework, and Cyrus's sign-off, remain the two conditions this
-document cannot itself satisfy.
+document cannot itself satisfy. The Regulated feature legal-gate register below is the
+auditable, row-per-feature form of this accounting; the Approval status section records
+which parts of the "Done when" criterion are met and which are not.
+
+## Regulated feature legal-gate register
+
+The prose accounting above explains *why* each feature is or is not implicated. This
+register is the auditable form of it: one row per capability or first-party skill that
+carries a legal gate, naming the gate condition that must clear **before that feature's
+implementation phase begins**. It exists so that issue #8's "every regulated feature has a
+defined legal gate" criterion can be checked mechanically rather than inferred from
+narrative text.
+
+How to use it:
+
+- A row is a **gate**, not a compliance conclusion. "Open" is the correct and expected
+  state for every row until qualified counsel has answered that domain's counsel questions
+  and Cyrus has recorded a decision.
+- A gate clears only through the normal delivery path: the feature's GitHub issue and
+  linked ADR record the applicability row, counsel's answer, the chosen controls, and the
+  evidence. This document is not itself the approval record.
+- Bands and phases below are copied from `docs/plan.md`'s "Initial first-party skill
+  catalog". If that table changes, update this register in the same pull request (see
+  Governance and maintenance).
+
+| Feature | Band | Phase | Domain sections | Gate condition (must clear before the phase begins) | Status |
+|---|---|---|---|---|---|
+| Data Ownership and Privacy (platform) | Platform capability | 1A onward | 1, 2 | Counsel-confirmed controller/processor characterization for the self-hosted deployment model, and a confirmed position on who owes breach notification when the operator holds the data plane. | Open |
+| Identity/Tenancy/Authorization (platform) | Platform capability | 1A onward | 1, 2 | Counsel-confirmed treatment of household/family tenancy and non-user `Contact` records, including the adults-only account policy and any minor-referenced-data exposure. | Open |
+| Assistant Runtime and Review (platform) | Platform capability | 1A-2 | 3 | Counsel-confirmed position on whether human-confirmed, user-directed assistant proposals fall outside state ADMT/automated-decision regimes, and what disclosure (if any) is required. | Open |
+| Skill Host / third-party skill ecosystem | Platform capability | 1A onward (ecosystem later) | 14, 4 | Counsel-confirmed intermediary/marketplace posture, developer-terms and liability allocation, and required disclosures before any third-party skill is distributed. | Open |
+| App-store distribution | Distribution channel | Mobile phases | 15, 4 | Confirmed conformance with Apple/Google AI-content, privacy-label, and data-handling policies before first store submission. | Open |
+| Open Loops and Tasks | MVP | 1A-2 | 1 | Baseline privacy/security hygiene only; no regulated-transaction gate today. Re-open if task content is extended to sensitive categories or external actions. | Open (baseline) |
+| Calendar and Commitments | MVP/early | 1B bounded; 2 manual; 3B full channel | 1, 6 | Counsel-confirmed basis for email/invite intake under a user grant, and confirmed marketing/communications boundaries before any outbound messaging. | Open |
+| Personal Semantic Profile | Research/early | 0 research; 2 profile | 1, 3 | Counsel-confirmed handling of inferred sensitive-category attributes (including inferences the user did not assert) before profile projections ship. | Open |
+| Personal Brand Studio | Early | 0 research; 2 dogfood; 8 publishing | 4, 6, 16 | Counsel-confirmed FTC endorsement/authenticity posture, marketing-communications compliance, and platform-terms review before any publication capability is enabled. | Open |
+| Finance Administration | Early | 2 | 9, 2 | Counsel-confirmed non-applicability of GLBA/state financial-institution status and money-transmission regimes for a no-money-movement administrative scope, plus the boundary that keeps it there. | Open |
+| Family and Relationships | Early | 4; sharing in 6 | 1, 12 | Counsel-confirmed treatment of children's data referenced by an adult account holder (COPPA boundary) and of school/health follow-up records. | Open |
+| Health and Wellbeing Manager | Sensitive/later | 4 manual; 12 connected | 1, 2, 8 | Counsel-confirmed HIPAA-boundary characterization and FTC Health Breach Notification Rule applicability, including the connected-source path, before any health data is stored. | Open |
+| Household, Vehicle, Insurance and Projects Manager | Early/later | 4 manual; 5-6 collaboration; 8 connected | 10, 7 | Counsel-confirmed non-applicability of insurance-producer/adviser licensing for a records-and-reminders scope, plus records-retention treatment for policy documents. | Open |
+| Travel and Social Planning | Early | 1B trip slice; 4 full; sharing in 6 | 6 | No dedicated gate today. Re-open if the skill books, pays for, or transacts on the user's behalf, or sends outbound messages to non-users. | Open (baseline) |
+| Interests, Reading, and Podcasts | Early | 2 | 16 | Counsel-confirmed source-terms and copyright posture before content from user-selected sources is stored, excerpted, or redistributed. | Open |
+| Trading Research and Review | Later first-party | 4 | 9 | Counsel-confirmed non-applicability of Investment Advisers Act registration for a research/journaling scope with no recommendations, brokerage data, or order execution. | Open |
+| Lifestyle Rewards and Financial Optimization | Regulated/later | 11 | 4, 6, 9 | Counsel-confirmed treatment of offers/cashback presentation (FTC advertising and disclosure obligations) and of any value transfer, before the phase begins. | Open |
+| Miles and Points Manager | Regulated/later | 11 | 4, 9 | Counsel-confirmed posture on loyalty-program terms, account access, transfer/redemption facilitation, and whether any of it implicates money transmission. | Open |
+| Employer Benefits and Perks Manager | Sensitive/later | 11 | 1, 8, 11 | Counsel-confirmed ERISA and benefits-data boundaries, including whether enrollment/eligibility assistance creates fiduciary or advisory exposure. | Open |
+| Hobbies and Social Groups Manager | Early/later | 4 manual; 8 connected | 9 | No dedicated gate today. Re-open if dues collection becomes money movement rather than a reminder. | Open (baseline) |
+| Life Context and Opportunity Navigator | Core/iterative | 0 research; 2 insights; 6 mutual connections | 1, 3 | Counsel-confirmed position on cross-domain synthesis and consensual mutual connections, including explainability expectations for any consequential suggestion. | Open |
+| Life Event Planner | Cross-domain | 4 manual; 5-6 collaboration; 11-12 connected | 7, 12 | Counsel-confirmed records-retention treatment and confirmed boundaries for elder-care, education, and professional-handoff scenarios (no unlicensed professional advice). | Open |
+| Relationships and Communities Map | Sensitive/iterative | 1B hypotheses; 2 manual; 8 photo/channel | 1, 3, 6 | Counsel-confirmed basis for deriving relationship/community inferences from consented sources, and for holding data about non-users. | Open |
+| Small Business and Entrepreneur Manager | Business/sensitive | 4 Customer Zero; 8 connectors; 10 analytics | 7, 9, 11, 13 | Counsel-confirmed boundaries for invoicing/expense/cash-flow administration (no accounting, tax, or payroll advice), business-record retention, and business-contact data handling. | Open |
+
+Every first-party skill in `docs/plan.md`'s "Initial first-party skill catalog" appears in
+this register. Rows marked "Open (baseline)" have no domain-specific gate at their current
+scope and carry only baseline privacy/security hygiene; their re-open trigger is stated
+inline and is also covered by the consolidated re-review triggers above.
+
+## Approval status
+
+Issue #8's "Done when" criterion has two parts. This section records the state of each so
+the gap is explicit rather than implied.
+
+| Condition | State | Who can change it |
+|---|---|---|
+| Every regulated feature has a defined legal gate | **Met by this document** — see the register above; each feature has a named gate condition, owning domain section, and re-review trigger. | Sarek maintains it; drift is caught by the Governance and maintenance rule. |
+| Cyrus approves the framework | **Not met.** No ratification record exists. | Cyrus only. |
+| Qualified counsel approves the framework | **Not met.** No counsel engagement has occurred; Phase 0 provisions no professional services. | Qualified, jurisdiction-appropriate counsel only. |
+
+Until the second and third rows are met, this document is a research artifact. It does not
+authorize a launch, support a public compliance claim, or clear any gate in the register
+above. Individual gates clear through counsel review of that domain, not through this
+document being merged.
 
 ## Governance and maintenance
 
@@ -827,7 +899,9 @@ document cannot itself satisfy.
   tracked in that feature's GitHub issue and linked ADR, not duplicated here. Do not let
   this document silently diverge from `docs/plan.md` — if a roadmap phase, skill, or
   guardrail changes, update the corresponding section here in the same pull request or
-  open a follow-up issue.
+  open a follow-up issue. In particular, the Regulated feature legal-gate register must
+  list every skill in `docs/plan.md`'s "Initial first-party skill catalog"; adding a skill
+  there without adding its gate row here is drift.
 - **Versioning:** treat every dated source-check above as provisional. When re-reviewed,
   update the "Date checked" value and the status tag rather than assuming the prior
   conclusion still holds — regulatory status, especially for AI/ADMT and state privacy law,
