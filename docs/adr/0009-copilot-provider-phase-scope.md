@@ -26,6 +26,61 @@ provider/account/model call, spend, or waiver of any gate. This ADR evaluates
 how to satisfy that requested outcome; it must not be cited as Cyrus's approval
 of the recommendation or activation.
 
+## Decision-ready recommendation summary for Cyrus
+
+This section restates issue #74's decision question, options, and required
+gates in one place so Cyrus can accept or reject without reading the full ADR.
+It records no new fact and authorizes nothing; it is a navigation aid over the
+evidence below.
+
+**Decision question:** should the ratified plan state unambiguously that Phase
+1A ships the Andreja-native OpenAI-compatible BYOK provider and deterministic
+fake, while the real GitHub Copilot SDK provider begins in Phase 1B after
+entitlement/isolation/cost review?
+
+**Options considered:**
+
+1. **BYOK + deterministic fake in 1A; real Copilot in 1B (recommended).**
+   Matches the current roadmap, the implemented provider seam, and every risk
+   gate below. No plan/implementation conflict remains once Cyrus accepts this
+   ADR.
+2. **Add real Copilot to 1A.** Rejected (see "Alternatives considered"): it
+   would require entitlement, isolation, retention, credential, runtime, cost,
+   and operational evidence that does not yet exist, before Phase 1A's
+   independent-recovery and spend exits are proven.
+3. **Keep both optional with no minimum exit provider.** Rejected: "optional"
+   leaves acceptance, budget, and progress claims ambiguous, which is the exact
+   defect issue #74 raised.
+
+**Recommendation: Option 1.** Phase 1A's implementation already matches Option
+1 (deterministic fake plus BYOK; no `GitHub.Copilot.SDK` package reference in
+the shipping graph). If Cyrus accepts this ADR, that acceptance would remove
+the plan-vs-implementation ambiguity by making the roadmap the single source of
+truth; it would not by itself authorize a Copilot account, runtime,
+network/model call, content disclosure, or spend.
+
+**Required artifact gate status** (issue #74's seven named gates, mapped to
+this ADR's evidence; "Documented" means the design/requirement is written and
+falsifiable, not that a live verdict has been recorded):
+
+| Required gate | Status | Where addressed |
+|---|---|---|
+| Architecture | Documented | "Repository evidence" above; provider-neutral `IAssistantProvider`/`IAssistantSession` contracts; "Topology decision" in the qualification sequence |
+| Security/privacy | Documented | "Tenant/user isolation," "Prompt/tool/data exposure," "Authentication and credential custody," and "Runtime control channel" gate rows |
+| Legal/vendor terms | Documented | "Current external evidence" (Copilot product/OAuth/multi-tenancy/scaling/backend/persistence docs, rechecked 2026-08-26) and the "Legal, privacy, security, and abuse approval" gate row |
+| FinOps | Documented | "Budgets and cost" gate row and the "Cost delta" section ($0 spend authorized by this ADR) |
+| Quality/evidence | Documented | "Tests and canaries" gate row and the "Qualification sequence" (toolchain spike -> gate packet -> synthetic canary -> user canary) |
+| Operations/support | Documented | "Availability, fallback, and offline," "Audit and provenance," and "Rollback and exit" gate rows |
+| Public claims | Documented | No user-facing or marketing claim of Copilot support is authorized before a completed Phase 1B synthetic canary and this ADR's acceptance; Phase 0's public-website boundary (ADR 0008) and the plan's "honest availability status" requirement govern any future claim |
+
+Every "Documented" row above is a design/requirement, not a completed live
+verdict, and none of it is a Cyrus decision. If and when Cyrus accepts this
+ADR, that acceptance would decide **phase placement only** — it would not
+supply the named architecture, privacy, security/abuse, FinOps/operations,
+quality/evidence, public-claims, or qualified-legal **verdicts** the "Approver
+record required for acceptance" section still requires before any synthetic
+canary, account, or spend.
+
 The recommendation is:
 
 1. **Phase 1A has no real Copilot provider.** Its runtime providers remain the
@@ -203,6 +258,13 @@ Acceptance requires a dated record containing:
   isolation, prompt injection, monitoring, incident response, and rollback;
 - FinOps/operations verdict on entitlement, quotas, hard budgets,
   reconciliation, SLO/support, capacity, fallback, and kill/cleanup;
+- quality/evidence verdict on the sequencing and coverage of the deterministic,
+  conformance, and canary tests in "Tests and canaries" and the "Qualification
+  sequence";
+- public-claims verdict that no user-facing or marketing claim of Copilot
+  support is made before a completed Phase 1B synthetic canary and this ADR's
+  acceptance, consistent with ADR 0008's public-website boundary and the plan's
+  honest-availability-status requirement;
 - qualified legal verdict on the then-current applicable agreements and intended
   personal, invite-cohort, funded, and customer-facing uses; and
 - exact evidence links, versions, expiry/re-review triggers, accepted exceptions,
