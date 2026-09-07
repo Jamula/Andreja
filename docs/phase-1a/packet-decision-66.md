@@ -6,6 +6,7 @@
 - **Decision date:** 2026-09-07
 - **Approver:** Cyrus Jamula
 - **Source issue:** [#66](https://github.com/Jamula/Andreja/issues/66)
+- **Acceptance pull request:** [#174](https://github.com/Jamula/Andreja/pull/174)
 - **Decision and challenge evidence:**
   [issue comment](https://github.com/Jamula/Andreja/issues/66#issuecomment-5576305726)
 - **Reviewed base:** `0b8edac57e050cb5d51e0b4597b690cbd76b26c3`
