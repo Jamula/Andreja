@@ -132,16 +132,16 @@ explicit confirmation, and zero external-unit default. No non-loopback provider
 call is authorized until Cyrus separately approves a numeric model-spend envelope,
 provider disclosure, and retention statement.
 
-### Copilot provider phase-scope proposal
+### Copilot provider phase scope
 
-[Proposed ADR 0009](0009-copilot-provider-phase-scope.md) recommends the narrow
-resolution of issue #74. Phase 1A has no real Copilot provider. Its only Copilot
+[Accepted ADR 0009](0009-copilot-provider-phase-scope.md) resolves issue #74.
+Phase 1A has no real Copilot provider. Its only Copilot
 SDK work is a pinned, isolated, non-shipping, credential-free
 compile/conformance adapter and developer tooling: no production dependency,
 service registration, container/runtime, configuration/UI, authentication,
 network/model call, account provisioning, content disclosure, or usage. A
-limited real provider begins no earlier than Phase 1B after ADR 0009 acceptance
-and its provider gates. This cross-reference does not accept ADR 0009 or authorize
+limited real provider begins no earlier than Phase 1B after its provider gates
+and separate activation approval. This cross-reference does not authorize
 provider activation.
 
 ### Open Loops vertical slice
