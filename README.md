@@ -42,7 +42,8 @@ if ($LASTEXITCODE -ne 0 -or $efVersionText -notmatch "10\.0\.11") {
 }
 ```
 
-The repository is private. Your GitHub account must have access before cloning.
+The repository is public. Write access and protected-branch operations still
+require an authorized GitHub account.
 
 ## Restore and build
 
