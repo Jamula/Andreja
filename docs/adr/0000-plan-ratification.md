@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `97ba17c3fa816a6f83f86afdecca00419f08e7d855362bda3f11770aff7904af`
+- **Current proposed Plan SHA-256:** `98028c7f2829cbe2d73f5db8eec48c14371d2bc67eb4bf66c9e4c5f7bcd3a80b`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -298,19 +298,3 @@ not match the merged `docs/plan.md`.
   This proposal does not ratify the plan amendment, charter, or feedback
   framework; authorize a reporting or privileged channel; provide legal advice;
   or approve public culture publication.
-### 2026-09-07 — accepted assistant-provider scope status reconciliation
-
-- **Tracking issue:** [#74](https://github.com/Jamula/Andreja/issues/74)
-- **Pull request:** [#171](https://github.com/Jamula/Andreja/pull/171)
-- **Plan SHA-256:** `97ba17c3fa816a6f83f86afdecca00419f08e7d855362bda3f11770aff7904af`
-- **Approver:** Cyrus Jamula; **pending**
-- **Classification:** Proposed editorial/status amendment reflecting the
-  separately accepted ADR 0009; no plan re-ratification, provider activation,
-  account, entitlement, spend, content disclosure, or phase exit is authorized.
-- **Scope:** Reconcile the plan and dependent catalogs with Accepted ADR 0009:
-  Phase 1A runtime is deterministic fake plus optional Andreja-native
-  OpenAI-compatible BYOK; Phase 1A Copilot SDK work is limited to a
-  credential-free, non-shipping compile/conformance toolchain spike; and a
-  limited real provider begins no earlier than Phase 1B after every provider
-  gate and separate activation approval. This pending plan-status amendment
-  does not accept unrelated pending plan changes.
