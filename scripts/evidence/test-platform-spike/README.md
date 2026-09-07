@@ -1,7 +1,7 @@
 # Issue 108 test-platform spike
 
 This isolated harness compares xUnit.net v3 `xunit.v3` 4.0.0 and
-`MSTest.Sdk` 4.3.3 on Microsoft.Testing.Platform 2.3.3 with the repository's
+`MSTest.Sdk` 4.4.0 on Microsoft.Testing.Platform 2.4.0 with the repository's
 pinned .NET SDK 10.0.301. It is excluded from `Andreja.slnx` and does not replace
 or modify the production xUnit 2 suite.
 
