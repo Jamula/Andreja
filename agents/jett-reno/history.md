@@ -1,1 +1,2 @@
 📌 Team update (2026-08-30T17:09:11Z): RECONCILIATION_PARTIAL remains the latest reconciliation result; safe metadata changes for #142, #70, #3, and #6 are preserved in canonical state.
+📌 Team update (2026-09-07T10:46:00.725-07:00): Weekly dependency automation decision merged; root/spike NuGet, Squad template npm, GitHub Actions, and root Dockerfile are covered while existing manifest boundaries remain intact — decided by Jett Reno.
