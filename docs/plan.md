@@ -38,7 +38,7 @@ or content disclosure.
 #### Current artifact and implementation status
 
 | Area | Current evidence | Decision or remaining boundary |
-|---|---|---|
+| --- | --- | --- |
 | Modular boundaries, PostgreSQL, and passkeys | The Phase 1A modular slices, PostgreSQL reference persistence/migrations, production passkey bootstrap/recovery, and their architecture/integration/browser tests are implemented on `main`. Evidence run [#44](phase-1a/evidence-44.md) records the exact tested boundary. | ADRs 0001–0005 remain **Proposed and unaccepted** pending [#66](https://github.com/Jamula/Andreja/issues/66). Merge and passing tests are implementation evidence, not Cyrus's acceptance or Phase 1A exit. |
 | Skill, channel, and semantic contracts | Application-owned skill/channel manifests and hosts, grants/audit/peer envelopes, and minimal semantic-profile/provenance/export contracts are implemented. | This is contract-seam evidence only: no third-party execution, production connector, federation transport, graph database, universal ontology, or inactive persistence is approved. ADR 0004 and the other Phase 1A ADRs remain Proposed. |
 | Portability and recovery | The application export/import clean-instance round trip passed as supplemental evidence in [evidence run #44](phase-1a/evidence-44.md#supplemental-application-portability-evidence-87). PostgreSQL logical dump/restore was only partial exit evidence. | Portable application data does not substitute for an encrypted database-plus-Data-Protection-key recovery set and restored sign-in. Managed-provider PITR and managed-cloud portability remain deferred. |
@@ -55,7 +55,7 @@ stale rows fail documentation CI. A closed issue, merged PR, title containing
 explicit Cyrus decision.
 
 | Artifact | Source and current SHA-256 | Current authority |
-|---|---|---|
+| --- | --- | --- |
 | [`docs/operating-model.md`](operating-model.md) | Issue [#14](https://github.com/Jamula/Andreja/issues/14), PR [#17](https://github.com/Jamula/Andreja/pull/17); `f10ab3a27d076e5eba407f5530366caa70c0e4aae45d695b1a7fb9c96c73eb85` | **Draft for ratification.** The issue and PR merged/closed, but no separate explicit Cyrus ratification record was found; it is advisory and the plan remains authoritative. |
 | [`docs/cost-model.md`](cost-model.md) | Issue [#11](https://github.com/Jamula/Andreja/issues/11), PR [#20](https://github.com/Jamula/Andreja/pull/20); provider-allowance proposal [#74](https://github.com/Jamula/Andreja/issues/74), PR [#119](https://github.com/Jamula/Andreja/pull/119); `8f7c708d63d389481c1e88964dba883ae6dc3ad7a73215ac5317471e55e1f13c` | **Draft for ratification.** It recommends controls but authorizes no spend; issue closure and merge are not approval. |
 | [`docs/frameworks/feedback-support.md`](frameworks/feedback-support.md) | Issue [#10](https://github.com/Jamula/Andreja/issues/10), PR [#16](https://github.com/Jamula/Andreja/pull/16); `758ed2eedf765d8a6a875b53af21b72fc0af4212fc06e06d54876c076ccb83ed` | **Review-ready draft.** The source PR merged, but issue #10 and explicit Cyrus approval remain open; no intake deployment or support commitment is authorized. |
@@ -662,7 +662,7 @@ The walking skeleton and first core release intentionally implement only a subse
 Privileged platform capabilities are not skills:
 
 | Platform capability | Responsibilities | Phase |
-|---|---|---|
+| --- | --- | --- |
 | Assistant Runtime and Review | Conversations, provider sessions, context/tool policy, proposals, confirmations, daily/weekly review orchestration | 1A-2 |
 | Data Ownership and Privacy | Export, restore, retention, delete, consent, grant review, audit and privacy controls | 1A onward |
 | Identity/Tenancy/Authorization | Passkeys/linking, tenant/principal context, access policy, recovery, consent and proposal enforcement | 1A onward |
@@ -671,7 +671,7 @@ Privileged platform capabilities are not skills:
 All actual first-party skills use the same manifest, capability, proposal, consent, audit, help, test, and semantic-extension contracts required of the future ecosystem:
 
 | Skill | Initial capabilities | Band | Phase |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Open Loops and Tasks | Capture, Inbox/Today/Upcoming/Waiting, dependencies, reminders, recurrence, checklists, outcomes, review | MVP | 1A-2 |
 | Calendar and Commitments | Availability, commitments, follow-ups, conflict detection, trip/social planning, reminder proposals | MVP/early | 1B bounded invite intake/accept under email grant; 2 manual; 3B full channel |
 | Personal Semantic Profile | User-reviewed identities, roles, relationships, interests, preferences, claims, sources, provenance, graph export | Research/early | 0 research; 2 profile |
@@ -868,7 +868,7 @@ All actual first-party skills use the same manifest, capability, proposal, conse
 Connector identity, assistant, content, feedback, and publishing grants remain separate even when the same provider appears in multiple rows.
 
 | Category | Baseline connectors | Planned use and boundary | Band | Phase |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Local identity | Passkeys/local recovery | Independent self-host sign-in and recovery | MVP | 1A |
 | Linked identity | Microsoft account, Google, GitHub; later Apple, LinkedIn, Facebook and enterprise OIDC | Verified account linking and primary-identity flexibility; no email-only linking | MVP/research | 1A-2 |
 | Assistant providers | Deterministic fake and OpenAI-compatible BYOK; non-runtime SDK qualification in 1A; limited real GitHub Copilot only after ADR 0009 acceptance and entry gates; later Azure AI/local providers | User-selected assistant runtime with isolated credentials, retention and usage policy | MVP | Proposed ADR 0009: BYOK/fake in 1A; earliest real Copilot is gated 1B |
@@ -1124,10 +1124,10 @@ Guinan is the User Feedback and Support Lead and owns acknowledgment, privacy sc
 - Build a separate public-site project in this repository and .NET solution, deployed independently from the authenticated Andreja application and every user data plane.
 - Launch a minimal site with the walking skeleton covering the vision, capabilities, user data ownership, self-hosted and managed choices, privacy/security posture, roadmap boundaries, and honest availability status.
 - Expand the same site into the canonical help and support destination:
-  - Getting started for self-hosted and managed modes.
-  - Assistant, skill, connector, sharing, identity, backup/export, and troubleshooting guides.
-  - Versioned product and federation/skill developer documentation.
-  - Security/privacy disclosures, release notes, known issues, status/support routes, and escalation guidance.
+    - Getting started for self-hosted and managed modes.
+    - Assistant, skill, connector, sharing, identity, backup/export, and troubleshooting guides.
+    - Versioned product and federation/skill developer documentation.
+    - Security/privacy disclosures, release notes, known issues, status/support routes, and escalation guidance.
 - Include Guinan's public feedback/support entry point, tracking guidance, security/privacy reporting route, and clear explanation of what may become a GitHub issue.
 - Add a transparent sponsorship page only after the sponsorship policy is approved; disclose sponsors and aggregate project support without targeted ads, tracking-based placement, or access to user data.
 - Author documentation as reviewed repository content with link checking, search indexing, versioning, accessibility, and stale-page ownership. Product behavior changes are incomplete until matching help content and scenario tests are updated.
@@ -1214,7 +1214,7 @@ Andreja incorporates those themes as:
 - **Shared growth:** customer and builder success should expand opportunity; the platform does not win by trapping, exploiting or displacing its ecosystem.
 
 | Workstream | Accountable lead(s) | Core scope |
-|---|---|---|
+| --- | --- | --- |
 | Executive, Product and Business | Picard/CEO; Quark/CFO | Vision, business model from free/self-host to freemium/premium, portfolio, launch, sponsorship, unit economics, priorities, partnerships and executive risk |
 | Product Discovery and User Research | Picard, Jadzia, Guinan, Neelix | Jobs-to-be-done, dogfood, customer interviews/feedback, usability, delight criteria, roadmap evidence and adoption learning |
 | Core Platform and Architecture | Spock, T'Pol, Seven | Clean/Onion modules, API/domain, identity/tenancy, semantic graph, assistant/provider, skill/channel hosts, data ownership and federation seams |
@@ -1254,7 +1254,7 @@ Andreja incorporates those themes as:
 Squad is already initialized, but the specialist roster and routing are empty. Keep the built-in Scribe, Ralph, Rai, and Fact Checker identities upgrade-safe. Add the following Star Trek crew members only after Cyrus approves this plan:
 
 | Crew member | Squad role | Accountabilities | Activation |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Jean-Luc Picard | CEO and Lead/Captain | Vision, strategy, product/business portfolio, company principles, launch decisions, stakeholder alignment, sponsorship/funding strategy, executive risk and cross-role decisions | Phase 0 |
 | Spock | Chief Architect | Architecture, ADRs, boundaries, scale, federation coherence | Phase 0 |
 | Tuvok | Security Engineer | Threat model, identity, authorization, cryptography, AppSec | Phase 0 |
@@ -1347,7 +1347,7 @@ Star Trek character names are internal/private Squad codenames pending trademark
 Agent Finder returned these relevant resources. Scores are relevance scores, not trust or safety ratings:
 
 | Resource | Type | Relevance |
-|---|---|---|
+| --- | --- | --- |
 | Cloud Solution Architect | AI skill | 80 |
 | Azure Architecture Autopilot | AI skill | 70 |
 | Azure Well Architected Review | AI skill | 50 |

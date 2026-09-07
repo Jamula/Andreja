@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `3ae445de2e701cce3a048dfc250b3bbb2ae51c3b4c4e93a37e4802bb6c1c1405`
+- **Current proposed Plan SHA-256:** `45570b6b53ae13b4d7c4963921fabae13ae8a7f675332dd1e4088da2f831466a`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -238,3 +238,15 @@ not match the merged `docs/plan.md`.
 - **Scope:** Reconcile the independently proposed charter and legal-gate
   status-artifact updates after merging their plan changes. Both underlying
   artifacts remain non-authoritative pending their respective required approvals.
+
+### 2026-09-07 — proposed Markdown formatting normalization
+
+- **Tracking issue:** None; documentation-only maintenance.
+- **Pull request:** [#161](https://github.com/Jamula/Andreja/pull/161)
+- **Plan SHA-256:** `45570b6b53ae13b4d7c4963921fabae13ae8a7f675332dd1e4088da2f831466a`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/editorial amendment; no
+  re-ratification, authority change, release publication, production deployment,
+  external spend, or phase exit is authorized.
+- **Scope:** Normalize Markdown table delimiter spacing and nested help-list
+  indentation without changing the plan's meaning, status, scope, or gates.
