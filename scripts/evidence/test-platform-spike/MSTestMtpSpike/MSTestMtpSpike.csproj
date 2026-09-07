@@ -1,7 +1,7 @@
-<Project Sdk="MSTest.Sdk/4.3.3">
+<Project Sdk="MSTest.Sdk/4.4.0">
   <PropertyGroup>
     <TestingExtensionsProfile>Default</TestingExtensionsProfile>
-    <MicrosoftTestingExtensionsCodeCoverageVersion>18.10.0</MicrosoftTestingExtensionsCodeCoverageVersion>
+    <MicrosoftTestingExtensionsCodeCoverageVersion>18.11.0</MicrosoftTestingExtensionsCodeCoverageVersion>
     <MSTestAnalysisMode>Recommended</MSTestAnalysisMode>
   </PropertyGroup>
   <ItemGroup>
