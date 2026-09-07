@@ -254,7 +254,7 @@ not match the merged `docs/plan.md`.
 ### 2026-09-07 — proposed charter prerequisite reconciliation
 
 - **Tracking issue:** [#3](https://github.com/Jamula/Andreja/issues/3)
-- **Pull request:** Pending
+- **Pull request:** [#168](https://github.com/Jamula/Andreja/pull/168)
 - **Plan SHA-256:** `14d0dadf6c159ce12096eb3d7848dd42b5f85ff06a0964de2927271a5838f7de`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed charter-seed reconciliation amendment; explicit
