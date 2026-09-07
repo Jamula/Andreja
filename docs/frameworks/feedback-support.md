@@ -6,6 +6,8 @@
 - **Issue:** [#10](https://github.com/Jamula/Andreja/issues/10)
 - **Source PR:** [#16](https://github.com/Jamula/Andreja/pull/16)
 - **Decision owner:** Cyrus Jamula
+- **Privacy decision package:** [Proposed feedback privacy, retention, and
+  data-subject rights decision](../legal/feedback-privacy-retention-dsr.md)
 
 This framework defines how Andreja receives, protects, triages, routes, tracks,
 publishes, resolves, verifies, and learns from feedback. It implements the
@@ -645,7 +647,7 @@ The following remain decisions, not assumptions:
 | Decision | Required owners/review |
 | --- | --- |
 | Numeric acknowledgment, update, escalation, aging, verification, closure, and DSR targets based on support capacity | Guinan and Data propose; Jett Reno and Quark assess operations/cost; Sarek reviews commitments; Cyrus approves |
-| Retention schedules, controller/processor roles, notice, legal basis/consent, DSR proof, hold exceptions, and public-artifact handling | Deanna Troi and Sarek lead; Tuvok reviews controls; Cyrus approves |
+| [Retention schedules, controller/processor roles, notice, legal basis/consent, DSR proof, hold exceptions, and public-artifact handling](../legal/feedback-privacy-retention-dsr.md) | Deanna Troi and Sarek lead; Tuvok reviews controls; Cyrus approves |
 | Tenant-less queue/store, encryption/key, residency, backup, restricted access, and isolation topology | Spock and Jett Reno lead; Tuvok and Deanna Troi challenge; Quark validates cost; Cyrus approves |
 | Transactional-email provider, sender identity/domain, delivery events, consent posture, subprocessors, cost cap, and support ownership | Jett Reno and Guinan lead; Tuvok, Deanna Troi, Sarek, Quark, and Data review; Cyrus approves |
 | Anti-abuse service/control set, thresholds, evidence retention, appeal, and degraded mode | Tuvok and Jett Reno lead; Guinan, Deanna Troi, Data, and Quark review; Cyrus approves |
