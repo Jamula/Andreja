@@ -1,15 +1,19 @@
 # ADR 0004: Phase 1A assistant, skill, channel, and control-plane contracts
 
-- **Status:** Proposed
-- **Date:** 2026-08-23
-- **Issue:** [#9](https://github.com/Jamula/Andreja/issues/9)
-- **Governing:** [Platform plan](../plan.md#sharing-consent-and-federation-foundations),
-  [company charter](../charter.md#decision-and-launch-enforcement), and
-  [ADR 0000](0000-plan-ratification.md)
+- **Status:** Accepted
+- **Date proposed:** 2026-08-23
+- **Date accepted:** 2026-09-07
+- **Issues:** [#9](https://github.com/Jamula/Andreja/issues/9),
+  [#66](https://github.com/Jamula/Andreja/issues/66)
+- **Approver:** Cyrus Jamula
+- **Governing:** [Platform plan](../plan.md#sharing-consent-and-federation-foundations)
+  and [ADR 0000](0000-plan-ratification.md)
+- **Non-authoritative input:** Proposed
+  [company charter](../charter.md#decision-and-launch-enforcement)
 - **Proposed by:** Seven of Nine
 - **Decision owner:** Cyrus
 - **Decision record:** [Phase 1A packet decision record](../phase-1a/packet-decision-66.md)
-  under [#66](https://github.com/Jamula/Andreja/issues/66); preparation only, not acceptance
+  under [#66](https://github.com/Jamula/Andreja/issues/66)
 
 ## Context
 
@@ -22,9 +26,9 @@ marketplace or connector platform.
 Define application-owned contracts with no provider SDK types:
 
 - `IAssistantProvider` negotiates capabilities and creates `IAssistantSession`;
-- `IAssistantSession` accepts a content/policy envelope and an exact typed-tool
-  allowlist, streams structured events, reports content-free usage, and supports
-  cancellation and cleanup;
+- `IAssistantSession` accepts an owning-tenant execution context, content, and an
+  exact typed-tool allowlist, returns one structured `AssistantResponse`, reports
+  content-free usage, and supports cancellation and cleanup;
 - `ISkillHost` resolves a versioned manifest, evaluates tenant/principal/purpose/
   grant/capability context, validates typed input, invokes a use case, and returns a
   typed result or proposal;
@@ -32,6 +36,10 @@ Define application-owned contracts with no provider SDK types:
   capabilities without exposing provider credentials to skills;
 - the policy evaluator intersects principal permissions, user grants, skill/channel
   capabilities, purpose, resource sensitivity, and confirmation tier.
+
+Structured streaming and a richer provider policy envelope are not accepted
+Phase 1A behavior. They require a contract amendment, cancellation/backpressure
+evidence, and renewed security, privacy, cost, and accessibility review.
 
 Skills receive neither `DbContext`, secrets, unrestricted network/filesystem access,
 nor `IServiceProvider`. Channel adapters own encrypted token handles; identity,
@@ -118,6 +126,12 @@ or skill calls. A deterministic fake provider is the default test path. GitHub
 Copilot and local-model adapters are optional future implementations; neither is
 required for offline-from-Andreja-cloud startup.
 
+The accepted baseline approves only the implemented exact endpoint/model allowlist,
+file-backed credential handle, typed Open Loops proposal, 10-minute proposal expiry,
+explicit confirmation, and zero external-unit default. No non-loopback provider
+call is authorized until Cyrus separately approves a numeric model-spend envelope,
+provider disclosure, and retention statement.
+
 ### Copilot provider phase-scope proposal
 
 [Proposed ADR 0009](0009-copilot-provider-phase-scope.md) recommends the narrow
@@ -127,8 +141,8 @@ compile/conformance adapter and developer tooling: no production dependency,
 service registration, container/runtime, configuration/UI, authentication,
 network/model call, account provisioning, content disclosure, or usage. A
 limited real provider begins no earlier than Phase 1B after ADR 0009 acceptance
-and its provider gates. This cross-reference neither accepts ADR 0004 nor ADR
-0009 and does not authorize provider activation.
+and its provider gates. This cross-reference does not accept ADR 0009 or authorize
+provider activation.
 
 ### Open Loops vertical slice
 
@@ -175,7 +189,10 @@ not defer those seams.
   1A needs compatibility and authorization proof, not inactive migrations or an
   operational network.
 
-## Human decision
+## Cost delta
 
-Cyrus must approve the initial BYOK compatibility profile, endpoint/model allowlist,
-credential custody UX, proposal expiry/confirmation tiers, and live-model budget.
+The deterministic provider keeps normal CI and local evidence free of model spend.
+The OpenAI-compatible seam adds adapter, conformance, disclosure, credential-custody,
+and support maintenance. External usage remains disabled at zero approved units;
+provider activation requires Quark's numeric per-session/task estimate, a durable
+hard stop and reconciliation design, and Cyrus's explicit budget approval.

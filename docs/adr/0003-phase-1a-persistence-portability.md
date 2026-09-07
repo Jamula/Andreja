@@ -1,15 +1,18 @@
 # ADR 0003: Phase 1A PostgreSQL persistence and portability
 
-- **Status:** Proposed
-- **Date:** 2026-08-23
-- **Issue:** [#9](https://github.com/Jamula/Andreja/issues/9)
-- **Governing:** [Platform plan](../plan.md#deployment-data-ownership-hosting-and-scale),
-  [company charter](../charter.md#commitments), and
-  [ADR 0000](0000-plan-ratification.md)
+- **Status:** Accepted
+- **Date proposed:** 2026-08-23
+- **Date accepted:** 2026-09-07
+- **Issues:** [#9](https://github.com/Jamula/Andreja/issues/9),
+  [#66](https://github.com/Jamula/Andreja/issues/66)
+- **Approver:** Cyrus Jamula
+- **Governing:** [Platform plan](../plan.md#deployment-data-ownership-hosting-and-scale)
+  and [ADR 0000](0000-plan-ratification.md)
+- **Non-authoritative input:** Proposed [company charter](../charter.md#commitments)
 - **Proposed by:** Spock and Jett Reno
 - **Decision owner:** Cyrus
 - **Decision record:** [Phase 1A packet decision record](../phase-1a/packet-decision-66.md)
-  under [#66](https://github.com/Jamula/Andreja/issues/66); preparation only, not acceptance
+  under [#66](https://github.com/Jamula/Andreja/issues/66)
 
 ## Context
 
@@ -38,7 +41,14 @@ The application export is a versioned archive with a canonical manifest and
 checksums. Every record identifies schema/protocol version and tenant ownership.
 Import validates all checksums and references before committing, is idempotent for
 a declared import ID, reports exclusions, and requires provider reauthorization.
-The v1 encoding and compatibility window require human approval.
+Version 1 and schema `1.0.0` are accepted exactly; unknown archive or schema
+versions fail closed. A future compatibility window requires a new human decision.
+
+The archive's AES-256-GCM envelope authenticates possession of the separately
+delivered archive key, not the identity or authority of the exporter. Operators
+must verify the source release and transfer provenance before parsing or importing
+an archive. Phase 1A does not accept imports from an untrusted source, and a future
+portable exporter-signature or trust-exchange design requires a separate decision.
 
 ### Application export v1 content
 
@@ -91,6 +101,15 @@ sign-in/task read prove recoverability.
 `pg_dump` is not a user portability promise, application export is not a full
 disaster-recovery image, and PITR remains an operator capability. Database and key
 loss remain independent failure modes that recovery drills must combine.
+
+## Cost delta
+
+PostgreSQL adds local CPU, memory, durable storage, encrypted backup capacity,
+upgrade work, and recovery-drill labor. One module-owned relational database avoids
+the operational and financial cost of multiple stores or a graph database. Managed
+PostgreSQL, PITR services, object storage, and cross-provider migration remain
+unselected and unpriced; enabling any of them requires a separately approved cost
+and custody decision.
 
 ## Alternatives considered
 

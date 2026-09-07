@@ -1,40 +1,43 @@
 # Phase 1A decision and exit checklist
 
-- **Status:** Provisionally accepted as the governing work target under #62; not
-  fully accepted; Phase 1A exit is not claimed
-- **Date:** 2026-08-28
+- **Status:** Accepted as the bounded Phase 1A architecture baseline under #66;
+  Phase 1A exit is not claimed
+- **Date accepted:** 2026-09-07
+- **Approver:** Cyrus Jamula
 - **Issues:** Original packet [#9](https://github.com/Jamula/Andreja/issues/9);
-  provisional amendment [#62](https://github.com/Jamula/Andreja/issues/62)
+  provisional amendment [#62](https://github.com/Jamula/Andreja/issues/62);
+  final architecture decision [#66](https://github.com/Jamula/Andreja/issues/66)
 
 Checked items below are supported by evidence already merged at the verified
 main base. A checked implementation row is local evidence only, not release
-authorization, full packet acceptance, or Phase 1A exit. Partially evidenced rows
+authorization or Phase 1A exit. Partially evidenced rows
 remain unchecked and name what is still missing.
 
 ## Packet approval
 
 The [packet decision record](packet-decision-66.md) reconciles the rows below
-into one decision-ready artifact and records that no packet-specific specialist
-challenge is currently recorded for any of the nine named challengers.
+and records each specialist's findings and re-review triggers.
 
-- [ ] Cyrus accepts or amends ADRs 0001–0005.
-- [ ] Spock challenges architecture boundaries, portability, alternatives, and
+- [x] Cyrus accepts the amended ADRs 0001–0005 as the bounded Phase 1A
+      architecture baseline.
+- [x] Spock challenges architecture boundaries, portability, alternatives, and
       federation coherence.
-- [ ] Tuvok challenges threat and identity controls.
-- [ ] Deanna Troi challenges privacy, retention, model exposure, export, and delete.
-- [ ] Data challenges test topology, production-impossible auth, SLO queries, and
+- [x] Tuvok challenges threat and identity controls.
+- [x] Deanna Troi challenges privacy, retention, model exposure, export, and delete.
+- [x] Data challenges test topology, production-impossible auth, SLO queries, and
       evidence reproducibility.
+- [x] Quark challenges cost, accounting, operator labor, and sustainability.
 - [ ] Quark supplies and Cyrus approves numeric Phase 1A model-spend limits.
-- [ ] Jett Reno challenges OCI/runtime, channel seam, offline-start, telemetry,
+- [x] Jett Reno challenges OCI/runtime, channel seam, offline-start, telemetry,
       backup/update/recovery, and operational support proof.
-- [ ] Seven of Nine challenges assistant/skill contracts and the
+- [x] Seven of Nine challenges assistant/skill contracts and the
       grant/consent/disclosure/share-audit/peer-envelope conformance boundary.
-- [ ] Rai challenges AI safety, human confirmation, harmful misuse, fairness, and
+- [x] Rai challenges AI safety, human confirmation, harmful misuse, fairness, and
       the packet-level impact assessment.
-- [ ] Sarek challenges legal/regulatory, consent/audit, external-provider terms,
+- [x] Sarek challenges legal/regulatory, consent/audit, external-provider terms,
       licensing/IP, and claims; qualified counsel remains authoritative where needed.
-- [ ] Residual risks, owners, expiry/re-review triggers, and every deferred human
-      decision are recorded.
+- [x] Residual risks, owners, expiry/re-review triggers, and deferred exit
+      decisions are recorded in [`packet-decision-66.md`](packet-decision-66.md).
 - [x] No cloud runtime, managed DB, CIAM, graph DB, account, subscription, free
       tier, trial, provisioned resource, or paid live call was selected or created.
 
@@ -96,8 +99,8 @@ owner, command/test ID, result, and known exclusions.
 - [ ] Threat/privacy/cost evidence is current and internal SLO/RPO/RTO targets are
       approved; no high/critical residual risk lacks explicit acceptance. Numeric
       SLO and RPO/RTO limits, numeric retention limits, the numeric Phase 1A
-      model-spend envelope/hard stop, specialist reviews, and Cyrus's final
-      residual-risk acceptance remain open.
+      model-spend envelope/hard stop and Cyrus's final exit residual-risk
+      acceptance remain open.
 
 ## Stop, de-scope, and exit rules
 

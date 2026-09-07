@@ -1,16 +1,20 @@
 # ADR 0001: Phase 1A modular boundaries
 
-- **Status:** Proposed
-- **Date:** 2026-08-23
-- **Issue:** [#9](https://github.com/Jamula/Andreja/issues/9)
-- **Governing:** [Platform plan](../plan.md#non-negotiable-engineering-principles),
-  [company charter](../charter.md#decision-and-launch-enforcement), and
-  [ADR 0000](0000-plan-ratification.md)
+- **Status:** Accepted
+- **Date proposed:** 2026-08-23
+- **Date accepted:** 2026-09-07
+- **Issues:** [#9](https://github.com/Jamula/Andreja/issues/9),
+  [#66](https://github.com/Jamula/Andreja/issues/66)
+- **Approver:** Cyrus Jamula
+- **Governing:** [Platform plan](../plan.md#non-negotiable-engineering-principles)
+  and [ADR 0000](0000-plan-ratification.md)
+- **Non-authoritative input:** Proposed
+  [company charter](../charter.md#decision-and-launch-enforcement)
 - **Diagram:** [High-level architecture and data flows](../architecture/andreja-high-level.md)
 - **Proposed by:** Spock
 - **Decision owner:** Cyrus
 - **Decision record:** [Phase 1A packet decision record](../phase-1a/packet-decision-66.md)
-  under [#66](https://github.com/Jamula/Andreja/issues/66); preparation only, not acceptance
+  under [#66](https://github.com/Jamula/Andreja/issues/66)
 
 ## Context
 
@@ -52,7 +56,10 @@ The rules are:
 - only `Andreja.AppHost` composes modules and adapters;
 - modules exchange IDs, commands, results, domain events, and access-scoped
   projections, never EF entities, navigation properties, or `DbContext`;
-- architecture tests reject outward references and cross-module internals.
+- architecture tests reject outward project dependencies and public API leakage.
+  Modules currently share one assembly, so namespace review and tests reduce but
+  do not compiler-enforce cross-module-internal access. Split a module when that
+  enforcement becomes necessary.
 
 ```mermaid
 flowchart LR
@@ -84,6 +91,15 @@ Open Loops application use case -> PostgreSQL -> audit/projection -> typed clien
 - Contract duplication is preferable to leaking an internal domain model across
   the API boundary.
 - Interactive Server is a client rendering choice, not permission to bypass HTTP.
+
+## Cost delta
+
+The accepted baseline adds one application process and one relational store, not a
+distributed service estate. Its principal costs are operator time, local compute,
+PostgreSQL storage, test maintenance, and future support burden. The modular
+monolith avoids service-mesh, queue, duplicated deployment, and cross-service
+observability costs. Any process split, managed service, or independently deployed
+module requires a new measured cost delta and approval.
 
 ## Alternatives considered
 

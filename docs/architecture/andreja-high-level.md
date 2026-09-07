@@ -5,10 +5,9 @@
 Use the [editable Excalidraw source](andreja-high-level.excalidraw) for changes.
 The [PNG export](andreja-high-level.png) is available for viewers that do not
 render SVG. This view summarizes the ratified [platform plan](../plan.md) and
-[ADRs 0001–0005](../adr/0001-phase-1a-modular-boundaries.md) as proposed design
-evidence. The plan is authoritative; ADR 0000 is Accepted, while ADRs 0001–0005
-and [ADR 0008](../adr/0008-public-website-artifact-boundary.md) are Proposed and
-are neither ratified nor normative. The canonical [privacy baseline](../privacy.md) and
+accepted [ADRs 0001–0005](../adr/0001-phase-1a-modular-boundaries.md). ADR 0008
+remains Proposed. Acceptance of the Phase 1A architecture does not claim milestone
+exit, release, or production readiness. The canonical [privacy baseline](../privacy.md) and
 [threat model](../threat-model.md) classify the data, threats, mitigations,
 evidence gaps, residual risks, and stop conditions behind these flows.
 
