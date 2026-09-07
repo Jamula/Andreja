@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `3c825b3a9f5d1e5327b1141a04a0516d7e2cd90facf4f6a5d0fcd0290b01c4ec`
+- **Current proposed Plan SHA-256:** `04da6e0a359493b86f48e0f100feea4cd335a4c758b939efdfcbf89fd9feb758`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -245,7 +245,7 @@ not match the merged `docs/plan.md`.
   and successor gates [#155](https://github.com/Jamula/Andreja/issues/155)
   through [#158](https://github.com/Jamula/Andreja/issues/158)
 - **Pull request:** [#159](https://github.com/Jamula/Andreja/pull/159)
-- **Plan SHA-256:** `3c825b3a9f5d1e5327b1141a04a0516d7e2cd90facf4f6a5d0fcd0290b01c4ec`
+- **Plan SHA-256:** `04da6e0a359493b86f48e0f100feea4cd335a4c758b939efdfcbf89fd9feb758`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed mechanical/status amendment; no plan
   re-ratification, gate approval, collection, publication, provider selection,
@@ -262,3 +262,15 @@ not match the merged `docs/plan.md`.
   decision. Successor issue closure, labels, specialist verdicts, or
   documentation merge do not approve a gate package; each package requires
   Cyrus's explicit recorded decision.
+
+### 2026-09-07 — proposed Markdown formatting normalization
+
+- **Tracking issue:** None; documentation-only maintenance.
+- **Pull request:** [#161](https://github.com/Jamula/Andreja/pull/161)
+- **Plan SHA-256:** `04da6e0a359493b86f48e0f100feea4cd335a4c758b939efdfcbf89fd9feb758`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/editorial amendment; no
+  re-ratification, authority change, release publication, production deployment,
+  external spend, or phase exit is authorized.
+- **Scope:** Normalize Markdown table delimiter spacing and nested help-list
+  indentation without changing the plan's meaning, status, scope, or gates.

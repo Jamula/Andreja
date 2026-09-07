@@ -762,8 +762,8 @@ The authorization is binary and independently revocable. It must record:
   presented.
 
 This authorization permits only the enumerated temporary staging exercise. It
-does not authorize collection from users, production/public deployment,
-publication, external support commitments, general email, or launch. Any
+does not authorize collection from users, production/public deployment, public
+GitHub publication, external support commitments, general email, or launch. Any
 extension, resource substitution, recipient expansion, artifact change, or
 expiry requires a new explicit Evidence Authorization from Cyrus.
 

@@ -117,10 +117,18 @@ test('branch parser accepts the documented convention only', () => {
   assert.equal(issueNumberFromBranch('feature/v2-status'), null);
 });
 
-test('branch documentation requires issue-numbered Copilot branches', () => {
+test('branch documentation requires issue-numbered agent branches', () => {
   const documentedPaths = [
+    path.join(__dirname, '..', 'copilot-instructions.md'),
     path.join(__dirname, '..', 'agents', 'squad.agent.md'),
     path.join(__dirname, '..', '..', '.squad', 'templates', 'copilot-agent.md'),
+    path.join(
+      __dirname,
+      '..',
+      '..',
+      '.squad',
+      'templates',
+      'copilot-instructions.md'),
     path.join(__dirname, '..', '..', '.squad', 'templates', 'issue-lifecycle.md'),
     path.join(
       __dirname,
@@ -134,7 +142,9 @@ test('branch documentation requires issue-numbered Copilot branches', () => {
 
   for (const documentedPath of documentedPaths) {
     const content = fs.readFileSync(documentedPath, 'utf8');
-    assert.match(content, /copilot\/\{issue-number\}-\{slug\}/);
+    assert.match(
+      content,
+      /(?:copilot|squad)\/\{issue-number\}-(?:\{slug\}|\{kebab-case-slug\})/);
     assert.doesNotMatch(content, /copilot\/(?:\*|\{slug\})/);
   }
 
@@ -151,7 +161,7 @@ test('branch documentation requires issue-numbered Copilot branches', () => {
   ];
   for (const workflowPath of workflowPaths) {
     const content = fs.readFileSync(workflowPath, 'utf8');
-    assert.match(content, /copilot\/\$\{issue\.number\}-\{slug\}/);
+    assert.match(content, /(?:copilot|squad)\/\$\{issue\.number\}-\{slug\}/);
     assert.doesNotMatch(content, /copilot\/\*/);
   }
 });

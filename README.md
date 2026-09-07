@@ -393,6 +393,7 @@ runtime state, or user content.
 - [Local development](docs/development.md)
 - [Self-host operations](docs/operations/self-hosting.md)
 - [Application export/import](docs/operations/portability.md)
+- [Squad two-layer state bridge](docs/operations/squad-state-bridge.md)
 - [Local identity and recovery](docs/help/local-identity.md)
 - [Open Loops help](docs/help/open-loops.md)
 - [Testing matrix](docs/testing-matrix.md)
