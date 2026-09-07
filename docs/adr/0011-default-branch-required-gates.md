@@ -26,9 +26,19 @@ outcome is independent review. Merge queue is useful for a busy multi-author
 branch, but activating it without a real `merge_group` exercise would risk
 waiting forever for a context that a workflow does not report.
 
-The repository is public. GitHub secret scanning is available without an
-additional paid entitlement, and repository push protection can reject
-supported secrets before they enter Git history.
+The repository was observed public on 2026-09-07. That visibility is
+unresolved, unauthorized drift, not an accepted or governed state: the plan
+requires the repository to stay private pending explicit legal/governance
+approval (`docs/plan.md:1074-1077`), and issue
+[#6](https://github.com/Jamula/Andreja/issues/6) remains open recording that
+neither Cyrus nor qualified counsel has approved the change or explained when
+or why it happened. This ADR does not approve, rely on, or treat that
+visibility as authorized; it only records that, as a factual consequence of
+the observed state, GitHub secret scanning and repository push protection
+became available without an additional paid entitlement, and repository push
+protection can reject supported secrets before they enter Git history. If
+visibility reverts to private, or issue #6 concludes it must, re-evaluate
+every entitlement-dependent item in this ADR before relying on it again.
 
 ## Decision
 

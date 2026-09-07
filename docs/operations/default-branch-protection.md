@@ -21,9 +21,17 @@ ADR 0011. It blocks deletion and non-fast-forward updates. Required human,
 code-owner, and last-push approvals remain disabled for the documented
 one-human operating state.
 
-Secret scanning and repository push protection report `enabled`. Dependabot
-security updates remain enabled. This record contains configuration state only;
-it does not read or reproduce secret-scanning alerts.
+Secret scanning and repository push protection report `enabled`. Both became
+available because the repository was observed public on 2026-09-07, which is
+unresolved, unauthorized drift under investigation in
+[issue #6](https://github.com/Jamula/Andreja/issues/6), not an approved state
+(`docs/plan.md:1074-1077`). This record does not treat that visibility as
+governed; it only notes the resulting entitlement and keeps the protections
+enabled because they reduce risk regardless of the visibility question. Do
+not change visibility as part of this runbook; that decision belongs to issue
+#6. Dependabot security updates remain enabled. This record contains
+configuration state only; it does not read or reproduce secret-scanning
+alerts.
 
 Repository `allow_auto_merge` was found `true` on 2026-09-07, contradicting the
 accepted containment for [#104](https://github.com/Jamula/Andreja/issues/104)
@@ -96,14 +104,18 @@ auto-merge would let a pull request merge in that gap. Restoring or leaving
 ## Negative canary
 
 At policy creation and after a material ruleset or required-workflow change,
-open a short-lived draft pull request that intentionally introduces a harmless
-C# compile failure outside generated or vendored content.
+open a short-lived pull request that intentionally introduces a harmless C#
+compile failure outside generated or vendored content.
 
 1. Record the canary branch, pull request, head SHA, and expected failing
    context.
 2. Wait for the selected required context to conclude `failure`.
-3. Confirm GitHub reports the pull request as blocked and does not offer a
-   normal merge path.
+3. Mark the pull request ready for review if it was opened as a draft, then
+   confirm GitHub reports the pull request as blocked and does not offer a
+   normal merge path. A draft pull request always reports no merge path
+   regardless of check results, so evaluating mergeability while still in
+   draft cannot distinguish the ruleset from draft status; only a ready
+   (non-draft) pull request isolates the required-check failure as the cause.
 4. Revert the intentional failure on the same branch.
 5. Confirm the new head SHA receives all five required contexts and becomes
    eligible under the ruleset.
@@ -156,7 +168,13 @@ Before a ruleset write:
    another operator could change the ruleset between the read and the write,
    and an unconditional write would silently overwrite that change. If the
    write is rejected because the ETag no longer matches, restart from step 1.
-6. Re-read the ruleset and effective branch rules, and confirm the new ETag.
+6. Re-read the ruleset and effective branch rules. Confirm the new ETag
+   changed, and explicitly diff every preserved rule and parameter from the
+   saved pre-change body (step 1) against the post-write body: a changed
+   ETag only proves an update occurred, not that every unrelated rule and
+   parameter survived unmodified or was not silently normalized. Abort and
+   restore the saved pre-change body if any preserved field differs
+   unexpectedly.
 7. Run the negative canary.
 
 Do not add a bypass actor, reduce required contexts, disable strict checking,

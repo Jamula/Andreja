@@ -144,13 +144,17 @@ summary and machine-readable artifact enumerates:
 - **Unavailable runtime projects:** `Andreja.PostgreSqlIntegrationTests`, with
   the missing disposable PostgreSQL dependency recorded.
 
-The repository is public and has secret scanning and repository push
-protection enabled. The existing disabled CodeQL workflow is not presented as
-repository-owned C# evidence. The hosted gate instead runs the pinned Microsoft
-DevSkim CLI `1.0.90` locally on the runner, uploads no source, and fails on
-remaining C# findings. Two noisy lexical rules are excluded explicitly:
-`DS137138` flags the intentional loopback HTTP URLs used by local development
-and transport-boundary tests, while `DS162092` flags the words `Debug` and
+The repository was observed public on 2026-09-07 and has secret scanning and
+repository push protection enabled. That visibility is unresolved,
+unauthorized drift under investigation in
+[issue #6](https://github.com/Jamula/Andreja/issues/6), not an approved state
+(`docs/plan.md:1074-1077`); this record does not treat it as governed. The
+existing disabled CodeQL workflow is not presented as repository-owned C#
+evidence. The hosted gate instead runs the pinned Microsoft DevSkim CLI
+`1.0.90` locally on the runner, uploads no source, and fails on remaining C#
+findings. Two noisy lexical rules are excluded explicitly: `DS137138` flags
+the intentional loopback HTTP URLs used by local development and
+transport-boundary tests, while `DS162092` flags the words `Debug` and
 `Development` in safeguards that prevent development behavior from shipping in
 Release. Their exclusion is recorded in every SAST artifact. Re-evaluate both
 exclusions and CodeQL if the code or entitlement changes.
@@ -160,15 +164,16 @@ check to a pull request. That supplementary check ran successfully while this
 gate was introduced, but it is not a repository-owned substitute: the committed
 CodeQL workflow remains manually disabled, and the dynamic check does not
 establish committed push-to-`main` or `merge_group` coverage. As observed on
-2026-09-07, the repository is public and the code-scanning default-setup and
-alerts API endpoints returned `200` and listed `csharp`, so the earlier `403`
-entitlement denial no longer applied at that time; re-verify live before
-relying on this, since visibility or entitlement can change. The committed
-`.github/workflows/codeql.yml` matrix currently analyzes only `actions` and
-`javascript-typescript`; it does not scan C# or Python today. Re-enabling that
-workflow as-is and extending its matrix to add `csharp`/`python` are two
-separate, not-yet-authorized changes; neither is implied or claimed by this
-correction.
+2026-09-07, while the repository was in that unresolved public state, the
+code-scanning default-setup and alerts API endpoints returned `200` and
+listed `csharp`, so the earlier `403` entitlement denial no longer applied at
+that time; re-verify live before relying on this, since visibility or
+entitlement can change, and visibility itself remains an open governance
+question (issue #6). The committed `.github/workflows/codeql.yml` matrix
+currently analyzes only `actions` and `javascript-typescript`; it does not
+scan C# or Python today. Re-enabling that workflow as-is and extending its
+matrix to add `csharp`/`python` are two separate, not-yet-authorized changes;
+neither is implied or claimed by this correction.
 
 Default-branch required-check enforcement and the entitlement-aware merge
 procedure are defined by
