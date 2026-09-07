@@ -1,0 +1,168 @@
+# Default-branch protection
+
+This runbook implements the proposed
+[ADR 0011 default-branch policy](../adr/0011-default-branch-required-gates.md).
+It is the operator procedure for inspecting, changing, testing, and recovering
+the GitHub controls on `main`.
+
+## Current enforced baseline
+
+As observed on 2026-09-07, repository ruleset `21199927`,
+`Default-Ruleset`, targets `~DEFAULT_BRANCH`, is active, and has no bypass
+actors. Its observed weak ETag was:
+
+```text
+W/"d1c64ab7a588aba79381c85ebf59734037b203fb9b80e3edbcde5fd53e635961"
+```
+
+The ruleset requires pull requests, resolved review threads, squash-only linear
+history, strict current-branch status checks, and the five contexts listed in
+ADR 0011. It blocks deletion and non-fast-forward updates. Required human,
+code-owner, and last-push approvals remain disabled for the documented
+one-human operating state.
+
+Secret scanning and repository push protection report `enabled`. Dependabot
+security updates remain enabled. This record contains configuration state only;
+it does not read or reproduce secret-scanning alerts.
+
+The ETag and feature state are observations, not constants. Always read the
+live values before making a decision.
+
+## Inspect without mutation
+
+```powershell
+$repo = "Jamula/Andreja"
+$rulesetId = 21199927
+
+gh api -i "repos/$repo/rulesets/$rulesetId"
+gh api "repos/$repo/branches/main"
+gh api "repos/$repo/rules/branches/main"
+gh api "repos/$repo" --jq "{
+  default_branch,
+  visibility,
+  allow_squash_merge,
+  allow_merge_commit,
+  allow_rebase_merge,
+  allow_auto_merge,
+  security_and_analysis
+}"
+```
+
+Confirm all of the following before merging:
+
+- `main` is the default branch and reports `protected: true`;
+- ruleset enforcement is `active`;
+- `bypass_actors` is empty and `current_user_can_bypass` is `never`;
+- the target condition includes only `~DEFAULT_BRANCH`;
+- the pull-request rule requires thread resolution and allows only `squash`;
+- strict required status checks are enabled;
+- every required context has integration ID `15368`;
+- secret scanning and push protection are enabled; and
+- the pull request head SHA is the SHA on which every required check completed.
+
+GitHub's legacy branch-protection endpoint may report no branch-protection rule
+because this repository uses a ruleset. Use the repository rules and effective
+branch-rules endpoints above rather than interpreting that response as an
+unprotected branch.
+
+## Serialized merge procedure
+
+Merge one pull request at a time while merge queue is disabled:
+
+1. Pause other merges.
+2. Update the pull request with current `main`.
+3. Wait for every required context on the current head SHA.
+4. Resolve every review thread.
+5. Re-read the base SHA immediately before merge. If it changed, update and
+   rerun checks.
+6. Squash merge through GitHub. Never push directly to `main`.
+7. Confirm the resulting `main` push runs the required workflows.
+
+Auto-merge may perform step 6 only after GitHub reports every required rule
+satisfied. Auto-merge is not a merge queue and does not prove `merge_group`
+coverage.
+
+## Negative canary
+
+At policy creation and after a material ruleset or required-workflow change,
+open a short-lived draft pull request that intentionally introduces a harmless
+C# compile failure outside generated or vendored content.
+
+1. Record the canary branch, pull request, head SHA, and expected failing
+   context.
+2. Wait for the selected required context to conclude `failure`.
+3. Confirm GitHub reports the pull request as blocked and does not offer a
+   normal merge path.
+4. Revert the intentional failure on the same branch.
+5. Confirm the new head SHA receives all five required contexts and becomes
+   eligible under the ruleset.
+6. Close the canary without merging and delete its branch, or retain only the
+   clean policy change if the policy pull request itself was used as the
+   canary.
+
+Never use a credential-shaped value for a branch-rules canary. Push-protection
+testing needs a separately approved synthetic-pattern procedure because a
+provider token can be live, reported to its issuer, or copied into audit data.
+
+## Safe ruleset change
+
+Before a ruleset write:
+
+1. Save the complete live response headers and body outside the repository.
+2. Record the ETag, ruleset ID, update time, operator, and reason.
+3. Build the candidate from the full live body. Preserve every rule and
+   parameter not explicitly approved for change.
+4. Abort if a second read has a different ETag or body.
+5. Apply the smallest approved change.
+6. Re-read the ruleset and effective branch rules.
+7. Run the negative canary.
+
+Do not add a bypass actor, reduce required contexts, disable strict checking,
+or lower secret protection as an incident workaround.
+
+## Merge-queue activation gate
+
+Before adding a `merge_queue` rule, verify all five required contexts are
+emitted by `merge_group: checks_requested`. Start with squash, build
+concurrency `1`, group size `1`, and only non-failing pull requests. Record a
+real generated merge-group SHA and constituent pull request. If any context is
+missing, timeouts occur, or the queue cannot drain, restore the pre-change
+ruleset body and continue serialized merges.
+
+Do not infer queue readiness from a workflow file containing a `merge_group`
+trigger. Only a real queue run proves event delivery, context identity, and
+ruleset compatibility.
+
+## Human-review activation gate
+
+When a second qualified human maintainer is active:
+
+1. add path-based `CODEOWNERS` entries with at least one available owner per
+   protected path;
+2. require one human approval and code-owner review;
+3. require fresh review after the latest reviewable push, or dismiss stale
+   approvals;
+4. retain required thread resolution; and
+5. run a canary proving that self-review, stale approval, and unresolved
+   threads block merge while a qualified independent approval recovers it.
+
+Until then, zero required approvals is an explicit availability tradeoff, not
+a claim of independent review.
+
+## Recovery and stop conditions
+
+Stop all merges if the ruleset is absent, inactive, bypassable, missing a
+required context, or inconsistent with effective branch rules. Open an incident
+issue and preserve the live responses.
+
+If a newly added rule deadlocks remediation, restore only the last captured
+known-good full ruleset body. Record the rollback, reason, timestamps, actor,
+before/after ETags, and canary result. Do not partially reconstruct a ruleset
+from memory or this document.
+
+## References
+
+- [Available rules for rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets)
+- [Managing a merge queue](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue)
+- [Secret scanning](https://docs.github.com/en/code-security/concepts/secret-security/secret-scanning)
+- [Push protection](https://docs.github.com/en/code-security/concepts/secret-security/push-protection)
