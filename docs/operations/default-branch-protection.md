@@ -25,6 +25,12 @@ Secret scanning and repository push protection report `enabled`. Dependabot
 security updates remain enabled. This record contains configuration state only;
 it does not read or reproduce secret-scanning alerts.
 
+Repository `allow_auto_merge` was found `true` on 2026-09-07, contradicting the
+accepted containment for [#104](https://github.com/Jamula/Andreja/issues/104)
+recorded in `docs/plan.md:134-146`, which requires it `false`. It has been
+reset to `false` as part of this change. Do not re-enable it; see "Serialized
+merge procedure" below.
+
 The ETag and feature state are observations, not constants. Always read the
 live values before making a decision.
 
@@ -75,12 +81,17 @@ Merge one pull request at a time while merge queue is disabled:
 4. Resolve every review thread.
 5. Re-read the base SHA immediately before merge. If it changed, update and
    rerun checks.
-6. Squash merge through GitHub. Never push directly to `main`.
+6. Squash merge through GitHub only after a human confirms every required
+   rule is satisfied. Never push directly to `main`.
 7. Confirm the resulting `main` push runs the required workflows.
 
-Auto-merge may perform step 6 only after GitHub reports every required rule
-satisfied. Auto-merge is not a merge queue and does not prove `merge_group`
-coverage.
+Do not use auto-merge. The accepted plan's [#104](https://github.com/Jamula/Andreja/issues/104)
+premature-auto-merge race remains open and is currently contained only because
+repository `allow_auto_merge` is `false` (`docs/plan.md:134-146`). Required
+checks can finish before asynchronous review (for example Copilot review)
+completes, and no always-present review-completion gate exists yet. Enabling
+auto-merge would let a pull request merge in that gap. Restoring or leaving
+`allow_auto_merge` enabled is not authorized by this runbook.
 
 ## Negative canary
 
