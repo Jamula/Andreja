@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `81d6f096544d60a490f2999f4e665a9624cca36b66687b8a68b34f92df697c12`
+- **Current proposed Plan SHA-256:** `97be6a51e1db7ad7aff04640ceaa4aeed65cceb64acf058950c3c572de84d73d`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -291,4 +291,20 @@ not match the merged `docs/plan.md`.
 - **Scope:** Refresh the `docs/legal/feedback-privacy-retention-dsr.md`
   status-artifact hash left stale by that document's revised private-case
   retention policy. The package remains gated until Cyrus records an explicit
+  decision.
+
+
+### 2026-09-13 — proposed feedback privacy review-thread amendments
+
+- **Tracking issue:** [#155](https://github.com/Jamula/Andreja/issues/155)
+- **Pull request:** [#172](https://github.com/Jamula/Andreja/pull/172)
+- **Plan SHA-256:** `97be6a51e1db7ad7aff04640ceaa4aeed65cceb64acf058950c3c572de84d73d`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed policy/status amendment; no re-ratification,
+  privacy or legal approval, collection, GitHub publication, provider, spend,
+  deployment, launch, support commitment, or phase exit is authorized.
+- **Scope:** Incorporate the remaining review-thread corrections for help
+  escalation roles, bounded project-history retention, automatic metadata notice,
+  anonymous proof-session records, saved publication drafts, and conditional
+  recipient disclosure. The package remains gated until Cyrus records an explicit
   decision.
