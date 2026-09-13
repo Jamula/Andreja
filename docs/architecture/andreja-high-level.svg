@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="2710" viewBox="0 0 1920 2710"
-     role="img" aria-labelledby="title desc" data-source-sha256="360b0ab105ac156e29a3b69e69f2e97325fd02190a95b6e5f111433905b4e48b">
+     role="img" aria-labelledby="title desc" data-source-sha256="3bca5fdc458f72c7c534f3d15aecd4dea05e1db65a069ec5748354966f021e06">
   <title id="title">Andreja high-level architecture and data flows</title>
   <desc id="desc">Current Phase 1A components, current local conformance contracts, future gated components,
   six labelled trust boundaries, ten numbered data flows, a semantic provenance flow, local data custody,
@@ -11,7 +11,7 @@
   </defs>
   <rect width="1920" height="2710" fill="#ffffff"/>
   <text id="text-001" data-role="title" x="35" y="60" text-anchor="start" font-size="40" font-weight="bold" fill="#000000"><tspan x="35" dy="0">Andreja high-level architecture and data flows</tspan></text>
-  <text id="text-002" data-role="subtitle" x="35" y="104" text-anchor="start" font-size="22" font-weight="normal" fill="#000000"><tspan x="35" dy="0">Ratified-plan evidence view • ADRs 0001–0005 + 0008 are Proposed • one modular-monolith deployable</tspan></text>
+  <text id="text-002" data-role="subtitle" x="35" y="104" text-anchor="start" font-size="22" font-weight="normal" fill="#000000"><tspan x="35" dy="0">Ratified-plan evidence view • ADRs 0001–0005 Accepted; ADR 0008 Proposed • one modular-monolith deployable</tspan></text>
   <rect id="rect-003" data-role="callout" x="1320" y="15" width="565" height="145" rx="12" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2"/>
   <text id="text-004" data-role="callout-label" data-container-id="rect-003" x="1602.5" y="68" text-anchor="middle" font-size="22" font-weight="normal" fill="#000000"><tspan x="1602.5" dy="0">CONTENT RULE</tspan><tspan x="1602.5" dy="27.5">User content follows policy-labelled flows only.</tspan><tspan x="1602.5" dy="27.5">Never telemetry, public/help, or secret files.</tspan></text>
   <rect id="rect-005" data-role="legend" x="35" y="175" width="300" height="130" rx="12" fill="#f1f3f5" stroke="#495057" stroke-width="2"/>

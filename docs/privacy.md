@@ -16,10 +16,10 @@ This document is Andreja's canonical privacy inventory and handling baseline. It
 describes repository evidence; it does not authorize production use, public
 hosting, a connector, federation, managed hosting, a provider, a retention period,
 or a legal/compliance claim. The ratified [platform plan](plan.md) governs.
-[ADRs 0001–0005](adr/0001-phase-1a-modular-boundaries.md) and
-[ADR 0008](adr/0008-public-website-artifact-boundary.md) remain **Proposed**.
-Implemented code and passing tests are evidence, not acceptance of those ADRs or
-Phase 1A exit. The proposed [company charter](charter.md#commitments) supplies
+[ADRs 0001–0005](adr/0001-phase-1a-modular-boundaries.md) are **Accepted** as a
+bounded private Phase 1A architecture; [ADR 0008](adr/0008-public-website-artifact-boundary.md)
+remains **Proposed**. Implementation, acceptance, and passing tests do not claim
+Phase 1A exit or production readiness. The proposed [company charter](charter.md#commitments) supplies
 the data-dignity and human-agency commitments used here but is not itself ratified.
 
 The companion [threat model](threat-model.md) covers adversaries, abuse, controls,
@@ -326,7 +326,7 @@ The following remain blocking:
   recovery with restored passkey sign-in;
 - update and rollback against a genuine second approved signed revision;
 - approved numeric SLO, RPO, RTO, retention, and external-model spend envelopes;
-- final residual-risk acceptance and acceptance/amendment of Proposed ADRs; and
+- final production/exit residual-risk acceptance; and
 - any future processor/recipient, connector, federation, managed host, public site,
   support intake, child/household workflow, or sensitive inference review.
 
