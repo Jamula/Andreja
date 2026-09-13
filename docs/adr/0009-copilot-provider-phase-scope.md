@@ -65,7 +65,7 @@ falsifiable, not that a live verdict has been recorded):
 
 | Required gate | Status | Where addressed |
 |---|---|---|
-| Architecture | Documented | "Repository evidence" above; provider-neutral `IAssistantProvider`/`IAssistantSession` contracts; "Topology decision" in the qualification sequence |
+| Architecture | Documented | "Repository evidence" below; provider-neutral `IAssistantProvider`/`IAssistantSession` contracts; "Topology decision" in the qualification sequence |
 | Security/privacy | Documented | "Tenant/user isolation," "Prompt/tool/data exposure," "Authentication and credential custody," and "Runtime control channel" gate rows |
 | Legal/vendor terms | Documented | "Current external evidence" (Copilot product/OAuth/multi-tenancy/scaling/backend/persistence docs, rechecked 2026-08-26) and the "Legal, privacy, security, and abuse approval" gate row |
 | FinOps | Documented | "Budgets and cost" gate row and the "Cost delta" section ($0 spend authorized by this ADR) |
