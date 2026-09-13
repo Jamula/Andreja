@@ -61,6 +61,46 @@ def canonical_documents() -> dict[str, str]:
     }
 
 
+def feedback_tracking_secret_contract() -> str:
+    return """
+    A raw tracking secret is disclosed only to the requester at issuance and is
+    never persisted. Only a one-way verifier, the non-secret `trackingRef`, and
+    metadata strictly necessary for expiry, failed-attempt throttling, recovery,
+    rotation, and revocation may be stored. The raw secret never appears in a
+    URL path, query, fragment, browser history, referrer, log, trace, metric,
+    alert, queue field, provider metadata, backup, replica, export, analytics
+    dataset, or support tool.
+    """
+
+
+class FeedbackTrackingSecretContractTests(unittest.TestCase):
+    def test_verifier_only_contract_passes(self) -> None:
+        DOCS_CHECK.validate_feedback_tracking_secret_contract(
+            feedback_tracking_secret_contract()
+        )
+
+    def test_recoverable_secret_persistence_is_rejected(self) -> None:
+        document = (
+            feedback_tracking_secret_contract()
+            + " Tracking secrets are stored outside the envelope."
+        )
+
+        with self.assertRaisesRegex(ValueError, "custody contract drifted"):
+            DOCS_CHECK.validate_feedback_tracking_secret_contract(document)
+
+    def test_required_exfiltration_boundaries_are_enforced(self) -> None:
+        boundaries = ("URL path", "referrer", "log", "export", "analytics", "support")
+        for boundary in boundaries:
+            with self.subTest(boundary=boundary):
+                document = feedback_tracking_secret_contract().replace(
+                    boundary,
+                    "omitted",
+                    1,
+                )
+                with self.assertRaisesRegex(ValueError, "custody contract drifted"):
+                    DOCS_CHECK.validate_feedback_tracking_secret_contract(document)
+
+
 class StatusArtifactHashTests(unittest.TestCase):
     def setUp(self) -> None:
         self.expected = set(DOCS_CHECK.EXPECTED_STATUS_ARTIFACTS)

@@ -117,7 +117,7 @@ test('branch parser accepts the documented convention only', () => {
   assert.equal(issueNumberFromBranch('feature/v2-status'), null);
 });
 
-test('branch documentation requires issue-numbered Copilot branches', () => {
+test('branch documentation requires issue-numbered agent branches', () => {
   const documentedPaths = [
     path.join(__dirname, '..', 'copilot-instructions.md'),
     path.join(__dirname, '..', 'agents', 'squad.agent.md'),
@@ -142,7 +142,9 @@ test('branch documentation requires issue-numbered Copilot branches', () => {
 
   for (const documentedPath of documentedPaths) {
     const content = fs.readFileSync(documentedPath, 'utf8');
-    assert.match(content, /copilot\/\{issue-number\}-\{slug\}/);
+    assert.match(
+      content,
+      /(?:copilot|squad)\/\{issue-number\}-(?:\{slug\}|\{kebab-case-slug\})/);
     assert.doesNotMatch(content, /copilot\/(?:\*|\{slug\})/);
   }
 
@@ -159,29 +161,36 @@ test('branch documentation requires issue-numbered Copilot branches', () => {
   ];
   for (const workflowPath of workflowPaths) {
     const content = fs.readFileSync(workflowPath, 'utf8');
-    assert.match(content, /copilot\/\$\{issue\.number\}-\{slug\}/);
+    assert.match(content, /(?:copilot|squad)\/\$\{issue\.number\}-\{slug\}/);
     assert.doesNotMatch(content, /copilot\/\*/);
   }
 });
 
-test('Copilot instruction sources use the coding-agent branch convention', () => {
-  const instructionPaths = [
-    path.join(__dirname, '..', 'copilot-instructions.md'),
+test('squad issue assignment matches slugged multi-word member labels', () => {
+  const workflowPaths = [
+    path.join(__dirname, '..', 'workflows', 'squad-issue-assign.yml'),
     path.join(
       __dirname,
       '..',
       '..',
       '.squad',
       'templates',
-      'copilot-instructions.md'),
+      'workflows',
+      'squad-issue-assign.yml'),
   ];
 
-  for (const instructionPath of instructionPaths) {
-    const content = fs.readFileSync(instructionPath, 'utf8');
+  for (const workflowPath of workflowPaths) {
+    const content = fs.readFileSync(workflowPath, 'utf8');
+    const slugifySource = content.match(
+      /function slugify\(value\) \{\s+return [^;]+;\s+\}/);
+    assert.ok(slugifySource, `${workflowPath} must define slugify`);
+    const slugify = Function(`return (${slugifySource[0]})`)();
+    assert.equal(slugify('Deanna Troi'), 'deanna-troi');
+    assert.equal(slugify('Jett Reno'), 'jett-reno');
     assert.match(
       content,
-      /Use the Copilot coding-agent branch convention:\s*```\s*copilot\/\{issue-number\}-\{slug\}\s*```/);
-    assert.doesNotMatch(content, /Use the squad branch convention:/i);
+      /slugify\(cells\[0\]\) === memberName/,
+      `${workflowPath} must match slugged labels for multi-word roster names`);
   }
 });
 
