@@ -42,7 +42,7 @@ of absence.** Every statement below is limited to what was observed.
 - **Current reviewed state — 2026-09-07 at `2697352`:** the bounded
   observations in §3 below. Later artifacts postdating PR #18 include
   [`docs/legal/regulatory-applicability.md`](regulatory-applicability.md)
-  (issue #8 open; draft), ADR [0006](../adr/0006-charter-ratification.md)
+  (issue #8 closed as completed; artifact remains draft), ADR [0006](../adr/0006-charter-ratification.md)
   and [`docs/charter.md`](../charter.md) (Proposed), and ADR
   [0008](../adr/0008-public-website-artifact-boundary.md) with
   [`docs/public-website/`](../public-website/) (relevant to Gate C).
