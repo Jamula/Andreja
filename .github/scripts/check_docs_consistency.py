@@ -37,6 +37,16 @@ DECISION_TEMPLATE_PATH = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "decision.ym
 PR_TEMPLATE_PATH = REPO_ROOT / ".github" / "pull_request_template.md"
 SKILLS_PATH = REPO_ROOT / "docs" / "roadmap" / "first-party-skills.md"
 CONNECTORS_PATH = REPO_ROOT / "docs" / "roadmap" / "channel-connectors.md"
+PHASE_1A_DECISION_PATH = (
+    REPO_ROOT / "docs" / "phase-1a" / "packet-decision-66.md"
+)
+ACCEPTED_PHASE_1A_ADRS = {
+    "0001": REPO_ROOT / "docs" / "adr" / "0001-phase-1a-modular-boundaries.md",
+    "0002": REPO_ROOT / "docs" / "adr" / "0002-phase-1a-identity-tenancy.md",
+    "0003": REPO_ROOT / "docs" / "adr" / "0003-phase-1a-persistence-portability.md",
+    "0004": REPO_ROOT / "docs" / "adr" / "0004-phase-1a-assistant-skill-channel-contracts.md",
+    "0005": REPO_ROOT / "docs" / "adr" / "0005-phase-1a-self-host-operations.md",
+}
 EXPECTED_STATUS_ARTIFACTS = {
     "docs/operating-model.md",
     "docs/cost-model.md",
@@ -728,6 +738,39 @@ def check_status_artifact_hashes() -> None:
     print(f"OK: {len(artifacts)} status-artifact hashes match.")
 
 
+def extract_phase_1a_adr_hashes(decision_text: str) -> dict[str, str]:
+    section = decision_text.split("## Content hashes", 1)
+    if len(section) != 2:
+        raise ValueError("Phase 1A decision record is missing its Content hashes section.")
+    section = section[1].split("## ", 1)[0]
+    rows = dict(
+        re.findall(
+            r"(?m)^\|\s*(000[1-5])\s*\|\s*`([0-9a-fA-F]{64})`\s*\|$",
+            section,
+        )
+    )
+    if set(rows) != set(ACCEPTED_PHASE_1A_ADRS):
+        raise ValueError(
+            "Phase 1A decision record must contain exactly one hash for ADRs 0001–0005."
+        )
+    return {adr: digest.lower() for adr, digest in rows.items()}
+
+
+def check_phase_1a_adr_hashes() -> None:
+    try:
+        recorded = extract_phase_1a_adr_hashes(read(PHASE_1A_DECISION_PATH))
+        validate_status_artifact_hashes(
+            recorded,
+            set(ACCEPTED_PHASE_1A_ADRS),
+            lambda adr: hashlib.sha256(
+                read_git_lf_bytes(ACCEPTED_PHASE_1A_ADRS[adr])
+            ).hexdigest(),
+        )
+    except (OSError, ValueError) as error:
+        fail(str(error))
+    print("OK: accepted Phase 1A ADR hashes match.")
+
+
 def check_skill_catalog() -> None:
     plan_text = read(PLAN_PATH)
     skills_text = read(SKILLS_PATH)
@@ -786,6 +829,7 @@ def main() -> None:
     check_plan_hash()
     check_charter_hash()
     check_status_artifact_hashes()
+    check_phase_1a_adr_hashes()
     check_skill_catalog()
     check_connector_catalog()
     print("All documentation consistency checks passed.")

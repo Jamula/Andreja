@@ -99,9 +99,10 @@ evidence, stop conditions, and re-review triggers:
 
 Cloud runtime, managed database, CIAM, and graph database decisions are
 explicitly deferred and are not hidden prerequisites for Phase 1A.
-This amendment also does not choose among restoring local tooling, using an
-isolated equivalent evidence host, or stopping; any such technical
-evidence-host decision remains Cyrus's under #62.
+ADR 0005 accepts the exercised Docker Compose v5 Linux/ARM64 host with local
+PostgreSQL, browser, and telemetry evidence for this bounded baseline. Hosted
+provenance, recovery, update/rollback, and broader portability remain exit
+blockers; no new evidence-host choice is implied.
 
 ## Ethics and sustainability impact assessment
 
