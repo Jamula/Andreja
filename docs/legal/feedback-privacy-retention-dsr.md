@@ -294,7 +294,7 @@ government-ID image by default.
 
 The restricted state is an atomic enforced status, not a staff note. Entering it
 blocks publication, ordinary support disclosure, dedupe merging, optional
-messages, metrics generation, and deletion of fields under an approved hold.
+messages, metrics generation, and deletion of either disputed fields while a decision is pending or fields covered by an approved hold.
 Only the named privacy/security role can release it after recording the
 controlling reason, scope, evidence level, expiry/review date, and propagation
 actions.
