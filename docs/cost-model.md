@@ -186,7 +186,8 @@ does not consume the envelope.
 The product-provider/model allowance is not part of the cloud-spike budget.
 Before a real Phase 1B Copilot/provider call:
 
-1. Proposed ADR 0009 is accepted and its provider gates have current evidence.
+1. Proposed ADR 0009 is accepted, its provider gates have current evidence, and
+   Cyrus has separately approved this specific provider activation/call.
 2. For Andreja- or organization-funded use, Quark records the provider
    statement/invoice owner, billable unit, approved numeric envelope, pre-call
    reservation/hard stop, anomaly threshold, and reconciliation cadence.
