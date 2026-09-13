@@ -743,13 +743,14 @@ def extract_phase_1a_adr_hashes(decision_text: str) -> dict[str, str]:
     if len(section) != 2:
         raise ValueError("Phase 1A decision record is missing its Content hashes section.")
     section = section[1].split("## ", 1)[0]
-    rows = dict(
-        re.findall(
-            r"(?m)^\|\s*(000[1-5])\s*\|\s*`([0-9a-fA-F]{64})`\s*\|$",
-            section,
-        )
+    matches = re.findall(
+        r"(?m)^\|\s*(000[1-5])\s*\|\s*`([0-9a-fA-F]{64})`\s*\|$",
+        section,
     )
-    if set(rows) != set(ACCEPTED_PHASE_1A_ADRS):
+    rows = dict(matches)
+    if len(matches) != len(ACCEPTED_PHASE_1A_ADRS) or set(rows) != set(
+        ACCEPTED_PHASE_1A_ADRS
+    ):
         raise ValueError(
             "Phase 1A decision record must contain exactly one hash for ADRs 0001–0005."
         )
