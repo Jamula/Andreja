@@ -172,17 +172,20 @@ input. Bracketed values are release-blocking configuration, not optional text.
 > collaborators or the public and may be copied into notifications, caches,
 > clones, forks, or indexes that Andreja cannot fully recall.
 >
-> **How long we keep it.** Private case content is deleted 180 days after
-> closure; contact details after 30 days; selected diagnostic values after
-> 30 days; quarantined content after 30 days; and rolling backups within
+> **How long we keep it.** Active private cases are reviewed after 90 days
+> without activity and close after 180 days without activity unless a documented
+> continuing need applies. They remain active for at most 365 days from
+> submission, plus one approved extension of at most 90 days. Private case
+> content is then deleted 180 days after closure; contact details and selected
+> diagnostic values are deleted no later than 30 days after closure; quarantined
+> content is deleted 30 days after quarantine; and rolling backups expire within
 > 35 days. Some minimized consent, rights, suppression, abuse, or incident
 > records have the longer periods listed in [retention schedule link]. A
 > controlled GitHub publication is reviewed at closure and again after 24
 > months; personal content is removed when discovered and stale content is
 > minimized or removed after that review. Independent copies may remain under
-> their controllers' rules. A
-> documented legal or security hold may delay a narrow deletion, and we will
-> explain the permitted result when we can.
+> their controllers' rules. A documented legal or security hold may delay a
+> narrow deletion, and we will explain the permitted result when we can.
 >
 > **Your choices and rights.** You may submit without optional diagnostics,
 > publication, or follow-up. Use your private receipt or contact
