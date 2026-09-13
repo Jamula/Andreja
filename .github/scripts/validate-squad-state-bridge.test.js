@@ -9,8 +9,8 @@ const test = require('node:test');
 const {
   EOF_CANARY,
   HEAD_CANARY,
-  HOST_NEUTRAL_RECOVERY_SENTENCE,
   NON_LOCAL_RAW_FILE_PROHIBITION_HEADING,
+  PROBE_FAILURE_RECOVERY_SENTENCE,
   PROBE_FAILURE_RECOVERY_PARAGRAPH,
   REQUIRED_IGNORES,
   REQUIRED_MCP_TOOLS,
@@ -98,8 +98,9 @@ function fixture(t) {
       'The runtime owns persistence and you MUST NOT touch mutable files.',
       NON_LOCAL_RAW_FILE_PROHIBITION_HEADING,
       '',
-      '- `.squad/agents/*/history.md`',
-      '- `.squad/agents/*/history-archive.md`',
+      ...REQUIRED_NON_LOCAL_RAW_FILE_PROHIBITIONS.map(
+        protectedPath => `- \`${protectedPath}\``,
+      ),
       '',
       'These are runtime-managed paths under non-local backends.',
       PROBE_FAILURE_RECOVERY_PARAGRAPH,
@@ -291,7 +292,7 @@ test('rejects a mismatched bridge package version', (t) => {
       },
     },
   });
-  assert.match(validateRepository(root).join('\n'), /squad-cli@0\.12\.0/);
+  assert.match(validateRepository(root).join('\n'), /squad-cli@0\.13\.0/);
 });
 
 test('rejects a wildcard MCP tool grant', (t) => {
@@ -347,7 +348,7 @@ test('rejects an empty readable coordinator file', (t) => {
   assert.match(validateRepository(root).join('\n'), /squad\.agent\.md must not be empty/);
 });
 
-test('checked-in coordinator and template retain synchronized host-neutral recovery wording', () => {
+test('checked-in coordinator and template retain synchronized v0.13.0 recovery wording', () => {
   const repositoryRoot = path.resolve(__dirname, '..', '..');
   const sources = [
     path.join(repositoryRoot, '.github', 'agents', 'squad.agent.md'),
@@ -359,12 +360,12 @@ test('checked-in coordinator and template retain synchronized host-neutral recov
 
   for (const paragraphs of recoveryParagraphs) {
     assert.deepEqual(paragraphs, [PROBE_FAILURE_RECOVERY_PARAGRAPH]);
-    assert.equal(paragraphs[0].includes(HOST_NEUTRAL_RECOVERY_SENTENCE), true);
+    assert.equal(paragraphs[0].includes(PROBE_FAILURE_RECOVERY_SENTENCE), true);
   }
   assert.equal(recoveryParagraphs[0][0], recoveryParagraphs[1][0]);
 });
 
-test('checked-in coordinator and template prohibit raw archived-history writes', () => {
+test('checked-in coordinator and template retain the exact v0.13.0 prohibition list', () => {
   const repositoryRoot = path.resolve(__dirname, '..', '..');
   const sources = [
     path.join(repositoryRoot, '.github', 'agents', 'squad.agent.md'),
@@ -377,12 +378,14 @@ test('checked-in coordinator and template prohibit raw archived-history writes',
   const requiredLines = REQUIRED_NON_LOCAL_RAW_FILE_PROHIBITIONS.map(
     protectedPath => `- \`${protectedPath}\``,
   );
+  assert.equal(
+    requiredLines.includes('- `.squad/agents/*/history-archive.md`'),
+    true,
+  );
 
   for (const prohibitionList of prohibitionLists) {
     assert.notEqual(prohibitionList, null);
-    for (const requiredLine of requiredLines) {
-      assert.equal(prohibitionList.filter(line => line === requiredLine).length, 1);
-    }
+    assert.deepEqual(prohibitionList, requiredLines);
   }
   assert.deepEqual(prohibitionLists[0], prohibitionLists[1]);
 });
@@ -398,18 +401,22 @@ test('rejects loss of the fail-closed ownership contract', (t) => {
   assert.match(validateRepository(root).join('\n'), /ownership and fail-closed rules/);
 });
 
-test('rejects an archived-history prohibition moved outside its bounded list', (t) => {
+test('rejects a required prohibition moved outside its bounded list', (t) => {
   const root = fixture(t);
   const coordinator = path.join(root, '.github', 'agents', 'squad.agent.md');
-  const archiveLine = '- `.squad/agents/*/history-archive.md`';
+  const requiredLine = '- `.squad/rai/audit-trail.md`';
   fs.writeFileSync(
     coordinator,
     fs.readFileSync(coordinator, 'utf8')
-      .replace(`${archiveLine}\n\n`, `\n${archiveLine}\n`),
+      .replace(`${requiredLine}\n`, '')
+      .replace(
+        'These are runtime-managed paths under non-local backends.',
+        `These are runtime-managed paths under non-local backends.\n${requiredLine}`,
+      ),
   );
   assert.match(
     validateRepository(root).join('\n'),
-    /prohibition list must contain exactly once.*\.squad\/agents\/\*\/history-archive\.md/,
+    /prohibition list must exactly match the v0\.13\.0 contract/,
   );
 });
 
@@ -493,7 +500,7 @@ test('rejects CLI-only probe-failure recovery advice', (t) => {
   fs.writeFileSync(
     coordinator,
     fs.readFileSync(coordinator, 'utf8').replace(
-      HOST_NEUTRAL_RECOVERY_SENTENCE,
+      PROBE_FAILURE_RECOVERY_SENTENCE,
       'Restart Copilot CLI so `.mcp.json` is loaded, then start a fresh session.',
     ),
   );
@@ -513,8 +520,28 @@ test('rejects a state-backend downgrade paraphrase as probe-failure recovery', (
   assert.match(validateRepository(root).join('\n'), /host-neutral probe-failure recovery paragraph/);
 });
 
+test('approved probe-failure recovery preserves the two-layer backend', () => {
+  assert.match(PROBE_FAILURE_RECOVERY_SENTENCE, /stateBackend.*two-layer/u);
+  assert.match(PROBE_FAILURE_RECOVERY_SENTENCE, /reloaded/u);
+  assert.doesNotMatch(PROBE_FAILURE_RECOVERY_SENTENCE, /stateBackend.*local/u);
+});
+
+test('runbook recovery permits acceptance only after restoring two-layer', () => {
+  const runbook = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'docs', 'operations', 'squad-state-bridge.md'),
+    'utf8',
+  );
+  const healthFailureRow = runbook.split(/\r?\n/u)
+    .find(line => line.startsWith('| `squad_state_health` is missing or errors |'));
+
+  assert.notEqual(healthFailureRow, undefined);
+  assert.match(healthFailureRow, /restore `stateBackend` to `two-layer`/u);
+  assert.match(healthFailureRow, /Only after.*two-layer.*rerun fresh-child acceptance/u);
+  assert.doesNotMatch(healthFailureRow, /stateBackend` to `local`/u);
+});
+
 test('rejects duplicate or conflicting coordinator version markers', (t) => {
-  for (const additionalVersion of [SQUAD_VERSION, '0.13.0']) {
+  for (const additionalVersion of [SQUAD_VERSION, '0.12.0']) {
     const root = fixture(t);
     const coordinator = path.join(root, '.github', 'agents', 'squad.agent.md');
     fs.writeFileSync(
@@ -535,10 +562,10 @@ test('rejects a conflicting reported Squad version', (t) => {
     coordinator,
     fs.readFileSync(coordinator, 'utf8').replace(
       `Report \`Squad v${SQUAD_VERSION}\`.`,
-      `Report \`Squad v${SQUAD_VERSION}\`, then report \`Squad v0.13.0\`.`,
+      `Report \`Squad v${SQUAD_VERSION}\`, then report \`Squad v0.12.0\`.`,
     ),
   );
-  assert.match(validateRepository(root).join('\n'), /must report only Squad v0\.12\.0/);
+  assert.match(validateRepository(root).join('\n'), /must report only Squad v0\.13\.0/);
 });
 
 test('rejects prefixed conflicting numeric Squad versions', (t) => {
@@ -548,10 +575,10 @@ test('rejects prefixed conflicting numeric Squad versions', (t) => {
     coordinator,
     fs.readFileSync(coordinator, 'utf8').replace(
       `Report \`Squad v${SQUAD_VERSION}\`.`,
-      `Report \`Squad v${SQUAD_VERSION}\`, \`_Squad v0.13.0\`, and \`xSquad v0.13.0\`.`,
+      `Report \`Squad v${SQUAD_VERSION}\`, \`_Squad v0.12.0\`, and \`xSquad v0.12.0\`.`,
     ),
   );
-  assert.match(validateRepository(root).join('\n'), /must report only Squad v0\.12\.0/);
+  assert.match(validateRepository(root).join('\n'), /must report only Squad v0\.13\.0/);
 });
 
 test('rejects canonical plus malformed reported Squad version tokens', (t) => {
@@ -573,7 +600,7 @@ test('rejects canonical plus malformed reported Squad version tokens', (t) => {
     );
     assert.match(
       validateRepository(root).join('\n'),
-      /must report only Squad v0\.12\.0/,
+      /must report only Squad v0\.13\.0/,
       `should reject Squad v${malformedVersion}`,
     );
   }
