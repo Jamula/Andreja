@@ -144,27 +144,41 @@ summary and machine-readable artifact enumerates:
 - **Unavailable runtime projects:** `Andreja.PostgreSqlIntegrationTests`, with
   the missing disposable PostgreSQL dependency recorded.
 
-The private repository currently reports `code_security.status=disabled`, and
-the CodeQL configuration endpoint returns `403` with “Code Security must be
-enabled for this repository to use code scanning.” The existing disabled CodeQL
-workflow is therefore not presented as C# evidence. The hosted gate instead
-runs the pinned Microsoft DevSkim CLI `1.0.90` locally on the runner, uploads no
-source, and fails on remaining C# findings. Two noisy lexical rules are excluded
-explicitly: `DS137138` flags the intentional loopback HTTP URLs used by local
-development and transport-boundary tests, while `DS162092` flags the words
-`Debug` and `Development` in safeguards that prevent development behavior from
-shipping in Release. Their exclusion is recorded in every SAST artifact.
-Re-evaluate both exclusions and CodeQL if the code or entitlement changes.
+The repository was observed public on 2026-09-07 and has secret scanning and
+repository push protection enabled. That visibility is unresolved,
+unauthorized drift under investigation in
+[issue #6](https://github.com/Jamula/Andreja/issues/6), not an approved state
+(`docs/plan.md:1074-1077`); this record does not treat it as governed. The
+existing disabled CodeQL workflow is not presented as repository-owned C#
+evidence. The hosted gate instead runs the pinned Microsoft DevSkim CLI
+`1.0.90` locally on the runner, uploads no source, and fails on remaining C#
+findings. Two noisy lexical rules are excluded explicitly: `DS137138` flags
+the intentional loopback HTTP URLs used by local development and
+transport-boundary tests, while `DS162092` flags the words `Debug` and
+`Development` in safeguards that prevent development behavior from shipping in
+Release. Their exclusion is recorded in every SAST artifact. Re-evaluate both
+exclusions and CodeQL if the code or entitlement changes.
 
 GitHub may also attach a platform-managed dynamic `Analyze (csharp)` CodeQL
 check to a pull request. That supplementary check ran successfully while this
 gate was introduced, but it is not a repository-owned substitute: the committed
-CodeQL workflow remains manually disabled, the repository API still denies
-CodeQL configuration, and the dynamic check does not establish committed
-push-to-`main` or `merge_group` coverage.
+CodeQL workflow remains manually disabled, and the dynamic check does not
+establish committed push-to-`main` or `merge_group` coverage. As observed on
+2026-09-07, while the repository was in that unresolved public state, the
+code-scanning default-setup and alerts API endpoints returned `200` and
+listed `csharp`, so the earlier `403` entitlement denial no longer applied at
+that time; re-verify live before relying on this, since visibility or
+entitlement can change, and visibility itself remains an open governance
+question (issue #6). The committed `.github/workflows/codeql.yml` matrix
+currently analyzes only `actions` and `javascript-typescript`; it does not
+scan C# or Python today. Re-enabling that workflow as-is and extending its
+matrix to add `csharp`/`python` are two separate, not-yet-authorized changes;
+neither is implied or claimed by this correction.
 
-Default-branch required-check and merge-queue enforcement is deliberately
-tracked in [issue #67](https://github.com/Jamula/Andreja/issues/67). OCI SBOM,
+Default-branch required-check enforcement and the entitlement-aware merge
+procedure are defined by
+[ADR 0011](adr/0011-default-branch-required-gates.md) and the
+[default-branch runbook](operations/default-branch-protection.md). OCI SBOM,
 image scanning, and provenance are implemented by the entitlement-neutral
 [`OCI Supply Chain`](../.github/workflows/oci-supply-chain.yml) gate. It builds
 twice from a clean commit, generates SPDX and CycloneDX inventories, applies the
