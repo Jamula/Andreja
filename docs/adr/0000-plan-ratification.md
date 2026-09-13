@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `45570b6b53ae13b4d7c4963921fabae13ae8a7f675332dd1e4088da2f831466a`
+- **Current proposed Plan SHA-256:** `97be6a51e1db7ad7aff04640ceaa4aeed65cceb64acf058950c3c572de84d73d`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -250,3 +250,61 @@ not match the merged `docs/plan.md`.
   external spend, or phase exit is authorized.
 - **Scope:** Normalize Markdown table delimiter spacing and nested help-list
   indentation without changing the plan's meaning, status, scope, or gates.
+
+### 2026-09-07 — proposed feedback privacy decision references
+
+- **Tracking issue:** [#155](https://github.com/Jamula/Andreja/issues/155)
+- **Pull request:** [#172](https://github.com/Jamula/Andreja/pull/172)
+- **Plan SHA-256:** `b3479ab5a5960bc862e5ff411fdd2b6cffacdbfd89dfd392a57c5b53ae6327aa`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed policy/status amendment; no re-ratification,
+  privacy or legal approval, collection, GitHub publication, provider, spend,
+  deployment, launch, support commitment, or phase exit is authorized.
+- **Scope:** Refresh the enforced hashes and source references for the feedback
+  framework and privacy baseline after linking the proposed feedback privacy,
+  retention, and data-subject rights package. The package remains gated until
+  Cyrus records an explicit decision.
+
+### 2026-09-13 — proposed feedback privacy inventory reconciliation
+
+- **Tracking issue:** [#155](https://github.com/Jamula/Andreja/issues/155)
+- **Pull request:** [#172](https://github.com/Jamula/Andreja/pull/172)
+- **Plan SHA-256:** `eb7f3505ba5ef8d83ce82027a568f02be8f81a2367b7352bc39c1fd791b5120e`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed policy/status amendment; no re-ratification,
+  privacy or legal approval, collection, GitHub publication, provider, spend,
+  deployment, launch, support commitment, or phase exit is authorized.
+- **Scope:** Register the proposed feedback privacy decision package as an
+  enforced status artifact and reconcile its derived-record inventory, notice
+  disclosure, and bounded renewed-need retention rule. The package remains
+  gated until Cyrus records an explicit decision.
+
+### 2026-09-13 — proposed feedback privacy status-artifact hash refresh
+
+- **Tracking issue:** [#155](https://github.com/Jamula/Andreja/issues/155)
+- **Pull request:** [#172](https://github.com/Jamula/Andreja/pull/172)
+- **Plan SHA-256:** `81d6f096544d60a490f2999f4e665a9624cca36b66687b8a68b34f92df697c12`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/status amendment; no re-ratification,
+  privacy or legal approval, collection, GitHub publication, provider, spend,
+  deployment, launch, support commitment, or phase exit is authorized.
+- **Scope:** Refresh the `docs/legal/feedback-privacy-retention-dsr.md`
+  status-artifact hash left stale by that document's revised private-case
+  retention policy. The package remains gated until Cyrus records an explicit
+  decision.
+
+
+### 2026-09-13 — proposed feedback privacy review-thread amendments
+
+- **Tracking issue:** [#155](https://github.com/Jamula/Andreja/issues/155)
+- **Pull request:** [#172](https://github.com/Jamula/Andreja/pull/172)
+- **Plan SHA-256:** `97be6a51e1db7ad7aff04640ceaa4aeed65cceb64acf058950c3c572de84d73d`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed policy/status amendment; no re-ratification,
+  privacy or legal approval, collection, GitHub publication, provider, spend,
+  deployment, launch, support commitment, or phase exit is authorized.
+- **Scope:** Incorporate the remaining review-thread corrections for help
+  escalation roles, bounded project-history retention, automatic metadata notice,
+  anonymous proof-session records, saved publication drafts, and conditional
+  recipient disclosure. The package remains gated until Cyrus records an explicit
+  decision.
