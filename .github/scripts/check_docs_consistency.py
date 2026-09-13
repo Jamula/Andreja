@@ -47,6 +47,7 @@ EXPECTED_STATUS_ARTIFACTS = {
     "docs/charter.md",
     "docs/legal/license-evaluation.md",
     "docs/legal/regulatory-applicability.md",
+    "docs/legal/feedback-privacy-retention-dsr.md",
 }
 CANONICAL_BASELINE_REQUIREMENTS = {
     "docs/privacy.md": ("Deanna Troi", "Tuvok", "Rai (AI safety); pending"),
