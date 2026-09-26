@@ -10,11 +10,12 @@
 - **Security/privacy challenge:** Tuvok and Deanna Troi
 - **Final exit and residual-risk authority:** Cyrus
 
-This record contains only synthetic local evidence. No cloud resource, account,
-subscription, public deployment, paid model, user data, reusable credential,
-cookie, recovery code, private key, database dump, or private OCI layer is
-committed or attached. Ignored runtime artifacts were destroyed after recording
-the bounded results below.
+The evidence uses synthetic test inputs; no paid external calls were made.
+Execution occurred locally and in hosted GitHub Actions, as identified below.
+No cloud resource, account, subscription, public deployment, paid model, user
+data, reusable credential, cookie, recovery code, private key, database dump, or
+private OCI layer is committed or attached. Ignored runtime artifacts were
+destroyed after recording the bounded results below.
 
 ## Current cumulative rerun
 
