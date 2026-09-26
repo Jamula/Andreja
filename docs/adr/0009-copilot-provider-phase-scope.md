@@ -10,7 +10,8 @@
   [ADR 0004](0004-phase-1a-assistant-skill-channel-contracts.md)
 - **Decision owner:** Cyrus
 - **Approvals required:** Cyrus after named architecture, privacy, security,
-  FinOps/operations, and qualified legal review
+  FinOps/operations, quality/evidence, public-claims, and qualified legal
+  review
 
 ## Status and decision
 
@@ -54,10 +55,11 @@ entitlement/isolation/cost review?
 
 **Recommendation: Option 1.** Phase 1A's implementation already matches Option
 1 (deterministic fake plus BYOK; no `GitHub.Copilot.SDK` package reference in
-the shipping graph). If Cyrus accepts this ADR, that acceptance would remove
-the plan-vs-implementation ambiguity by making the roadmap the single source of
-truth; it would not by itself authorize a Copilot account, runtime,
-network/model call, content disclosure, or spend.
+the shipping graph). If Cyrus accepts this ADR, that acceptance would settle
+the ADR's phase-placement decision; it would not by itself accept the matching
+pending plan amendment or make the roadmap authoritative. It also would not
+authorize a Copilot account, runtime, network/model call, content disclosure,
+or spend.
 
 **Required artifact gate status** (issue #74's seven named gates, mapped to
 this ADR's evidence; "Documented" means the design/requirement is written and

@@ -298,3 +298,15 @@ not match the merged `docs/plan.md`.
   This proposal does not ratify the plan amendment, charter, or feedback
   framework; authorize a reporting or privileged channel; provide legal advice;
   or approve public culture publication.
+
+### 2026-09-26 — proposed Copilot provider phase-scope reconciliation
+
+- **Tracking issue:** [#74](https://github.com/Jamula/Andreja/issues/74)
+- **Pull request:** [#171](https://github.com/Jamula/Andreja/pull/171)
+- **Plan SHA-256:** `2dcdea1f213d04d9e3b2f8be8b5746b8905e129b99a782050a26d5ba868f1636`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/editorial amendment; explicit
+  plan re-ratification required.
+- **Scope:** Reconcile the proposed Copilot provider phase-scope ADR and its
+  acceptance-gate wording without accepting ADR 0009, changing the roadmap's
+  authority, or authorizing provider activation, spend, or a phase exit.
