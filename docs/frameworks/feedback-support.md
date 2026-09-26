@@ -454,8 +454,9 @@ from notifications, caches, clones, or forks.
 | --- | --- | --- | --- | --- |
 | Intake operation, acknowledgment, privacy screen, dedupe, tracking, and closure | Guinan | Guinan | Deanna Troi, Tuvok, Jadzia Dax, Jett Reno as applicable | Submitter |
 | Feature investigation and remediation | Assigned delivery team | Feature/domain owner | Guinan, Data, applicable specialists | Submitter |
-| Security vulnerability/incident handling | Approved incident responders | Tuvok | Deanna Troi, Sarek, Jett Reno, Data | Guinan; Cyrus for non-conflict-class reports only, on a need-to-know basis |
-| Privacy/consent/data-incident handling | Approved privacy/incident responders | Deanna Troi | Tuvok, Sarek, Jett Reno, Data | Guinan; Cyrus for non-conflict-class reports only, on a need-to-know basis |
+| Non-conflict-class security vulnerability/incident handling | Approved incident responders | Tuvok | Deanna Troi, Sarek, Jett Reno, Data | Guinan and Cyrus on a need-to-know basis |
+| Non-conflict-class privacy/consent/data-incident handling | Approved privacy/incident responders | Deanna Troi | Tuvok, Sarek, Jett Reno, Data | Guinan and Cyrus on a need-to-know basis |
+| Conflict-class report handling | Appointed qualified external counsel or appointed independent reviewer | The appointed recipient | Qualified specialists only as the appointed recipient determines | Reporter and other parties only as the appointed recipient or law authorizes; Cyrus is excluded |
 | Acceptance and regression evidence | Delivery team and Data | Data | Domain owner, Guinan, submitter where safe | Cyrus |
 | Help, known-issue, and release-content update | Domain owner and Jadzia Dax | Domain owner | Guinan, Data, Neelix when public claims apply | Submitters following the item |
 | Feedback metric definitions and quality | Guinan and Data | Guinan | Deanna Troi, Tuvok, Quark, Picard | Cyrus |

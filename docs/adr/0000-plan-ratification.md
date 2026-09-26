@@ -285,7 +285,7 @@ not match the merged `docs/plan.md`.
 
 - **Tracking issue:** [#3](https://github.com/Jamula/Andreja/issues/3)
 - **Pull request:** [#168](https://github.com/Jamula/Andreja/pull/168)
-- **Plan SHA-256:** `14d0dadf6c159ce12096eb3d7848dd42b5f85ff06a0964de2927271a5838f7de`
+- **Plan SHA-256:** `34c1a4f54ea2e0051c85d9d3f762dd1aac8a3b1c6e3938cfddf6414e9726328d`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed charter-seed reconciliation amendment; explicit
   plan re-ratification required.
