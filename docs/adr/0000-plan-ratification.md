@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `47258860521457a03f86d3511da95cea54ec706c6664cd2d9daea7017a8dce1e`
+- **Current proposed Plan SHA-256:** `d19227df4190280f0d71de046a2c9f23c3d9bec5fa116e4cf07041d0661620e6`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -384,3 +384,30 @@ not match the merged `docs/plan.md`.
   refresh resulting artifact hashes, and bind all displayed draft components
   into the publication-consent digest. The package remains gated until Cyrus
   records an explicit decision.
+
+### 2026-09-26 — proposed Copilot provider phase-scope reconciliation
+
+- **Tracking issue:** [#74](https://github.com/Jamula/Andreja/issues/74)
+- **Pull request:** [#171](https://github.com/Jamula/Andreja/pull/171)
+- **Plan SHA-256:** `aef8b1d010ba53257c7cb29a35566eca9597182902dd45039da272a5f12d5170`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/editorial amendment; explicit
+  plan re-ratification required.
+- **Scope:** Reconcile the proposed Copilot provider phase-scope ADR and its
+  acceptance-gate wording without accepting ADR 0009, changing the roadmap's
+  authority, or authorizing provider activation, spend, or a phase exit.
+
+### 2026-09-26 — proposed main-branch merge reconciliation
+
+- **Tracking issues:** [#74](https://github.com/Jamula/Andreja/issues/74) and
+  [#155](https://github.com/Jamula/Andreja/issues/155)
+- **Pull requests:** [#171](https://github.com/Jamula/Andreja/pull/171) and
+  [#172](https://github.com/Jamula/Andreja/pull/172)
+- **Plan SHA-256:** `d19227df4190280f0d71de046a2c9f23c3d9bec5fa116e4cf07041d0661620e6`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed plan reconciliation; explicit plan re-ratification
+  remains required. No decision on ADR 0009, feedback privacy approval, provider
+  activation, collection, publication, spend, deployment, or launch is implied.
+- **Scope:** Preserve the proposed provider phase-scope recommendation and
+  feedback privacy decision references while reconciling their status-artifact
+  rows with the current main branch. Both decisions remain pending.
