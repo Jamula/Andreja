@@ -46,6 +46,18 @@ of absence.** Every statement below is limited to what was observed.
   and [`docs/charter.md`](../charter.md) (Proposed), and ADR
   [0008](../adr/0008-public-website-artifact-boundary.md) with
   [`docs/public-website/`](../public-website/) (relevant to Gate C).
+- **Issue #8 reconciliation — checked 2026-09-26:** GitHub reports
+  [#8](https://github.com/Jamula/Andreja/issues/8) closed at
+  `2026-08-30T17:10:45Z`. In the reviewed rebased tree (`bf1e27a`),
+  [`docs/plan.md`](../plan.md)'s Phase 0 artifact table still says
+  "Issue #8 remains open"; that lifecycle snapshot is stale.
+  [`docs/operating-model.md`](../operating-model.md)'s legal/regulatory
+  source row says "pending ratification, issue #8", which describes
+  artifact authority, not the issue's open/closed state. Closure does not
+  establish Cyrus or qualified-counsel approval, and the artifact remains
+  draft. These hash-governed files are unchanged in this supplementary
+  packet; correcting their snapshots requires a separate coordinated
+  source/hash update, not an inferred ratification.
 - **Provenance observation, bounded:** PR #18's merge commit `87ce4e6` is
   not an ancestor of current `HEAD`. In current HEAD ancestry,
   `license-evaluation.md` was added by `ab15b72` (#12, 2026-08-23) and
