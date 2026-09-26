@@ -267,7 +267,7 @@ statement that no record exists.
 | Request and risk | Minimum sufficient proof | Maximum permitted result |
 | --- | --- | --- |
 | Coarse status, withdraw unpublished consent, or delete using a valid receipt | Possession proof with fresh one-time challenge | Action and safe completion status for that receipt only |
-| Correct contact destination or receive a private export | Possession plus return-channel proof when available; otherwise reviewed context corroboration | Verified requester's fields only, with other people and security details removed |
+| Correct contact destination or receive a private export | Possession plus return-channel proof; if either is unavailable, use two independent lower-level proofs or counsel-approved exceptional proof | Verified requester's fields only, with other people and security details removed |
 | Non-user restriction, objection, correction, or deletion | Non-user relationship proof sufficient to identify the disputed fields; no submitter receipt required | Restrict first; correct/delete verified fields or provide a safe partial/denied result |
 | Disclosure containing sensitive content, another person, or a contested identity | Two independent lower-level proofs or counsel-approved exceptional proof | Minimized private disclosure only after conflict review |
 | Public-artifact removal or redaction | Proof sufficient to identify the claimant and affected content; urgency may justify restriction before proof completes | Restrict/remove controlled content; do not disclose the private source or submitter |
