@@ -56,7 +56,7 @@ explicit Cyrus decision.
 
 | Artifact | Source and current SHA-256 | Current authority |
 | --- | --- | --- |
-| [`docs/operating-model.md`](operating-model.md) | Issue [#14](https://github.com/Jamula/Andreja/issues/14), PR [#17](https://github.com/Jamula/Andreja/pull/17); `f10ab3a27d076e5eba407f5530366caa70c0e4aae45d695b1a7fb9c96c73eb85` | **Draft for ratification.** The issue and PR merged/closed, but no separate explicit Cyrus ratification record was found; it is advisory and the plan remains authoritative. |
+| [`docs/operating-model.md`](operating-model.md) | Issue [#14](https://github.com/Jamula/Andreja/issues/14), PR [#17](https://github.com/Jamula/Andreja/pull/17), and issue [#3](https://github.com/Jamula/Andreja/issues/3) authority reconciliation; `c9fd77ed90bdd2354a8ad2b111502b067e62ce728930b4562e6ab9ad57a0973a` | **Draft for ratification.** The issue and PR merged/closed, but no separate explicit Cyrus ratification record was found; it is advisory and the plan remains authoritative. |
 | [`docs/cost-model.md`](cost-model.md) | Issue [#11](https://github.com/Jamula/Andreja/issues/11), PR [#20](https://github.com/Jamula/Andreja/pull/20); provider-allowance proposal [#74](https://github.com/Jamula/Andreja/issues/74), PR [#119](https://github.com/Jamula/Andreja/pull/119); `8f7c708d63d389481c1e88964dba883ae6dc3ad7a73215ac5317471e55e1f13c` | **Draft for ratification.** It recommends controls but authorizes no spend; issue closure and merge are not approval. |
 | [`docs/frameworks/feedback-support.md`](frameworks/feedback-support.md) | Issue [#10](https://github.com/Jamula/Andreja/issues/10), PR [#16](https://github.com/Jamula/Andreja/pull/16), and issue [#3](https://github.com/Jamula/Andreja/issues/3) prerequisite reconciliation; `04078985fda90cd36cfed0b1dd2ae690e526c261e5328adb17921fa87e641448` | **Review-ready draft.** Issue #10 is closed, but no separate explicit Cyrus approval is recorded; no intake deployment, privileged channel, legal advice, or support commitment is authorized. |
 | [`docs/frameworks/prioritization-launch.md`](frameworks/prioritization-launch.md) | Issue [#5](https://github.com/Jamula/Andreja/issues/5), PR [#19](https://github.com/Jamula/Andreja/pull/19); `7ba4d30a901e881cf167afe8964c9c2e6ba2584ac94151f2e4f8bc9b2e79104c` | **Review-ready draft.** Its operational mechanics are advisory until explicitly ratified; the plan owns phased scope and exits. |
@@ -1282,12 +1282,13 @@ Squad is already initialized, but the specialist roster and routing are empty. K
 Cyrus remains the human founder/product owner and final business, governance,
 ratification, and risk-acceptance decision-maker unless formal governance
 changes. Qualified counsel, not Cyrus or an agent, provides legal advice,
-privilege, clearance, and jurisdiction-specific legal opinions. Cyrus records
-whether an exposure is material and decides whether Andreja proceeds after any
-required counsel review. CEO/CFO and other crew titles describe accountable
-advisory/operating roles for Squad; they do not grant agents authority to sign
-contracts, spend funds, make legal representations, or publish without human
-approval.
+clearance, and jurisdiction-specific legal opinions and directs
+privilege-sensitive handling; no wording here guarantees that privilege
+attaches. Cyrus records whether an exposure is material and decides whether
+Andreja proceeds after any required counsel review. CEO/CFO and other crew
+titles describe accountable advisory/operating roles for Squad; they do not
+grant agents authority to sign contracts, spend funds, make legal
+representations, or publish without human approval.
 
 Star Trek character names are internal/private Squad codenames pending trademark/licensing review. Any repository visibility change re-reviews committed codename usage. Do not use them in public product branding, marketplace roles, endorsements or commercial claims without counsel approval.
 
