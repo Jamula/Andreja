@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `aef8b1d010ba53257c7cb29a35566eca9597182902dd45039da272a5f12d5170`
+- **Current proposed Plan SHA-256:** `2b5f6753e280e162c551ffeba85d7843d56043d1debf4a34d2fcff55b1a6ca33`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -239,6 +239,25 @@ not match the merged `docs/plan.md`.
   status-artifact updates after merging their plan changes. Both underlying
   artifacts remain non-authoritative pending their respective required approvals.
 
+### 2026-08-30 — proposed feedback-framework handoff status
+
+- **Tracking issues:** Framework [#10](https://github.com/Jamula/Andreja/issues/10)
+  and successor gates [#155](https://github.com/Jamula/Andreja/issues/155)
+  through [#158](https://github.com/Jamula/Andreja/issues/158)
+- **Pull request:** [#159](https://github.com/Jamula/Andreja/pull/159)
+- **Plan SHA-256:** `5e7adcaf0313c5140c7e5bad3d811b9e6fb072be66252fde0578be09075389c1`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/status amendment; no plan
+  re-ratification, gate approval, collection, publication, provider selection,
+  spend, deployment, launch, external email, or support-time commitment is
+  authorized.
+- **Scope:** Record Cyrus's separate decision that the Phase 0 feedback
+  framework is complete, close #10 independently of the documentation PR, and
+  move unresolved policy, security, platform/vendor/cost,
+  operational-readiness, and launch decisions to successor issues #155-#158.
+  The framework remains fail-closed: issue closure, labels, specialist
+  verdicts, or documentation merge do not approve a gate package.
+
 ### 2026-09-07 — proposed Markdown formatting normalization
 
 - **Tracking issue:** None; documentation-only maintenance.
@@ -310,3 +329,22 @@ not match the merged `docs/plan.md`.
 - **Scope:** Reconcile the proposed Copilot provider phase-scope ADR and its
   acceptance-gate wording without accepting ADR 0009, changing the roadmap's
   authority, or authorizing provider activation, spend, or a phase exit.
+
+### 2026-09-26 — proposed feedback-framework handoff hash reconciliation
+
+- **Tracking issues:** Framework [#10](https://github.com/Jamula/Andreja/issues/10)
+  and successor gates [#155](https://github.com/Jamula/Andreja/issues/155)
+  through [#158](https://github.com/Jamula/Andreja/issues/158)
+- **Pull request:** [#159](https://github.com/Jamula/Andreja/pull/159)
+- **Plan SHA-256:** `2b5f6753e280e162c551ffeba85d7843d56043d1debf4a34d2fcff55b1a6ca33`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/status amendment; no plan
+  re-ratification, gate approval, collection, publication, provider selection,
+  spend, deployment, launch, external email, or support-time commitment is
+  authorized.
+- **Scope:** Record the current aggregate plan hash after integrating the
+  completed Phase 0 feedback-framework decision with the intervening main-branch
+  amendments. The original #168 and #171 proposal hashes remain attached to
+  their own records. This reconciliation does not approve any successor gate or
+  authorize production/public collection, publication, deployment, launch,
+  general email, or support commitments.

@@ -37,6 +37,7 @@ DECISION_TEMPLATE_PATH = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "decision.ym
 PR_TEMPLATE_PATH = REPO_ROOT / ".github" / "pull_request_template.md"
 SKILLS_PATH = REPO_ROOT / "docs" / "roadmap" / "first-party-skills.md"
 CONNECTORS_PATH = REPO_ROOT / "docs" / "roadmap" / "channel-connectors.md"
+FEEDBACK_SUPPORT_PATH = REPO_ROOT / "docs" / "frameworks" / "feedback-support.md"
 PHASE_1A_DECISION_PATH = (
     REPO_ROOT / "docs" / "phase-1a" / "packet-decision-66.md"
 )
@@ -738,6 +739,42 @@ def check_status_artifact_hashes() -> None:
     print(f"OK: {len(artifacts)} status-artifact hashes match.")
 
 
+def validate_feedback_tracking_secret_contract(document_text: str) -> None:
+    normalized = " ".join(document_text.split())
+    required_clauses = (
+        "A raw tracking secret is disclosed only to the requester at issuance "
+        "and is never persisted",
+        "Only a one-way verifier, the non-secret `trackingRef`, and metadata "
+        "strictly necessary for expiry, failed-attempt throttling, recovery, "
+        "rotation, and revocation may be stored.",
+        "The raw secret never appears in a URL path, query, fragment, browser "
+        "history, referrer, log, trace, metric, alert, queue field, provider "
+        "metadata, backup, replica, export, analytics dataset, or support tool.",
+    )
+    missing = [clause for clause in required_clauses if clause not in normalized]
+    forbidden_clauses = (
+        "tracking secrets are stored outside the envelope",
+        "tracking credential as separately protected records",
+    )
+    present_forbidden = [
+        clause for clause in forbidden_clauses if clause in normalized.casefold()
+    ]
+    if missing or present_forbidden:
+        raise ValueError(
+            "Feedback tracking-secret custody contract drifted.\n"
+            f"  Missing required clauses: {missing}\n"
+            f"  Forbidden persistence clauses: {present_forbidden}"
+        )
+
+
+def check_feedback_tracking_secret_contract() -> None:
+    try:
+        validate_feedback_tracking_secret_contract(read(FEEDBACK_SUPPORT_PATH))
+    except (OSError, ValueError) as error:
+        fail(str(error))
+    print("OK: feedback tracking secrets use verifier-only custody.")
+
+
 def extract_phase_1a_adr_hashes(decision_text: str) -> dict[str, str]:
     section = decision_text.split("## Content hashes", 1)
     if len(section) != 2:
@@ -829,6 +866,7 @@ def check_connector_catalog() -> None:
 def main() -> None:
     check_plan_hash()
     check_charter_hash()
+    check_feedback_tracking_secret_contract()
     check_status_artifact_hashes()
     check_phase_1a_adr_hashes()
     check_skill_catalog()
