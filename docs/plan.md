@@ -182,7 +182,8 @@ the recommended phase placement or any activation:
   self-hosting, portability, or user-owned-data boundaries.
 
 ADR 0009 is **Proposed**. Required review is Cyrus after named architecture,
-privacy, security/abuse, FinOps/operations, and qualified legal verdicts.
+privacy, security/abuse, FinOps/operations, quality/evidence, public-claims, and
+qualified legal verdicts.
 Documentation merge, issue closure, SDK general availability/package presence,
 a compile spike, or an existing subscription does not record Cyrus acceptance or
 authorize a runtime, account, network/model call, content disclosure, or spend.
