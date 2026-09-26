@@ -245,7 +245,13 @@ Empower people to understand and improve their lives through a trustworthy, user
 
 - Every major ADR, launch gate, sponsorship/partner decision and public claim includes an ethics/sustainability impact section.
 - Tuvok, Deanna Troi, Quark, Sarek, Data and Rai challenge security, privacy, cost/sustainability, legal/evidence and responsible-AI effects; Cyrus retains final human accountability.
-- Before GA, every charter indicator area has a named human owner, definition, baseline, target, cadence, evidence source and stop or remediation threshold; targets are not presented as achieved until measured.
+- Before GA, every charter indicator area—human agency and user control;
+  accessibility and inclusion; privacy and data dignity; security and safety;
+  product truth and quality; support and accountability; AI and compute efficiency;
+  financial and operational sustainability; vendor and sponsor independence;
+  environmental stewardship; and marketplace fairness—has a named human owner,
+  definition, baseline, target, cadence, evidence source and stop or remediation
+  threshold; targets are not presented as achieved until measured.
 - Provide confidential reporting, non-retaliation, incident/remediation and partner/sponsor exit mechanisms.
 - The charter outranks growth, launch dates, sponsor requests, cost savings and agent recommendations.
 
