@@ -41,11 +41,11 @@ Before starting work, check your capability profile in `.squad/team.md` under th
 
 ## Branch Naming
 
-Use the squad branch convention:
+Use the Copilot coding-agent branch convention:
 ```
-squad/{issue-number}-{kebab-case-slug}
+copilot/{issue-number}-{slug}
 ```
-Example: `squad/42-fix-login-validation`
+Example: `copilot/42-fix-login-validation`
 
 ## PR Guidelines
 

@@ -119,14 +119,6 @@ test('branch parser accepts the documented convention only', () => {
 
 test('branch documentation uses the Squad v0.13.0 issue convention', () => {
   const documentedPaths = [
-    path.join(__dirname, '..', 'copilot-instructions.md'),
-    path.join(
-      __dirname,
-      '..',
-      '..',
-      '.squad',
-      'templates',
-      'copilot-instructions.md'),
     path.join(__dirname, '..', '..', '.squad', 'templates', 'issue-lifecycle.md'),
   ];
 
@@ -162,7 +154,7 @@ test('branch documentation uses the Squad v0.13.0 issue convention', () => {
   }
 });
 
-test('Copilot instruction sources use the Squad v0.13.0 branch convention', () => {
+test('Copilot instruction sources use the Copilot issue branch convention', () => {
   const instructionPaths = [
     path.join(__dirname, '..', 'copilot-instructions.md'),
     path.join(
@@ -178,8 +170,7 @@ test('Copilot instruction sources use the Squad v0.13.0 branch convention', () =
     const content = fs.readFileSync(instructionPath, 'utf8');
     assert.match(
       content,
-      /Use the squad branch convention:\s*```\s*squad\/\{issue-number\}-\{kebab-case-slug\}\s*```/);
-    assert.doesNotMatch(content, /Use the Copilot coding-agent branch convention:/i);
+      /Use the Copilot coding-agent branch convention:\s*```\s*copilot\/\{issue-number\}-\{slug\}\s*```/);
   }
 });
 
