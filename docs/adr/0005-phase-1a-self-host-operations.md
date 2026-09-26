@@ -1,13 +1,18 @@
 # ADR 0005: Phase 1A independent self-host operations
 
-- **Status:** Proposed
-- **Date:** 2026-08-23
-- **Issue:** [#9](https://github.com/Jamula/Andreja/issues/9)
-- **Governing:** [Platform plan](../plan.md#phase-1a---self-hosted-assistant-walking-skeleton),
-  [company charter](../charter.md#commitments), and
-  [ADR 0000](0000-plan-ratification.md)
+- **Status:** Accepted
+- **Date proposed:** 2026-08-23
+- **Date accepted:** 2026-09-07
+- **Issues:** [#9](https://github.com/Jamula/Andreja/issues/9),
+  [#66](https://github.com/Jamula/Andreja/issues/66)
+- **Approver:** Cyrus Jamula
+- **Governing:** [Platform plan](../plan.md#phase-1a---self-hosted-assistant-walking-skeleton)
+  and [ADR 0000](0000-plan-ratification.md)
+- **Non-authoritative input:** Proposed [company charter](../charter.md#commitments)
 - **Proposed by:** Jett Reno
 - **Decision owner:** Cyrus
+- **Decision record:** [Phase 1A packet decision record](../phase-1a/packet-decision-66.md)
+  under [#66](https://github.com/Jamula/Andreja/issues/66)
 
 ## Context
 
@@ -29,6 +34,11 @@ health/readiness checks, dependency order, resource guidance, named durable path
 network boundaries, and validated configuration. The supported Docker-, Podman-, or
 other Compose implementation remains a measured host-matrix decision; OCI/Compose
 does not select a cloud runtime or orchestrator.
+
+The accepted Phase 1A evidence host is Linux containers through Docker Compose v5
+on the tested ARM64 environment. Podman, x64, native Windows containers, and other
+Compose implementations remain unclaimed until separately exercised. This is an
+evidence-host boundary, not production support or a cloud-runtime selection.
 
 The offline-start proof begins **after image acquisition**. It uses either an image
 already preloaded into the host content store, an image built locally from the
@@ -73,10 +83,12 @@ otherwise it restores the pre-update recovery set.
 ### Independent and content-safe operation
 
 Normal identity, assistant BYOK, skills, tasks, audit, export, backup, and restore
-have no Andreja-cloud dependency. Default egress is limited to the user-configured
-assistant endpoint; an offline fake-provider smoke test proves there are no hidden
-calls. OTel uses an allowlist of low-cardinality operational attributes and rejects
-task text, prompts, responses, tokens, raw user identifiers, and connector content.
+have no Andreja-cloud dependency. Application configuration restricts assistant
+traffic to the user-configured endpoint, but the Compose network does not establish
+network-level default-deny egress. The offline fake-provider smoke test proves the
+reviewed path makes no hidden calls; it is not a firewall claim. OTel uses an
+allowlist of low-cardinality operational attributes and rejects task text, prompts,
+responses, tokens, raw user identifiers, and connector content.
 
 ## Local/paper Phase 0 evidence
 
@@ -94,8 +106,19 @@ or package is installed by this decision.
 - **Require Kubernetes or a managed control plane:** rejected because one-user Phase
   1A has no measured need and must remain independently operable.
 
-## Human decision
+## Accepted operating boundary
 
-Cyrus must approve the supported host/runtime matrix, HTTPS/passkey onboarding,
-key-custody and backup destinations, update signature/distribution policy, local
-evidence backend, and recovery objectives.
+The exact HTTPS origin/RP domain and trusted proxy are installation inputs that
+must pass startup validation. Keys and encrypted backups remain in
+operator-controlled, access-restricted destinations. Accepted ADR 0010 governs
+hosted signing; the local Prometheus-compatible backend is evidence-only. Numeric
+RPO/RTO, a production host matrix, combined encrypted recovery, and a separately
+approved signed update/rollback pair remain exit gates.
+
+## Cost delta
+
+The self-host bundle requires at least 2 CPU cores, 3 GiB free memory, durable
+storage, backup capacity, scanner/build time, and operator labor for TLS, keys,
+updates, and recovery. One OCI app, PostgreSQL, and optional local evidence backend
+avoid managed-cloud commitments. No cloud runtime, subscription, paid observability,
+registry, backup, or support service is selected or authorized.

@@ -42,7 +42,8 @@ if ($LASTEXITCODE -ne 0 -or $efVersionText -notmatch "10\.0\.11") {
 }
 ```
 
-The repository is private. Your GitHub account must have access before cloning.
+The repository is public. Write access and protected-branch operations still
+require an authorized GitHub account.
 
 ## Restore and build
 
@@ -398,5 +399,6 @@ runtime state, or user content.
 - [Open Loops help](docs/help/open-loops.md)
 - [Testing matrix](docs/testing-matrix.md)
 - [Phase 1A evidence](docs/phase-1a/evidence-44.md)
+- [Phase 1A packet decision record](docs/phase-1a/packet-decision-66.md)
 
 Phase 0 provisions no cloud accounts, subscriptions, free tiers, or trials.

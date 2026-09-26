@@ -15,9 +15,7 @@ Fails the build when:
      release bands" table drift from the authoritative
      docs/roadmap/channel-connectors.md catalog.
   5. A status-artifact row in docs/plan.md is missing, unexpected, malformed,
-     or has a SHA-256 value that does not match the referenced file.
-  6. The feedback framework permits recoverable tracking-secret persistence or
-     omits required raw-secret exfiltration boundaries.
+       or has a SHA-256 value that does not match the referenced file.
 
 Per docs/plan.md and docs/frameworks/prioritization-launch.md, the roadmap
 catalogs are authoritative and the plan's seed tables must stay in sync.
@@ -40,6 +38,16 @@ PR_TEMPLATE_PATH = REPO_ROOT / ".github" / "pull_request_template.md"
 SKILLS_PATH = REPO_ROOT / "docs" / "roadmap" / "first-party-skills.md"
 CONNECTORS_PATH = REPO_ROOT / "docs" / "roadmap" / "channel-connectors.md"
 FEEDBACK_SUPPORT_PATH = REPO_ROOT / "docs" / "frameworks" / "feedback-support.md"
+PHASE_1A_DECISION_PATH = (
+    REPO_ROOT / "docs" / "phase-1a" / "packet-decision-66.md"
+)
+ACCEPTED_PHASE_1A_ADRS = {
+    "0001": REPO_ROOT / "docs" / "adr" / "0001-phase-1a-modular-boundaries.md",
+    "0002": REPO_ROOT / "docs" / "adr" / "0002-phase-1a-identity-tenancy.md",
+    "0003": REPO_ROOT / "docs" / "adr" / "0003-phase-1a-persistence-portability.md",
+    "0004": REPO_ROOT / "docs" / "adr" / "0004-phase-1a-assistant-skill-channel-contracts.md",
+    "0005": REPO_ROOT / "docs" / "adr" / "0005-phase-1a-self-host-operations.md",
+}
 EXPECTED_STATUS_ARTIFACTS = {
     "docs/operating-model.md",
     "docs/cost-model.md",
@@ -708,6 +716,29 @@ def validate_status_artifact_hashes(
             )
 
 
+def check_status_artifact_hashes() -> None:
+    try:
+        plan_text = read(PLAN_PATH)
+        artifacts = extract_status_artifact_hashes(plan_text)
+        validate_status_artifact_hashes(
+            artifacts,
+            EXPECTED_STATUS_ARTIFACTS,
+            lambda path: hashlib.sha256(
+                read_git_lf_bytes(REPO_ROOT / path)
+            ).hexdigest(),
+        )
+        validate_canonical_baseline_rows(plan_text)
+        validate_canonical_baseline_documents(
+            {
+                path: read(REPO_ROOT / path)
+                for path in CANONICAL_BASELINE_REQUIREMENTS
+            }
+        )
+    except (OSError, ValueError) as error:
+        fail(str(error))
+    print(f"OK: {len(artifacts)} status-artifact hashes match.")
+
+
 def validate_feedback_tracking_secret_contract(document_text: str) -> None:
     normalized = " ".join(document_text.split())
     required_clauses = (
@@ -744,27 +775,38 @@ def check_feedback_tracking_secret_contract() -> None:
     print("OK: feedback tracking secrets use verifier-only custody.")
 
 
-def check_status_artifact_hashes() -> None:
-    try:
-        plan_text = read(PLAN_PATH)
-        artifacts = extract_status_artifact_hashes(plan_text)
-        validate_status_artifact_hashes(
-            artifacts,
-            EXPECTED_STATUS_ARTIFACTS,
-            lambda path: hashlib.sha256(
-                read_git_lf_bytes(REPO_ROOT / path)
-            ).hexdigest(),
+def extract_phase_1a_adr_hashes(decision_text: str) -> dict[str, str]:
+    section = decision_text.split("## Content hashes", 1)
+    if len(section) != 2:
+        raise ValueError("Phase 1A decision record is missing its Content hashes section.")
+    section = section[1].split("## ", 1)[0]
+    matches = re.findall(
+        r"(?m)^\|\s*(000[1-5])\s*\|\s*`([0-9a-fA-F]{64})`\s*\|$",
+        section,
+    )
+    rows = dict(matches)
+    if len(matches) != len(ACCEPTED_PHASE_1A_ADRS) or set(rows) != set(
+        ACCEPTED_PHASE_1A_ADRS
+    ):
+        raise ValueError(
+            "Phase 1A decision record must contain exactly one hash for ADRs 0001–0005."
         )
-        validate_canonical_baseline_rows(plan_text)
-        validate_canonical_baseline_documents(
-            {
-                path: read(REPO_ROOT / path)
-                for path in CANONICAL_BASELINE_REQUIREMENTS
-            }
+    return {adr: digest.lower() for adr, digest in rows.items()}
+
+
+def check_phase_1a_adr_hashes() -> None:
+    try:
+        recorded = extract_phase_1a_adr_hashes(read(PHASE_1A_DECISION_PATH))
+        validate_status_artifact_hashes(
+            recorded,
+            set(ACCEPTED_PHASE_1A_ADRS),
+            lambda adr: hashlib.sha256(
+                read_git_lf_bytes(ACCEPTED_PHASE_1A_ADRS[adr])
+            ).hexdigest(),
         )
     except (OSError, ValueError) as error:
         fail(str(error))
-    print(f"OK: {len(artifacts)} status-artifact hashes match.")
+    print("OK: accepted Phase 1A ADR hashes match.")
 
 
 def check_skill_catalog() -> None:
@@ -826,6 +868,7 @@ def main() -> None:
     check_charter_hash()
     check_feedback_tracking_secret_contract()
     check_status_artifact_hashes()
+    check_phase_1a_adr_hashes()
     check_skill_catalog()
     check_connector_catalog()
     print("All documentation consistency checks passed.")

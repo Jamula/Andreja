@@ -3,7 +3,7 @@
 - **Status:** Proposed (amended; not accepted)
 - **Date:** 2026-08-24
 - **Amended:** 2026-08-25
-- **Evidence refreshed:** 2026-08-28
+- **Evidence refreshed:** 2026-09-07
 - **Issue:** [#96](https://github.com/Jamula/Andreja/issues/96)
 - **Migration issue:** [#112](https://github.com/Jamula/Andreja/issues/112)
 - **Governing:** [Platform plan](../plan.md#phase-1a---self-hosted-assistant-walking-skeleton),
@@ -56,6 +56,30 @@ and live-PostgreSQL inventory parity, IDE/CI/TRX behavior, extension profile
 licenses, package provenance, telemetry controls, performance, review, and
 rollback before any suite change.
 
+## 2026-08-30 issue #109 evidence refresh
+
+[On 2026-09-07, the decision owner explicitly authorized issue
+#109](https://github.com/Jamula/Andreja/issues/109) to proceed end-to-end after
+it was marked ready and assigned to Data. This authorization releases only
+#109 from the original backlog prerequisite below. It does not accept this
+Proposed ADR, authorize a framework or runner migration, or release another
+follow-up issue.
+
+[Issue #109's dependency evidence](../research/test-runner-evidence-109.md)
+isolated the current `Microsoft.NET.Test.Sdk` 18.9.0 and
+`xunit.runner.visualstudio` 4.0.0 against the prior 17.12.0/2.8.2 pair while
+retaining xUnit 2.9.3. Exact per-assembly Debug/Release discovery and execution
+parity, TRX, FQN filters, repeated service-free and live disposable PostgreSQL
+runs, cleanup, resolved packages, advisories, licenses, and analyzer parity
+passed. The 6.1% service-free median increase remained below the 10% stop
+threshold.
+
+The adapter officially supports xUnit.net 1.9.2 and later on .NET 8 and later.
+Graphical Visual Studio/VS Code execution was unavailable on the Linux evidence
+host and is documented rather than claimed as a local pass. No framework,
+production, test-source, runner-mode, or workflow change was made, and issue
+#112 remains the only migration owner.
+
 The original recommendation, measurements, risks, and stop conditions below are
 retained as historical investigation evidence for #112. Where they recommend
 xUnit retention or a new xUnit-v3-versus-MSTest decision, this amendment and
@@ -107,7 +131,7 @@ The current Debug suite has:
 | Collection fixtures, traits, explicit skips, output helpers | 0 |
 | Explicit timeouts | 3 |
 
-All three test projects currently use xUnit 2.9.3,
+At the original evidence date, all three test projects used xUnit 2.9.3,
 `xunit.runner.visualstudio` 2.8.2, and `Microsoft.NET.Test.Sdk` 17.12.0. The
 service-free CI runs Debug and Release with VSTest-style `dotnet test`,
 `--logger trx`, and uploaded result artifacts. PostgreSQL tests compile in
@@ -395,7 +419,9 @@ Cyrus's MSTest direction or start a migration independently.
    Jamula with Jett Reno named for CI/operations review, separately tracks
    compatible `xunit.runner.visualstudio` and `Microsoft.NET.Test.Sdk` updates.
 
-All three issues remain backlog and must not start as part of this ADR.
+At the time of this proposal, all three issues remained backlog and were not
+authorized by this ADR. Later work requires explicit issue-owner authorization;
+issue #109's bounded authorization is recorded above.
 
 ## Official sources
 

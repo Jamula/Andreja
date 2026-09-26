@@ -325,16 +325,22 @@ creating a second backlog; Scribe logs automatically and never blocks.
 
 ## Executive and specialist authority versus Cyrus
 
-- Cyrus remains the human founder/product owner and sole legal decision-maker
-  unless formal governance changes. This is codified in `docs/charter.md`
-  `## Human and agent authority`: crew titles (CEO, CFO, General Counsel, etc.)
-  describe accountable advisory/operating roles inside Squad; they do **not**
-  grant agents authority to spend or commit funds, sign contracts or accept
-  binding terms, make legal representations, publish public statements or
-  customer communications, provision cloud resources or approve deployment,
-  approve their own security/privacy/RAI/evidence/launch gates, or make
-  irreversible/consequential decisions for Cyrus or any user. When authority is
-  unclear, work pauses for a human decision.
+- Cyrus remains the human founder/product owner and final business, governance,
+  ratification, and risk-acceptance decision-maker unless formal governance
+  changes. Qualified counsel, not Cyrus or an agent, provides legal advice,
+  clearance, and jurisdiction-specific legal opinions and directs
+  privilege-sensitive handling; no wording here guarantees that privilege
+  attaches. Cyrus records whether an exposure is material and decides whether
+  Andreja proceeds after any required counsel review. This boundary is
+  consistent with `docs/charter.md` `## Human and agent authority`: crew titles
+  (CEO, CFO, General Counsel, etc.) describe accountable advisory/operating
+  roles inside Squad; they do **not** grant agents authority to spend or commit
+  funds, sign contracts or accept binding terms, make legal representations,
+  publish public statements or customer communications, provision cloud
+  resources or approve deployment, approve their own security/privacy/RAI/
+  evidence/launch gates, or make irreversible/consequential decisions for
+  Cyrus or any user. When authority is unclear, work pauses for a human
+  decision.
 - **Picard (CEO):** proposes mission, strategy, portfolio, launch readiness, and
   capital allocation with Quark, for Cyrus's approval. Cannot override security/
   privacy/legal/evidence gates and cannot spend, sign, or publish.
