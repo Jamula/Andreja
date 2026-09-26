@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `97be6a51e1db7ad7aff04640ceaa4aeed65cceb64acf058950c3c572de84d73d`
+- **Current proposed Plan SHA-256:** `dbda349ba5e4bed27784cf055eea7b6f1b09a39db417683d12a31c9271f5ebae`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -308,3 +308,16 @@ not match the merged `docs/plan.md`.
   anonymous proof-session records, saved publication drafts, and conditional
   recipient disclosure. The package remains gated until Cyrus records an explicit
   decision.
+
+### 2026-09-26 — proposed feedback privacy email-payload inventory amendment
+
+- **Tracking issue:** [#155](https://github.com/Jamula/Andreja/issues/155)
+- **Pull request:** [#172](https://github.com/Jamula/Andreja/pull/172)
+- **Plan SHA-256:** `dbda349ba5e4bed27784cf055eea7b6f1b09a39db417683d12a31c9271f5ebae`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed policy/status amendment; no re-ratification,
+  privacy or legal approval, collection, GitHub publication, provider, spend,
+  deployment, launch, support commitment, or phase exit is authorized.
+- **Scope:** Add a bounded retention and access entry for transactional email
+  payloads to the proposed feedback privacy inventory. The package remains
+  gated until Cyrus records an explicit decision.
