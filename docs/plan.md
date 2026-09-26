@@ -39,10 +39,10 @@ or content disclosure.
 
 | Area | Current evidence | Decision or remaining boundary |
 | --- | --- | --- |
-| Modular boundaries, PostgreSQL, and passkeys | The Phase 1A modular slices, PostgreSQL reference persistence/migrations, production passkey bootstrap/recovery, and their architecture/integration/browser tests are implemented on `main`. Evidence run [#44](phase-1a/evidence-44.md) records the exact tested boundary. | ADRs 0001–0005 remain **Proposed and unaccepted** pending [#66](https://github.com/Jamula/Andreja/issues/66). Merge and passing tests are implementation evidence, not Cyrus's acceptance or Phase 1A exit. |
-| Skill, channel, and semantic contracts | Application-owned skill/channel manifests and hosts, grants/audit/peer envelopes, and minimal semantic-profile/provenance/export contracts are implemented. | This is contract-seam evidence only: no third-party execution, production connector, federation transport, graph database, universal ontology, or inactive persistence is approved. ADR 0004 and the other Phase 1A ADRs remain Proposed. |
+| Modular boundaries, PostgreSQL, and passkeys | The Phase 1A modular slices, PostgreSQL reference persistence/migrations, production passkey bootstrap/recovery, and their architecture/integration/browser tests are implemented on `main`. Evidence run [#44](phase-1a/evidence-44.md) records the exact tested boundary. | ADRs 0001–0005 are **Accepted** as the bounded Phase 1A architecture under [#66](https://github.com/Jamula/Andreja/issues/66). Merge, acceptance, and passing tests still do not claim Phase 1A exit, release, or production readiness. |
+| Skill, channel, and semantic contracts | Application-owned skill/channel manifests and hosts, grants/audit/peer envelopes, and minimal semantic-profile/provenance/export contracts are implemented. | This is contract-seam evidence only: no third-party execution, production connector, federation transport, graph database, universal ontology, or inactive persistence is approved. ADR 0004 accepts only the bounded local contract seam. |
 | Portability and recovery | The application export/import clean-instance round trip passed as supplemental evidence in [evidence run #44](phase-1a/evidence-44.md#supplemental-application-portability-evidence-87). PostgreSQL logical dump/restore was only partial exit evidence. | Portable application data does not substitute for an encrypted database-plus-Data-Protection-key recovery set and restored sign-in. Managed-provider PITR and managed-cloud portability remain deferred. |
-| Architecture diagram and operator README | PR [#100](https://github.com/Jamula/Andreja/pull/100) originated the Excalidraw/SVG/PNG architecture diagram and PR [#107](https://github.com/Jamula/Andreja/pull/107) merged its reviewed correction, PNG hash, and generation/consistency tests. The root README records current local build, test, self-host, and evidence commands. | These are current documentation and reproducibility evidence, not acceptance of the Proposed ADR packet or release authorization. The canonical privacy/threat artifacts are present but not ratified; Tuvok/Deanna Troi/Rai challenges and Cyrus residual-risk acceptance remain pending. |
+| Architecture diagram and operator README | PR [#100](https://github.com/Jamula/Andreja/pull/100) originated the Excalidraw/SVG/PNG architecture diagram and PR [#107](https://github.com/Jamula/Andreja/pull/107) merged its reviewed correction, PNG hash, and generation/consistency tests. The root README records current local build, test, self-host, and evidence commands. | These are current documentation and reproducibility evidence, not release authorization. The canonical privacy/threat artifacts remain descriptive baselines; their production residual-risk decisions remain pending. |
 | Website matrix and prototype | PRs [#105](https://github.com/Jamula/Andreja/pull/105) and [#111](https://github.com/Jamula/Andreja/pull/111) merged the Phase 0 matrix, claims inventory, local prototype, validator, and hardened boundary wording. PR #105 initially used ADR number 0006; the current canonical, hardened file is **Proposed ADR 0008**. | The packet remains a recommendation for human decision. It authorizes no deployment, preview, hosting vendor, domain, CDN, DNS, public claim, or public launch. Issue [#93](https://github.com/Jamula/Andreja/issues/93) remains the separately gated Phase 1B public-site proposal. |
 | Test framework | PR [#103](https://github.com/Jamula/Andreja/pull/103) merged a measured xUnit/MSTest investigation. Cyrus later selected MSTest as the long-term direction. | ADR 0007 remains Proposed, and its earlier xUnit-retention recommendation is superseded by its 2026-08-25 amendment. Migration is deliberately deferred to [#112](https://github.com/Jamula/Andreja/issues/112); no test migration occurs in this amendment. |
 
@@ -56,14 +56,14 @@ explicit Cyrus decision.
 
 | Artifact | Source and current SHA-256 | Current authority |
 | --- | --- | --- |
-| [`docs/operating-model.md`](operating-model.md) | Issue [#14](https://github.com/Jamula/Andreja/issues/14), PR [#17](https://github.com/Jamula/Andreja/pull/17); `f10ab3a27d076e5eba407f5530366caa70c0e4aae45d695b1a7fb9c96c73eb85` | **Draft for ratification.** The issue and PR merged/closed, but no separate explicit Cyrus ratification record was found; it is advisory and the plan remains authoritative. |
+| [`docs/operating-model.md`](operating-model.md) | Issue [#14](https://github.com/Jamula/Andreja/issues/14), PR [#17](https://github.com/Jamula/Andreja/pull/17), and issue [#3](https://github.com/Jamula/Andreja/issues/3) authority reconciliation; `c9fd77ed90bdd2354a8ad2b111502b067e62ce728930b4562e6ab9ad57a0973a` | **Draft for ratification.** The issue and PR merged/closed, but no separate explicit Cyrus ratification record was found; it is advisory and the plan remains authoritative. |
 | [`docs/cost-model.md`](cost-model.md) | Issue [#11](https://github.com/Jamula/Andreja/issues/11), PR [#20](https://github.com/Jamula/Andreja/pull/20); provider-allowance proposal [#74](https://github.com/Jamula/Andreja/issues/74), PR [#119](https://github.com/Jamula/Andreja/pull/119); `8f7c708d63d389481c1e88964dba883ae6dc3ad7a73215ac5317471e55e1f13c` | **Draft for ratification.** It recommends controls but authorizes no spend; issue closure and merge are not approval. |
-| [`docs/frameworks/feedback-support.md`](frameworks/feedback-support.md) | Issue [#10](https://github.com/Jamula/Andreja/issues/10), PR [#16](https://github.com/Jamula/Andreja/pull/16), privacy decision proposal [#155](https://github.com/Jamula/Andreja/issues/155), PR [#172](https://github.com/Jamula/Andreja/pull/172); `7b9226fda34b39b5928bc9ebd739ff6fba7b7e2cccef725501313e8095e576ff` | **Review-ready draft.** The source PR merged, but issue #10, the privacy decision, and explicit Cyrus approval remain open; no intake deployment or support commitment is authorized. |
+| [`docs/frameworks/feedback-support.md`](frameworks/feedback-support.md) | Issue [#10](https://github.com/Jamula/Andreja/issues/10), PR [#16](https://github.com/Jamula/Andreja/pull/16), and issue [#3](https://github.com/Jamula/Andreja/issues/3) prerequisite reconciliation, privacy decision proposal [#155](https://github.com/Jamula/Andreja/issues/155), PR [#172](https://github.com/Jamula/Andreja/pull/172); `2a2d56493ccd5ae47574a848351e44e53ab06cde0126de9c61c408d4f4b19293` | **Review-ready draft.** Issue #10 is closed, but the privacy decision and explicit Cyrus approval remain pending; no intake deployment, privileged channel, legal advice, or support commitment is authorized. |
 | [`docs/legal/feedback-privacy-retention-dsr.md`](legal/feedback-privacy-retention-dsr.md) | Privacy decision proposal [#155](https://github.com/Jamula/Andreja/issues/155), PR [#172](https://github.com/Jamula/Andreja/pull/172); `10c9bf58010d6f949eff4c9d3dc1b834f883331b4f83bf878d9b14859f54250b` | **Proposed decision package.** Cyrus's decision remains pending; collection and publication are blocked. |
 | [`docs/frameworks/prioritization-launch.md`](frameworks/prioritization-launch.md) | Issue [#5](https://github.com/Jamula/Andreja/issues/5), PR [#19](https://github.com/Jamula/Andreja/pull/19); `7ba4d30a901e881cf167afe8964c9c2e6ba2584ac94151f2e4f8bc9b2e79104c` | **Review-ready draft.** Its operational mechanics are advisory until explicitly ratified; the plan owns phased scope and exits. |
 | [`docs/charter.md`](charter.md) | Issue [#3](https://github.com/Jamula/Andreja/issues/3), PRs [#15](https://github.com/Jamula/Andreja/pull/15), [#27](https://github.com/Jamula/Andreja/pull/27), and the [ADR 0006 ratification instrument](adr/0006-charter-ratification.md); `d030d985c5de8260035eb83b17bc3be74876700487575408cf9679a05b4fa843` | **Proposed; not authoritative.** Issue #3 remains open and the file becomes effective only after Cyrus explicitly ratifies it through Proposed ADR 0006. The charter section in this ratified plan remains the seed summary. |
-| [`docs/privacy.md`](privacy.md) | Issue [#116](https://github.com/Jamula/Andreja/issues/116), PR [#117](https://github.com/Jamula/Andreja/pull/117), feedback privacy decision proposal [#155](https://github.com/Jamula/Andreja/issues/155), PR [#172](https://github.com/Jamula/Andreja/pull/172); `9012bea67a9360a56b8a70007ee1ce60d944ce7b78cf3eb94362e2241ca41449` | **Canonical descriptive baseline; not ratified.** The proposed feedback decision is linked but not approved. Required challenge: Deanna Troi (privacy), Tuvok (security), Rai (AI safety); pending. Cyrus residual-risk acceptance remains pending. The classification/impact assessment remains open unless explicitly approved with cited evidence. |
-| [`docs/threat-model.md`](threat-model.md) | Issue [#116](https://github.com/Jamula/Andreja/issues/116), PR [#117](https://github.com/Jamula/Andreja/pull/117), keyless supply-chain update [#127](https://github.com/Jamula/Andreja/issues/127); `d9ce3c48b2426ccff8e1f3f44ba3698b031a6cc4e02805e0edeac03a923575a1` | **Canonical descriptive baseline; not ratified.** Accepted ADR 0010 governs the hosted keyless signing boundary. Required challenge: Tuvok (security), Deanna Troi (privacy), Rai (AI safety); pending. Cyrus residual-risk acceptance remains pending. The classification/impact assessment remains open unless explicitly approved with cited evidence. |
+| [`docs/privacy.md`](privacy.md) | Issue [#116](https://github.com/Jamula/Andreja/issues/116), PR [#117](https://github.com/Jamula/Andreja/pull/117), packet decision [#66](https://github.com/Jamula/Andreja/issues/66), feedback privacy decision proposal [#155](https://github.com/Jamula/Andreja/issues/155), PR [#172](https://github.com/Jamula/Andreja/pull/172); `ad35488c1865a43a38d3fc02dfbf6fa389fdfb808117eab5c1deaaded6b5a2ad` | **Canonical descriptive baseline; not ratified.** The proposed feedback decision is linked but not approved. Required canonical-baseline challenge: Deanna Troi (privacy), Tuvok (security), Rai (AI safety); pending. Cyrus residual-risk acceptance remains pending. The classification/impact assessment remains open unless explicitly approved with cited evidence. The bounded packet challenge under #66 does not ratify this baseline. |
+| [`docs/threat-model.md`](threat-model.md) | Issue [#116](https://github.com/Jamula/Andreja/issues/116), PR [#117](https://github.com/Jamula/Andreja/pull/117), keyless supply-chain update [#127](https://github.com/Jamula/Andreja/issues/127), packet decision [#66](https://github.com/Jamula/Andreja/issues/66); `564f18bd72ee91ef6e0b59b39de9866ac206a190698d618c51d56ed9edc8e04f` | **Canonical descriptive baseline; not ratified.** Accepted ADR 0010 governs the hosted keyless signing boundary. Required canonical-baseline challenge: Tuvok (security), Deanna Troi (privacy), Rai (AI safety); pending. Cyrus residual-risk acceptance remains pending. The classification/impact assessment remains open unless explicitly approved with cited evidence. The bounded packet challenge under #66 does not ratify this baseline. |
 | [`docs/legal/license-evaluation.md`](legal/license-evaluation.md) | Issue [#6](https://github.com/Jamula/Andreja/issues/6), merged source PR [#12](https://github.com/Jamula/Andreja/pull/12); `4b8f325941e79a3d802bd03ef1472d55d69540efddced54853acda43f801d5e2` | **Counsel-ready research; not approved policy.** Issue #6 remains open; qualified counsel and Cyrus approval are still required. It authorizes no visibility, contribution, license, trademark, domain, or publication change. |
 | [`docs/legal/regulatory-applicability.md`](legal/regulatory-applicability.md) | Issue [#8](https://github.com/Jamula/Andreja/issues/8), PRs [#21](https://github.com/Jamula/Andreja/pull/21) and [#28](https://github.com/Jamula/Andreja/pull/28); `b28a350a3e1c188c8d1508430f7932214fff67b0e4b8d15e6398a032c2574a34` | **Draft legal-research/governance artifact.** Issue #8 remains open; qualified counsel and Cyrus approval are required before it is authoritative or supports a legal/compliance claim. |
 
@@ -99,11 +99,13 @@ own authorized provider/privacy process if further action is required.
 
 #### Current Phase 1A evidence status
 
-[Evidence run #44](phase-1a/evidence-44.md) is useful local evidence, but Phase
-1A exit is not claimed. The following gates remain blocking without waiver:
+[Evidence run #44](phase-1a/evidence-44.md) combines bounded local evidence with
+an unsigned hosted OCI audit, but Phase 1A exit is not claimed. The following
+gates remain blocking without waiver:
 
-1. a separately trusted operator reruns OCI evidence with an approved external
-   signing key and trust anchor;
+1. a reviewed protected `v*` tag run produces ADR 0010's keyless Sigstore
+   bundle, exact workload-identity claims, retained bundle/root copy, and
+   network-blocked verification against an independently held root;
 2. encrypted PostgreSQL data and recoverable Data Protection keys restore into a
    clean instance and complete restored passkey sign-in;
 3. a genuine second, separately approved and signed revision completes both
@@ -229,7 +231,7 @@ Empower people to understand and improve their lives through a trustworthy, user
 
 ### Commitments
 
-- **Human agency:** people set goals, control data, inspect reasoning, approve consequential actions and can leave with their information.
+- **Human agency:** people set their own goals, control their data, understand material recommendations, approve consequential actions, correct mistakes and can leave with their information.
 - **Respect and inclusion:** design for varied abilities, cultures, families, identities, resources and technical comfort; treat every person affected by the system with dignity.
 - **Integrity and accountability:** tell the truth about capabilities, uncertainty, evidence, cost, sponsorship, incidents and limits; own outcomes and correct harm.
 - **Growth mindset:** assume people and teams can learn; cultivate curiosity, experimentation, mentorship, collaboration, shared accountability and learning from mistakes.
@@ -244,7 +246,13 @@ Empower people to understand and improve their lives through a trustworthy, user
 
 - Every major ADR, launch gate, sponsorship/partner decision and public claim includes an ethics/sustainability impact section.
 - Tuvok, Deanna Troi, Quark, Sarek, Data and Rai challenge security, privacy, cost/sustainability, legal/evidence and responsible-AI effects; Cyrus retains final human accountability.
-- Publish measurable indicators for accessibility, privacy incidents, security, user control, support quality, AI/cloud efficiency, cost/runway and vendor concentration before GA.
+- Before GA, every charter indicator area—human agency and user control;
+  accessibility and inclusion; privacy and data dignity; security and safety;
+  product truth and quality; support and accountability; AI and compute efficiency;
+  financial and operational sustainability; vendor and sponsor independence;
+  environmental stewardship; and marketplace fairness—has a named human owner,
+  definition, baseline, target, cadence, evidence source and stop or remediation
+  threshold; targets are not presented as achieved until measured.
 - Provide confidential reporting, non-retaliation, incident/remediation and partner/sponsor exit mechanisms.
 - The charter outranks growth, launch dates, sponsor requests, cost savings and agent recommendations.
 
@@ -1272,7 +1280,16 @@ Squad is already initialized, but the specialist roster and routing are empty. K
 | Neelix | Marketing/Community and Personal Brand Advisor | Personal Brand Studio requirements, positioning, product story, adoption, ecosystem community, transparent sponsorship communication | Brand dogfood and evidence-ready public communication |
 | Guinan | User Feedback and Support Lead | Intake, privacy screening, dedupe, severity, routing, user communication, resolution verification, feedback insights | Phase 0 framework; Phase 1 channels |
 
-Cyrus remains the human founder/product owner and sole legal decision-maker unless formal governance changes. CEO/CFO and other crew titles describe accountable advisory/operating roles for Squad; they do not grant agents authority to sign contracts, spend funds, make legal representations, or publish without human approval.
+Cyrus remains the human founder/product owner and final business, governance,
+ratification, and risk-acceptance decision-maker unless formal governance
+changes. Qualified counsel, not Cyrus or an agent, provides legal advice,
+clearance, and jurisdiction-specific legal opinions and directs
+privilege-sensitive handling; no wording here guarantees that privilege
+attaches. Cyrus records whether an exposure is material and decides whether
+Andreja proceeds after any required counsel review. CEO/CFO and other crew
+titles describe accountable advisory/operating roles for Squad; they do not
+grant agents authority to sign contracts, spend funds, make legal
+representations, or publish without human approval.
 
 Star Trek character names are internal/private Squad codenames pending trademark/licensing review. Any repository visibility change re-reviews committed codename usage. Do not use them in public product branding, marketplace roles, endorsements or commercial claims without counsel approval.
 
@@ -1410,7 +1427,11 @@ Before installation, review source/publisher provenance, immutable digest/versio
 - Built-in ASP.NET Core Identity/passkeys and local recovery flows are implemented; encrypted PostgreSQL-plus-Data-Protection-key clean restore with sign-in, genuine approved update/rollback, final support boundary, linked providers, and any optional control plane remain open.
 - CIAM provider/migration path and pricing.
 - Numeric budget, unit-cost model, Copilot token budgets, and numeric SLOs.
-- Canonical `docs/threat-model.md` and `docs/privacy.md` descriptive baselines are present but not ratified; Tuvok/Deanna Troi/Rai challenge, Cyrus residual-risk acceptance, classification/impact assessment, numeric retention, residency, production export/purge, and model-provider decisions remain open.
+- Canonical `docs/threat-model.md` and `docs/privacy.md` descriptive baselines are
+  present but not ratified. The bounded Phase 1A packet challenge does not replace
+  their required canonical-baseline review; Cyrus residual-risk acceptance,
+  classification/impact assessment, numeric retention, residency, production
+  export/purge, and model-provider decisions remain open.
 - Federation standards comparison, identity/trust/discovery, versioning, reference/copy semantics, and conformance scope.
 - Skill/channel manifest, host, capability, grant, peer-envelope, and minimal semantic contracts are implemented; UI isolation, signing, third-party execution, and authoring compatibility remain open.
 - OneDrive, Google Drive, GitHub, and Box API scopes, terms, limits, delta/webhook behavior, and connector security/privacy.

@@ -417,5 +417,29 @@ class StatusArtifactHashTests(unittest.TestCase):
             DOCS_CHECK.extract_status_artifact_hashes(malformed)
 
 
+class Phase1AHashTests(unittest.TestCase):
+    def test_extracts_all_accepted_adr_hashes(self) -> None:
+        hashes = {f"000{i}": f"{i:064x}" for i in range(1, 6)}
+        decision = "\n".join(
+            [
+                "## Content hashes",
+                "",
+                "| ADR | SHA-256 |",
+                "| --- | --- |",
+                *(f"| {adr} | `{digest}` |" for adr, digest in hashes.items()),
+                "",
+                "## Specialist challenge record",
+            ]
+        )
+
+        self.assertEqual(hashes, DOCS_CHECK.extract_phase_1a_adr_hashes(decision))
+
+    def test_rejects_incomplete_accepted_adr_hashes(self) -> None:
+        with self.assertRaisesRegex(ValueError, "exactly one hash"):
+            DOCS_CHECK.extract_phase_1a_adr_hashes(
+                "## Content hashes\n| 0001 | `" + "a" * 64 + "` |\n"
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -445,7 +445,7 @@ from notifications, caches, clones, or forks.
 | Assistant, skills, semantic graph, federation | Seven of Nine or the named capability owner |
 | Security vulnerability or technical incident | Tuvok through the private incident process |
 | Privacy/consent or suspected data incident | Deanna Troi, with Tuvok and Sarek as required, through the private process |
-| Legal, IP, regulatory, or privileged inquiry | Sarek through the confidential counsel route |
+| Legal, IP, regulatory, or privilege-sensitive inquiry | Sarek for non-privileged research and counsel-ready questions; requests for legal advice or privileged handling route only to appointed qualified external counsel |
 | Cost, sponsorship, or sustainability | Quark; Neelix joins for approved public/community communication |
 | Quality, regression, or release evidence | Data |
 | Portfolio priority or cross-owner conflict | Picard; Cyrus retains final human accountability |
@@ -456,8 +456,9 @@ from notifications, caches, clones, or forks.
 | --- | --- | --- | --- | --- |
 | Intake operation, acknowledgment, privacy screen, dedupe, tracking, and closure | Guinan | Guinan | Deanna Troi, Tuvok, Jadzia Dax, Jett Reno as applicable | Submitter |
 | Feature investigation and remediation | Assigned delivery team | Feature/domain owner | Guinan, Data, applicable specialists | Submitter |
-| Security vulnerability/incident handling | Approved incident responders | Tuvok | Deanna Troi, Sarek, Jett Reno, Data | Guinan and Cyrus on a need-to-know basis |
-| Privacy/consent/data-incident handling | Approved privacy/incident responders | Deanna Troi | Tuvok, Sarek, Jett Reno, Data | Guinan and Cyrus on a need-to-know basis |
+| Non-conflict-class security vulnerability/incident handling | Approved incident responders | Tuvok | Deanna Troi, Sarek, Jett Reno, Data | Guinan and Cyrus on a need-to-know basis |
+| Non-conflict-class privacy/consent/data-incident handling | Approved privacy/incident responders | Deanna Troi | Tuvok, Sarek, Jett Reno, Data | Guinan and Cyrus on a need-to-know basis |
+| Conflict-class report handling | Appointed qualified external counsel or appointed independent reviewer | The appointed recipient | Qualified specialists only as the appointed recipient determines | Reporter and other parties only as the appointed recipient or law authorizes; Cyrus is excluded |
 | Acceptance and regression evidence | Delivery team and Data | Data | Domain owner, Guinan, submitter where safe | Cyrus |
 | Help, known-issue, and release-content update | Domain owner and Jadzia Dax | Domain owner | Guinan, Data, Neelix when public claims apply | Submitters following the item |
 | Feedback metric definitions and quality | Guinan and Data | Guinan | Deanna Troi, Tuvok, Quark, Picard | Cyrus |
@@ -465,6 +466,15 @@ from notifications, caches, clones, or forks.
 
 RACI does not grant broad access to feedback content. Each participant receives
 only the minimum sanitized information needed for the assigned action.
+A report that names Cyrus or creates an actual, potential, or perceived conflict
+for him routes directly to appointed qualified external counsel or an appointed
+independent reviewer, without Cyrus-mediated intake or triage. Cyrus has no
+access to its contents, investigation, findings, remediation, or retaliation
+decisions. Until that recipient and a direct contact method are appointed,
+Andreja must not represent a conflict-of-interest reporting path or privileged
+channel as available. Sarek may prepare non-privileged research and
+counsel-ready questions but is not counsel, does not create privilege, and does
+not operate a privileged channel.
 
 ## Phase 1B minimal transactional email
 
