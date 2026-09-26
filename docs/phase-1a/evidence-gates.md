@@ -1,10 +1,12 @@
 # Phase 1A evidence-gate index
 
-- **Status:** Provisionally accepted as the governing work target under #62; not
-  fully accepted; Phase 1A exit is not claimed
-- **Date:** 2026-08-28
+- **Status:** Accepted as the bounded Phase 1A architecture baseline under #66;
+  Phase 1A exit is not claimed
+- **Date accepted:** 2026-09-07
+- **Approver:** Cyrus Jamula
 - **Issues:** Original packet [#9](https://github.com/Jamula/Andreja/issues/9);
-  provisional amendment [#62](https://github.com/Jamula/Andreja/issues/62)
+  provisional amendment [#62](https://github.com/Jamula/Andreja/issues/62);
+  final architecture decision [#66](https://github.com/Jamula/Andreja/issues/66)
 
 This is a phase-scoped acceptance index, not a replacement threat model, privacy
 inventory, testing matrix, or financial ledger. These are internal dogfood gates,
@@ -13,9 +15,10 @@ not public SLAs or production claims.
 The current merged implementation run is recorded in
 [`evidence-44.md`](evidence-44.md). Its passing rows reconcile this index with
 implemented local evidence; its partial and blocked rows remain blocking.
-Provisional acceptance under #62 makes this the governing work target. It does
-not accept Proposed ADRs 0001–0005, approve launch or readiness, authorize
-external spend, or claim Phase 1A exit.
+Acceptance under #66 makes this the governing architecture target and is recorded
+in [`packet-decision-66.md`](packet-decision-66.md). It does not approve launch or
+readiness, authorize external spend, accept remaining exit risks, or claim Phase
+1A exit.
 
 ## Canonical artifact links
 
@@ -53,13 +56,14 @@ Phase 1A remains blocked on all of the following:
    update and rollback against preserved state;
 4. Cyrus-approved numeric internal SLO and RPO/RTO limits, numeric retention
    limits, and a numeric Phase 1A model-spend envelope with a hard stop;
-5. the named architecture, operations, security, privacy, cost, AI-safety,
-   legal, contract, and quality reviews; and
-6. Cyrus's final residual-risk acceptance.
+5. Cyrus's final exit residual-risk acceptance after the blocking evidence above
+   and the approved numeric operating limits are complete.
 
-This index does not choose among restoring local tooling, using an isolated
-equivalent evidence host, or stopping. #62 remains provisional pending the
-technical evidence-host decision and completion of the gates above.
+The Docker ARM64, PostgreSQL, and browser evidence host used under #62 is accepted
+for local evidence only. It is not a production support matrix. The
+[packet decision record](packet-decision-66.md) carries the remaining blockers
+into the residual-risk register under
+[#66](https://github.com/Jamula/Andreja/issues/66).
 
 ## Threat gate
 

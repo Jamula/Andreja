@@ -82,10 +82,10 @@ The recommendation is:
   shipping graph would create new auth, process, filesystem, egress, retention,
   support, and commercial boundaries rather than complete the current Phase 1A
   seam.
-- ADR 0004 is Proposed. It requires a deterministic default and independent BYOK
+- ADR 0004 is Accepted. It requires a deterministic default and independent BYOK
   path, keeps SDK types outside application contracts, and describes Copilot as
-  a future optional implementation. This ADR narrows provider timing only; it
-  does not accept ADR 0004.
+  a future optional implementation. This proposed ADR narrows provider timing
+  only; it does not authorize provider activation.
 
 ### Current external evidence
 

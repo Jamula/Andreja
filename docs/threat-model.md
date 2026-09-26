@@ -15,10 +15,9 @@
 This is Andreja's canonical threat model. It reconciles the ratified
 [platform plan](plan.md), the
 [architecture and data-flow companion](architecture/andreja-high-level.md),
-Proposed ADRs, implementation, tests, and
+accepted Phase 1A ADRs, other Proposed ADRs, implementation, tests, and
 [Phase 1A evidence](phase-1a/evidence-44.md). It is not a penetration-test report,
-certification, compliance claim, production authorization, or acceptance of
-[ADRs 0001–0005](adr/0001-phase-1a-modular-boundaries.md). The companion
+certification, compliance claim, production authorization, or Phase 1A exit. The companion
 [privacy baseline](privacy.md) owns data classification, handling, and lifecycle.
 The proposed [company charter](charter.md#human-and-agent-authority) supplies the
 human/agent authority constraints used here but is not itself ratified. The
