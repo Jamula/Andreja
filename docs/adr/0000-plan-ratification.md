@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `45570b6b53ae13b4d7c4963921fabae13ae8a7f675332dd1e4088da2f831466a`
+- **Current proposed Plan SHA-256:** `9db7b132a7c55387e9d2f1162e1f729dd1063a14d77496f8f6275678a82d7cf7`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -250,3 +250,33 @@ not match the merged `docs/plan.md`.
   external spend, or phase exit is authorized.
 - **Scope:** Normalize Markdown table delimiter spacing and nested help-list
   indentation without changing the plan's meaning, status, scope, or gates.
+
+### 2026-09-07 — Phase 1A architecture acceptance status
+
+- **Tracking issue:** [#66](https://github.com/Jamula/Andreja/issues/66)
+- **Pull request:** [#174](https://github.com/Jamula/Andreja/pull/174)
+- **Plan SHA-256:** `67c5d06cbf755f14d36094ab5a876b07e1b1c0187d93bdd0ac333ef6e7eaeea9`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed Phase 1A status roll-up; no re-ratification.
+- **Decision:** Record ADRs 0001–0005 as accepted after amendment while retaining
+  every independent Phase 1A exit, release, production, external-use, counsel,
+  publication, provisioning, and spend gate.
+- **Scope:** Update only the plan's current-state table to distinguish accepted
+  architecture from implementation evidence and milestone exit. The accepted
+  ADR decision is independent and final; this full-plan hash remains proposed
+  because the plan also contains unrelated pending amendments. The accepted
+  platform direction and all non-Phase-1A boundaries remain unchanged.
+
+### 2026-09-26 — proposed Phase 1A evidence-boundary reconciliation
+
+- **Tracking issue:** [#44](https://github.com/Jamula/Andreja/issues/44)
+- **Pull request:** [#173](https://github.com/Jamula/Andreja/pull/173)
+- **Plan SHA-256:** `9db7b132a7c55387e9d2f1162e1f729dd1063a14d77496f8f6275678a82d7cf7`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/editorial amendment; no
+  re-ratification, release publication, production deployment, external spend,
+  or phase exit is authorized.
+- **Scope:** Reconcile the Phase 1A evidence ledger with the accepted ADR 0010
+  keyless hosted-signing path and distinguish unsigned hosted audit evidence
+  from the remaining protected tag, recovery, update/rollback, SLO, and human
+  approval gates.
