@@ -43,8 +43,9 @@ entitlement/isolation/cost review?
 
 1. **BYOK + deterministic fake in 1A; real Copilot in 1B (recommended).**
    Matches the current roadmap, the implemented provider seam, and every risk
-   gate below. No plan/implementation conflict remains once Cyrus accepts this
-   ADR.
+   gate below. Accepting this ADR settles the phase-placement recommendation
+   only; the ratified-plan conflict remains pending until the matching ADR 0000
+   amendment is separately accepted.
 2. **Add real Copilot to 1A.** Rejected (see "Alternatives considered"): it
    would require entitlement, isolation, retention, credential, runtime, cost,
    and operational evidence that does not yet exist, before Phase 1A's
@@ -55,11 +56,8 @@ entitlement/isolation/cost review?
 
 **Recommendation: Option 1.** Phase 1A's implementation already matches Option
 1 (deterministic fake plus BYOK; no `GitHub.Copilot.SDK` package reference in
-the shipping graph). If Cyrus accepts this ADR, that acceptance would settle
-the ADR's phase-placement decision; it would not by itself accept the matching
-pending plan amendment or make the roadmap authoritative. It also would not
-authorize a Copilot account, runtime, network/model call, content disclosure,
-or spend.
+the shipping graph). This ADR does not authorize a Copilot account, runtime,
+network/model call, content disclosure, or spend.
 
 **Required artifact gate status** (issue #74's seven named gates, mapped to
 this ADR's evidence; "Documented" means the design/requirement is written and
