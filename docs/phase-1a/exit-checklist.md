@@ -108,9 +108,10 @@ Stop and open a decision issue when an approved spike cycle cannot prove an exit
 condition, a trust-boundary assumption changes, spend is unknown/outside its
 envelope, or isolation/recovery/content-suppression fails.
 
-Issue #62 remains provisional and this packet does not choose among restoring
-local tooling, using an isolated equivalent evidence host, or stopping. Cyrus
-retains that technical evidence-host decision.
+ADR 0005 accepts the exercised Docker Compose v5 Linux/ARM64 host with local
+PostgreSQL, browser, and telemetry evidence for this bounded baseline. Hosted
+provenance, recovery, update/rollback, and broader portability remain exit
+blockers; no new evidence-host choice is implied.
 
 De-scope in this order:
 
