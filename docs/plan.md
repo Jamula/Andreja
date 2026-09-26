@@ -98,11 +98,13 @@ own authorized provider/privacy process if further action is required.
 
 #### Current Phase 1A evidence status
 
-[Evidence run #44](phase-1a/evidence-44.md) is useful local evidence, but Phase
-1A exit is not claimed. The following gates remain blocking without waiver:
+[Evidence run #44](phase-1a/evidence-44.md) combines bounded local evidence with
+an unsigned hosted OCI audit, but Phase 1A exit is not claimed. The following
+gates remain blocking without waiver:
 
-1. a separately trusted operator reruns OCI evidence with an approved external
-   signing key and trust anchor;
+1. a reviewed protected `v*` tag run produces ADR 0010's keyless Sigstore
+   bundle, exact workload-identity claims, retained bundle/root copy, and
+   network-blocked verification against an independently held root;
 2. encrypted PostgreSQL data and recoverable Data Protection keys restore into a
    clean instance and complete restored passkey sign-in;
 3. a genuine second, separately approved and signed revision completes both

@@ -157,7 +157,8 @@ These are remaining plan ADR topics, not silently approved by this packet.
 ## Merged evidence and residual gaps
 
 At the verified merged-main base,
-[`evidence-44.md`](evidence-44.md) records synthetic local proof for the
+[`evidence-44.md`](evidence-44.md) records bounded synthetic local proof plus an
+unsigned hosted OCI audit for the
 PostgreSQL and architecture suites, explicit migrations, production passkey
 bootstrap/sign-in/recovery, the confirmed task lifecycle, local provider-failure
 conformance, contract-only skill/channel/grant/consent/peer and semantic seams,
@@ -167,11 +168,12 @@ artifacts. The canonical [testing matrix](../testing-matrix.md),
 [privacy baseline](../privacy.md), and [threat model](../threat-model.md) own the
 current classifications and exclusions.
 
-The passing local evidence does not supply trusted hosted signing, combined
-encrypted PostgreSQL-and-key recovery with restored passkey sign-in, a separately
-signed update/rollback pair, approved numeric SLO/RPO/RTO and retention limits,
-an approved numeric model-spend envelope/hard stop, or Cyrus's final exit
-residual-risk acceptance. The OCI evidence remains
+The passing evidence does not supply a qualifying protected `v*` tag run with
+ADR 0010 keyless Sigstore verification, combined encrypted PostgreSQL-and-key
+recovery with restored passkey sign-in, a separately signed update/rollback pair,
+approved numeric SLO/RPO/RTO and retention limits,
+an approved numeric model-spend envelope/hard stop, the required specialist
+reviews, or Cyrus's final exit residual-risk acceptance. The OCI evidence remains
 unsigned and basic accessibility evidence is not a human assistive-technology
 study. No external model call, provisioning, spend, release authorization,
 readiness, or Phase 1A exit is claimed.

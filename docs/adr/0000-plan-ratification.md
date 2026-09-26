@@ -266,3 +266,17 @@ not match the merged `docs/plan.md`.
   ADR decision is independent and final; this full-plan hash remains proposed
   because the plan also contains unrelated pending amendments. The accepted
   platform direction and all non-Phase-1A boundaries remain unchanged.
+
+### 2026-09-26 — proposed Phase 1A evidence-boundary reconciliation
+
+- **Tracking issue:** [#44](https://github.com/Jamula/Andreja/issues/44)
+- **Pull request:** [#173](https://github.com/Jamula/Andreja/pull/173)
+- **Plan SHA-256:** `8831fea06c7f6d74dccfa15ac34ea9a05b8c89a48e33965a5bbfc9687304e081`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/editorial amendment; no
+  re-ratification, release publication, production deployment, external spend,
+  or phase exit is authorized.
+- **Scope:** Reconcile the Phase 1A evidence ledger with the accepted ADR 0010
+  keyless hosted-signing path and distinguish unsigned hosted audit evidence
+  from the remaining protected tag, recovery, update/rollback, SLO, and human
+  approval gates.
