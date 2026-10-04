@@ -7,3 +7,4 @@
 Approved final artifact quality and architecture binding. Local generation, rendering, checks, tests, compilation, docs validation, and clean-status validation passed; hosted Excalidraw literal import remains unvalidated.
 
 📌 Team update (2026-08-30T10:54:18.410-07:00): ISSUE_104_DECISION_BRIEF_READY confirmed the auto-merge bug is still live; auto-merge is enabled with zero approvals and no required review-policy context, so containment and closure semantics remain open; PR #115 is the reusable scaffold, PR #151 is stale.
+📌 Team update (2026-10-04T12:26:31.736-07:00): Completed read-only issue #104 review-gate audit; refreshed `docs/runbooks/review-gate-app.md` with current evidence. Draft PR #178 opened; no live setting changed and #104 remains open.
