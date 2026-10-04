@@ -88,6 +88,19 @@ class FeedbackTrackingSecretContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "custody contract drifted"):
             DOCS_CHECK.validate_feedback_tracking_secret_contract(document)
 
+    def test_raw_tracking_or_receipt_secret_persistence_is_rejected(self) -> None:
+        for statement in (
+            "The raw tracking secret is persisted in encrypted storage.",
+            "The raw receipt-secret is stored in encrypted storage.",
+        ):
+            with self.subTest(statement=statement):
+                document = feedback_tracking_secret_contract() + " " + statement
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "custody contract drifted",
+                ):
+                    DOCS_CHECK.validate_feedback_tracking_secret_contract(document)
+
     def test_required_exfiltration_boundaries_are_enforced(self) -> None:
         boundaries = ("URL path", "referrer", "log", "export", "analytics", "support")
         for boundary in boundaries:

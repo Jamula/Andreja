@@ -136,6 +136,17 @@ test('branch documentation uses the Squad v0.13.0 issue convention', () => {
     assert.doesNotMatch(content, /squad\/(?:\*|\{slug\})/);
   }
 
+  const copilotBranchDocumentationPaths = [
+    path.join(__dirname, '..', 'agents', 'squad.agent.md'),
+    path.join(__dirname, '..', '..', '.squad', 'templates', 'squad.agent.md.template'),
+    path.join(__dirname, '..', '..', '.squad', 'templates', 'copilot-agent.md'),
+  ];
+  for (const documentedPath of copilotBranchDocumentationPaths) {
+    const content = fs.readFileSync(documentedPath, 'utf8');
+    assert.match(content, /copilot\/\{issue-number\}-\{slug\}/);
+    assert.doesNotMatch(content, /copilot\/\*/);
+  }
+
   const statusDocumentation = fs.readFileSync(
     path.join(__dirname, '..', '..', 'docs', 'help', 'issue-status.md'),
     'utf8',

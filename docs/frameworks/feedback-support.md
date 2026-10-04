@@ -768,10 +768,10 @@ The authorization is binary and independently revocable. It must record:
   compromise, or failed security/privacy control. Cyrus may revoke at any time;
   Tuvok, Deanna Troi, and Jett Reno may stop the exercise within their named
   containment authority without converting that stop into a launch decision.
-- Teardown, key and receipt-secret revocation, DNS/sender removal, queue/store
-  purge, provider cancellation or disablement, cost reconciliation, and
-  content-free completion evidence before the final readiness packet is
-  presented.
+- Teardown, key revocation and receipt-secret verifier revocation, DNS/sender
+  removal, queue/store purge, provider cancellation or disablement, cost
+  reconciliation, and content-free completion evidence before the final
+  readiness packet is presented.
 
 This authorization permits only the enumerated temporary staging exercise. It
 does not authorize collection from users, production/public deployment,

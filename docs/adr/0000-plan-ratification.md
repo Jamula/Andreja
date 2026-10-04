@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `d9badae89cb92b549c3f0a10f22dafb9375c4963a9f2c1fe0400aa1e53053fa6`
+- **Current proposed Plan SHA-256:** `0766fb3a21503d372bcc185e1134e9a6058837f83b7dd9436145e49218aa744c`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -446,3 +446,16 @@ not match the merged `docs/plan.md`.
   staging-evidence exercise. That authorization does not approve public GitHub
   publication, production/public collection, deployment, launch, general email,
   or support commitments.
+
+### 2026-10-04 — proposed receipt-secret verifier teardown correction
+
+- **Tracking issue:** [#10](https://github.com/Jamula/Andreja/issues/10)
+- **Pull request:** [#159](https://github.com/Jamula/Andreja/pull/159)
+- **Plan SHA-256:** `0766fb3a21503d372bcc185e1134e9a6058837f83b7dd9436145e49218aa744c`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/status amendment; no re-ratification,
+  privacy or legal approval, collection, GitHub publication, provider, spend,
+  deployment, launch, support commitment, or phase exit is authorized.
+- **Scope:** Refresh the feedback-framework status-artifact hash after
+  clarifying that teardown revokes the stored receipt-secret verifier, not a
+  raw secret that verifier-only custody prohibits persisting.
