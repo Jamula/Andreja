@@ -4,6 +4,7 @@ using System.Text;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class PeerChannelConformanceTests
 {
     private static readonly byte[] Key = Encoding.UTF8.GetBytes("local-conformance-key-32-bytes!!");
@@ -13,7 +14,7 @@ public sealed class PeerChannelConformanceTests
     private static readonly DateTimeOffset Now =
         new(2026, 8, 23, 12, 0, 0, TimeSpan.Zero);
 
-    [Fact]
+    [TestMethod]
     public void CanonicalizationAndSignatureAreDeterministic()
     {
         var envelope = CreateEnvelope();
@@ -21,14 +22,14 @@ public sealed class PeerChannelConformanceTests
         var first = LocalPeerChannel.SignFixture(envelope, Key);
         var second = LocalPeerChannel.SignFixture(envelope, Key);
 
-        Assert.Equal(first.Signature, second.Signature);
-        Assert.Equal("OCz+dPbQLsy0izfmzUAZn3TX2y0UxeYGgnsRbayRVsw=", first.Signature);
-        Assert.Equal(
+        Assert.AreEqual(first.Signature, second.Signature);
+        Assert.AreEqual("OCz+dPbQLsy0izfmzUAZn3TX2y0UxeYGgnsRbayRVsw=", first.Signature);
+        Assert.AreEqual(
             Convert.ToHexString(LocalPeerChannel.Canonicalize(first)),
             Convert.ToHexString(LocalPeerChannel.Canonicalize(second)));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task TamperAndExactReplayAreRejected()
     {
         var channel = CreateChannel();
@@ -41,19 +42,19 @@ public sealed class PeerChannelConformanceTests
             Context(),
             CancellationToken.None);
 
-        Assert.Equal(PeerReceiveOutcome.Accepted, accepted.Outcome);
-        Assert.True(accepted.EffectApplied);
-        Assert.Equal(PeerReceiveOutcome.Replay, replay.Outcome);
-        Assert.Equal(PeerReceiveOutcome.InvalidSignature, tampered.Outcome);
+        Assert.AreEqual(PeerReceiveOutcome.Accepted, accepted.Outcome);
+        Assert.IsTrue(accepted.EffectApplied);
+        Assert.AreEqual(PeerReceiveOutcome.Replay, replay.Outcome);
+        Assert.AreEqual(PeerReceiveOutcome.InvalidSignature, tampered.Outcome);
     }
 
-    [Theory]
-    [InlineData("audience", PeerReceiveOutcome.WrongAudience)]
-    [InlineData("purpose", PeerReceiveOutcome.WrongPurpose)]
-    [InlineData("expiry", PeerReceiveOutcome.Expired)]
-    [InlineData("version", PeerReceiveOutcome.InvalidVersion)]
-    [InlineData("algorithm", PeerReceiveOutcome.UnknownAlgorithm)]
-    [InlineData("key", PeerReceiveOutcome.UnknownKey)]
+    [TestMethod]
+    [DataRow("audience", PeerReceiveOutcome.WrongAudience)]
+    [DataRow("purpose", PeerReceiveOutcome.WrongPurpose)]
+    [DataRow("expiry", PeerReceiveOutcome.Expired)]
+    [DataRow("version", PeerReceiveOutcome.InvalidVersion)]
+    [DataRow("algorithm", PeerReceiveOutcome.UnknownAlgorithm)]
+    [DataRow("key", PeerReceiveOutcome.UnknownKey)]
     public async Task EnvelopePolicyFailsClosed(string mutation, PeerReceiveOutcome expected)
     {
         var envelope = CreateEnvelope();
@@ -71,11 +72,11 @@ public sealed class PeerChannelConformanceTests
 
         var result = await CreateChannel().ReceiveAsync(signed, Context(), CancellationToken.None);
 
-        Assert.Equal(expected, result.Outcome);
-        Assert.False(result.EffectApplied);
+        Assert.AreEqual(expected, result.Outcome);
+        Assert.IsFalse(result.EffectApplied);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task NewEnvelopeWithSameOperationIsIdempotent()
     {
         var channel = CreateChannel();
@@ -91,10 +92,10 @@ public sealed class PeerChannelConformanceTests
         var accepted = await channel.ReceiveAsync(first, Context(), CancellationToken.None);
         var idempotent = await channel.ReceiveAsync(retry, Context(), CancellationToken.None);
 
-        Assert.Equal(PeerReceiveOutcome.Accepted, accepted.Outcome);
-        Assert.Equal(PeerReceiveOutcome.IdempotentReplay, idempotent.Outcome);
-        Assert.False(idempotent.EffectApplied);
-        Assert.Equal(accepted.ReceiptId, idempotent.ReceiptId);
+        Assert.AreEqual(PeerReceiveOutcome.Accepted, accepted.Outcome);
+        Assert.AreEqual(PeerReceiveOutcome.IdempotentReplay, idempotent.Outcome);
+        Assert.IsFalse(idempotent.EffectApplied);
+        Assert.AreEqual(accepted.ReceiptId, idempotent.ReceiptId);
     }
 
     private static LocalPeerChannel CreateChannel() =>

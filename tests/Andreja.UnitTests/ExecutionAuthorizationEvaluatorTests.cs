@@ -4,9 +4,10 @@ using Andreja.Platform.Contracts.Sharing;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class ExecutionAuthorizationEvaluatorTests
 {
-    [Fact]
+    [TestMethod]
     public async Task EvaluatorRejectsEveryPolicyGrantConsentAndIdentityMismatch()
     {
         var valid = Request();
@@ -138,16 +139,19 @@ public sealed class ExecutionAuthorizationEvaluatorTests
                 testCase.Request,
                 CancellationToken.None);
 
-            Assert.False(decision.Allowed);
-            Assert.Equal(testCase.Code, decision.Code);
-            Assert.Null(decision.EffectiveDisclosure);
+            Assert.IsFalse(decision.Allowed);
+            Assert.AreEqual(testCase.Code, decision.Code);
+            Assert.IsNull(decision.EffectiveDisclosure);
         }
 
-        Assert.Equal(cases.Length, sink.Entries.Count);
-        Assert.All(sink.Entries, entry => Assert.Equal(ExecutionAuditOutcome.Denied, entry.Outcome));
+        Assert.AreEqual(cases.Length, sink.Entries.Count);
+        foreach (var entry in sink.Entries)
+        {
+            Assert.AreEqual(ExecutionAuditOutcome.Denied, entry.Outcome);
+        }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task EvaluatorNeverWidensRequestedDisclosure()
     {
         var request = Request() with { RequestedDisclosure = DisclosureLevel.Existence };
@@ -156,14 +160,14 @@ public sealed class ExecutionAuthorizationEvaluatorTests
 
         var decision = await evaluator.EvaluateAsync(request, CancellationToken.None);
 
-        Assert.True(decision.Allowed);
-        Assert.Equal(DisclosureLevel.Existence, decision.EffectiveDisclosure);
-        Assert.Equal(
+        Assert.IsTrue(decision.Allowed);
+        Assert.AreEqual(DisclosureLevel.Existence, decision.EffectiveDisclosure);
+        Assert.AreEqual(
             DisclosureLevel.Existence,
-            Assert.Single(sink.Entries).EffectiveDisclosure);
+            Assert.ContainsSingle(sink.Entries).EffectiveDisclosure);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task EveryOrderedDisclosureCeilingBlocksEscalation()
     {
         var valid = Request();
@@ -213,15 +217,15 @@ public sealed class ExecutionAuthorizationEvaluatorTests
         foreach (var request in requests)
         {
             var decision = await evaluator.EvaluateAsync(request, CancellationToken.None);
-            Assert.False(decision.Allowed);
-            Assert.Equal("disclosure-denied", decision.Code);
+            Assert.IsFalse(decision.Allowed);
+            Assert.AreEqual("disclosure-denied", decision.Code);
         }
     }
 
-    [Theory]
-    [InlineData("policy")]
-    [InlineData("grant")]
-    [InlineData("consent")]
+    [TestMethod]
+    [DataRow("policy")]
+    [DataRow("grant")]
+    [DataRow("consent")]
     public async Task UnknownAuthorizationVersionsFailClosed(string component)
     {
         var request = Request();
@@ -242,8 +246,8 @@ public sealed class ExecutionAuthorizationEvaluatorTests
 
         var decision = await evaluator.EvaluateAsync(request, CancellationToken.None);
 
-        Assert.False(decision.Allowed);
-        Assert.Equal("authorization-version-unsupported", decision.Code);
+        Assert.IsFalse(decision.Allowed);
+        Assert.AreEqual("authorization-version-unsupported", decision.Code);
     }
 
     private static ExecutionAuthorizationRequest Request() =>

@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `0766fb3a21503d372bcc185e1134e9a6058837f83b7dd9436145e49218aa744c`
+- **Current proposed Plan SHA-256:** `3650c766b165c460644aab1abf46d0a7d62c90c8a8be3ccd5e56430d1cbbbf4d`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -459,3 +459,17 @@ not match the merged `docs/plan.md`.
 - **Scope:** Refresh the feedback-framework status-artifact hash after
   clarifying that teardown revokes the stored receipt-secret verifier, not a
   raw secret that verifier-only custody prohibits persisting.
+
+### 2026-10-04 — proposed test-framework migration status
+
+- **Tracking issue:** [#112](https://github.com/Jamula/Andreja/issues/112)
+- **Pull request:** Pending creation from the scoped #112 work branch.
+- **Plan SHA-256:** `3650c766b165c460644aab1abf46d0a7d62c90c8a8be3ccd5e56430d1cbbbf4d`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed execution-status/evidence amendment; no
+  re-ratification, ADR 0007 acceptance, production behavior change, or phase exit
+  is authorized.
+- **Scope:** Record the issue-authorized, atomic MSTest/Microsoft Testing
+  Platform migration and link its measured baseline, parity, runtime,
+  performance, and rollback evidence. Visual Studio and VS Code Test Explorer
+  discovery remain unverified on the local host; the #112 issue remains open.

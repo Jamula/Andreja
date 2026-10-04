@@ -51,7 +51,9 @@ $commands = switch ($Kind) {
             "dotnet restore $postgresProject"
             "dotnet build Andreja.slnx --configuration $Configuration --no-restore"
             "dotnet build $postgresProject --configuration $Configuration --no-restore"
-            "dotnet test Andreja.slnx --configuration $Configuration --no-build"
+            "dotnet test --test-modules tests/Andreja.UnitTests/bin/$Configuration/net10.0/Andreja.UnitTests.dll --no-build --report-trx --report-trx-filename Andreja.UnitTests-$Configuration.trx --results-directory artifacts/$Configuration/test-results/Andreja.UnitTests"
+            "dotnet test --test-modules tests/Andreja.ArchitectureTests/bin/$Configuration/net10.0/Andreja.ArchitectureTests.dll --no-build --report-trx --report-trx-filename Andreja.ArchitectureTests-$Configuration.trx --results-directory artifacts/$Configuration/test-results/Andreja.ArchitectureTests"
+            "pwsh -NoProfile -File .github/scripts/test-dotnet-test-parity.ps1 -Configuration $Configuration -ResultsRoot artifacts/$Configuration/test-results -BaselinePath docs/research/test-suite-baseline-112.json -OutputPath artifacts/$Configuration/test-inventory-parity.json"
         )
     }
     'format' {
@@ -98,12 +100,12 @@ $report = [ordered]@{
             [ordered]@{
                 path = 'tests/Andreja.ArchitectureTests/Andreja.ArchitectureTests.csproj'
                 classification = 'service-free runtime test'
-                runtime_result = if ($Kind -eq 'build-test') { $results.test_solution } else { 'not-run-in-this-job' }
+                runtime_result = if ($Kind -eq 'build-test') { $results.test_architecture } else { 'not-run-in-this-job' }
             }
             [ordered]@{
                 path = 'tests/Andreja.UnitTests/Andreja.UnitTests.csproj'
                 classification = 'service-free runtime test'
-                runtime_result = if ($Kind -eq 'build-test') { $results.test_solution } else { 'not-run-in-this-job' }
+                runtime_result = if ($Kind -eq 'build-test') { $results.test_unit } else { 'not-run-in-this-job' }
             }
         )
         excluded = @(
@@ -119,7 +121,8 @@ $report = [ordered]@{
                 path = $postgresProject
                 runtime_result = 'unavailable'
                 reason = 'Hosted validation does not receive a database credential or provision PostgreSQL; invoking the project without one fails BLOCKED rather than skipping.'
-                runtime_command = "dotnet test $postgresProject --configuration $Configuration"
+                discovery_result = if ($Kind -eq 'build-test') { $results.parity } else { 'not-run-in-this-job' }
+                runtime_command = "dotnet test --project $postgresProject --configuration $Configuration"
             }
         )
     }
@@ -156,9 +159,9 @@ $($operationRows -join "`n")
 
 | Classification | Project | Runtime evidence |
 | --- | --- | --- |
-| Included | tests/Andreja.ArchitectureTests/Andreja.ArchitectureTests.csproj | $(if ($Kind -eq 'build-test') { $results.test_solution } else { 'not run in this job' }) |
-| Included | tests/Andreja.UnitTests/Andreja.UnitTests.csproj | $(if ($Kind -eq 'build-test') { $results.test_solution } else { 'not run in this job' }) |
-| Excluded from solution runtime | $postgresProject | compiled separately in Debug and Release |
-| Unavailable runtime | $postgresProject | no disposable hosted PostgreSQL; never reported as passed or skipped |
+| Included | tests/Andreja.ArchitectureTests/Andreja.ArchitectureTests.csproj | $(if ($Kind -eq 'build-test') { $results.test_architecture } else { 'not run in this job' }) |
+| Included | tests/Andreja.UnitTests/Andreja.UnitTests.csproj | $(if ($Kind -eq 'build-test') { $results.test_unit } else { 'not run in this job' }) |
+| Excluded from solution runtime | $postgresProject | compiled and discovered separately in Debug and Release |
+| Unavailable runtime | $postgresProject | no disposable hosted PostgreSQL; discovery is reported, runtime is never reported as passed or skipped |
 "@ | Add-Content -Path $env:GITHUB_STEP_SUMMARY -Encoding utf8
 }

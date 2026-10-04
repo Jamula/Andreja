@@ -33,19 +33,36 @@ boundary, as required by ADR 0001.
 SDK analyzers, nullable reference types, warnings-as-errors, package versions,
 and deterministic compilation are configured centrally.
 
+The pinned .NET 10 SDK selects Microsoft Testing Platform mode through
+`global.json`. All three .NET test projects use `MSTest.Sdk` 4.4.1 and MTP
+2.4.1. The SDK uses the `None` extension profile with only the MIT-licensed
+TRX report extension enabled, so retained CI reports do not pull unused
+coverage or CI-report extensions. MSTest analyzers use the `Default` rule set;
+repository warnings remain errors. Local and hosted test commands keep both
+the .NET CLI and MTP telemetry opt-outs enabled.
+
+Hosted CI builds each configuration first, then invokes the compiled unit and
+architecture test assemblies with `dotnet test --test-modules`. This uses MTP
+directly without repeating MSBuild evaluation; local aggregate runs can still
+use `--solution` or `--project`.
+
 ## Validate
 
 Run these commands from the repository root:
 
 ```powershell
+$env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
+$env:TESTINGPLATFORM_TELEMETRY_OPTOUT = '1'
 dotnet restore Andreja.slnx
 dotnet restore tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj
 dotnet build Andreja.slnx --configuration Debug --no-restore
 dotnet build tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --configuration Debug --no-restore
-dotnet test Andreja.slnx --configuration Debug --no-build
+dotnet test --test-modules tests\Andreja.UnitTests\bin\Debug\net10.0\Andreja.UnitTests.dll --no-build
+dotnet test --test-modules tests\Andreja.ArchitectureTests\bin\Debug\net10.0\Andreja.ArchitectureTests.dll --no-build
 dotnet build Andreja.slnx --configuration Release --no-restore
 dotnet build tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --configuration Release --no-restore
-dotnet test Andreja.slnx --configuration Release --no-build
+dotnet test --test-modules tests\Andreja.UnitTests\bin\Release\net10.0\Andreja.UnitTests.dll --no-build
+dotnet test --test-modules tests\Andreja.ArchitectureTests\bin\Release\net10.0\Andreja.ArchitectureTests.dll --no-build
 dotnet format Andreja.slnx --verify-no-changes --no-restore
 dotnet format tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --verify-no-changes --no-restore
 pwsh -NoProfile -File .github\scripts\invoke-nuget-vulnerability-scan.ps1
@@ -72,7 +89,7 @@ credentials, or Copilot entitlement. The deterministic provider remains the norm
 offline test and CI default.
 
 ```powershell
-dotnet test tests\Andreja.UnitTests\Andreja.UnitTests.csproj `
+dotnet test --project tests\Andreja.UnitTests\Andreja.UnitTests.csproj `
   --filter "FullyQualifiedName~OpenAiCompatibleConformanceTests|FullyQualifiedName~AssistantProviderTests"
 ```
 

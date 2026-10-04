@@ -17,6 +17,7 @@ concurrency:
 
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  TESTINGPLATFORM_TELEMETRY_OPTOUT: '1'
   DOTNET_NOLOGO: '1'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1'
 
@@ -59,14 +60,34 @@ jobs:
         name: Compile PostgreSQL integration project
         run: dotnet build tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj --configuration ${{ matrix.configuration }} --no-restore
 
-      - id: test_solution
-        name: Test service-free solution
+      - id: test_unit
+        name: Test unit assembly
         run: >-
-          dotnet test Andreja.slnx
-          --configuration ${{ matrix.configuration }}
+          dotnet test --test-modules tests/Andreja.UnitTests/bin/${{ matrix.configuration }}/net10.0/Andreja.UnitTests.dll
           --no-build
-          --logger "trx;LogFilePrefix=${{ matrix.configuration }}"
-          --results-directory artifacts/${{ matrix.configuration }}/test-results
+          --report-trx
+          --report-trx-filename Andreja.UnitTests-${{ matrix.configuration }}.trx
+          --results-directory artifacts/${{ matrix.configuration }}/test-results/Andreja.UnitTests
+
+      - id: test_architecture
+        name: Test architecture assembly
+        run: >-
+          dotnet test --test-modules tests/Andreja.ArchitectureTests/bin/${{ matrix.configuration }}/net10.0/Andreja.ArchitectureTests.dll
+          --no-build
+          --report-trx
+          --report-trx-filename Andreja.ArchitectureTests-${{ matrix.configuration }}.trx
+          --results-directory artifacts/${{ matrix.configuration }}/test-results/Andreja.ArchitectureTests
+
+      - id: parity
+        if: always()
+        name: Verify test inventory parity
+        shell: pwsh
+        run: >-
+          ./.github/scripts/test-dotnet-test-parity.ps1
+          -Configuration '${{ matrix.configuration }}'
+          -ResultsRoot 'artifacts/${{ matrix.configuration }}/test-results'
+          -BaselinePath 'docs/research/test-suite-baseline-112.json'
+          -OutputPath 'artifacts/${{ matrix.configuration }}/test-inventory-parity.json'
 
       - id: report
         if: always()
@@ -78,7 +99,9 @@ jobs:
             "restore_postgresql":"${{ steps.restore_postgresql.outcome }}",
             "build_solution":"${{ steps.build_solution.outcome }}",
             "build_postgresql":"${{ steps.build_postgresql.outcome }}",
-            "test_solution":"${{ steps.test_solution.outcome }}"}
+            "test_unit":"${{ steps.test_unit.outcome }}",
+            "test_architecture":"${{ steps.test_architecture.outcome }}",
+            "parity":"${{ steps.parity.outcome }}"}
         run: >-
           ./.github/scripts/write-dotnet-validation-report.ps1
           -Kind build-test

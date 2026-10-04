@@ -9,9 +9,12 @@ using System.Text.Json;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class ChannelHostTests
 {
-    [Fact]
+    private static readonly string[] ExpectedArtifactKinds = ["skill", "channel"];
+
+    [TestMethod]
     public async Task SkillAndChannelHostsUseOneEvaluatorAndAuditContract()
     {
         var sink = new InMemoryExecutionAuditSink();
@@ -56,13 +59,18 @@ public sealed class ChannelHostTests
             channelContext,
             CancellationToken.None);
 
-        Assert.Equal(SkillResultStatus.Completed, skillResult.Status);
-        Assert.Equal(ChannelResultStatus.Completed, channelResult.Status);
-        Assert.Equal(["skill", "channel"], sink.Entries.Select(entry => entry.ArtifactKind));
-        Assert.All(sink.Entries, entry => Assert.Equal(ExecutionAuditOutcome.Allowed, entry.Outcome));
+        Assert.AreEqual(SkillResultStatus.Completed, skillResult.Status);
+        Assert.AreEqual(ChannelResultStatus.Completed, channelResult.Status);
+        CollectionAssert.AreEqual(
+            ExpectedArtifactKinds,
+            sink.Entries.Select(entry => entry.ArtifactKind).ToArray());
+        foreach (var entry in sink.Entries)
+        {
+            Assert.AreEqual(ExecutionAuditOutcome.Allowed, entry.Outcome);
+        }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ChannelFailsClosedForIdentityGrantCapabilityOperationAndDisclosure()
     {
         var (host, manifest, context) = CreateHost();
@@ -111,12 +119,12 @@ public sealed class ChannelHostTests
                 testCase.Context,
                 CancellationToken.None);
 
-            Assert.Equal(ChannelResultStatus.Denied, result.Status);
-            Assert.Equal(testCase.Code, result.Failure?.Code);
+            Assert.AreEqual(ChannelResultStatus.Denied, result.Status);
+            Assert.AreEqual(testCase.Code, result.Failure?.Code);
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ChannelRejectsManifestTamperingAndUndeclaredOperation()
     {
         var (host, manifest, context) = CreateHost();
@@ -135,12 +143,12 @@ public sealed class ChannelHostTests
             context,
             CancellationToken.None);
 
-        Assert.Equal("manifest-tampered", digest.Failure?.Code);
-        Assert.Equal("channel-not-declared", version.Failure?.Code);
-        Assert.Equal("operation-not-declared", operation.Failure?.Code);
+        Assert.AreEqual("manifest-tampered", digest.Failure?.Code);
+        Assert.AreEqual("channel-not-declared", version.Failure?.Code);
+        Assert.AreEqual("operation-not-declared", operation.Failure?.Code);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ChannelConcurrentInvocationsAreDeterministicAndContentFreeInAudit()
     {
         var (host, manifest, context) = CreateHost();
@@ -150,8 +158,11 @@ public sealed class ChannelHostTests
             Enumerable.Range(0, 64).Select(_ =>
                 host.InvokeAsync(invocation, context, CancellationToken.None).AsTask()));
 
-        Assert.All(results, result => Assert.Equal(ChannelResultStatus.Completed, result.Status));
-        Assert.Equal(64, host.AuditEntries.Count);
+        foreach (var result in results)
+        {
+            Assert.AreEqual(ChannelResultStatus.Completed, result.Status);
+        }
+        Assert.AreEqual(64, host.AuditEntries.Count);
         var auditJson = JsonSerializer.Serialize(host.AuditEntries);
         Assert.DoesNotContain("Book dentist", auditJson, StringComparison.Ordinal);
         Assert.DoesNotContain("Arguments", auditJson, StringComparison.Ordinal);

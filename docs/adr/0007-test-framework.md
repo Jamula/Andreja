@@ -1,9 +1,9 @@
-# ADR 0007: Test framework investigation and deferred MSTest direction
+# ADR 0007: Test framework investigation and MSTest direction
 
 - **Status:** Proposed (amended; not accepted)
 - **Date:** 2026-08-24
 - **Amended:** 2026-08-25
-- **Evidence refreshed:** 2026-09-07
+- **Evidence refreshed:** 2026-10-04
 - **Issue:** [#96](https://github.com/Jamula/Andreja/issues/96)
 - **Migration issue:** [#112](https://github.com/Jamula/Andreja/issues/112)
 - **Governing:** [Platform plan](../plan.md#phase-1a---self-hosted-assistant-walking-skeleton),
@@ -85,6 +85,47 @@ retained as historical investigation evidence for #112. Where they recommend
 xUnit retention or a new xUnit-v3-versus-MSTest decision, this amendment and
 #112 govern.
 
+## 2026-10-04 issue #112 migration evidence
+
+The scoped migration proceeded after #112 was explicitly prioritized and its
+prerequisites #108, #109, and #110 were closed and merged. The committed
+pre-migration baseline checkpoint is
+`5aeeccf298e77b701c200b9f24d01b018932abfe` (source
+`a80ddef9a5938dba01c4c6e5a53747756a083a04`). All three test projects now use
+`MSTest.Sdk/4.4.1` and MTP 2.4.1, with only the explicitly referenced,
+MIT-licensed `Microsoft.Testing.Extensions.TrxReport/2.4.1` extension. There
+is no mixed-runner state or production behavior change.
+
+The exact per-assembly Debug/Release inventory, TRX counters, FQN filter
+results, warm service-free timings, five-run live PostgreSQL timings, package
+signatures/licenses, vulnerability and SAST results, CI artifact boundary,
+IDE limitation, and rollback procedure are recorded in
+[`docs/research/test-framework-migration-112.md`](../research/test-framework-migration-112.md).
+The fail-closed parity script passed against the committed xUnit executable
+row counts. All Unit, Architecture, and live PostgreSQL runs passed with zero
+failures or skips; no temporary PostgreSQL databases remained after each
+project-mode run, and the ephemeral container was removed.
+Independent quality review identified a setup-failure cleanup leak in the
+identity fixture; both PostgreSQL cleanup paths now attempt their independent
+actions and aggregate failures. The reviewer re-checked the corrected paths
+and found the issue resolved with no new actionable cleanup finding.
+
+Warm service-free MTP direct-module medians were 6.24s Debug and 5.63s Release,
+compared with xUnit baseline medians of 8.03s and 9.06s. After the cleanup
+hardening, the selected MTP project-mode live PostgreSQL medians were 19.48s
+Debug and 20.05s Release, compared with baseline medians of 20.73s and 21.57s.
+Project mode remains the
+documented PostgreSQL runtime path; CI direct-module execution is limited to
+the service-free Unit and Architecture assemblies. Visual Studio and VS Code
+Test Explorer discovery remain unverified because neither Visual Studio nor
+C# Dev Kit is available on the local host.
+
+The rollback boundary is one atomic migration commit whose parent is the
+baseline checkpoint; reverting that commit restores the proven xUnit state and
+preserves the measured baseline. The issue remains open. ADR 0007 remains
+**Proposed** and unaccepted; neither issue priority nor successful migration
+evidence ratifies this ADR.
+
 ## Original 2026-08-24 recommendation (superseded)
 
 Retain xUnit 2.9.3 for the current suite and do not migrate it to MSTest now.
@@ -108,7 +149,7 @@ exercise it. Until then:
 - update the xUnit VSTest adapter/Test SDK only in a separate dependency PR;
 - do not introduce a permanently mixed framework solution.
 
-## Current evidence boundary
+## Evidence boundary at original investigation date (2026-08-24)
 
 The spike started from then-live `origin/main` commit `51b4eb4` and .NET SDK
 10.0.301. Before commit, the clean branch was rebased and revalidated against
@@ -302,7 +343,7 @@ also includes Microsoft.CodeCoverage, so MSTest does not remove proprietary
 test tooling. Any future profile or extension change requires a fresh license
 and telemetry review.
 
-## Migration estimate
+## Original migration estimate (historical)
 
 A conversion is not just 209 attribute substitutions:
 

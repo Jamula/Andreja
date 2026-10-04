@@ -5,12 +5,13 @@ using System.Security.Claims;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class CircuitDelegationTests
 {
     private static readonly DateTimeOffset Now =
         new(2026, 8, 24, 5, 15, 0, TimeSpan.Zero);
 
-    [Fact]
+    [TestMethod]
     public void TokenIsAudienceBoundAndSingleUse()
     {
         var service = CreateService(out _);
@@ -25,17 +26,17 @@ public sealed class CircuitDelegationTests
             token,
             CircuitDelegation.OpenLoopsAudience);
 
-        Assert.False(wrongAudience.Succeeded);
-        Assert.Equal("delegation-token-invalid", wrongAudience.FailureCode);
-        Assert.True(valid.Succeeded);
-        Assert.Equal(
+        Assert.IsFalse(wrongAudience.Succeeded);
+        Assert.AreEqual("delegation-token-invalid", wrongAudience.FailureCode);
+        Assert.IsTrue(valid.Succeeded);
+        Assert.AreEqual(
             principal.FindFirst(AndrejaClaimTypes.TenantId)?.Value,
             valid.Principal?.FindFirst(AndrejaClaimTypes.TenantId)?.Value);
-        Assert.False(replay.Succeeded);
-        Assert.Equal("delegation-token-replayed", replay.FailureCode);
+        Assert.IsFalse(replay.Succeeded);
+        Assert.AreEqual("delegation-token-replayed", replay.FailureCode);
     }
 
-    [Fact]
+    [TestMethod]
     public void ExpiredAndTamperedTokensFailClosed()
     {
         var service = CreateService(out var time);
@@ -51,13 +52,13 @@ public sealed class CircuitDelegationTests
             token,
             CircuitDelegation.OpenLoopsAudience);
 
-        Assert.False(tamperedResult.Succeeded);
-        Assert.Equal("delegation-token-invalid", tamperedResult.FailureCode);
-        Assert.False(expired.Succeeded);
-        Assert.Equal("delegation-token-expired", expired.FailureCode);
+        Assert.IsFalse(tamperedResult.Succeeded);
+        Assert.AreEqual("delegation-token-invalid", tamperedResult.FailureCode);
+        Assert.IsFalse(expired.Succeeded);
+        Assert.AreEqual("delegation-token-expired", expired.FailureCode);
     }
 
-    [Fact]
+    [TestMethod]
     public void MissingOrConflictingTenantAndPrincipalClaimsCannotBeDelegated()
     {
         var service = CreateService(out _);
@@ -72,11 +73,11 @@ public sealed class CircuitDelegationTests
                 claim => claim.Type != AndrejaClaimTypes.PrincipalId),
             "test"));
 
-        Assert.Throws<InvalidOperationException>(() =>
+        Assert.ThrowsExactly<InvalidOperationException>(() =>
             service.Issue(
                 new ClaimsPrincipal(conflictingIdentity),
                 CircuitDelegation.OpenLoopsAudience));
-        Assert.Throws<InvalidOperationException>(() =>
+        Assert.ThrowsExactly<InvalidOperationException>(() =>
             service.Issue(
                 missingPrincipal,
                 CircuitDelegation.OpenLoopsAudience));

@@ -12,6 +12,7 @@ using Microsoft.Extensions.Options;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class IdentityAdapterTests
 {
     private static readonly ServiceProvider IdentityOptionsProvider =
@@ -21,7 +22,7 @@ public sealed class IdentityAdapterTests
                 options => options.Stores.SchemaVersion = IdentitySchemaVersions.Version3)
             .BuildServiceProvider();
 
-    [Fact]
+    [TestMethod]
     public void LocalIdentityOptionsRejectUnknownAuthenticationScheme()
     {
         var options = ValidOptions() with
@@ -31,10 +32,10 @@ public sealed class IdentityAdapterTests
 
         var result = new LocalIdentityOptionsValidator().Validate(null, options);
 
-        Assert.False(result.Succeeded);
+        Assert.IsFalse(result.Succeeded);
     }
 
-    [Fact]
+    [TestMethod]
     public void LocalIdentityOptionsRejectInsecureOrMismatchedOrigins()
     {
         var options = ValidOptions() with
@@ -44,12 +45,12 @@ public sealed class IdentityAdapterTests
 
         var result = new LocalIdentityOptionsValidator().Validate(null, options);
 
-        Assert.False(result.Succeeded);
-        Assert.NotNull(result.Failures);
-        Assert.Equal(2, result.Failures!.Count());
+        Assert.IsFalse(result.Succeeded);
+        Assert.IsNotNull(result.Failures);
+        Assert.AreEqual(2, result.Failures!.Count());
     }
 
-    [Fact]
+    [TestMethod]
     public async Task LocalIdentityRegistersRealPasskeyStoreAndNoTestScheme()
     {
         var settings = new Dictionary<string, string?>
@@ -74,7 +75,7 @@ public sealed class IdentityAdapterTests
             configuration.GetRequiredSection(LocalIdentityOptions.SectionName));
 
         await using var provider = services.BuildServiceProvider();
-        Assert.NotNull(provider.GetRequiredService<IOptions<LocalIdentityOptions>>().Value);
+        Assert.IsNotNull(provider.GetRequiredService<IOptions<LocalIdentityOptions>>().Value);
         var manager = provider.GetRequiredService<UserManager<AspNetIdentityUser>>();
         var schemeProvider = provider.GetRequiredService<IAuthenticationSchemeProvider>();
         var schemes = await schemeProvider.GetAllSchemesAsync();
@@ -82,33 +83,33 @@ public sealed class IdentityAdapterTests
             .GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
             .Get(IdentityConstants.TwoFactorUserIdScheme);
 
-        Assert.True(manager.SupportsUserPasskey);
-        Assert.Equal(TimeSpan.FromMinutes(7), passkeyStateCookie.ExpireTimeSpan);
-        Assert.Equal(
+        Assert.IsTrue(manager.SupportsUserPasskey);
+        Assert.AreEqual(TimeSpan.FromMinutes(7), passkeyStateCookie.ExpireTimeSpan);
+        Assert.AreEqual(
             CookieSecurePolicy.Always,
             passkeyStateCookie.Cookie.SecurePolicy);
-        Assert.All(
-            schemes,
-            scheme => Assert.StartsWith(
+        foreach (var scheme in schemes)
+        {
+            Assert.StartsWith(
                 "Identity.",
                 scheme.Name,
-                StringComparison.Ordinal));
+                StringComparison.Ordinal);
+        }
     }
 
-    [Fact]
+    [TestMethod]
     public void PersistenceModelHasRequiredTenantAndIdentityConstraints()
     {
         using var database = CreateDatabase(CreateContext());
         var model = database.Model;
 
         var externalIdentity = model.FindEntityType(typeof(ExternalIdentity));
-        Assert.NotNull(externalIdentity);
-        Assert.Contains(
-            externalIdentity.GetIndexes(),
+        Assert.IsNotNull(externalIdentity);
+        Assert.IsTrue(externalIdentity.GetIndexes().Any(
             index =>
                 index.IsUnique
                 && index.Properties.Select(property => property.Name)
-                    .SequenceEqual(["Issuer", "Subject"]));
+                    .SequenceEqual(["Issuer", "Subject"])));
 
         AssertCompositeForeignKey(model.FindEntityType(typeof(Contact)), "TenantId", "LinkedPrincipalId");
         AssertCompositeForeignKey(model.FindEntityType(typeof(Membership)), "TenantId", "PrincipalId");
@@ -116,23 +117,23 @@ public sealed class IdentityAdapterTests
             model.FindEntityType(typeof(AppUser)),
             "Id",
             "PrimaryExternalIdentityId");
-        Assert.NotEmpty(model.FindEntityType(typeof(Tenant))!.GetDeclaredQueryFilters());
-        Assert.NotEmpty(model.FindEntityType(typeof(Principal))!.GetDeclaredQueryFilters());
-        Assert.NotEmpty(model.FindEntityType(typeof(Membership))!.GetDeclaredQueryFilters());
-        Assert.NotEmpty(model.FindEntityType(typeof(Contact))!.GetDeclaredQueryFilters());
+        Assert.IsNotEmpty(model.FindEntityType(typeof(Tenant))!.GetDeclaredQueryFilters());
+        Assert.IsNotEmpty(model.FindEntityType(typeof(Principal))!.GetDeclaredQueryFilters());
+        Assert.IsNotEmpty(model.FindEntityType(typeof(Membership))!.GetDeclaredQueryFilters());
+        Assert.IsNotEmpty(model.FindEntityType(typeof(Contact))!.GetDeclaredQueryFilters());
     }
 
-    [Fact]
+    [TestMethod]
     public void TenantWriteFailsClosedWithoutResolvedContext()
     {
         using var database = CreateDatabase(null);
         database.Tenants.Add(
             new Tenant(TenantId.New(), "TENANT", "Tenant", "local"));
 
-        Assert.Throws<IdentityAccessDeniedException>(() => database.SaveChanges());
+        Assert.ThrowsExactly<IdentityAccessDeniedException>(() => database.SaveChanges());
     }
 
-    [Fact]
+    [TestMethod]
     public void TenantWriteRejectsMismatchedTenant()
     {
         var context = CreateContext();
@@ -140,17 +141,16 @@ public sealed class IdentityAdapterTests
         database.Contacts.Add(
             new Contact(ContactId.New(), TenantId.New(), "CONTACT", "Contact"));
 
-        Assert.Throws<IdentityAccessDeniedException>(() => database.SaveChanges());
+        Assert.ThrowsExactly<IdentityAccessDeniedException>(() => database.SaveChanges());
     }
 
     private static void AssertCompositeForeignKey(
         Microsoft.EntityFrameworkCore.Metadata.IEntityType? entity,
         params string[] propertyNames)
     {
-        Assert.NotNull(entity);
-        Assert.Contains(
-            entity.GetForeignKeys(),
-            key => key.Properties.Select(property => property.Name).SequenceEqual(propertyNames));
+        Assert.IsNotNull(entity);
+        Assert.IsTrue(entity.GetForeignKeys().Any(
+            key => key.Properties.Select(property => property.Name).SequenceEqual(propertyNames)));
     }
 
     private static AndrejaIdentityDbContext CreateDatabase(TenantPrincipalContext? context)

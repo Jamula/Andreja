@@ -12,19 +12,25 @@ using System.Text.Json.Nodes;
 
 namespace Andreja.PostgreSqlIntegrationTests;
 
-public sealed class ApplicationPortabilityTests : IAsyncLifetime
+[TestClass]
+public sealed class ApplicationPortabilityTests
 {
-    private readonly string adminConnectionString =
-        Environment.GetEnvironmentVariable("ANDREJA_TEST_POSTGRES")
-        ?? throw new InvalidOperationException(
-            "BLOCKED: set ANDREJA_TEST_POSTGRES to a disposable local PostgreSQL database.");
+    private static readonly string[] ExpectedReauthorizationProviderReferences =
+        ["https://issuer.example/realm-a", "https://issuer.example/realm-b"];
+
+    private string adminConnectionString = string.Empty;
     private string sourceConnectionString = string.Empty;
     private string targetConnectionString = string.Empty;
     private string sourceDatabase = string.Empty;
     private string targetDatabase = string.Empty;
 
+    [TestInitialize]
     public async Task InitializeAsync()
     {
+        adminConnectionString = Environment.GetEnvironmentVariable("ANDREJA_TEST_POSTGRES")
+            ?? throw new InvalidOperationException(
+                "BLOCKED: set ANDREJA_TEST_POSTGRES to a disposable local PostgreSQL database.");
+
         var configured = new NpgsqlConnectionStringBuilder(adminConnectionString);
         if (string.IsNullOrWhiteSpace(configured.Database)
             || !configured.Database.StartsWith("andreja_test_", StringComparison.Ordinal))
@@ -35,30 +41,87 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
         var suffix = Guid.NewGuid().ToString("N")[..8];
         sourceDatabase = $"andreja_test_port_src_{suffix}";
         targetDatabase = $"andreja_test_port_dst_{suffix}";
-        await CreateDatabaseAsync(sourceDatabase);
-        await CreateDatabaseAsync(targetDatabase);
         configured.Database = sourceDatabase;
         sourceConnectionString = configured.ConnectionString;
         configured.Database = targetDatabase;
         targetConnectionString = configured.ConnectionString;
-        await MigrateAsync(sourceConnectionString);
-        await MigrateAsync(targetConnectionString);
+        try
+        {
+            await CreateDatabaseAsync(sourceDatabase);
+            await CreateDatabaseAsync(targetDatabase);
+            await MigrateAsync(sourceConnectionString);
+            await MigrateAsync(targetConnectionString);
+        }
+        catch (Exception initializationException)
+        {
+            try
+            {
+                await DisposeAsync();
+            }
+            catch (Exception cleanupException)
+            {
+                throw new AggregateException(
+                    "PostgreSQL portability test initialization and cleanup both failed.",
+                    initializationException,
+                    cleanupException);
+            }
+
+            throw;
+        }
     }
 
+    [TestCleanup]
     public async Task DisposeAsync()
     {
-        NpgsqlConnection.ClearAllPools();
+        List<Exception> cleanupFailures = [];
+        try
+        {
+            NpgsqlConnection.ClearAllPools();
+        }
+        catch (Exception exception)
+        {
+            cleanupFailures.Add(exception);
+        }
+
         if (!string.IsNullOrEmpty(sourceDatabase))
         {
-            await DropDatabaseAsync(sourceDatabase);
+            try
+            {
+                await DropDatabaseAsync(sourceDatabase);
+                sourceDatabase = string.Empty;
+            }
+            catch (Exception exception)
+            {
+                cleanupFailures.Add(new InvalidOperationException(
+                    $"Failed to drop disposable PostgreSQL database '{sourceDatabase}'.",
+                    exception));
+            }
         }
+
         if (!string.IsNullOrEmpty(targetDatabase))
         {
-            await DropDatabaseAsync(targetDatabase);
+            try
+            {
+                await DropDatabaseAsync(targetDatabase);
+                targetDatabase = string.Empty;
+            }
+            catch (Exception exception)
+            {
+                cleanupFailures.Add(new InvalidOperationException(
+                    $"Failed to drop disposable PostgreSQL database '{targetDatabase}'.",
+                    exception));
+            }
+        }
+
+        if (cleanupFailures.Count > 0)
+        {
+            throw new AggregateException(
+                "PostgreSQL portability test cleanup failed.",
+                cleanupFailures);
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ExportDryRunAndAtomicImportRoundTripPortableDataOnly()
     {
         var tenantId = new TenantId(Guid.CreateVersion7());
@@ -101,10 +164,10 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
             await database.SaveChangesAsync();
         }
         await SeedExcludedSecurityDataAsync(appUserId);
-        Assert.Equal(1, await CountAsync(sourceConnectionString, "identity.credential_users"));
-        Assert.Equal(1, await CountAsync(sourceConnectionString, "identity.user_passkeys"));
-        Assert.Equal(1, await CountAsync(sourceConnectionString, "identity.recovery_codes"));
-        Assert.Equal(1, await CountAsync(sourceConnectionString, "identity.user_tokens"));
+        Assert.AreEqual(1, await CountAsync(sourceConnectionString, "identity.credential_users"));
+        Assert.AreEqual(1, await CountAsync(sourceConnectionString, "identity.user_passkeys"));
+        Assert.AreEqual(1, await CountAsync(sourceConnectionString, "identity.recovery_codes"));
+        Assert.AreEqual(1, await CountAsync(sourceConnectionString, "identity.user_tokens"));
 
         var taskId = Guid.CreateVersion7();
         var proposalId = Guid.CreateVersion7();
@@ -171,14 +234,14 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                 archive,
                 key,
                 "integration");
-            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
                 PostgreSqlApplicationPortability.ImportAsync(
                     targetConnectionString,
                     archive,
                     key,
                     commit: true,
                     approvedExportId: Guid.NewGuid()));
-            Assert.Equal(0, await CountAsync(targetConnectionString, "identity.tenants"));
+            Assert.AreEqual(0, await CountAsync(targetConnectionString, "identity.tenants"));
 
             await ExecuteAsync(
                 targetConnectionString,
@@ -187,15 +250,15 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                 ADD CONSTRAINT "CK_portability_dry_run"
                 CHECK ("NormalizedName" <> 'PORTABLE')
                 """);
-            await Assert.ThrowsAsync<PostgresException>(() =>
+            await Assert.ThrowsExactlyAsync<PostgresException>(() =>
                 PostgreSqlApplicationPortability.ImportAsync(
                     targetConnectionString,
                     archive,
                     key,
                     commit: false,
                     approvedExportId: null));
-            Assert.Equal(0, await CountAsync(targetConnectionString, "identity.tenants"));
-            Assert.Equal(0, await CountAsync(
+            Assert.AreEqual(0, await CountAsync(targetConnectionString, "identity.tenants"));
+            Assert.AreEqual(0, await CountAsync(
                 targetConnectionString,
                 "portability.application_imports"));
             await ExecuteAsync(
@@ -211,17 +274,14 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                 key,
                 commit: false,
                 approvedExportId: null);
-            Assert.True(dryRun.DryRun);
-            Assert.False(dryRun.IdempotentReplay);
-            Assert.Equal(exported.ExportId, dryRun.ExportId);
-            Assert.Equal(
-                [
-                    "https://issuer.example/realm-a",
-                    "https://issuer.example/realm-b",
-                ],
-                dryRun.Reauthorization.Select(item => item.ProviderReference));
-            Assert.Equal(0, await CountAsync(targetConnectionString, "identity.tenants"));
-            Assert.Equal(0, await CountAsync(
+            Assert.IsTrue(dryRun.DryRun);
+            Assert.IsFalse(dryRun.IdempotentReplay);
+            Assert.AreEqual(exported.ExportId, dryRun.ExportId);
+            CollectionAssert.AreEqual(
+                ExpectedReauthorizationProviderReferences,
+                dryRun.Reauthorization.Select(item => item.ProviderReference).ToArray());
+            Assert.AreEqual(0, await CountAsync(targetConnectionString, "identity.tenants"));
+            Assert.AreEqual(0, await CountAsync(
                 targetConnectionString,
                 "portability.application_imports"));
 
@@ -232,7 +292,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                 ("Id","NormalizedName","DisplayName","DataResidency","Plan","Status")
                 VALUES ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','DIRTY','Dirty','local','SelfHosted',1)
                 """);
-            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
                 PostgreSqlApplicationPortability.ImportAsync(
                     targetConnectionString,
                     archive,
@@ -247,22 +307,22 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                 key,
                 commit: true,
                 approvedExportId: exported.ExportId);
-            Assert.False(imported.DryRun);
-            Assert.Equal(1, await CountAsync(targetConnectionString, "open_loops.tasks"));
-            Assert.Equal(1, await CountAsync(targetConnectionString, "open_loops.proposals"));
-            Assert.Equal(1, await CountAsync(targetConnectionString, "open_loops.task_receipts"));
-            Assert.Equal(1, await CountAsync(targetConnectionString, "open_loops.proposal_receipts"));
-            Assert.Equal(1, await CountAsync(targetConnectionString, "open_loops.task_audit"));
-            Assert.Equal(1, await CountAsync(targetConnectionString, "open_loops.proposal_audit"));
-            Assert.Equal(
+            Assert.IsFalse(imported.DryRun);
+            Assert.AreEqual(1, await CountAsync(targetConnectionString, "open_loops.tasks"));
+            Assert.AreEqual(1, await CountAsync(targetConnectionString, "open_loops.proposals"));
+            Assert.AreEqual(1, await CountAsync(targetConnectionString, "open_loops.task_receipts"));
+            Assert.AreEqual(1, await CountAsync(targetConnectionString, "open_loops.proposal_receipts"));
+            Assert.AreEqual(1, await CountAsync(targetConnectionString, "open_loops.task_audit"));
+            Assert.AreEqual(1, await CountAsync(targetConnectionString, "open_loops.proposal_audit"));
+            Assert.AreEqual(
                 "Portable visible task",
                 await ScalarAsync<string>(
                     targetConnectionString,
                     """SELECT "Title" FROM open_loops.tasks"""));
-            Assert.Equal(0, await CountAsync(targetConnectionString, "identity.credential_users"));
-            Assert.Equal(0, await CountAsync(targetConnectionString, "identity.user_passkeys"));
-            Assert.Equal(0, await CountAsync(targetConnectionString, "identity.recovery_codes"));
-            Assert.Equal(0, await CountAsync(targetConnectionString, "identity.user_tokens"));
+            Assert.AreEqual(0, await CountAsync(targetConnectionString, "identity.credential_users"));
+            Assert.AreEqual(0, await CountAsync(targetConnectionString, "identity.user_passkeys"));
+            Assert.AreEqual(0, await CountAsync(targetConnectionString, "identity.recovery_codes"));
+            Assert.AreEqual(0, await CountAsync(targetConnectionString, "identity.user_tokens"));
 
             var replay = await PostgreSqlApplicationPortability.ImportAsync(
                 targetConnectionString,
@@ -270,12 +330,12 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                 key,
                 commit: true,
                 approvedExportId: exported.ExportId);
-            Assert.True(replay.IdempotentReplay);
+            Assert.IsTrue(replay.IdempotentReplay);
 
             var tampered = await File.ReadAllBytesAsync(archive);
             tampered[^1] ^= 0xff;
             await File.WriteAllBytesAsync(archive, tampered);
-            await Assert.ThrowsAsync<InvalidDataException>(() =>
+            await Assert.ThrowsExactlyAsync<InvalidDataException>(() =>
                 PostgreSqlApplicationPortability.ImportAsync(
                     targetConnectionString,
                     archive,
@@ -293,7 +353,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ConcurrentDistinctImportsSerializeBeforeTransactionSnapshot()
     {
         var first = await SeedPortableTenantAsync("RACE-A", "Race winner A");
@@ -340,19 +400,19 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                         TimeSpan.FromSeconds(10),
                         faultInjector: null);
                     await Task.Delay(100);
-                    Assert.False(loser.IsCompleted);
+                    Assert.IsFalse(loser.IsCompleted);
 
                     blocker.Release.TrySetResult();
                     var committed = await winner;
-                    Assert.False(committed.IdempotentReplay);
-                    var conflict = await Assert.ThrowsAsync<InvalidOperationException>(
+                    Assert.IsFalse(committed.IdempotentReplay);
+                    var conflict = await Assert.ThrowsExactlyAsync<InvalidOperationException>(
                         async () => await loser);
                     Assert.Contains(
                         "conflicting application import",
                         conflict.Message,
                         StringComparison.Ordinal);
-                    Assert.Equal(1, await CountAsync(target, "portability.application_imports"));
-                    Assert.Equal("Race winner A", await ScalarAsync<string>(
+                    Assert.AreEqual(1, await CountAsync(target, "portability.application_imports"));
+                    Assert.AreEqual("Race winner A", await ScalarAsync<string>(
                         target,
                         """SELECT "Title" FROM open_loops.tasks"""));
 
@@ -362,7 +422,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                         key,
                         commit: true,
                         firstExport.ExportId);
-                    Assert.True(replay.IdempotentReplay);
+                    Assert.IsTrue(replay.IdempotentReplay);
                     await AssertImportLockAvailableAsync(target);
                 }
                 finally
@@ -379,7 +439,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task CancellationTimeoutAndInjectedFailureReleaseDedicatedSessionLock()
     {
         var tenant = await SeedPortableTenantAsync("LOCK-RELEASE", "Lock release");
@@ -411,7 +471,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                     cancellation.Token);
                 await blocker.Acquired.Task.WaitAsync(TimeSpan.FromSeconds(10));
                 cancellation.Cancel();
-                await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                await Assert.ThrowsAsync<OperationCanceledException>(
                     async () => await cancelled);
                 await AssertImportLockAvailableAsync(cancellationTarget);
 
@@ -421,7 +481,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                     key,
                     commit: true,
                     exported.ExportId);
-                Assert.False(imported.IdempotentReplay);
+                Assert.IsFalse(imported.IdempotentReplay);
             }
             finally
             {
@@ -431,7 +491,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
             var failureTarget = await CreateMigratedTargetAsync("fault");
             try
             {
-                await Assert.ThrowsAsync<InjectedImportFailureException>(() =>
+                await Assert.ThrowsExactlyAsync<InjectedImportFailureException>(() =>
                     PostgreSqlApplicationPortability.ImportAsync(
                         failureTarget,
                         archive,
@@ -460,7 +520,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                     NonPooledConnectionString(timeoutTarget));
                 await holder.OpenAsync();
                 await ExecuteLockAsync(holder, "pg_advisory_lock");
-                await Assert.ThrowsAsync<TimeoutException>(() =>
+                await Assert.ThrowsExactlyAsync<TimeoutException>(() =>
                     PostgreSqlApplicationPortability.ImportAsync(
                         timeoutTarget,
                         archive,
@@ -476,7 +536,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                 var bytes = await File.ReadAllBytesAsync(archive);
                 bytes[^1] ^= 0xff;
                 await File.WriteAllBytesAsync(tampered, bytes);
-                await Assert.ThrowsAsync<InvalidDataException>(() =>
+                await Assert.ThrowsExactlyAsync<InvalidDataException>(() =>
                     PostgreSqlApplicationPortability.ImportAsync(
                         timeoutTarget,
                         tampered,
@@ -489,7 +549,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                     key,
                     commit: true,
                     exported.ExportId);
-                Assert.False(imported.IdempotentReplay);
+                Assert.IsFalse(imported.IdempotentReplay);
                 await AssertImportLockAvailableAsync(timeoutTarget);
             }
             finally
@@ -505,7 +565,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ApplicationTableLocksPreventDirtyTargetAtImportCommit()
     {
         var tenant = await SeedPortableTenantAsync("QUIESCENCE", "Quiescence");
@@ -540,13 +600,13 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                             'CONCURRENT','Concurrent','local','SelfHosted',1)
                     """);
             await Task.Delay(100);
-            Assert.False(writer.IsCompleted);
+            Assert.IsFalse(writer.IsCompleted);
 
             blocker.Release.TrySetResult();
             _ = await importing;
             await writer;
-            Assert.Equal(1, await CountAsync(target, "portability.application_imports"));
-            Assert.Equal(2, await CountAsync(target, "identity.tenants"));
+            Assert.AreEqual(1, await CountAsync(target, "portability.application_imports"));
+            Assert.AreEqual(2, await CountAsync(target, "identity.tenants"));
             await AssertImportLockAvailableAsync(target);
         }
         finally
@@ -557,7 +617,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task DryRunLocksEveryCheckedTableAgainstConcurrentApplicationWrites()
     {
         var tenant = await SeedPortableTenantAsync("TABLE-LOCK", "Table lock");
@@ -582,7 +642,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                 blocker);
             await blocker.TablesLocked.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
-            Assert.Equal(
+            Assert.AreEqual(
                 await CheckedTableCountAsync(targetConnectionString),
                 await CheckedTableShareLockCountAsync(targetConnectionString));
             await using var writer = new NpgsqlConnection(targetConnectionString);
@@ -597,14 +657,14 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
             command.Parameters.AddWithValue("id", Guid.CreateVersion7());
             var writeTask = command.ExecuteNonQueryAsync();
             await Task.Delay(100);
-            Assert.False(writeTask.IsCompleted);
+            Assert.IsFalse(writeTask.IsCompleted);
 
             blocker.Release.TrySetResult();
             var report = await dryRunTask;
-            Assert.True(report.DryRun);
-            Assert.Equal(1, await writeTask);
-            Assert.Equal(1, await CountAsync(targetConnectionString, "identity.tenants"));
-            Assert.Equal(
+            Assert.IsTrue(report.DryRun);
+            Assert.AreEqual(1, await writeTask);
+            Assert.AreEqual(1, await CountAsync(targetConnectionString, "identity.tenants"));
+            Assert.AreEqual(
                 0,
                 await CountAsync(targetConnectionString, "portability.application_imports"));
             await AssertImportLockAvailableAsync(targetConnectionString);
@@ -617,7 +677,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ImportRejectsSettingsMembershipAndReauthorizationDivergence()
     {
         var tenant = await SeedPortableTenantAsync("LINEAGE", "Lineage");
@@ -643,7 +703,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                     "settings.ndjson",
                     "tenantSettings",
                     value => value["DataResidency"] = "different"));
-            var settingsFailure = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            var settingsFailure = await Assert.ThrowsExactlyAsync<InvalidDataException>(() =>
                 PostgreSqlApplicationPortability.ImportAsync(
                     targetConnectionString,
                     settingsArchive,
@@ -657,7 +717,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                 membershipArchive,
                 key,
                 MutateMembershipAppUser);
-            var membershipFailure = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            var membershipFailure = await Assert.ThrowsExactlyAsync<InvalidDataException>(() =>
                 PostgreSqlApplicationPortability.ImportAsync(
                     targetConnectionString,
                     membershipArchive,
@@ -680,7 +740,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
                         "https://different.example";
                     files["manifest.json"] = SerializeNode(manifest);
                 });
-            var reauthorizationFailure = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            var reauthorizationFailure = await Assert.ThrowsExactlyAsync<InvalidDataException>(() =>
                 PostgreSqlApplicationPortability.ImportAsync(
                     targetConnectionString,
                     reauthorizationArchive,
@@ -974,7 +1034,9 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
     private static string Quote(string identifier) =>
         '"' + identifier.Replace("\"", "\"\"", StringComparison.Ordinal) + '"';
 
-    private async Task<Guid> SeedPortableTenantAsync(string normalizedName, string taskTitle)
+    private async Task<Guid> SeedPortableTenantAsync(
+        string normalizedName,
+        string taskTitle)
     {
         var tenantId = TenantId.New();
         var appUserId = AppUserId.New();
@@ -1039,7 +1101,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
             UserName = "portable-owner",
             EmailConfirmed = true,
         };
-        Assert.True((await users.CreateAsync(credentialUser)).Succeeded);
+        Assert.IsTrue((await users.CreateAsync(credentialUser)).Succeeded);
         var passkey = new UserPasskeyInfo(
             [1, 2, 3, 4],
             RandomNumberGenerator.GetBytes(77),
@@ -1054,10 +1116,10 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
         {
             Name = "Synthetic passkey",
         };
-        Assert.True((await users.AddOrUpdatePasskeyAsync(
+        Assert.IsTrue((await users.AddOrUpdatePasskeyAsync(
             credentialUser,
             passkey)).Succeeded);
-        Assert.True((await users.SetAuthenticationTokenAsync(
+        Assert.IsTrue((await users.SetAuthenticationTokenAsync(
             credentialUser,
             "synthetic-provider",
             "access-token",
@@ -1106,7 +1168,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
         acquire.Parameters.AddWithValue(
             "lockKey",
             PostgreSqlApplicationPortability.ImportAdvisoryLock);
-        Assert.True(await acquire.ExecuteScalarAsync() is true);
+        Assert.IsTrue(await acquire.ExecuteScalarAsync() is true);
         await ExecuteLockAsync(connection, "pg_advisory_unlock");
     }
 
@@ -1163,7 +1225,7 @@ public sealed class ApplicationPortabilityTests : IAsyncLifetime
             }
             else
             {
-                Assert.Equal(ApplicationImportCheckpoint.TargetTablesLocked, checkpoint);
+                Assert.AreEqual(ApplicationImportCheckpoint.TargetTablesLocked, checkpoint);
             }
         }
     }

@@ -5,14 +5,15 @@ using System.Text;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class ProposalLifecycleTests
 {
-    [Fact]
+    [TestMethod]
     public async Task ConfirmationRetryIsIdempotentAndAuditedOnceForAppliedEffect()
     {
         var store = new InMemoryProposalStore();
         var proposal = CreateProposal();
-        Assert.True(await store.TryCreateAsync(proposal, CancellationToken.None));
+        Assert.IsTrue(await store.TryCreateAsync(proposal, CancellationToken.None));
         var request = Request(proposal, ProposalAction.Confirm, "confirm-1", proposal.CreatedAt.AddMinutes(1));
 
         var first = await store.TryTransitionAsync(request, CancellationToken.None);
@@ -20,42 +21,41 @@ public sealed class ProposalLifecycleTests
             request with { OccurredAt = request.OccurredAt.AddSeconds(5) },
             CancellationToken.None);
 
-        Assert.Equal(ProposalTransitionOutcome.Applied, first.Outcome);
-        Assert.Equal(ProposalState.Confirmed, first.Proposal?.State);
-        Assert.Equal(ProposalTransitionOutcome.IdempotentReplay, retry.Outcome);
-        Assert.Single(store.AuditEntries);
-        Assert.Equal(proposal.ActorId, store.AuditEntries[0].ActorId);
-        Assert.Equal(proposal.Source.Reference, store.AuditEntries[0].SourceReference);
+        Assert.AreEqual(ProposalTransitionOutcome.Applied, first.Outcome);
+        Assert.AreEqual(ProposalState.Confirmed, first.Proposal?.State);
+        Assert.AreEqual(ProposalTransitionOutcome.IdempotentReplay, retry.Outcome);
+        Assert.ContainsSingle(store.AuditEntries);
+        Assert.AreEqual(proposal.ActorId, store.AuditEntries[0].ActorId);
+        Assert.AreEqual(proposal.Source.Reference, store.AuditEntries[0].SourceReference);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ExpiredProposalCannotBeConfirmed()
     {
         var store = new InMemoryProposalStore();
         var proposal = CreateProposal();
-        Assert.True(await store.TryCreateAsync(proposal, CancellationToken.None));
+        Assert.IsTrue(await store.TryCreateAsync(proposal, CancellationToken.None));
 
         var result = await store.TryTransitionAsync(
             Request(proposal, ProposalAction.Confirm, "late", proposal.ExpiresAt),
             CancellationToken.None);
 
-        Assert.Equal(ProposalTransitionOutcome.Expired, result.Outcome);
-        Assert.Equal(ProposalState.Expired, result.Proposal?.State);
+        Assert.AreEqual(ProposalTransitionOutcome.Expired, result.Outcome);
+        Assert.AreEqual(ProposalState.Expired, result.Proposal?.State);
     }
 
-    public static TheoryData<string, ProposalTransitionOutcome> NegativeReplayCases =>
-        new()
-        {
-            { "wrong-actor", ProposalTransitionOutcome.Denied },
-            { "wrong-tenant", ProposalTransitionOutcome.Denied },
-            { "not-found", ProposalTransitionOutcome.NotFound },
-            { "expired", ProposalTransitionOutcome.Expired },
-            { "conflict", ProposalTransitionOutcome.Conflict },
-            { "invalid-state", ProposalTransitionOutcome.InvalidState },
-        };
+    public static IEnumerable<(string scenario, ProposalTransitionOutcome expectedOutcome)> NegativeReplayCases =>
+    [
+        ("wrong-actor", ProposalTransitionOutcome.Denied),
+        ("wrong-tenant", ProposalTransitionOutcome.Denied),
+        ("not-found", ProposalTransitionOutcome.NotFound),
+        ("expired", ProposalTransitionOutcome.Expired),
+        ("conflict", ProposalTransitionOutcome.Conflict),
+        ("invalid-state", ProposalTransitionOutcome.InvalidState),
+    ];
 
-    [Theory]
-    [MemberData(nameof(NegativeReplayCases))]
+    [TestMethod]
+    [DynamicData(nameof(NegativeReplayCases))]
     public async Task NegativeTransitionRetryPreservesOriginalOutcomeWithoutDuplicateEffects(
         string scenario,
         ProposalTransitionOutcome expectedOutcome)
@@ -72,7 +72,7 @@ public sealed class ProposalLifecycleTests
         }
         else
         {
-            Assert.True(await store.TryCreateAsync(proposal, CancellationToken.None));
+            Assert.IsTrue(await store.TryCreateAsync(proposal, CancellationToken.None));
             request = Request(proposal, ProposalAction.Confirm, scenario, proposal.CreatedAt.AddMinutes(1));
 
             request = scenario switch
@@ -101,20 +101,20 @@ public sealed class ProposalLifecycleTests
             proposal.ProposalId,
             CancellationToken.None);
 
-        Assert.Equal(expectedOutcome, first.Outcome);
-        Assert.Equal(expectedOutcome, retry.Outcome);
-        Assert.NotEqual(ProposalTransitionOutcome.IdempotentReplay, retry.Outcome);
-        Assert.Equal(first.Proposal, retry.Proposal);
-        Assert.Equal(stateAfterFirst, stateAfterRetry);
-        Assert.Equal(auditCountAfterFirst, store.AuditEntries.Count);
+        Assert.AreEqual(expectedOutcome, first.Outcome);
+        Assert.AreEqual(expectedOutcome, retry.Outcome);
+        Assert.AreNotEqual(ProposalTransitionOutcome.IdempotentReplay, retry.Outcome);
+        Assert.AreEqual(first.Proposal, retry.Proposal);
+        Assert.AreEqual(stateAfterFirst, stateAfterRetry);
+        Assert.AreEqual(auditCountAfterFirst, store.AuditEntries.Count);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ConcurrentTransitionsApplyAtMostOnce()
     {
         var store = new InMemoryProposalStore();
         var proposal = CreateProposal();
-        Assert.True(await store.TryCreateAsync(proposal, CancellationToken.None));
+        Assert.IsTrue(await store.TryCreateAsync(proposal, CancellationToken.None));
 
         var attempts = Enumerable.Range(0, 8)
             .Select(index => store.TryTransitionAsync(
@@ -126,30 +126,34 @@ public sealed class ProposalLifecycleTests
                 CancellationToken.None).AsTask());
         var results = await Task.WhenAll(attempts);
 
-        Assert.Single(results, result => result.Outcome == ProposalTransitionOutcome.Applied);
-        Assert.All(
-            results.Where(result => result.Outcome != ProposalTransitionOutcome.Applied),
-            result => Assert.Equal(ProposalTransitionOutcome.Conflict, result.Outcome));
+        Assert.AreEqual(
+            1,
+            results.Count(result => result.Outcome == ProposalTransitionOutcome.Applied));
+        foreach (var result in results.Where(
+                     result => result.Outcome != ProposalTransitionOutcome.Applied))
+        {
+            Assert.AreEqual(ProposalTransitionOutcome.Conflict, result.Outcome);
+        }
     }
 
-    [Theory]
-    [InlineData(ProposalAction.Reject, ProposalState.Rejected)]
-    [InlineData(ProposalAction.Cancel, ProposalState.Cancelled)]
+    [TestMethod]
+    [DataRow(ProposalAction.Reject, ProposalState.Rejected)]
+    [DataRow(ProposalAction.Cancel, ProposalState.Cancelled)]
     public async Task TerminalActionsPreserveExactOperation(
         ProposalAction action,
         ProposalState expectedState)
     {
         var store = new InMemoryProposalStore();
         var proposal = CreateProposal();
-        Assert.True(await store.TryCreateAsync(proposal, CancellationToken.None));
+        Assert.IsTrue(await store.TryCreateAsync(proposal, CancellationToken.None));
 
         var result = await store.TryTransitionAsync(
             Request(proposal, action, action.ToString(), proposal.CreatedAt.AddMinutes(1)),
             CancellationToken.None);
 
-        Assert.Equal(expectedState, result.Proposal?.State);
-        Assert.Equal(proposal.Operation, result.Proposal?.Operation);
-        Assert.Equal(proposal.Diff, result.Proposal?.Diff);
+        Assert.AreEqual(expectedState, result.Proposal?.State);
+        Assert.AreEqual(proposal.Operation, result.Proposal?.Operation);
+        Assert.AreEqual(proposal.Diff, result.Proposal?.Diff);
     }
 
     private static Proposal CreateProposal()
@@ -203,7 +207,7 @@ public sealed class ProposalLifecycleTests
                 "invalid-state-prerequisite",
                 proposal.CreatedAt.AddSeconds(30)),
             CancellationToken.None);
-        Assert.Equal(ProposalTransitionOutcome.Applied, applied.Outcome);
+        Assert.AreEqual(ProposalTransitionOutcome.Applied, applied.Outcome);
         return request with { ExpectedVersion = applied.Proposal!.Version };
     }
 }

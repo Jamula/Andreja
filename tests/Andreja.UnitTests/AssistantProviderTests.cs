@@ -6,9 +6,10 @@ using Andreja.Platform.Contracts.Skills;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class AssistantProviderTests
 {
-    [Fact]
+    [TestMethod]
     public async Task DeterministicProviderReturnsStructuredFailure()
     {
         var expected = Response(
@@ -19,11 +20,11 @@ public sealed class AssistantProviderTests
 
         var actual = await session.CompleteAsync(Request(), CancellationToken.None);
 
-        Assert.Equal(expected, actual);
-        Assert.Equal("provider-unavailable", actual.Failure?.Code);
+        Assert.AreEqual(expected, actual);
+        Assert.AreEqual("provider-unavailable", actual.Failure?.Code);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task SessionCancellationStopsInFlightRequest()
     {
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -41,18 +42,18 @@ public sealed class AssistantProviderTests
         await started.Task;
         await session.CancelAsync(CancellationToken.None);
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => completion);
+        await Assert.ThrowsAsync<OperationCanceledException>(() => completion);
     }
 
-    [Fact]
+    [TestMethod]
     public void OpenAiProfileRejectsUnsafeEndpointAndSecretInsteadOfHandle()
     {
         var unsafeEndpoint = Profile() with { Endpoint = new("http://api.example.test/v1") };
         var rawSecret = Profile() with { CredentialHandle = "sk-not-a-handle" };
 
-        Assert.Throws<ArgumentException>(() => OpenAiCompatibleAssistantAdapter.Validate(unsafeEndpoint));
-        Assert.Throws<ArgumentException>(() => OpenAiCompatibleAssistantAdapter.Validate(rawSecret));
-        Assert.Equal(Profile(), OpenAiCompatibleAssistantAdapter.Validate(Profile()));
+        Assert.ThrowsExactly<ArgumentException>(() => OpenAiCompatibleAssistantAdapter.Validate(unsafeEndpoint));
+        Assert.ThrowsExactly<ArgumentException>(() => OpenAiCompatibleAssistantAdapter.Validate(rawSecret));
+        Assert.AreEqual(Profile(), OpenAiCompatibleAssistantAdapter.Validate(Profile()));
     }
 
     private static AssistantProviderCapabilities Capabilities() =>

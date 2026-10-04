@@ -23,29 +23,30 @@ using Microsoft.Extensions.Options;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class BootstrapCeremonyEndpointTests
 {
     private const string ValidRecoveryCode =
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
-    [Theory]
-    [InlineData("23505", true)]
-    [InlineData("40001", true)]
-    [InlineData("40P01", true)]
-    [InlineData("08006", false)]
-    [InlineData(null, false)]
+    [TestMethod]
+    [DataRow("23505", true)]
+    [DataRow("40001", true)]
+    [DataRow("40P01", true)]
+    [DataRow("08006", false)]
+    [DataRow(null, false)]
     public void DatabaseConflictFilterDoesNotMaskOutages(
         string? sqlState,
         bool expected)
     {
         var exception = new TestDbException(sqlState);
 
-        Assert.Equal(
+        Assert.AreEqual(
             expected,
             LocalAccountEndpoints.IsExpectedDatabaseConflict(exception));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task WebApplicationFactoryUsesProductionAntiforgeryHeader()
     {
         using var factory = new IdentityEndpointWebApplicationFactory();
@@ -90,12 +91,12 @@ public sealed class BootstrapCeremonyEndpointTests
         validRequest.Headers.Add("Origin", "https://localhost");
         using var valid = await client.SendAsync(validRequest);
 
-        Assert.Equal(HttpStatusCode.BadRequest, missing.StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, wrong.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, valid.StatusCode);
+        Assert.AreEqual(HttpStatusCode.BadRequest, missing.StatusCode);
+        Assert.AreEqual(HttpStatusCode.BadRequest, wrong.StatusCode);
+        Assert.AreEqual(HttpStatusCode.OK, valid.StatusCode);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task WebApplicationFactoryCoversEveryIdentityJsonMutation()
     {
         using var factory = new IdentityEndpointWebApplicationFactory();
@@ -151,7 +152,7 @@ public sealed class BootstrapCeremonyEndpointTests
             "/Account/Passkeys/RegistrationOptions",
             new LocalAccountEndpoints.RegistrationOptionsRequest("Laptop"),
             authenticatedToken);
-        Assert.Equal(
+        Assert.AreEqual(
             HttpStatusCode.BadRequest,
             stolenCookieRegistration.StatusCode);
         using var signedOut = await PostJsonWithTokenAsync(
@@ -159,7 +160,7 @@ public sealed class BootstrapCeremonyEndpointTests
             LocalAccountEndpoints.LogoutPath,
             body: null,
             authenticatedToken);
-        Assert.Equal(HttpStatusCode.Redirect, signedOut.StatusCode);
+        Assert.AreEqual(HttpStatusCode.Redirect, signedOut.StatusCode);
 
         token = await ReadPageAntiforgeryTokenAsync(
             client,
@@ -211,8 +212,8 @@ public sealed class BootstrapCeremonyEndpointTests
         registrationOptionsResponse.EnsureSuccessStatusCode();
         var registrationOptions = (await registrationOptionsResponse.Content
             .ReadFromJsonAsync<CreationOptions>())!;
-        Assert.Equal("Local owner", registrationOptions.User.DisplayName);
-        Assert.NotEqual("Laptop", registrationOptions.User.DisplayName);
+        Assert.AreEqual("Local owner", registrationOptions.User.DisplayName);
+        Assert.AreNotEqual("Laptop", registrationOptions.User.DisplayName);
         var registrationComplete =
             new LocalAccountEndpoints.RegistrationCompleteRequest(
                 "Laptop",
@@ -239,7 +240,7 @@ public sealed class BootstrapCeremonyEndpointTests
             "/Account/Passkeys/Revoke",
             revokeRequest,
             authenticatedToken);
-        Assert.Equal(HttpStatusCode.BadRequest, consumedMarkerRevoke.StatusCode);
+        Assert.AreEqual(HttpStatusCode.BadRequest, consumedMarkerRevoke.StatusCode);
 
         using var reauthOptionsResponse = await PostJsonWithTokenAsync(
             client,
@@ -284,7 +285,7 @@ public sealed class BootstrapCeremonyEndpointTests
             new LocalAccountEndpoints.RecoveryOptionsRequest(
                 new string('X', LocalIdentityOperations.RecoveryCodeMaximumLength + 1)),
             authenticatedToken);
-        Assert.Equal(HttpStatusCode.BadRequest, oversizedRecovery.StatusCode);
+        Assert.AreEqual(HttpStatusCode.BadRequest, oversizedRecovery.StatusCode);
         await AssertAntiforgeryRejectedAsync(
             client,
             LocalIdentityNetworkSecurity.RecoveryOptionsPath,
@@ -314,7 +315,7 @@ public sealed class BootstrapCeremonyEndpointTests
         recovered.EnsureSuccessStatusCode();
     }
 
-    [Fact]
+    [TestMethod]
     public async Task BootstrapSignOutAndDiscoverableSignInResolveReservedUser()
     {
         await using var host = await BootstrapEndpointHost.StartAsync();
@@ -323,16 +324,16 @@ public sealed class BootstrapCeremonyEndpointTests
         var reservedUserId = options.User.Id;
 
         using var completed = await host.CompleteBootstrapAsync(options, token);
-        Assert.Equal(HttpStatusCode.OK, completed.StatusCode);
-        Assert.Equal(reservedUserId, host.Store.User?.Id.ToString("D"));
+        Assert.AreEqual(HttpStatusCode.OK, completed.StatusCode);
+        Assert.AreEqual(reservedUserId, host.Store.User?.Id.ToString("D"));
 
         var authenticatedToken = await host.GetAntiforgeryTokenAsync();
         using var signedOut = await host.PostAsync(
             LocalAccountEndpoints.LogoutPath,
             content: null,
             authenticatedToken);
-        Assert.Equal(HttpStatusCode.Redirect, signedOut.StatusCode);
-        Assert.Equal(HttpStatusCode.Redirect, await host.GetWhoAmIStatusAsync());
+        Assert.AreEqual(HttpStatusCode.Redirect, signedOut.StatusCode);
+        Assert.AreEqual(HttpStatusCode.Redirect, await host.GetWhoAmIStatusAsync());
 
         var anonymousToken = await host.GetAntiforgeryTokenAsync();
         var assertion = await host.BeginSignInAsync(anonymousToken);
@@ -341,12 +342,12 @@ public sealed class BootstrapCeremonyEndpointTests
             reservedUserId,
             anonymousToken);
 
-        Assert.Equal(HttpStatusCode.OK, signedIn.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, await host.GetWhoAmIStatusAsync());
-        Assert.Equal(reservedUserId, host.Handler.LastResolvedUserId);
+        Assert.AreEqual(HttpStatusCode.OK, signedIn.StatusCode);
+        Assert.AreEqual(HttpStatusCode.OK, await host.GetWhoAmIStatusAsync());
+        Assert.AreEqual(reservedUserId, host.Handler.LastResolvedUserId);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task TamperedBootstrapTicketFailsBeforePersistence()
     {
         await using var host = await BootstrapEndpointHost.StartAsync();
@@ -358,11 +359,11 @@ public sealed class BootstrapCeremonyEndpointTests
 
         using var response = await host.CompleteBootstrapAsync(options, token);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Null(host.Store.User);
+        Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.IsNull(host.Store.User);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ExpiredBootstrapTicketFailsBeforePersistence()
     {
         await using var host = await BootstrapEndpointHost.StartAsync();
@@ -372,7 +373,7 @@ public sealed class BootstrapCeremonyEndpointTests
             BootstrapEndpointHost.BootstrapCookieName);
         var protector = host.Application.Services
             .GetRequiredService<BootstrapCeremonyTicketProtector>();
-        Assert.True(protector.TryUnprotect(protectedTicket, out var ticket));
+        Assert.IsTrue(protector.TryUnprotect(protectedTicket, out var ticket));
         host.Cookies.Set(
             BootstrapEndpointHost.BootstrapCookieName,
             protector.ProtectUntil(
@@ -381,11 +382,11 @@ public sealed class BootstrapCeremonyEndpointTests
 
         using var response = await host.CompleteBootstrapAsync(options, token);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Null(host.Store.User);
+        Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.IsNull(host.Store.User);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task MismatchedTicketUserEntityFailsBeforePersistence()
     {
         await using var host = await BootstrapEndpointHost.StartAsync();
@@ -395,7 +396,7 @@ public sealed class BootstrapCeremonyEndpointTests
             BootstrapEndpointHost.BootstrapCookieName);
         var protector = host.Application.Services
             .GetRequiredService<BootstrapCeremonyTicketProtector>();
-        Assert.True(protector.TryUnprotect(protectedTicket, out var ticket));
+        Assert.IsTrue(protector.TryUnprotect(protectedTicket, out var ticket));
         host.Cookies.Set(
             BootstrapEndpointHost.BootstrapCookieName,
             protector.Protect(ticket! with
@@ -405,11 +406,11 @@ public sealed class BootstrapCeremonyEndpointTests
 
         using var response = await host.CompleteBootstrapAsync(options, token);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Null(host.Store.User);
+        Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.IsNull(host.Store.User);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task MismatchedTicketChallengeFailsBeforePersistence()
     {
         await using var host = await BootstrapEndpointHost.StartAsync();
@@ -419,7 +420,7 @@ public sealed class BootstrapCeremonyEndpointTests
             BootstrapEndpointHost.BootstrapCookieName);
         var protector = host.Application.Services
             .GetRequiredService<BootstrapCeremonyTicketProtector>();
-        Assert.True(protector.TryUnprotect(protectedTicket, out var ticket));
+        Assert.IsTrue(protector.TryUnprotect(protectedTicket, out var ticket));
         host.Cookies.Set(
             BootstrapEndpointHost.BootstrapCookieName,
             protector.Protect(ticket! with
@@ -429,11 +430,11 @@ public sealed class BootstrapCeremonyEndpointTests
 
         using var response = await host.CompleteBootstrapAsync(options, token);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Null(host.Store.User);
+        Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.IsNull(host.Store.User);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ReplayedBootstrapTicketAndAttestationStateFailClosed()
     {
         await using var host = await BootstrapEndpointHost.StartAsync();
@@ -442,21 +443,21 @@ public sealed class BootstrapCeremonyEndpointTests
         var ceremonyCookies = host.Cookies.Snapshot();
 
         using var first = await host.CompleteBootstrapAsync(options, token);
-        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.AreEqual(HttpStatusCode.OK, first.StatusCode);
         host.Cookies.Restore(ceremonyCookies);
 
         using var replay = await host.CompleteBootstrapAsync(options, token);
 
-        Assert.Equal(HttpStatusCode.BadRequest, replay.StatusCode);
-        Assert.Equal(1, host.Bootstrap.CompletionCount);
+        Assert.AreEqual(HttpStatusCode.BadRequest, replay.StatusCode);
+        Assert.AreEqual(1, host.Bootstrap.CompletionCount);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task RecentAuthenticationRejectsInvalidProtectedMarkers()
     {
         await using var host = await BootstrapEndpointHost.StartAsync();
         var token = await host.AuthenticateWithPasskeyAsync();
-        var user = Assert.IsType<AspNetIdentityUser>(host.Store.User);
+        var user = Assert.IsInstanceOfType<AspNetIdentityUser>(host.Store.User);
         var validMarker = host.Cookies.Get(
             RecentPasskeyAuthentication.CookieName);
         using var scope = host.Application.Services.CreateScope();
@@ -466,7 +467,7 @@ public sealed class BootstrapCeremonyEndpointTests
         host.Cookies.Mutate(
             RecentPasskeyAuthentication.CookieName,
             value => value[..^1] + (value[^1] == 'A' ? "B" : "A"));
-        Assert.Equal(
+        Assert.AreEqual(
             HttpStatusCode.BadRequest,
             await host.GetRegistrationOptionsStatusAsync(token));
 
@@ -500,7 +501,7 @@ public sealed class BootstrapCeremonyEndpointTests
             host.Cookies.Set(
                 RecentPasskeyAuthentication.CookieName,
                 recent.ProtectUntil(ticket, expiration));
-            Assert.Equal(
+            Assert.AreEqual(
                 HttpStatusCode.BadRequest,
                 await host.GetRegistrationOptionsStatusAsync(token));
         }
@@ -514,14 +515,14 @@ public sealed class BootstrapCeremonyEndpointTests
                     RecentPasskeyAuthentication.Audience,
                     nonce),
                 DateTimeOffset.UtcNow.AddSeconds(-1)));
-        Assert.Equal(
+        Assert.AreEqual(
             HttpStatusCode.BadRequest,
             await host.GetRegistrationOptionsStatusAsync(token));
 
         host.Cookies.Set(
             RecentPasskeyAuthentication.CookieName,
             validMarker);
-        Assert.Equal(
+        Assert.AreEqual(
             HttpStatusCode.OK,
             await host.GetRegistrationOptionsStatusAsync(token));
         var firstContext = CreateMarkerContext(validMarker);
@@ -529,7 +530,7 @@ public sealed class BootstrapCeremonyEndpointTests
         var consumeResults = await Task.WhenAll(
             recent.TryConsumeAsync(firstContext, user),
             recent.TryConsumeAsync(secondContext, user));
-        Assert.Single(consumeResults, consumed => consumed);
+        Assert.AreEqual(1, consumeResults.Count(consumed => consumed));
         CryptographicOperations.ZeroMemory(nonceBytes);
     }
 
@@ -565,7 +566,7 @@ public sealed class BootstrapCeremonyEndpointTests
             html,
             "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"",
             System.Text.RegularExpressions.RegexOptions.CultureInvariant);
-        Assert.True(match.Success);
+        Assert.IsTrue(match.Success);
         return WebUtility.HtmlDecode(match.Groups[1].Value);
     }
 
@@ -584,8 +585,8 @@ public sealed class BootstrapCeremonyEndpointTests
             path,
             body,
             "wrong-token");
-        Assert.Equal(HttpStatusCode.BadRequest, missing.StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, wrong.StatusCode);
+        Assert.AreEqual(HttpStatusCode.BadRequest, missing.StatusCode);
+        Assert.AreEqual(HttpStatusCode.BadRequest, wrong.StatusCode);
     }
 
     private static async Task<HttpResponseMessage> PostJsonWithTokenAsync(
@@ -744,7 +745,7 @@ public sealed class BootstrapCeremonyEndpointTests
                        content: null,
                        token))
             {
-                Assert.Equal(HttpStatusCode.Redirect, signedOut.StatusCode);
+                Assert.AreEqual(HttpStatusCode.Redirect, signedOut.StatusCode);
             }
 
             token = await GetAntiforgeryTokenAsync();

@@ -14,9 +14,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class OperationsContractTests
 {
-    [Fact]
+    [TestMethod]
     public void TelemetryProcessorRetainsOnlyAllowedAttributes()
     {
         using var activity = new Activity("request").Start();
@@ -27,13 +28,13 @@ public sealed class OperationsContractTests
 
         new ContentSuppressingActivityProcessor().OnEnd(activity);
 
-        Assert.Equal("GET", activity.GetTagItem("http.request.method"));
-        Assert.Null(activity.GetTagItem("task"));
-        Assert.Null(activity.GetTagItem("user.id"));
-        Assert.Null(activity.GetTagItem("custom.attribute"));
+        Assert.AreEqual("GET", activity.GetTagItem("http.request.method"));
+        Assert.IsNull(activity.GetTagItem("task"));
+        Assert.IsNull(activity.GetTagItem("user.id"));
+        Assert.IsNull(activity.GetTagItem("custom.attribute"));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ExportVerifierAcceptsCompleteCleanArchive()
     {
         var files = CreateArtifacts();
@@ -44,12 +45,12 @@ public sealed class OperationsContractTests
             new CleanInstanceProbe(isClean: true),
             (path, _) => ValueTask.FromResult<Stream>(new MemoryStream(files[path])));
 
-        Assert.True(result.IsValid);
-        Assert.True(result.TargetIsClean);
-        Assert.Empty(result.Errors);
+        Assert.IsTrue(result.IsValid);
+        Assert.IsTrue(result.TargetIsClean);
+        Assert.IsEmpty(result.Errors);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ExportVerifierRejectsDirtyTargetAndMissingExclusions()
     {
         var files = CreateArtifacts();
@@ -61,12 +62,12 @@ public sealed class OperationsContractTests
             new CleanInstanceProbe(isClean: false),
             (path, _) => ValueTask.FromResult<Stream>(new MemoryStream(files[path])));
 
-        Assert.False(result.IsValid);
+        Assert.IsFalse(result.IsValid);
         Assert.Contains("target-not-clean", result.Errors);
         Assert.Contains("missing-required-exclusion", result.Errors);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ExportVerifierRejectsTamperingAndNonPortablePaths()
     {
         var files = CreateArtifacts();
@@ -86,12 +87,12 @@ public sealed class OperationsContractTests
             new CleanInstanceProbe(isClean: true),
             (path, _) => ValueTask.FromResult<Stream>(new MemoryStream(files[path])));
 
-        Assert.False(result.IsValid);
+        Assert.IsFalse(result.IsValid);
         Assert.Contains("checksum-mismatch:records.ndjson", result.Errors);
         Assert.Contains("invalid-artifact-path:..\\audit.ndjson", result.Errors);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ExportVerifierRejectsUnsupportedSemanticContractVersion()
     {
         var files = CreateArtifacts();
@@ -111,13 +112,13 @@ public sealed class OperationsContractTests
             new CleanInstanceProbe(isClean: true),
             (path, _) => ValueTask.FromResult<Stream>(new MemoryStream(files[path])));
 
-        Assert.False(result.IsValid);
+        Assert.IsFalse(result.IsValid);
         Assert.Contains(
             $"unsupported-artifact-contract-version:{semantic.Path}",
             result.Errors);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ExportVerifierRejectsDuplicateDataArea()
     {
         var files = CreateArtifacts();
@@ -137,11 +138,11 @@ public sealed class OperationsContractTests
             new CleanInstanceProbe(isClean: true),
             (path, _) => ValueTask.FromResult<Stream>(new MemoryStream(files[path])));
 
-        Assert.False(result.IsValid);
+        Assert.IsFalse(result.IsValid);
         Assert.Contains("duplicate-data-area", result.Errors);
     }
 
-    [Fact]
+    [TestMethod]
     public void PortabilityZipWriterStoresOverCompressibleEntriesWithinReaderLimit()
     {
         var content = Enumerable.Repeat((byte)'A', 64 * 1024).ToArray();
@@ -153,17 +154,17 @@ public sealed class OperationsContractTests
         var repeatedZipBytes = PostgreSqlApplicationPortability.CreateZip(files);
         try
         {
-            Assert.Equal(zipBytes, repeatedZipBytes);
+            CollectionAssert.AreEqual(zipBytes, repeatedZipBytes);
             using var input = new MemoryStream(zipBytes, writable: false);
             using var archive = new ZipArchive(input, ZipArchiveMode.Read);
-            var entry = Assert.Single(archive.Entries);
-            Assert.True(entry.Length <= entry.CompressedLength * 100);
+            var entry = Assert.ContainsSingle(archive.Entries);
+            Assert.IsTrue(entry.Length <= entry.CompressedLength * 100);
             using var expanded = new MemoryStream();
             using (var stream = entry.Open())
             {
                 stream.CopyTo(expanded);
             }
-            Assert.Equal(content, expanded.ToArray());
+            CollectionAssert.AreEqual(content, expanded.ToArray());
         }
         finally
         {
@@ -173,24 +174,24 @@ public sealed class OperationsContractTests
         }
     }
 
-    [Fact]
+    [TestMethod]
     public void PortabilityZipWriterRejectsReaderExpansionLimits()
     {
-        Assert.Throws<InvalidDataException>(() =>
+        Assert.ThrowsExactly<InvalidDataException>(() =>
             PostgreSqlApplicationPortability.ValidateExpandedArchiveLengths(
                 [PostgreSqlApplicationPortability.MaximumArtifactBytes + 1]));
-        Assert.Throws<InvalidDataException>(() =>
+        Assert.ThrowsExactly<InvalidDataException>(() =>
             PostgreSqlApplicationPortability.ValidateExpandedArchiveLengths(
                 Enumerable.Repeat(
                     PostgreSqlApplicationPortability.MaximumArtifactBytes,
                     5)));
     }
 
-    [Theory]
-    [InlineData("artifacts", "null")]
-    [InlineData("artifacts", "[null]")]
-    [InlineData("exclusions", "[null]")]
-    [InlineData("reauthorization", "[null]")]
+    [TestMethod]
+    [DataRow("artifacts", "null")]
+    [DataRow("artifacts", "[null]")]
+    [DataRow("exclusions", "[null]")]
+    [DataRow("reauthorization", "[null]")]
     public void PortabilityManifestRejectsNullRequiredValues(
         string property,
         string value)
@@ -205,7 +206,7 @@ public sealed class OperationsContractTests
             $"\"{property}\":{value}",
             StringComparison.Ordinal);
 
-        var exception = Assert.Throws<InvalidDataException>(() =>
+        var exception = Assert.ThrowsExactly<InvalidDataException>(() =>
             PostgreSqlApplicationPortability.ParseManifest(
                 PostgreSqlApplicationPortability.Canonicalize(
                     Encoding.UTF8.GetBytes(manifest))));
@@ -213,7 +214,7 @@ public sealed class OperationsContractTests
         Assert.Contains("null required value", exception.Message, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task PortabilityArchiveReaderEnforcesBoundOnOpenedHandle()
     {
         var path = Path.Join(
@@ -222,7 +223,7 @@ public sealed class OperationsContractTests
         await File.WriteAllBytesAsync(path, new byte[1025]);
         try
         {
-            await Assert.ThrowsAsync<InvalidDataException>(() =>
+            await Assert.ThrowsExactlyAsync<InvalidDataException>(() =>
                 PostgreSqlApplicationPortability.ReadBoundedFileAsync(
                     path,
                     1024,
@@ -234,7 +235,7 @@ public sealed class OperationsContractTests
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ProductionWebApplicationFactoryDoesNotExposePortabilityMutation()
     {
         using var factory = new ProductionWebApplicationFactory();
@@ -249,11 +250,11 @@ public sealed class OperationsContractTests
         })
         {
             using var response = await client.GetAsync(path);
-            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ReadinessRequiresWritableKeyState()
     {
         var path = Path.Combine(Path.GetTempPath(), $"andreja-{Guid.NewGuid():N}");
@@ -269,8 +270,8 @@ public sealed class OperationsContractTests
 
             var result = await check.CheckHealthAsync(new HealthCheckContext());
 
-            Assert.Equal(HealthStatus.Healthy, result.Status);
-            Assert.True(Directory.Exists(path));
+            Assert.AreEqual(HealthStatus.Healthy, result.Status);
+            Assert.IsTrue(Directory.Exists(path));
         }
         finally
         {
@@ -281,7 +282,7 @@ public sealed class OperationsContractTests
         }
     }
 
-    [Fact]
+    [TestMethod]
     public void DeploymentContractsArePinnedAndContentSafe()
     {
         var root = FindRepositoryRoot();
@@ -305,7 +306,7 @@ public sealed class OperationsContractTests
         Assert.DoesNotContain("POSTGRES_PASSWORD:", compose, StringComparison.Ordinal);
         Assert.Contains("POSTGRES_PASSWORD_FILE:", compose, StringComparison.Ordinal);
         Assert.Contains("USER $APP_UID", dockerfile, StringComparison.Ordinal);
-        Assert.Equal(2, dockerfile.Split("@sha256:", StringSplitOptions.None).Length - 1);
+        Assert.AreEqual(2, dockerfile.Split("@sha256:", StringSplitOptions.None).Length - 1);
         Assert.Contains(
             "org.opencontainers.image.licenses=\"Apache-2.0\"",
             dockerfile,
@@ -330,31 +331,31 @@ public sealed class OperationsContractTests
             StringComparison.Ordinal);
 
         using var document = JsonDocument.Parse(schema);
-        Assert.Equal(
+        Assert.AreEqual(
             "1",
             document.RootElement.GetProperty("properties")
                 .GetProperty("archiveVersion")
                 .GetProperty("const")
                 .GetString());
-        Assert.Equal(
+        Assert.AreEqual(
             Enum.GetValues<PortableDataArea>().Length,
             document.RootElement.GetProperty("properties")
                 .GetProperty("artifacts")
                 .GetProperty("minItems")
                 .GetInt32());
-        Assert.Equal(
+        Assert.AreEqual(
             Enum.GetValues<PortableDataArea>().Length,
             document.RootElement.GetProperty("properties")
                 .GetProperty("artifacts")
                 .GetProperty("maxItems")
                 .GetInt32());
-        Assert.Equal(
+        Assert.AreEqual(
             ApplicationExportContract.RequiredExclusions.Count,
             document.RootElement.GetProperty("properties")
                 .GetProperty("exclusions")
                 .GetProperty("minItems")
                 .GetInt32());
-        Assert.Equal(
+        Assert.AreEqual(
             ApplicationExportContract.RequiredExclusions.Count,
             document.RootElement.GetProperty("properties")
                 .GetProperty("exclusions")
@@ -365,10 +366,10 @@ public sealed class OperationsContractTests
         {
             Assert.Contains(exclusion, schema, StringComparison.Ordinal);
         }
-        Assert.Equal(
+        Assert.AreEqual(
             "1.0",
             ApplicationExportContract.RequiredContractVersions[PortableDataArea.Semantic]);
-        Assert.Equal(
+        Assert.AreEqual(
             "1.0",
             ApplicationExportContract.RequiredContractVersions[PortableDataArea.Provenance]);
     }

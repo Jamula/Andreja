@@ -4,9 +4,10 @@ using Microsoft.Extensions.Options;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class BootstrapTokenVerifierTests
 {
-    [Fact]
+    [TestMethod]
     public async Task ValidTokenMatchesWithFileWhitespace()
     {
         var token = RandomNumberGenerator.GetBytes(32);
@@ -18,7 +19,7 @@ public sealed class BootstrapTokenVerifierTests
 
             var verified = await verifier.VerifyAsync($"\t{encoded}\r\n");
 
-            Assert.True(verified);
+            Assert.IsTrue(verified);
         }
         finally
         {
@@ -27,7 +28,7 @@ public sealed class BootstrapTokenVerifierTests
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task InvalidTokenReturnsFalse()
     {
         var expected = RandomNumberGenerator.GetBytes(32);
@@ -37,8 +38,8 @@ public sealed class BootstrapTokenVerifierTests
         {
             var verifier = CreateVerifier(path);
 
-            Assert.False(await verifier.VerifyAsync(Convert.ToBase64String(supplied)));
-            Assert.False(await verifier.VerifyAsync("not-a-base64-secret"));
+            Assert.IsFalse(await verifier.VerifyAsync(Convert.ToBase64String(supplied)));
+            Assert.IsFalse(await verifier.VerifyAsync("not-a-base64-secret"));
         }
         finally
         {
@@ -48,7 +49,7 @@ public sealed class BootstrapTokenVerifierTests
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task MalformedFileDoesNotExposeContents()
     {
         const string secret = "not-base64-private-bootstrap-secret";
@@ -59,7 +60,7 @@ public sealed class BootstrapTokenVerifierTests
 
             var result = await verifier.VerifyAsync(Convert.ToBase64String(new byte[32]));
 
-            Assert.False(result);
+            Assert.IsFalse(result);
         }
         catch (Exception exception)
         {
@@ -72,7 +73,7 @@ public sealed class BootstrapTokenVerifierTests
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task OversizedFileExceptionDoesNotExposeContents()
     {
         var secret = new string('s', 4097);
@@ -81,7 +82,7 @@ public sealed class BootstrapTokenVerifierTests
         {
             var verifier = CreateVerifier(path);
 
-            var exception = await Assert.ThrowsAsync<InvalidDataException>(
+            var exception = await Assert.ThrowsExactlyAsync<InvalidDataException>(
                 async () => await verifier.VerifyAsync(Convert.ToBase64String(new byte[32])));
 
             Assert.DoesNotContain(secret, exception.ToString(), StringComparison.Ordinal);
@@ -93,7 +94,7 @@ public sealed class BootstrapTokenVerifierTests
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task PreCanceledVerificationDoesNotReadTokenFile()
     {
         var missingPath = Path.Combine(AppContext.BaseDirectory, $"{Guid.NewGuid():N}.token");
@@ -101,13 +102,13 @@ public sealed class BootstrapTokenVerifierTests
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+        await Assert.ThrowsAsync<OperationCanceledException>(
             async () => await verifier.VerifyAsync(
                 Convert.ToBase64String(new byte[32]),
                 cancellation.Token));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task UnixTokenFileRejectsGroupOrOtherPermissions()
     {
         if (OperatingSystem.IsWindows())
@@ -124,7 +125,7 @@ public sealed class BootstrapTokenVerifierTests
                 UnixFileMode.UserRead | UnixFileMode.GroupRead);
             var verifier = CreateVerifier(path);
 
-            await Assert.ThrowsAsync<InvalidDataException>(
+            await Assert.ThrowsExactlyAsync<InvalidDataException>(
                 async () => await verifier.VerifyAsync(
                     Convert.ToBase64String(token)));
         }
@@ -135,7 +136,7 @@ public sealed class BootstrapTokenVerifierTests
         }
     }
 
-    [Fact]
+    [TestMethod]
     public void SensitiveBufferZeroesOwnedBytesOnDisposal()
     {
         var bytes = Enumerable.Repeat((byte)0xA5, 64).ToArray();
@@ -143,8 +144,11 @@ public sealed class BootstrapTokenVerifierTests
 
         buffer.Dispose();
 
-        Assert.All(bytes, value => Assert.Equal(0, value));
-        Assert.Throws<ObjectDisposedException>(() => _ = buffer.Span);
+        foreach (var value in bytes)
+        {
+            Assert.AreEqual(0, value);
+        }
+        Assert.ThrowsExactly<ObjectDisposedException>(() => _ = buffer.Span);
     }
 
     private static BootstrapTokenVerifier CreateVerifier(string path) =>

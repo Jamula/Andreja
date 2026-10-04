@@ -71,9 +71,13 @@ dotnet build tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrat
 Run the deterministic unit and architecture suites:
 
 ```powershell
-dotnet test Andreja.slnx --configuration Debug --no-build
-dotnet test Andreja.slnx --configuration Release --no-build
+dotnet test --test-modules tests\Andreja.UnitTests\bin\Debug\net10.0\Andreja.UnitTests.dll --no-build
+dotnet test --test-modules tests\Andreja.ArchitectureTests\bin\Debug\net10.0\Andreja.ArchitectureTests.dll --no-build
+dotnet test --test-modules tests\Andreja.UnitTests\bin\Release\net10.0\Andreja.UnitTests.dll --no-build
+dotnet test --test-modules tests\Andreja.ArchitectureTests\bin\Release\net10.0\Andreja.ArchitectureTests.dll --no-build
 ```
+
+For an aggregate run, `dotnet test --solution Andreja.slnx` remains supported.
 
 Verify formatting, documentation, dependencies, operations, and supply-chain
 policy:
@@ -129,7 +133,7 @@ try {
     throw "Disposable PostgreSQL did not become ready."
   }
 
-  dotnet test tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj `
+  dotnet test --project tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj `
     --configuration Debug
   if ($LASTEXITCODE -ne 0) {
     throw "The live PostgreSQL integration suite failed."
