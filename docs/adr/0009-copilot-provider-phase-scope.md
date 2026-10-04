@@ -67,7 +67,7 @@ falsifiable, not that a live verdict has been recorded):
 |---|---|---|
 | Architecture | Documented | "Repository evidence" below; provider-neutral `IAssistantProvider`/`IAssistantSession` contracts; "Topology decision" in the qualification sequence |
 | Security/privacy | Documented | "Tenant/user isolation," "Prompt/tool/data exposure," "Authentication and credential custody," and "Runtime control channel" gate rows |
-| Legal/vendor terms | Documented | "Current external evidence" (Copilot product/OAuth/multi-tenancy/scaling/backend/persistence docs, rechecked 2026-08-26) and the "Legal, privacy, security, and abuse approval" gate row |
+| Legal/vendor terms | Documented | "Current external evidence" (agreement-routing source rechecked 2026-10-04; applicable agreement varies by purchase route) and the "Legal, privacy, security, and abuse approval" gate row |
 | FinOps | Documented | "Budgets and cost" gate row and the "Cost delta" section ($0 spend authorized by this ADR) |
 | Quality/evidence | Documented | "Tests and canaries" gate row and the "Qualification sequence" (toolchain spike -> gate packet -> synthetic canary -> user canary) |
 | Operations/support | Documented | "Availability, fallback, and offline," "Audit and provenance," and "Rollback and exit" gate rows |
@@ -144,11 +144,26 @@ The recommendation is:
 
 ### Current external evidence
 
-The following sources were rechecked on 2026-08-26:
+The SDK general-availability, OAuth/authentication, multi-tenancy, and
+agreement-routing sources below were rechecked on 2026-10-04. The scaling,
+backend, persistence, usage/billing, model-hosting, and acceptable-use details
+were last checked on 2026-08-26 and must be refreshed at their corresponding
+provider gates before activation. GitHub's Additional Products and Features
+terms identify 2026-08-27 as their effective date and route Copilot use to
+different agreements by purchase channel: directly purchased
+Business/Enterprise plans to the GitHub Generative AI Services Terms, Microsoft
+purchases to Microsoft Product Terms, and other Copilot use to Section J of
+the GitHub Terms of Service. This is evidence that the applicable agreement
+must be identified for the actual account and funding route; it is not a legal
+conclusion about Andreja's proposed use. Qualified counsel must review the
+then-current agreement before activation.
 
 - GitHub announced the Copilot SDK as generally available on 2026-06-02 with a
-  stable API and production support. The configured NuGet feed currently
-  exposes `GitHub.Copilot.SDK` 1.0.11 as its latest package.
+  stable API and production support. The earlier 2026-08-26 NuGet check listed
+  `GitHub.Copilot.SDK` 1.0.11; this is a dated snapshot, not a current-version
+  recommendation. The qualification must pin and recheck the compatible SDK
+  and CLI/runtime versions, support channel, license, and vulnerabilities when
+  the spike is authorized.
 - GitHub's OAuth guide says user OAuth requests use each user's Copilot
   subscription, each user needs an active subscription, and the application
   owns token storage, refresh, and expiry. GitHub's authentication guide also
@@ -344,4 +359,6 @@ too.
 - [Hosting of models for GitHub Copilot](https://docs.github.com/en/copilot/reference/ai-models/model-hosting)
 - [GitHub Acceptable Use Policies](https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies)
 - [GitHub Terms for Additional Products and Features](https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features)
+- [GitHub Terms of Service, Section J: AI Features, Training, and Your Data](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service#j-ai-features-training-and-your-data)
+- [GitHub Generative AI Services Terms](https://github.com/customer-terms/github-generative-ai-services-terms)
 - [`GitHub.Copilot.SDK` NuGet package](https://www.nuget.org/packages/GitHub.Copilot.SDK/)
