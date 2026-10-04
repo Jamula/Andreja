@@ -1,0 +1,5 @@
+### 2026-10-04T21-33-21: Use direct MTP module execution for warm service-free runs
+**By:** Data
+**What:** Use direct MTP module execution for warm service-free runs
+**References:** https://github.com/Jamula/Andreja/issues/112, README.md, docs/development.md
+**Why:** For issue #112, the hosted and documented warm service-free path builds Debug/Release first and executes the Unit and Architecture assemblies with `dotnet test --test-modules ... --no-build`; `dotnet test --solution` and `--project` remain supported for local aggregate/discovery use. This avoids repeating MSBuild evaluation in CI. The command was measured for five Debug and five Release full service-free runs with per-module TRX: every expected row passed, with pair medians 6.24s Debug and 5.63s Release versus xUnit baseline medians 8.03s and 9.06s. PostgreSQL live execution remains on the documented `--project` path; hosted CI does not claim a PostgreSQL runtime pass. This is a scoped runner-invocation decision only, not an ADR 0007 acceptance or product/architecture change.
