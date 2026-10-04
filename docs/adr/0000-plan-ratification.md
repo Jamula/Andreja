@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `703215be8e4f6343153ff554ee8566fe9ebb32c718e7d0234ef365f3c3bdbd64`
+- **Current proposed Plan SHA-256:** `2e27ede6e6a25c40b691b1692e84563c0d98f309f6fbc84ec7ae44b92ed658cb`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -464,7 +464,7 @@ not match the merged `docs/plan.md`.
 
 - **Tracking issue:** [#156](https://github.com/Jamula/Andreja/issues/156)
 - **Pull request:** [#177](https://github.com/Jamula/Andreja/pull/177)
-- **Plan SHA-256:** `703215be8e4f6343153ff554ee8566fe9ebb32c718e7d0234ef365f3c3bdbd64`
+- **Plan SHA-256:** `2e27ede6e6a25c40b691b1692e84563c0d98f309f6fbc84ec7ae44b92ed658cb`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed status-artifact inventory amendment; no
   re-ratification or approval is implied.
