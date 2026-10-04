@@ -70,6 +70,7 @@ jobs:
           --results-directory artifacts/${{ matrix.configuration }}/test-results/Andreja.UnitTests
 
       - id: test_architecture
+        if: ${{ always() && steps.build_solution.outcome == 'success' && !cancelled() }}
         name: Test architecture assembly
         run: >-
           dotnet test --test-modules tests/Andreja.ArchitectureTests/bin/${{ matrix.configuration }}/net10.0/Andreja.ArchitectureTests.dll
