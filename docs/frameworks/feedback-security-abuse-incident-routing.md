@@ -52,84 +52,132 @@ an Andreja tenant identity or enter a tenant data plane.
 
 ```mermaid
 flowchart LR
-  P[Public submitter] --> PS[Independent public/help origin]
-  PS --> PE[Tenant-less endpoint]
-  A[Authenticated submitter] --> AE[Andreja authenticated endpoint]
-  AE -->|tenant derived from validated session| AT[Tenant-scoped intake boundary]
-  PE --> V[Bounded validation, origin and abuse controls]
-  AT --> V
-  V --> BI[Bounded private incident ingress]
-  BI --> IC[Server-side incident classification]
-  IC -->|incident| IS[Restricted incident system]
-  IC -->|not incident| S[Privacy and secret/high-risk screen]
-  S -->|uncertain or unsafe| Z[Restricted quarantine]
-  S -->|ordinary| C[Private case store: envelope, consent, returnChannelRef]
-  S -->|receipt state| T[Tracking service: trackingRef and one-way verifier only]
-  S -->|optional follow-up only| CV[Separately encrypted contact vault]
-  C -->|after case, tracking and optional contact records are durable: feedbackId and content-free correlation metadata only| Q[Private feedback work queue]
-  Q --> W[Private worker]
-  W -->|feedbackId lookup only| C
-  Z --> ZS[Restricted quarantine store]
-  C --> TV[Least-privilege triage view]
-  TV -->|audited, purpose-bound lookup by returnChannelRef; masked by default| CV
-  CV -->|approved return-channel delivery only| RM[Restricted return-channel sender]
-  RM --> P
-  RM --> A
-  TV -->|sanitized draft + exact preview + separate consent| PUB[Restricted publisher]
-  PUB --> GH[Public GitHub artifact]
-  T --> RV[Safe status, recovery, reopen and verification route]
-  RV --> P
-  RV --> A
-  C --> BK[Encrypted, access-restricted backups]
-  T --> BK
-  ZS --> BK
-  IS --> IBK[Separately restricted incident backup]
-  CV --> CVBK[Separately encrypted, access-restricted contact-vault backup]
-  AD[Privileged administrators] -. audited break-glass only .-> C
-  AD -. audited break-glass only .-> T
-  AD -. separately authorized and audited .-> CV
-  AD -. separately authorized .-> IS
+  subgraph PUB["Separately deployed tenant-less public service"]
+    P[Public submitter] --> PS[Independent public/help origin]
+    PS --> PE[Public endpoint; rejects tenant and auth-principal fields]
+    PE --> PV[Public-only bounded validation, origin and abuse controls]
+    PV --> PI[Public-boundary incident ingress and classification]
+    PI -->|incident| PIS[Public restricted incident store]
+    PI -->|not incident| PSCR[Public-only privacy and secret/high-risk screen]
+    PSCR -->|uncertain or unsafe| PZ[Public restricted quarantine store]
+    PSCR -->|ordinary| PC[Public private case store: envelope, consent, returnChannelRef]
+    PSCR -->|receipt state| PT[Public tracking store: trackingRef and one-way verifier]
+    PSCR -->|optional follow-up only| PCV[Public separately encrypted contact vault]
+    PC -->|after records are durable: feedbackId and content-free correlation metadata only| PQ[Public feedback queue]
+    PQ --> PW[Public-boundary worker]
+    PW -->|feedbackId lookup only| PC
+    PC --> PTV[Public least-privilege triage view]
+    PTV -->|audited, purpose-bound lookup; masked by default| PCV
+    PCV -->|approved return-channel delivery only| PRM[Public restricted return-channel sender]
+    PRM --> P
+    PTV -->|sanitized draft, exact preview and separate consent| PPUB[Public restricted publisher]
+    PPUB --> GH[Public GitHub artifact]
+    PT --> PRV[Public safe status, recovery, reopen and verification route]
+    PRV --> P
+    PIS --> PIR[Public restricted incident review]
+    PC --> PBK[Public-boundary encrypted, access-restricted backups]
+    PT --> PBK
+    PZ --> PBK
+    PIS --> PIBK[Public restricted incident backup]
+    PCV --> PCVBK[Public separately encrypted contact-vault backup]
+    PAD[Public-service administrators] -. separately authorized break-glass .-> PC
+    PAD -. separately authorized break-glass .-> PT
+    PAD -. separately authorized .-> PCV
+    PAD -. separately authorized .-> PIS
+  end
+
+  subgraph AUTH["Authenticated Andreja tenant data plane"]
+    A[Authenticated submitter] --> AE[Andreja authenticated endpoint]
+    AE -->|validate session, derive tenant and authorize action| AA[Authenticated authorization boundary]
+    AA --> AV[Tenant-bound validation, origin and abuse controls]
+    AV --> AI[Authenticated-boundary incident ingress and classification]
+    AI -->|incident| AIS[Authenticated restricted incident store]
+    AI -->|not incident| ASCR[Authenticated-only privacy and secret/high-risk screen]
+    ASCR -->|uncertain or unsafe| AZ[Authenticated restricted quarantine store]
+    ASCR -->|ordinary| AC[Tenant-scoped private case store]
+    ASCR -->|receipt state| AT[Tenant-scoped tracking store]
+    ASCR -->|optional follow-up only| ACV[Authenticated separately protected contact vault]
+    AC -->|after records are durable: feedbackId and content-free correlation metadata only| AQ[Authenticated feedback queue]
+    AQ --> AW[Authenticated-boundary worker]
+    AW -->|authorized feedbackId lookup only| AC
+    AC --> ATV[Tenant-authorized triage view]
+    ATV -->|audited lookup by returnChannelRef; masked by default| ACV
+    ACV -->|approved return-channel delivery only| ARM[Authenticated restricted return-channel sender]
+    ARM --> A
+    ATV --> APUB[Authenticated restricted publisher]
+    APUB --> GH
+    AT --> ARV[Tenant-authorized status and recovery route]
+    ARV --> A
+    AIS --> AIR[Authenticated restricted incident review]
+    AC --> ABK[Authenticated-boundary encrypted, access-restricted backups]
+    AT --> ABK
+    AZ --> ABK
+    AIS --> AIBK[Authenticated restricted incident backup]
+    ACV --> ACVBK[Authenticated separately encrypted contact-vault backup]
+    AAD[Authenticated-plane administrators] -. separately authorized break-glass .-> AC
+    AAD -. separately authorized break-glass .-> AT
+    AAD -. separately authorized .-> ACV
+    AAD -. separately authorized .-> AIS
+  end
+
+  PIS -.->|opaque incidentRef and source class only; no content, tenant ID or authority| IN[Restricted incident-owner alert]
+  AIS -.->|opaque incidentRef and source class only; no content or authority| IN
 ```
 
 ### Boundary invariants
 
 1. The public origin has no Andreja app cookie, user token, tenant lookup, or
-   path to tenant data. The public endpoint rejects tenant identifiers rather
-   than trusting, accepting, or partitioning by them.
+   path to tenant data. It must not accept, generate, infer, look up, or
+   partition by any tenant identifier. The separately deployed public endpoint
+   rejects the entire request if it contains a tenant identifier or
+   authenticated-user principal field; it does not ignore the field and
+   continue processing.
 2. An authenticated request derives its tenant only from a validated server
    session. Every read and mutation authorizes both tenant and record ownership
-   in the service/data boundary; a client-supplied tenant or record ID is never
-   authorization.
-3. `sourceChannel` and incident classification are assigned or verified by the
-   server. Incident submissions pass through bounded validation, origin and
-   abuse controls and the bounded private incident ingress before
-   classification; authenticated submissions originate only after validated
-   session and tenant-boundary checks. Client fields cannot route an incident
-   into ordinary triage or authorize publication.
-4. Queue and provider metadata contain only internal random IDs and
+   after that authorization boundary; a client-supplied tenant or record ID
+   never grants authorization or selects a tenant.
+3. Public and authenticated intake are separate deployments with
+   boundary-specific validation, incident ingress, case/tracking/contact/
+   quarantine stores, queues, workers, credentials, and access roles. There is
+   no shared service identity, datastore, queue, or internal intake worker. The
+   public service identity has no network route or credential to the
+   authenticated tenant data plane.
+4. The only cross-boundary incident handoff is an explicitly one-way,
+   content-free alert to restricted incident owners containing an opaque
+   `incidentRef` and source class only. It carries no report payload, tenant ID,
+   credential, or read/write capability; incident evidence stays in its
+   source-boundary store and is accessed only through that boundary's
+   separately authorized incident-review path.
+5. `sourceChannel` and incident classification are assigned or verified by
+   the server. Public incident submissions enter only public-boundary
+   validation and incident ingress; authenticated incident submissions enter
+   only after validated session and tenant authorization. Client fields cannot
+   route an incident into ordinary triage or authorize publication.
+6. Queue and provider metadata contain only internal random IDs and
    content-free correlation data. Case text, contact destinations, receipt
    secrets, tenant IDs, incident detail, and screening excerpts do not enter
    logs, traces, metrics, alerts, email metadata, analytics, or public systems.
-5. Raw return destinations exist only in the separately encrypted contact
+7. Raw return destinations exist only in the separately encrypted contact
    vault; ordinary case records contain only `returnChannelRef`. Lookup is
    purpose-bound and access-logged, triage displays a masked destination by
    default, and the raw destination is released only for an approved
    return-channel send. The contact vault and its separately encrypted,
    access-restricted backups have distinct least-privilege access and inherit
    deletion/hold rules; restore must not revive a deleted destination. The
-   contact vault, tracking verifier store, ordinary case store, quarantine,
-   incident system, and backups have distinct least-privilege roles and
-   deletion/hold propagation. Ordinary triage does not browse raw queues,
-   databases, backups, or incident evidence.
-6. The publisher can read only an approved sanitized draft and its exact
+   public and authenticated contact vaults, tracking stores, case stores,
+   quarantines, incident stores, queues, and backups have boundary-specific
+   least-privilege roles and deletion/hold propagation. Ordinary triage does
+   not browse raw queues, databases, backups, or incident evidence.
+8. The publisher can read only an approved sanitized draft and its exact
    consented version. Security/privacy-classified records, secret detections,
    and incident records are not publishable.
-7. Administrators are a separate trust boundary. Administrative access is
-   least-privileged, time-bounded where supported, access-logged, reviewed, and
-   cannot silently bypass tenant, incident, retention, or publication policy.
-   Host/root/key custody risks remain even when application authorization is
-   correct.
-8. Backups, replicas, exports, quarantines, and dead-letter stores inherit the
+9. Administrators are a separate trust boundary. Public-service and
+   authenticated-plane administrative identities are independently
+   authorized, least-privileged, time-bounded where supported, access-logged,
+   reviewed, and cannot silently bypass tenant, incident, retention, or
+   publication policy. Host/root/key custody risks remain even when
+   application authorization is correct.
+10. Backups, replicas, exports, quarantines, and dead-letter stores inherit the
    record classification, access restrictions, retention, deletion, and scoped
    hold rules. Restoring a backup must not revive a revoked receipt verifier or
    deleted record.
@@ -165,7 +213,7 @@ are proposals in the #155 privacy package, not approved schedules.
 | Secret, credential, personal-data, threat, and high-risk-content screen | Tuvok; Deanna Troi privacy; Guinan triage | Use allow-listed fields and detectors as a screening signal, never as proof that a payload is safe. Any suspected secret, vulnerability, cross-tenant disclosure, or personal-data incident is restricted and routed privately, not ordinary spam. Detector scores/cutoffs need corpus-free synthetic tests and an approved threshold; none is evidenced. | Do not copy matched snippets into logs or reason codes. #155 proposes quarantined submissions for 30 days from quarantine; escalation transfers only a minimized subset to a restricted incident record. Approval and hold rules remain blockers. | Human restricted review; private appeal/clarification with no sensitive echo. Offer accessible manual route. A suspected incident must not be rejected solely as spam or made public to appeal. | No paid scanning/provider use. Bound CPU/memory and per-request work before activation; no measured ceiling or cost data is available. | Quarantine uncertain content; if restricted review is unavailable, hold it outside ordinary triage and stop accepting affected content rather than auto-release or silently drop it. |
 | Deduplication, burst detection, and idempotency | Guinan; Deanna Troi privacy; Data tests | Screen before dedupe and partition candidate sets before similarity lookup. `PublicSite` searches only tenant-less public cases and sanitized public GitHub issues allowed by the framework. `AuthenticatedApp` searches only active/recent feedback authorized within the tenant derived from the validated session; exclude public, repository, and all other-tenant candidates. Never compare public and authenticated submissions or authenticated records across tenants. Tenant context is an authorization/query partition only, not a similarity key, score feature, or input. Within the selected set, compare only approved sanitized category/surface/version/outcome/error fields; no contact, IP, tenant ID, excluded content, or cross-boundary private identifiers. Similarity never auto-merges. Enforce one state transition per idempotency key. | Keep only the minimized relationship key and result under the approved case retention schedule; #155's schedule is proposed, not approved. Do not retain raw duplicate payloads for matching. | Guinan confirms candidate matches; reporter retains an independent receipt/status path and may appeal a mistaken duplicate. Provide an accountless accessible path. | Bound candidate comparisons/index work per request and total storage; no numeric ceiling or cost evidence exists. | On index/lookup failure, do not auto-declare duplicate or lose the new accepted record; preserve it privately for manual review or stop intake before acceptance. |
 | Queue, quarantine, dead-letter, retry, and backpressure | Jett Reno; Quark cost; Data tests | Bound queue depth, item bytes, retry count/backoff, dead-letter size/age, and quarantine capacity; alert and stop at explicit measured ceilings. None of the required numeric ceilings, SLOs, or cost cap is approved. | Apply the source record's approved classification and retention; #155 proposes 30-day quarantine and retention for escalated abuse evidence as above. Backup/dead-letter purge and hold propagation must be exercised. | Manual restricted review and private appeal; no automatic deletion of accepted records as a capacity shortcut. | No provisioning or spend; hard resource and cost ceiling must be approved before service selection/activation. | Acknowledge only after durable acceptance. Backpressure before acceptance returns a uniform safe unavailable response; accepted items stay durable and visible to authorized operators. If incident capacity fails, suspend ordinary intake or provide a tested alternate private route. |
-| Receipt secret, status, recovery, rotation, CSRF, and replay protection | Tuvok; Jett Reno implementation; Data tests | Generate at least 128 bits of CSPRNG entropy (recommend 256 bits); show raw secret once; persist only a one-way verifier. Never put it in URL, history, referrer, logs, traces, metrics, alerts, queues, backups, or provider metadata. Require origin validation, browser CSRF protection, nonce-bound/single-use replay protection, and idempotency for every state change. CAS/transactional rotation must leave exactly one prior credential valid on failure and only one credential valid after success. | Store only verifier and strictly necessary expiry/throttle/recovery/revocation metadata; use #155's proposed tracking expiry (180 days after closure) only after Cyrus approves it. Minimize security event records per the proposed, unapproved abuse schedule. | Recovery requires approved proof or verified return channel; uniform response before proof, new secret after proof, old verifier atomically revoked. Lost receipt has an accountless accessible private route; appeal does not reveal record existence. | No external spend. Bound cryptographic work and throttling storage from synthetic evidence; key custody/rotation and unit-cost evidence remain open. | If proof, verifier store, key, nonce, or atomic rotation is unavailable, deny the mutation without invalidating the last valid credential; preserve safe read-only behavior only if independently authorized. |
+| Receipt secret, status, recovery, rotation, CSRF, and replay protection | Tuvok; Jett Reno implementation; Data tests | Generate at least 128 bits of CSPRNG entropy (recommend 256 bits); show raw secret once; persist only a one-way verifier. Never put it in URL, history, referrer, logs, traces, metrics, alerts, queues, backups, or provider metadata. Require origin validation, browser CSRF protection, nonce-bound/single-use replay protection, and idempotency for every state change. A client-held candidate secret and idempotency key make rotation retry-safe: atomically swap the verifier and revoke the old verifier, while recording a non-secret completion marker bound to the new verifier generation. | Store only the active verifier and strictly necessary expiry/throttle/recovery/revocation metadata plus a non-secret rotation idempotency marker for its approved retry window; use #155's proposed tracking expiry (180 days after closure) only after Cyrus approves it. Minimize security event records per the proposed, unapproved abuse schedule. | Recovery requires approved proof or verified return channel; uniform response before proof. If client state is lost after a committed swap, use the approved recovery route; do not restore the revoked verifier. Lost receipt has an accountless accessible private route; appeal does not reveal record existence. | No external spend. Bound cryptographic work and throttling storage from synthetic evidence; key custody/rotation and unit-cost evidence remain open. | A pre-commit failure leaves the old verifier valid. After commit, only the candidate verifier is valid; retry with the same key and candidate returns the completion response without another swap. A different candidate with that key is rejected. If proof, verifier store, key, nonce, or atomic rotation is unavailable, deny the mutation; preserve safe read-only behavior only if independently authorized. |
 | Incident classification, private route, and public publication guard | Tuvok; Deanna Troi; Guinan; Jett Reno | Any suspected vulnerability, secret exposure, unauthorized cross-tenant access, or personal-data incident exits ordinary triage. No publication, standard outbound email, or public issue. Validate the private route with safe synthetic reports before exposure. `security.txt` and verified private vulnerability/data-incident routes are pre-activation gates. | Preserve only minimized evidence in the separately approved restricted incident record and for its approved schedule; no schedule/hold authority is inferred from issue closure. | Acknowledge without detail; provide an accessible private alternative and safe appeal/contact path. Never ask for sensitive evidence in public. | No incident vendor/account/spend authorized; incident processing and response capacity must fit a separately approved ceiling. | If the private route is unavailable, disable intake/publication and use only a pre-approved private alternative. Never fall back to GitHub public issues or ordinary support. |
 | Attachments | Tuvok; Guinan; Data | Disabled in v1. Reject before durable storage; enabling requires a separate approved type/size allow-list, scanning, quarantine, accessibility, consent, and retention package. | No stored attachment content; verify failed uploads leave no durable bytes. | Provide text-only accessible reporting and an approved private alternative; do not make attachments necessary to report a vulnerability. | No scanning/proxy/storage spend authorized. | Reject uploads safely; do not silently accept or retain them when scanners or quarantine are unavailable. |
 
@@ -196,12 +244,26 @@ are proposals in the #155 privacy package, not approved schedules.
    validation. Bind replay nonces to the action/session and consume them
    atomically. Idempotency prevents duplicate transitions but cannot authorize
    an action.
-7. Rotation is atomic: install the new verifier and revoke the old verifier in
-   the same transaction/CAS commit. Return the new raw secret only after that
-   commit. A failed transaction leaves exactly the prior credential valid;
-   concurrent rotations have one committed winner, and no successful response
-   may leave two valid secrets.
-8. Use generic, non-enumerating outcomes for accepted, quarantined, rejected,
+7. For rotation, the client generates and holds a candidate secret and a
+   unique idempotency key until it receives a definitive response. The server
+   atomically replaces the old verifier with the candidate's one-way verifier,
+   revokes the old verifier, and records a non-secret completion marker bound
+   to the idempotency key and new verifier generation in one transaction/CAS
+   commit. No raw or recoverable candidate secret is persisted.
+8. Return the candidate secret only after commit. If the response is lost
+   after commit, the client retries with the same idempotency key and same
+   candidate secret; the server verifies the candidate against the active
+   verifier and the completion marker, then acknowledges completion without
+   another swap. The client already holds the candidate; the server does not
+   persist or reconstruct it. The idempotency key alone never authorizes a
+   retry; reuse of that key with a different candidate is rejected without
+   mutation.
+   A pre-commit failure leaves the old verifier valid; after commit only the
+   candidate verifier is valid, even if the response was lost. If the client
+   loses its candidate after commit, it must use the approved recovery route.
+   Concurrent rotations have one committed winner and never leave two active
+   credentials.
+9. Use generic, non-enumerating outcomes for accepted, quarantined, rejected,
    duplicate, missing, and incident cases; never reflect prohibited content.
    Bound response timing classes and avoid status differences that reveal
    screening, record, or incident existence.
@@ -233,12 +295,12 @@ credential, prompt, or incident content.
 
 | Scenario | Required result |
 | --- | --- |
-| Public request supplies a tenant ID, tenant key, or authenticated-user field | Reject/ignore it at the public boundary; no tenant lookup, tenant partition, or tenant-data read/write occurs. |
+| Public request supplies any tenant identifier, tenant key, `tenantRef`, or authenticated-user/principal field | Reject the entire request at the public boundary, even if the field is null or empty; no tenant lookup, partition, storage, queueing, or authenticated data-plane call occurs. |
 | Authenticated session from tenant A accesses or mutates tenant B's case, or one record's receipt/session is used against another | Deny; no data, status, contact, dedupe, or mutation crosses records or tenants. Verify every read and mutation path. |
 | Public tenant-less record ID, cookie, receipt, or correlation value is replayed against authenticated or incident service | Deny; no trust or credential is shared across those boundaries. |
 | Guessed, collided, missing, duplicate, stale, revoked, expired, and valid-but-unproved references are queried | No record-existence, category, duplicate, incident, or tenant signal before proof; all pre-proof results satisfy the same outward response contract. Collision insertion retries safely without aliasing a record. |
 | Wrong, stale, revoked, replayed, or concurrently used secret/nonce; CSRF request; hostile or missing `Origin` | Deny state change; no secret or sensitive detail in response; no duplicate transition. |
-| Recovery, rotation, storage failure, process crash, and two concurrent rotations | Recovery requires approved proof, issues a new secret, and invalidates old verifier atomically. Failure leaves exactly the previously valid credential; concurrent success leaves only one valid credential. |
+| Recovery, rotation, storage failure, process crash before/after commit, and two concurrent rotations | A pre-commit failure leaves the old verifier valid. A post-commit response loss leaves only the candidate verifier valid; retry with the same idempotency key and same client-held candidate returns the completion response without another swap, while a different candidate with that key is rejected. If client state is lost after commit, use the approved recovery route. Concurrent CAS rotations have one winner and never leave two active credentials. |
 | Malformed, oversized, slow, burst, concurrent, duplicate, and high-cost submissions | Enforced measured bounds hold before expensive work; accepted data is durable before success; no silent loss, unbounded retry, or unbounded dead-letter growth. |
 | Secret/PII/incident detector match, uncertain result, or false positive | No match excerpt in logs or ordinary triage; route to restricted review; appeal is private, accessible, and does not reveal a record to an unproved requester. |
 | Deduplication candidate lookup for public and authenticated submissions, including authenticated tenants A and B | Public submissions never compare with authenticated candidates; an authenticated session searches only its validated tenant's authorized candidates. No out-of-scope candidate reaches similarity evaluation; tenant context is used only to partition/authorize lookup and is absent from the similarity key. |
