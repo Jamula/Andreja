@@ -239,3 +239,9 @@ This is a security verdict only. It does not declare legal compliance and does n
 **By:** Cyrus Jamula (via Copilot)
 **What:** Prefer GPT-family models over Claude-family models when selecting agent models, including for Squad task spawns.
 **Why:** GPT-family models are considered less expensive than Claude-family models.
+
+### 2026-10-04T12:29:40.900-07:00: Branch cleanup scope and archival safety gates
+**By:** Picard (Retrospective facilitator); accepted by Squad Coordinator
+**What:** (1) Before deleting or detaching branches, refresh remote refs and verify each candidate's tip, unique commits, upstream, live PR state, and worktree status. Treat the user-approved worktree list as a strict allowlist and stop if observed state differs. Preserve branches with active PRs or necessary unique work. (2) For decision archival, require a tracked destination and append and verify the destination before removing source entries; if no tracked destination exists, retain the source and report the blocker.
+**Why:** Evidence from the cleanup showed stale branch classification, one worktree outside the approved list, and OCI detachment before live PR verification. The cause of the issue-104 worktree/ref state change is unknown. The archival threshold was exceeded but no tracked destination existed; hypotheses about why branch inventory/classification went stale or why an archive destination is absent remain unverified.
+**Action items:** (1) Add fetch/inventory, stop-on-mismatch, and final-ref comparison checks to the next cleanup (owner unassigned). (2) The coordinator selects and records a tracked archive destination before the next archival pass. (3) Scribe measures, appends, and verifies archive content before source removal; if no destination is available, retain the source and report it.
