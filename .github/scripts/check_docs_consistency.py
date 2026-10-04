@@ -15,7 +15,9 @@ Fails the build when:
      release bands" table drift from the authoritative
      docs/roadmap/channel-connectors.md catalog.
   5. A status-artifact row in docs/plan.md is missing, unexpected, malformed,
-       or has a SHA-256 value that does not match the referenced file.
+     or has a SHA-256 value that does not match the referenced file.
+  6. The feedback framework permits raw tracking- or receipt-secret persistence
+     or omits required raw-secret exfiltration boundaries.
 
 Per docs/plan.md and docs/frameworks/prioritization-launch.md, the roadmap
 catalogs are authoritative and the plan's seed tables must stay in sync.
@@ -47,6 +49,7 @@ ACCEPTED_PHASE_1A_ADRS = {
     "0004": REPO_ROOT / "docs" / "adr" / "0004-phase-1a-assistant-skill-channel-contracts.md",
     "0005": REPO_ROOT / "docs" / "adr" / "0005-phase-1a-self-host-operations.md",
 }
+FEEDBACK_SUPPORT_PATH = REPO_ROOT / "docs" / "frameworks" / "feedback-support.md"
 EXPECTED_STATUS_ARTIFACTS = {
     "docs/operating-model.md",
     "docs/cost-model.md",
@@ -716,6 +719,55 @@ def validate_status_artifact_hashes(
             )
 
 
+def validate_feedback_tracking_secret_contract(document_text: str) -> None:
+    normalized = " ".join(document_text.split())
+    required_clauses = (
+        "A raw tracking secret is disclosed only to the requester at issuance "
+        "and is never persisted",
+        "Only a one-way verifier, the non-secret `trackingRef`, and metadata "
+        "strictly necessary for expiry, failed-attempt throttling, recovery, "
+        "rotation, and revocation may be stored.",
+        "The raw secret never appears in a URL path, query, fragment, browser "
+        "history, referrer, log, trace, metric, alert, queue field, provider "
+        "metadata, backup, replica, export, analytics dataset, or support tool.",
+    )
+    missing = [clause for clause in required_clauses if clause not in normalized]
+    forbidden_clauses = (
+        "tracking secrets are stored outside the envelope",
+        "tracking credential as separately protected records",
+    )
+    present_forbidden = [
+        clause for clause in forbidden_clauses if clause in normalized.casefold()
+    ]
+    forbidden_persistence_patterns = (
+        re.compile(
+            r"\braw\s+(?:tracking|receipt)[ -]secrets?\b"
+            r"(?![^.!?]{0,120}\b(?:never|not|no|without)\b)"
+            r"[^.!?]{0,120}\b(?:persist\w*|stor(?:e|ed|es|ing|age)|"
+            r"retain\w*|sav\w*|writ\w*|record\w*)\b"
+        ),
+    )
+    present_forbidden.extend(
+        pattern.pattern
+        for pattern in forbidden_persistence_patterns
+        if pattern.search(normalized.casefold())
+    )
+    if missing or present_forbidden:
+        raise ValueError(
+            "Feedback tracking/receipt-secret custody contract drifted.\n"
+            f"  Missing required clauses: {missing}\n"
+            f"  Forbidden persistence clauses: {present_forbidden}"
+        )
+
+
+def check_feedback_tracking_secret_contract() -> None:
+    try:
+        validate_feedback_tracking_secret_contract(read(FEEDBACK_SUPPORT_PATH))
+    except (OSError, ValueError) as error:
+        fail(str(error))
+    print("OK: feedback tracking and receipt secrets use verifier-only custody.")
+
+
 def check_status_artifact_hashes() -> None:
     try:
         plan_text = read(PLAN_PATH)
@@ -830,6 +882,7 @@ def check_connector_catalog() -> None:
 def main() -> None:
     check_plan_hash()
     check_charter_hash()
+    check_feedback_tracking_secret_contract()
     check_status_artifact_hashes()
     check_phase_1a_adr_hashes()
     check_skill_catalog()

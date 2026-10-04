@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `d19227df4190280f0d71de046a2c9f23c3d9bec5fa116e4cf07041d0661620e6`
+- **Current proposed Plan SHA-256:** `0766fb3a21503d372bcc185e1134e9a6058837f83b7dd9436145e49218aa744c`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -239,6 +239,30 @@ not match the merged `docs/plan.md`.
   status-artifact updates after merging their plan changes. Both underlying
   artifacts remain non-authoritative pending their respective required approvals.
 
+### 2026-08-30 — proposed feedback-framework handoff status
+
+- **Tracking issues:** Framework [#10](https://github.com/Jamula/Andreja/issues/10)
+  and successor gates [#155](https://github.com/Jamula/Andreja/issues/155)
+  through [#158](https://github.com/Jamula/Andreja/issues/158)
+- **Pull request:** [#159](https://github.com/Jamula/Andreja/pull/159)
+- **Plan SHA-256:** `3c825b3a9f5d1e5327b1141a04a0516d7e2cd90facf4f6a5d0fcd0290b01c4ec`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/status amendment; no plan
+  re-ratification, gate approval, collection, publication, provider selection,
+  spend, deployment, launch, external email, or support-time commitment is
+  authorized.
+- **Scope:** Record Cyrus's separate decision that the Phase 0 feedback framework
+  is complete, close #10 independently of the documentation PR, and move all
+  unresolved policy, security, platform/vendor/cost, operational-readiness, and
+  launch decisions to the four consolidated successor issues. Issue #158 owns a
+  separate, expiring Cyrus authorization for synthetic-only non-production
+  staging evidence after #155-#157 are approved; that evidence authorization is
+  not a production/public launch decision. Pending status applies only to this
+  plan amendment; it does not reopen the separately recorded framework handoff
+  decision. Successor issue closure, labels, specialist verdicts, or
+  documentation merge do not approve a gate package; each package requires
+  Cyrus's explicit recorded decision.
+
 ### 2026-09-07 — proposed Markdown formatting normalization
 
 - **Tracking issue:** None; documentation-only maintenance.
@@ -399,15 +423,39 @@ not match the merged `docs/plan.md`.
 
 ### 2026-09-26 — proposed main-branch merge reconciliation
 
-- **Tracking issues:** [#74](https://github.com/Jamula/Andreja/issues/74) and
-  [#155](https://github.com/Jamula/Andreja/issues/155)
-- **Pull requests:** [#171](https://github.com/Jamula/Andreja/pull/171) and
+- **Tracking issues:** [#74](https://github.com/Jamula/Andreja/issues/74),
+  [#10](https://github.com/Jamula/Andreja/issues/10), and successor gates
+  [#155](https://github.com/Jamula/Andreja/issues/155) through
+  [#158](https://github.com/Jamula/Andreja/issues/158)
+- **Pull requests:** [#159](https://github.com/Jamula/Andreja/pull/159),
+  [#171](https://github.com/Jamula/Andreja/pull/171), and
   [#172](https://github.com/Jamula/Andreja/pull/172)
-- **Plan SHA-256:** `d19227df4190280f0d71de046a2c9f23c3d9bec5fa116e4cf07041d0661620e6`
+- **Plan SHA-256:** `d9badae89cb92b549c3f0a10f22dafb9375c4963a9f2c1fe0400aa1e53053fa6`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed plan reconciliation; explicit plan re-ratification
-  remains required. No decision on ADR 0009, feedback privacy approval, provider
-  activation, collection, publication, spend, deployment, or launch is implied.
+  remains required. The original #168 and #171 proposal hashes remain attached to
+  their respective records. No decision on ADR 0009, feedback privacy approval,
+  provider activation, collection, publication, spend, deployment, or launch is
+  implied.
 - **Scope:** Preserve the proposed provider phase-scope recommendation and
-  feedback privacy decision references while reconciling their status-artifact
-  rows with the current main branch. Both decisions remain pending.
+  feedback privacy decision references while recording the completed Phase 0
+  feedback-framework decision and reconciling status-artifact rows with the
+  current main branch. Both decisions and all successor gate packages remain
+  pending. After #155-#157 are explicitly approved, #158 may request a separate,
+  expiring Cyrus authorization for a private synthetic-only non-production
+  staging-evidence exercise. That authorization does not approve public GitHub
+  publication, production/public collection, deployment, launch, general email,
+  or support commitments.
+
+### 2026-10-04 — proposed receipt-secret verifier teardown correction
+
+- **Tracking issue:** [#10](https://github.com/Jamula/Andreja/issues/10)
+- **Pull request:** [#159](https://github.com/Jamula/Andreja/pull/159)
+- **Plan SHA-256:** `0766fb3a21503d372bcc185e1134e9a6058837f83b7dd9436145e49218aa744c`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/status amendment; no re-ratification,
+  privacy or legal approval, collection, GitHub publication, provider, spend,
+  deployment, launch, support commitment, or phase exit is authorized.
+- **Scope:** Refresh the feedback-framework status-artifact hash after
+  clarifying that teardown revokes the stored receipt-secret verifier, not a
+  raw secret that verifier-only custody prohibits persisting.
