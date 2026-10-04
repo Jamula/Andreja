@@ -122,6 +122,12 @@ class StatusArtifactHashTests(unittest.TestCase):
             for path in self.expected
         }
 
+    def test_feedback_security_decision_package_is_tracked(self) -> None:
+        self.assertIn(
+            "docs/frameworks/feedback-security-abuse-incident-routing.md",
+            self.expected,
+        )
+
     def test_proposed_plan_hash_preserves_separate_accepted_hash(self) -> None:
         accepted = "a" * 64
         proposed = "b" * 64

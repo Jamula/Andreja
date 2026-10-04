@@ -58,30 +58,36 @@ flowchart LR
   AE -->|tenant derived from validated session| AT[Tenant-scoped intake boundary]
   PE --> V[Bounded validation, origin and abuse controls]
   AT --> V
-  V --> S[Privacy and secret/high-risk screen]
-  S -->|ordinary| Q[Private feedback queue]
+  V --> BI[Bounded private incident ingress]
+  BI --> IC[Server-side incident classification]
+  IC -->|incident| IS[Restricted incident system]
+  IC -->|not incident| S[Privacy and secret/high-risk screen]
   S -->|uncertain or unsafe| Z[Restricted quarantine]
-  PE -->|private vulnerability/data-incident trigger| IR[Separate private incident entry]
-  AE -->|private vulnerability/data-incident trigger| IR
-  IR --> IS[Restricted incident system]
-  Q --> C[Private case store]
-  Q --> T[Tracking service: trackingRef and one-way verifier only]
+  S -->|ordinary| C[Private case store: envelope, consent, returnChannelRef]
+  S -->|receipt state| T[Tracking service: trackingRef and one-way verifier only]
+  S -->|optional follow-up only| CV[Separately encrypted contact vault]
+  C -->|after case, tracking and optional contact records are durable: feedbackId and content-free correlation metadata only| Q[Private feedback work queue]
+  Q --> W[Private worker]
+  W -->|feedbackId lookup only| C
   Z --> ZS[Restricted quarantine store]
   C --> TV[Least-privilege triage view]
+  TV -->|audited, purpose-bound lookup by returnChannelRef; masked by default| CV
+  CV -->|approved return-channel delivery only| RM[Restricted return-channel sender]
+  RM --> P
+  RM --> A
   TV -->|sanitized draft + exact preview + separate consent| PUB[Restricted publisher]
   PUB --> GH[Public GitHub artifact]
   T --> RV[Safe status, recovery, reopen and verification route]
   RV --> P
   RV --> A
-  C --> RC[Verified return channel]
-  RC --> P
-  RC --> A
   C --> BK[Encrypted, access-restricted backups]
   T --> BK
   ZS --> BK
   IS --> IBK[Separately restricted incident backup]
+  CV --> CVBK[Separately encrypted, access-restricted contact-vault backup]
   AD[Privileged administrators] -. audited break-glass only .-> C
   AD -. audited break-glass only .-> T
+  AD -. separately authorized and audited .-> CV
   AD -. separately authorized .-> IS
 ```
 
@@ -95,13 +101,23 @@ flowchart LR
    in the service/data boundary; a client-supplied tenant or record ID is never
    authorization.
 3. `sourceChannel` and incident classification are assigned or verified by the
-   server. Client fields cannot route an incident into ordinary triage or
-   authorize publication.
+   server. Incident submissions pass through bounded validation, origin and
+   abuse controls and the bounded private incident ingress before
+   classification; authenticated submissions originate only after validated
+   session and tenant-boundary checks. Client fields cannot route an incident
+   into ordinary triage or authorize publication.
 4. Queue and provider metadata contain only internal random IDs and
    content-free correlation data. Case text, contact destinations, receipt
    secrets, tenant IDs, incident detail, and screening excerpts do not enter
    logs, traces, metrics, alerts, email metadata, analytics, or public systems.
-5. The contact vault, tracking verifier store, ordinary case store, quarantine,
+5. Raw return destinations exist only in the separately encrypted contact
+   vault; ordinary case records contain only `returnChannelRef`. Lookup is
+   purpose-bound and access-logged, triage displays a masked destination by
+   default, and the raw destination is released only for an approved
+   return-channel send. The contact vault and its separately encrypted,
+   access-restricted backups have distinct least-privilege access and inherit
+   deletion/hold rules; restore must not revive a deleted destination. The
+   contact vault, tracking verifier store, ordinary case store, quarantine,
    incident system, and backups have distinct least-privilege roles and
    deletion/hold propagation. Ordinary triage does not browse raw queues,
    databases, backups, or incident evidence.
@@ -180,11 +196,11 @@ are proposals in the #155 privacy package, not approved schedules.
    validation. Bind replay nonces to the action/session and consume them
    atomically. Idempotency prevents duplicate transitions but cannot authorize
    an action.
-7. Rotation is atomic: retain the old verifier until the new verifier and
-   transaction are committed; return the new raw secret only after commit; then
-   revoke the old verifier. A failed transaction preserves exactly the prior
-   valid credential. Concurrent rotations have one committed winner; no
-   successful response may leave two valid secrets.
+7. Rotation is atomic: install the new verifier and revoke the old verifier in
+   the same transaction/CAS commit. Return the new raw secret only after that
+   commit. A failed transaction leaves exactly the prior credential valid;
+   concurrent rotations have one committed winner, and no successful response
+   may leave two valid secrets.
 8. Use generic, non-enumerating outcomes for accepted, quarantined, rejected,
    duplicate, missing, and incident cases; never reflect prohibited content.
    Bound response timing classes and avoid status differences that reveal

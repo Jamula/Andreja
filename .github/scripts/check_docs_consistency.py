@@ -56,6 +56,7 @@ EXPECTED_STATUS_ARTIFACTS = {
     "docs/privacy.md",
     "docs/threat-model.md",
     "docs/frameworks/feedback-support.md",
+    "docs/frameworks/feedback-security-abuse-incident-routing.md",
     "docs/frameworks/prioritization-launch.md",
     "docs/charter.md",
     "docs/legal/license-evaluation.md",
