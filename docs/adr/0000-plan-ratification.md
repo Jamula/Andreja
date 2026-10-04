@@ -463,7 +463,7 @@ not match the merged `docs/plan.md`.
 ### 2026-10-04 — proposed test-framework migration status
 
 - **Tracking issue:** [#112](https://github.com/Jamula/Andreja/issues/112)
-- **Pull request:** Pending creation from the scoped #112 work branch.
+- **Pull request:** [#180](https://github.com/Jamula/Andreja/pull/180)
 - **Plan SHA-256:** `3650c766b165c460644aab1abf46d0a7d62c90c8a8be3ccd5e56430d1cbbbf4d`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed execution-status/evidence amendment; no
