@@ -234,3 +234,8 @@ This is a security verdict only. It does not declare legal compliance and does n
 **By:** Jett Reno
 **What:** Replace the inert Dependabot placeholder with weekly update checks for root and spike NuGet manifests, the Squad template npm manifest, GitHub Actions, and the root Dockerfile.
 **Why:** These are the dependency ecosystems present in the repository. Automated coverage prevents the test spike and supply-chain dependencies from drifting while preserving the repository's existing manifest boundaries.
+
+### 2026-10-04T12:01:30.439-07:00: Prefer GPT-family models for Squad tasks (consolidated)
+**By:** Cyrus Jamula (via Copilot)
+**What:** Prefer GPT-family models over Claude-family models when selecting agent models, including for Squad task spawns.
+**Why:** GPT-family models are considered less expensive than Claude-family models.
