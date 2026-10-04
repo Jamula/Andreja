@@ -8,8 +8,9 @@ operate the publisher.
 ## Operational status: BLOCKED
 
 Do not add `Andreja review policy` to the ruleset. Keep affected PRs draft or
-under a documented manual merge hold, keep auto-merge disabled, and do not
-represent this package as an operational gate.
+under a documented manual merge hold. The normative containment requirement is
+that repository `allow_auto_merge` remain `false` until the review gate is
+operational. Do not represent this package as an operational gate.
 
 At this revision:
 
@@ -22,6 +23,26 @@ At this revision:
   evidence, dropped-delivery evidence, or real merge-group canary exists; and
 - Phase 0 authorizes no remote account, subscription, free-tier, trial, or
   worker provisioning.
+
+### Dated live configuration snapshot — 2026-10-04
+
+A read-only GitHub API inspection of `Jamula/Andreja` observed:
+
+- repository `allow_auto_merge` is `true`, contrary to the normative
+  containment requirement above;
+- active ruleset `21199927` has no bypass actors and requires review-thread
+  resolution;
+- the ruleset requires only these four status checks, each from integration
+  `15368`: `Build and test (Release)`, `Format verification`,
+  `NuGet vulnerability audit`, and `C# SAST (DevSkim)`;
+- `Build and test (Debug)` is absent from the required checks; and
+- the `Andreja review policy` App context is absent.
+
+This is a dated observation, not desired policy or evidence that the review
+gate is active. No live GitHub settings were changed during this inspection.
+The mismatch between the observed `allow_auto_merge=true` value and the
+normative `false` requirement remains unresolved; do not claim the containment
+is currently enforced.
 
 The exact next human prerequisite is explicit authorization and provisioning
 of a dedicated GitHub App plus an independently protected webhook worker or
