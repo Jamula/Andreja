@@ -2,3 +2,5 @@
 📌 Team update (2026-09-07T10:46:00.725-07:00): Weekly dependency automation decision merged; root/spike NuGet, Squad template npm, GitHub Actions, and root Dockerfile are covered while existing manifest boundaries remain intact — decided by Jett Reno.
 
 📌 Team update (2026-10-04T12:01:30.439-07:00): Completed and verified approved local branch cleanup: removed four safe local refs, retained open-PR branches and protected refs, restored the OCI and #178 worktrees, and left the current branch/worktrees clean; no remote feature refs, source files, or commits changed — decided by Jett Reno.
+
+📌 Team update (2026-10-04T12:29:40.900-07:00): Picard's cleanup retrospective requires fresh per-candidate branch checks and a strict approved-worktree allowlist; stop on mismatches, preserve active PRs/necessary work, and compare intended with actual refs afterward. Issue-104's intervening state-change cause remains unknown. For decision archival, use a tracked destination and verify appended content before removing source entries; otherwise retain and report. — decided by Picard; accepted by Squad Coordinator.
