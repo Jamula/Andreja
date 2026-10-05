@@ -15,6 +15,7 @@ using Andreja.Platform.Contracts.Semantics;
 
 namespace Andreja.ArchitectureTests;
 
+[TestClass]
 public sealed class DependencyDirectionTests
 {
     private static readonly HashSet<string> ApprovedModuleAssemblyReferences =
@@ -34,33 +35,33 @@ public sealed class DependencyDirectionTests
             "System.Threading",
         };
 
-    [Fact]
+    [TestMethod]
     public void ModulesDoNotReferenceOutwardLayers()
     {
         var unapprovedReferences = FindUnapprovedModuleReferences(
             typeof(OpenLoopsModule).Assembly.GetReferencedAssemblies());
 
-        Assert.Empty(unapprovedReferences);
+        Assert.IsEmpty(unapprovedReferences);
     }
 
-    [Theory]
-    [InlineData("Andreja.Adapters")]
-    [InlineData("Andreja.Api.Contracts")]
-    [InlineData("Andreja.AppHost")]
-    [InlineData("Microsoft.AspNetCore")]
-    [InlineData("Microsoft.EntityFrameworkCore")]
-    [InlineData("Npgsql")]
-    [InlineData("Azure.AI.OpenAI")]
-    [InlineData("Future.ProviderSdk")]
+    [TestMethod]
+    [DataRow("Andreja.Adapters")]
+    [DataRow("Andreja.Api.Contracts")]
+    [DataRow("Andreja.AppHost")]
+    [DataRow("Microsoft.AspNetCore")]
+    [DataRow("Microsoft.EntityFrameworkCore")]
+    [DataRow("Npgsql")]
+    [DataRow("Azure.AI.OpenAI")]
+    [DataRow("Future.ProviderSdk")]
     public void ModuleReferenceAllowlistRejectsNonApprovedAssemblies(string assemblyName)
     {
         var unapprovedReferences = FindUnapprovedModuleReferences(
             [new(assemblyName)]);
 
-        Assert.Equal([assemblyName], unapprovedReferences);
+        CollectionAssert.AreEqual(new[] { assemblyName }, unapprovedReferences);
     }
 
-    [Fact]
+    [TestMethod]
     public void ContractsDoNotReferenceModulesAdaptersOrHost()
     {
         var contractAssemblies = new[]
@@ -75,10 +76,10 @@ public sealed class DependencyDirectionTests
             .Where(reference => reference.StartsWith("Andreja.", StringComparison.Ordinal))
             .ToArray();
 
-        Assert.Empty(outwardReferences);
+        Assert.IsEmpty(outwardReferences);
     }
 
-    [Fact]
+    [TestMethod]
     public void ProductionAssembliesCannotReferenceTestAuthentication()
     {
         var productionAssemblies = new[]
@@ -95,14 +96,13 @@ public sealed class DependencyDirectionTests
                     StringComparison.OrdinalIgnoreCase))
             .ToArray();
 
-        Assert.Empty(testAuthenticationReferences);
-        Assert.DoesNotContain(
-            typeof(AspNetCoreIdentityAdapter).Assembly.GetTypes(),
+        Assert.IsEmpty(testAuthenticationReferences);
+        Assert.IsFalse(typeof(AspNetCoreIdentityAdapter).Assembly.GetTypes().Any(
             type => type.Name.Contains("FakeAuth", StringComparison.OrdinalIgnoreCase)
-                || type.Name.Contains("TestAuth", StringComparison.OrdinalIgnoreCase));
+                || type.Name.Contains("TestAuth", StringComparison.OrdinalIgnoreCase)));
     }
 
-    [Fact]
+    [TestMethod]
     public void BlazorTaskPageInjectsOnlyTypedApiBoundary()
     {
         var injectedTypes = typeof(Home)
@@ -117,14 +117,13 @@ public sealed class DependencyDirectionTests
             .ToArray();
 
         Assert.Contains(typeof(IOpenLoopsApiClient), injectedTypes);
-        Assert.DoesNotContain(
-            injectedTypes,
+        Assert.IsFalse(injectedTypes.Any(
             type => type.Namespace?.StartsWith("Andreja.Modules", StringComparison.Ordinal) == true
                 || type.Namespace?.StartsWith("Andreja.Adapters", StringComparison.Ordinal) == true
-                || type.Name.Contains("DbContext", StringComparison.Ordinal));
+                || type.Name.Contains("DbContext", StringComparison.Ordinal)));
     }
 
-    [Fact]
+    [TestMethod]
     public void EveryExecutionAndInvocationBoundaryCarriesDistinctIdentityIds()
     {
         var boundaries = new[]
@@ -143,29 +142,29 @@ public sealed class DependencyDirectionTests
                 StringComparer.Ordinal));
         foreach (var properties in boundaryProperties)
         {
-            Assert.Equal(typeof(Guid), properties["TenantId"]);
-            Assert.Equal(typeof(Guid), properties["AppUserId"]);
-            Assert.Equal(typeof(Guid), properties["PrincipalId"]);
+            Assert.AreEqual(typeof(Guid), properties["TenantId"]);
+            Assert.AreEqual(typeof(Guid), properties["AppUserId"]);
+            Assert.AreEqual(typeof(Guid), properties["PrincipalId"]);
         }
     }
 
-    [Fact]
+    [TestMethod]
     public void SemanticContractsKeepTenantUserAndPrincipalAsDistinctTypedIds()
     {
-        Assert.NotEqual(typeof(SemanticTenantId), typeof(SemanticAppUserId));
-        Assert.NotEqual(typeof(SemanticTenantId), typeof(SemanticPrincipalId));
-        Assert.NotEqual(typeof(SemanticAppUserId), typeof(SemanticPrincipalId));
+        Assert.AreNotEqual(typeof(SemanticTenantId), typeof(SemanticAppUserId));
+        Assert.AreNotEqual(typeof(SemanticTenantId), typeof(SemanticPrincipalId));
+        Assert.AreNotEqual(typeof(SemanticAppUserId), typeof(SemanticPrincipalId));
 
         var properties = typeof(ProfileAssertion).GetProperties()
             .ToDictionary(property => property.Name, property => property.PropertyType);
-        Assert.Equal(typeof(SemanticTenantId), properties[nameof(ProfileAssertion.TenantId)]);
-        Assert.Equal(typeof(SemanticAppUserId), properties[nameof(ProfileAssertion.AppUserId)]);
-        Assert.Equal(
+        Assert.AreEqual(typeof(SemanticTenantId), properties[nameof(ProfileAssertion.TenantId)]);
+        Assert.AreEqual(typeof(SemanticAppUserId), properties[nameof(ProfileAssertion.AppUserId)]);
+        Assert.AreEqual(
             typeof(SemanticPrincipalId),
             properties[nameof(ProfileAssertion.PrincipalId)]);
     }
 
-    [Fact]
+    [TestMethod]
     public void SemanticConformanceHasNoPersistenceOrGraphProviderBoundary()
     {
         var semanticTypes = typeof(InMemorySemanticAssertionLedger).Assembly.GetTypes()
@@ -182,17 +181,19 @@ public sealed class DependencyDirectionTests
             "Embedding",
         };
 
-        Assert.All(
-            semanticTypes,
-            type => Assert.All(
-                forbiddenFragments,
-                fragment => Assert.DoesNotContain(
+        foreach (var type in semanticTypes)
+        {
+            foreach (var fragment in forbiddenFragments)
+            {
+                Assert.DoesNotContain(
                     fragment,
-                    type.FullName,
-                    StringComparison.OrdinalIgnoreCase)));
+                    type.FullName ?? type.Name,
+                    StringComparison.OrdinalIgnoreCase);
+            }
+        }
     }
 
-    [Fact]
+    [TestMethod]
     public void SkillAndChannelHostsExposeNoAmbientServiceOrSecretBoundary()
     {
         var boundaryTypes = new[]
@@ -225,19 +226,18 @@ public sealed class DependencyDirectionTests
             .Select(type => type.FullName ?? type.Name)
             .ToArray();
 
-        Assert.All(
-            forbiddenNames,
-            forbidden => Assert.DoesNotContain(
-                exposedTypes,
+        foreach (var forbidden in forbiddenNames)
+        {
+            Assert.IsFalse(exposedTypes.Any(
                 name => name.Contains(forbidden, StringComparison.Ordinal)));
-        Assert.DoesNotContain(
-            typeof(InMemorySkillHost).GetConstructors()
+        }
+        Assert.IsFalse(typeof(InMemorySkillHost).GetConstructors()
                 .Concat(typeof(InMemoryChannelHost).GetConstructors())
-                .SelectMany(constructor => constructor.GetParameters()),
-            parameter => parameter.ParameterType == typeof(IServiceProvider));
+                .SelectMany(constructor => constructor.GetParameters())
+                .Any(parameter => parameter.ParameterType == typeof(IServiceProvider)));
     }
 
-    [Fact]
+    [TestMethod]
     public void PooledHttpHandlersDoNotCaptureCircuitOrRequestState()
     {
         var clientDependencies = typeof(OpenLoopsApiClient)
@@ -256,20 +256,18 @@ public sealed class DependencyDirectionTests
                         == "Microsoft.AspNetCore.Http.IHttpContextAccessor"))
             .ToArray();
 
-        Assert.Contains(
-            clientDependencies,
+        Assert.IsTrue(clientDependencies.Any(
             type => type.FullName
-                == "Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider");
+                == "Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider"));
         Assert.Contains(typeof(ICircuitDelegationTokenService), clientDependencies);
-        Assert.Empty(statefulHandlers);
-        Assert.DoesNotContain(
-            typeof(OpenLoopsApiClient).Assembly.GetTypes(),
+        Assert.IsEmpty(statefulHandlers);
+        Assert.IsFalse(typeof(OpenLoopsApiClient).Assembly.GetTypes().Any(
             type => type.Name.Contains(
                 "CookieForwarding",
-                StringComparison.OrdinalIgnoreCase));
+                StringComparison.OrdinalIgnoreCase)));
     }
 
-    [Fact]
+    [TestMethod]
     public void ForwardedHeadersRunBeforeSecurityAndNoTrustAllSwitchExists()
     {
         var repositoryRoot = new DirectoryInfo(AppContext.BaseDirectory);
@@ -299,10 +297,10 @@ public sealed class DependencyDirectionTests
             "app.UseAuthentication();",
             StringComparison.Ordinal);
 
-        Assert.True(forwarding >= 0);
-        Assert.True(forwarding < contentSecurityPolicy);
-        Assert.True(forwarding < rateLimiter);
-        Assert.True(forwarding < authentication);
+        Assert.IsTrue(forwarding >= 0);
+        Assert.IsTrue(forwarding < contentSecurityPolicy);
+        Assert.IsTrue(forwarding < rateLimiter);
+        Assert.IsTrue(forwarding < authentication);
         Assert.DoesNotContain(
             "ASPNETCORE_FORWARDEDHEADERS_ENABLED",
             compose,

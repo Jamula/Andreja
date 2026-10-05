@@ -5,6 +5,7 @@ using System.Text.Json;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class SemanticAssertionConformanceTests
 {
     private static readonly DateTimeOffset RecordedAt =
@@ -25,29 +26,29 @@ public sealed class SemanticAssertionConformanceTests
     private static readonly string TamperedDigest = new('b', 64);
     private const string Purpose = "task-management";
 
-    [Fact]
+    [TestMethod]
     public void ContractRoundTripsWithoutCollapsingTypedIdentityOrExtensions()
     {
         var assertion = CreateAssertion();
         var json = JsonSerializer.Serialize(assertion);
         var roundTrip = JsonSerializer.Deserialize<ProfileAssertion>(json);
 
-        Assert.NotNull(roundTrip);
-        Assert.Equal(assertion.TenantId, roundTrip.TenantId);
-        Assert.Equal(assertion.AppUserId, roundTrip.AppUserId);
-        Assert.Equal(assertion.PrincipalId, roundTrip.PrincipalId);
-        Assert.Equal(assertion.CreatedByPrincipalId, roundTrip.CreatedByPrincipalId);
-        Assert.Equal(assertion.RecordDigest, roundTrip.RecordDigest);
-        Assert.Equal(
+        Assert.IsNotNull(roundTrip);
+        Assert.AreEqual(assertion.TenantId, roundTrip.TenantId);
+        Assert.AreEqual(assertion.AppUserId, roundTrip.AppUserId);
+        Assert.AreEqual(assertion.PrincipalId, roundTrip.PrincipalId);
+        Assert.AreEqual(assertion.CreatedByPrincipalId, roundTrip.CreatedByPrincipalId);
+        Assert.AreEqual(assertion.RecordDigest, roundTrip.RecordDigest);
+        Assert.AreEqual(
             "bounded-extension-value",
             roundTrip.Extensions["https://skills.example.invalid/ns#bounded"].GetString());
     }
 
-    [Fact]
+    [TestMethod]
     public void JsonLdProjectionMatchesPinnedFixture()
     {
         var ledger = CreateLedger();
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Allowed,
             ledger.Append(Context(), CreateAssertion()).Outcome);
         var package = ledger.Export(
@@ -63,14 +64,14 @@ public sealed class SemanticAssertionConformanceTests
         using var expectedDocument = JsonDocument.Parse(File.ReadAllText(fixturePath));
         using var actualDocument = JsonDocument.Parse(actual);
 
-        Assert.True(JsonElement.DeepEquals(
+        Assert.IsTrue(JsonElement.DeepEquals(
             expectedDocument.RootElement,
             actualDocument.RootElement));
         Assert.Contains("\"@context\"", actual, StringComparison.Ordinal);
         Assert.DoesNotContain("credential", actual, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
+    [TestMethod]
     public void ConflictingAssertionsCoexistUntilExplicitCorrectionOrRetraction()
     {
         var ledger = CreateLedger();
@@ -78,9 +79,9 @@ public sealed class SemanticAssertionConformanceTests
         var afternoon = CreateAssertion(
             ProfileAssertionId.New(),
             lexicalValue: "afternoon");
-        Assert.Equal(SemanticEvaluationOutcome.Allowed, ledger.Append(Context(), morning).Outcome);
-        Assert.Equal(SemanticEvaluationOutcome.Allowed, ledger.Append(Context(), afternoon).Outcome);
-        Assert.Equal(2, ledger.FindActive(Context(), SubjectId, "and:preferredTime").Count);
+        Assert.AreEqual(SemanticEvaluationOutcome.Allowed, ledger.Append(Context(), morning).Outcome);
+        Assert.AreEqual(SemanticEvaluationOutcome.Allowed, ledger.Append(Context(), afternoon).Outcome);
+        Assert.AreEqual(2, ledger.FindActive(Context(), SubjectId, "and:preferredTime").Count);
 
         var correction = CreateAssertion(
             ProfileAssertionId.New(),
@@ -91,31 +92,25 @@ public sealed class SemanticAssertionConformanceTests
             correction);
         var retracted = ledger.Retract(Change(afternoon));
 
-        Assert.Equal(SemanticEvaluationOutcome.Allowed, corrected.Outcome);
-        Assert.Equal(SemanticEvaluationOutcome.Allowed, retracted.Outcome);
-        var active = Assert.Single(
+        Assert.AreEqual(SemanticEvaluationOutcome.Allowed, corrected.Outcome);
+        Assert.AreEqual(SemanticEvaluationOutcome.Allowed, retracted.Outcome);
+        var active = Assert.ContainsSingle(
             ledger.FindActive(Context(), SubjectId, "and:preferredTime"));
-        Assert.Equal("early-morning", active.Value.LexicalValue);
-        Assert.Contains(
-            ledger.Audit,
-            item => item.Action == AssertionLifecycleAction.Corrected);
-        Assert.Contains(
-            ledger.Audit,
-            item => item.Action == AssertionLifecycleAction.Superseded);
-        Assert.Contains(
-            ledger.Audit,
-            item => item.Action == AssertionLifecycleAction.Retracted);
+        Assert.AreEqual("early-morning", active.Value.LexicalValue);
+        Assert.IsTrue(ledger.Audit.Any(item => item.Action == AssertionLifecycleAction.Corrected));
+        Assert.IsTrue(ledger.Audit.Any(item => item.Action == AssertionLifecycleAction.Superseded));
+        Assert.IsTrue(ledger.Audit.Any(item => item.Action == AssertionLifecycleAction.Retracted));
     }
 
-    [Theory]
-    [InlineData("corrects")]
-    [InlineData("supersedes")]
-    [InlineData("retracts")]
+    [TestMethod]
+    [DataRow("corrects")]
+    [DataRow("supersedes")]
+    [DataRow("retracts")]
     public void RawAppendRejectsForgedLineage(string lineageKind)
     {
         var ledger = CreateLedger();
         var original = CreateAssertion();
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Allowed,
             ledger.Append(Context(), original).Outcome);
         var lineage = lineageKind switch
@@ -129,46 +124,46 @@ public sealed class SemanticAssertionConformanceTests
 
         var result = ledger.Append(Context(), forged);
 
-        Assert.Equal(SemanticEvaluationOutcome.Invalid, result.Outcome);
-        Assert.Equal("raw-lineage-not-allowed", result.Reason);
-        Assert.Equal(
+        Assert.AreEqual(SemanticEvaluationOutcome.Invalid, result.Outcome);
+        Assert.AreEqual("raw-lineage-not-allowed", result.Reason);
+        Assert.AreEqual(
             original.AssertionId,
-            Assert.Single(
+            Assert.ContainsSingle(
                 ledger.FindActive(Context(), SubjectId, original.Predicate)).AssertionId);
     }
 
-    [Fact]
+    [TestMethod]
     public void DuplicateCorrectionRetiresPredecessorExactlyOnce()
     {
         var ledger = CreateLedger();
         var original = CreateAssertion();
         var correction = CreateCorrection(original, "early-morning");
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Allowed,
             ledger.Append(Context(), original).Outcome);
 
         var first = ledger.Correct(Change(original), correction);
         var duplicate = ledger.Correct(Change(original), correction);
 
-        Assert.Equal(SemanticEvaluationOutcome.Allowed, first.Outcome);
-        Assert.Equal(SemanticEvaluationOutcome.NotFound, duplicate.Outcome);
-        Assert.Equal(
+        Assert.AreEqual(SemanticEvaluationOutcome.Allowed, first.Outcome);
+        Assert.AreEqual(SemanticEvaluationOutcome.NotFound, duplicate.Outcome);
+        Assert.AreEqual(
             correction.AssertionId,
-            Assert.Single(
+            Assert.ContainsSingle(
                 ledger.FindActive(Context(), SubjectId, original.Predicate)).AssertionId);
-        Assert.Single(
-            ledger.Audit,
-            entry =>
+        Assert.AreEqual(
+            1,
+            ledger.Audit.Count(entry =>
                 entry.AssertionId == original.AssertionId
-                && entry.Action == AssertionLifecycleAction.Superseded);
+                && entry.Action == AssertionLifecycleAction.Superseded));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ConcurrentCorrectionsCreateExactlyOneActiveSuccessor()
     {
         var ledger = CreateLedger();
         var original = CreateAssertion();
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Allowed,
             ledger.Append(Context(), original).Outcome);
         var corrections = Enumerable.Range(0, 16)
@@ -184,30 +179,32 @@ public sealed class SemanticAssertionConformanceTests
         start.Set();
         var results = await Task.WhenAll(operations);
 
-        var winner = Assert.Single(
-            results,
-            result => result.Outcome == SemanticEvaluationOutcome.Allowed);
-        Assert.Equal(
+        var winners = results
+            .Where(result => result.Outcome == SemanticEvaluationOutcome.Allowed)
+            .ToArray();
+        Assert.AreEqual(1, winners.Length);
+        var winner = winners[0];
+        Assert.AreEqual(
             15,
             results.Count(result => result.Outcome == SemanticEvaluationOutcome.NotFound));
-        Assert.Equal(
+        Assert.AreEqual(
             winner.Assertion!.AssertionId,
-            Assert.Single(
+            Assert.ContainsSingle(
                 ledger.FindActive(Context(), SubjectId, original.Predicate)).AssertionId);
     }
 
-    [Fact]
+    [TestMethod]
     public void CorrectionRejectsInactiveCrossScopeAndCyclicPredecessors()
     {
         var inactiveLedger = CreateLedger();
         var inactive = CreateAssertion();
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Allowed,
             inactiveLedger.Append(Context(), inactive).Outcome);
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Allowed,
             inactiveLedger.Retract(Change(inactive)).Outcome);
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.NotFound,
             inactiveLedger.Correct(
                 Change(inactive),
@@ -215,11 +212,11 @@ public sealed class SemanticAssertionConformanceTests
 
         var crossScopeLedger = CreateLedger();
         var original = CreateAssertion();
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Allowed,
             crossScopeLedger.Append(Context(), original).Outcome);
         var wrongContext = Context() with { PrincipalId = SemanticPrincipalId.New() };
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Denied,
             crossScopeLedger.Correct(
                 Change(original) with { Context = wrongContext },
@@ -229,7 +226,7 @@ public sealed class SemanticAssertionConformanceTests
             {
                 TenantId = SemanticTenantId.New(),
             });
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Invalid,
             crossScopeLedger.Correct(
                 Change(original),
@@ -241,41 +238,41 @@ public sealed class SemanticAssertionConformanceTests
         };
         cycle = SemanticRecordDigest.Seal(cycle);
         var cycleResult = crossScopeLedger.Correct(Change(original), cycle);
-        Assert.Equal(SemanticEvaluationOutcome.Invalid, cycleResult.Outcome);
-        Assert.Equal("invalid-correction-cycle", cycleResult.Reason);
-        Assert.Equal(
+        Assert.AreEqual(SemanticEvaluationOutcome.Invalid, cycleResult.Outcome);
+        Assert.AreEqual("invalid-correction-cycle", cycleResult.Reason);
+        Assert.AreEqual(
             original.AssertionId,
-            Assert.Single(
+            Assert.ContainsSingle(
                 crossScopeLedger.FindActive(
                     Context(),
                     SubjectId,
                     original.Predicate)).AssertionId);
     }
 
-    [Theory]
-    [InlineData("and:preferredTime")]
-    [InlineData("https://schema.org/startDate")]
-    [InlineData("http://www.w3.org/ns/prov#value")]
-    [InlineData("urn:example:preferred-time")]
+    [TestMethod]
+    [DataRow("and:preferredTime")]
+    [DataRow("https://schema.org/startDate")]
+    [DataRow("http://www.w3.org/ns/prov#value")]
+    [DataRow("urn:example:preferred-time")]
     public void PredicateValidationAcceptsPinnedAndApprovedAbsoluteIris(string predicate)
     {
         var ledger = CreateLedger();
 
         var result = ledger.Append(Context(), CreateAssertion(predicate: predicate));
 
-        Assert.Equal(SemanticEvaluationOutcome.Allowed, result.Outcome);
+        Assert.AreEqual(SemanticEvaluationOutcome.Allowed, result.Outcome);
     }
 
-    [Theory]
-    [InlineData("and:")]
-    [InlineData("and:bad term")]
-    [InlineData("and:term:extra")]
-    [InlineData("relative/path")]
-    [InlineData("unknown:predicate")]
-    [InlineData("javascript:alert(1)")]
-    [InlineData(" https://schema.org/startDate")]
-    [InlineData("https://example.invalid/bad path")]
-    [InlineData("and:term\ninjected")]
+    [TestMethod]
+    [DataRow("and:")]
+    [DataRow("and:bad term")]
+    [DataRow("and:term:extra")]
+    [DataRow("relative/path")]
+    [DataRow("unknown:predicate")]
+    [DataRow("javascript:alert(1)")]
+    [DataRow(" https://schema.org/startDate")]
+    [DataRow("https://example.invalid/bad path")]
+    [DataRow("and:term\ninjected")]
     public void PredicateValidationRejectsUnsafeOrUnknownIris(string predicate)
     {
         var ledger = CreateLedger();
@@ -283,8 +280,8 @@ public sealed class SemanticAssertionConformanceTests
 
         var result = ledger.Append(Context(), assertion);
 
-        Assert.Equal(SemanticEvaluationOutcome.Invalid, result.Outcome);
-        Assert.Equal("invalid-predicate", result.Reason);
+        Assert.AreEqual(SemanticEvaluationOutcome.Invalid, result.Outcome);
+        Assert.AreEqual("invalid-predicate", result.Reason);
         var package = new SemanticExportPackage(
             SemanticProfileContract.Version,
             SemanticProfileContract.JsonLdContextVersion,
@@ -294,20 +291,20 @@ public sealed class SemanticAssertionConformanceTests
             [CreateSource()],
             [],
             []);
-        Assert.Throws<ArgumentException>(() =>
+        Assert.ThrowsExactly<ArgumentException>(() =>
             SemanticJsonLdSerializer.Serialize(package));
     }
 
-    [Theory]
-    [InlineData("tenant", "tenant-denied")]
-    [InlineData("user", "app-user-denied")]
-    [InlineData("principal", "principal-denied")]
-    [InlineData("purpose", "purpose-denied")]
+    [TestMethod]
+    [DataRow("tenant", "tenant-denied")]
+    [DataRow("user", "app-user-denied")]
+    [DataRow("principal", "principal-denied")]
+    [DataRow("purpose", "purpose-denied")]
     public void OwnershipAndPurposeMismatchesFailClosed(string mismatch, string reason)
     {
         var ledger = CreateLedger();
         var assertion = CreateAssertion();
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Allowed,
             ledger.Append(Context(), assertion).Outcome);
         var context = mismatch switch
@@ -327,23 +324,23 @@ public sealed class SemanticAssertionConformanceTests
             SemanticExposureLevel.Full,
             RecordedAt));
 
-        Assert.Equal(SemanticEvaluationOutcome.Denied, result.Outcome);
-        Assert.Equal(reason, result.Reason);
-        Assert.Null(result.Assertion);
+        Assert.AreEqual(SemanticEvaluationOutcome.Denied, result.Outcome);
+        Assert.AreEqual(reason, result.Reason);
+        Assert.IsNull(result.Assertion);
     }
 
-    [Fact]
+    [TestMethod]
     public void ExposureUsesTheLeastAllowedLevelAndDefaultsPrivate()
     {
         var ledger = CreateLedger();
         var privateAssertion = CreateAssertion();
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticExposureLevel.Denied,
             privateAssertion.Handling.ModelExposure);
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticExposureLevel.Denied,
             privateAssertion.Handling.Sharing);
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Allowed,
             ledger.Append(Context(), privateAssertion).Outcome);
 
@@ -354,7 +351,7 @@ public sealed class SemanticAssertionConformanceTests
             SemanticUseKind.Model,
             SemanticExposureLevel.Full,
             RecordedAt));
-        Assert.Equal(SemanticEvaluationOutcome.Denied, denied.Outcome);
+        Assert.AreEqual(SemanticEvaluationOutcome.Denied, denied.Outcome);
 
         var summaryAssertion = CreateAssertion(
             ProfileAssertionId.New(),
@@ -362,7 +359,7 @@ public sealed class SemanticAssertionConformanceTests
             {
                 ModelExposure = SemanticExposureLevel.Summary,
             });
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Allowed,
             ledger.Append(Context(), summaryAssertion).Outcome);
         var reduced = ledger.Evaluate(new(
@@ -372,10 +369,10 @@ public sealed class SemanticAssertionConformanceTests
             SemanticUseKind.Model,
             SemanticExposureLevel.Full,
             RecordedAt));
-        Assert.Equal(SemanticExposureLevel.Summary, reduced.EffectiveExposure);
+        Assert.AreEqual(SemanticExposureLevel.Summary, reduced.EffectiveExposure);
     }
 
-    [Fact]
+    [TestMethod]
     public void SensitiveInferenceIsAReviewableHypothesisAndNotExportedByDefault()
     {
         var ledger = CreateLedger();
@@ -388,7 +385,7 @@ public sealed class SemanticAssertionConformanceTests
             handling: CreateHandling(
                 SensitivityClass.Sensitive,
                 ExportDisposition.Include));
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Allowed,
             ledger.Append(Context(), hypothesis).Outcome);
 
@@ -402,15 +399,15 @@ public sealed class SemanticAssertionConformanceTests
             RecordedAt.AddMinutes(2),
             new(IncludeSensitiveInferences: true));
 
-        Assert.Empty(defaultExport.Assertions);
-        Assert.Single(explicitExport.Assertions);
-        Assert.Equal(EpistemicStatus.Inferred, explicitExport.Assertions[0].EpistemicStatus);
-        Assert.Equal(
+        Assert.IsEmpty(defaultExport.Assertions);
+        Assert.ContainsSingle(explicitExport.Assertions);
+        Assert.AreEqual(EpistemicStatus.Inferred, explicitExport.Assertions[0].EpistemicStatus);
+        Assert.AreEqual(
             AssertionReviewState.PendingUserReview,
             explicitExport.Assertions[0].ReviewState);
     }
 
-    [Fact]
+    [TestMethod]
     public void RetractionInvalidatesDependentHypothesesTransitively()
     {
         var ledger = CreateLedger();
@@ -423,14 +420,14 @@ public sealed class SemanticAssertionConformanceTests
             reviewState: AssertionReviewState.PendingUserReview,
             confidence: new(0.8m, "bounded-rule", "1", "The stated preference matched."),
             derivedFrom: [stated.AssertionId]);
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Allowed,
             ledger.Append(Context(), stated).Outcome);
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Allowed,
             ledger.Append(Context(), inferred).Outcome);
 
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Allowed,
             ledger.Retract(Change(stated)).Outcome);
         var evaluation = ledger.Evaluate(new(
@@ -441,15 +438,14 @@ public sealed class SemanticAssertionConformanceTests
             SemanticExposureLevel.Full,
             RecordedAt.AddMinutes(2)));
 
-        Assert.Equal(SemanticEvaluationOutcome.NotFound, evaluation.Outcome);
-        Assert.Contains(
-            ledger.Audit,
+        Assert.AreEqual(SemanticEvaluationOutcome.NotFound, evaluation.Outcome);
+        Assert.IsTrue(ledger.Audit.Any(
             item =>
                 item.AssertionId == inferred.AssertionId
-                && item.ReasonCode == "input-invalidated");
+                && item.ReasonCode == "input-invalidated"));
     }
 
-    [Fact]
+    [TestMethod]
     public void DeleteRemovesContentFromSerializedAuditExportAndTombstones()
     {
         const string lexicalMarker = "PRIVATE-LEXICAL-VALUE";
@@ -471,7 +467,7 @@ public sealed class SemanticAssertionConformanceTests
             handling: CreateHandling(
                 SensitivityClass.Sensitive,
                 deleteDisposition: DeleteDisposition.Tombstone));
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Allowed,
             ledger.Append(Context(), assertion).Outcome);
 
@@ -481,11 +477,11 @@ public sealed class SemanticAssertionConformanceTests
             "tenant-local-1",
             RecordedAt.AddHours(1));
 
-        Assert.Equal(SemanticEvaluationOutcome.Allowed, deleted.Outcome);
-        Assert.Null(deleted.Assertion);
-        Assert.Empty(package.Assertions);
-        var tombstone = Assert.Single(package.Tombstones);
-        Assert.Equal(assertion.RecordDigest, tombstone.LastRecordDigest);
+        Assert.AreEqual(SemanticEvaluationOutcome.Allowed, deleted.Outcome);
+        Assert.IsNull(deleted.Assertion);
+        Assert.IsEmpty(package.Assertions);
+        var tombstone = Assert.ContainsSingle(package.Tombstones);
+        Assert.AreEqual(assertion.RecordDigest, tombstone.LastRecordDigest);
         var serialized = JsonSerializer.Serialize(new
         {
             LedgerAudit = ledger.Audit,
@@ -508,7 +504,7 @@ public sealed class SemanticAssertionConformanceTests
         }
     }
 
-    [Fact]
+    [TestMethod]
     public void AdversarialPurposeIsRejectedAndNormalizedInSerializedAudit()
     {
         const string purposeMarker = "PRIVATE-PURPOSE-CONTENT";
@@ -522,39 +518,39 @@ public sealed class SemanticAssertionConformanceTests
             assertion);
         var serialized = JsonSerializer.Serialize(ledger.Audit);
 
-        Assert.Equal(SemanticEvaluationOutcome.Invalid, result.Outcome);
-        Assert.Equal("purpose-denied", result.Reason);
+        Assert.AreEqual(SemanticEvaluationOutcome.Invalid, result.Outcome);
+        Assert.AreEqual("purpose-denied", result.Reason);
         Assert.DoesNotContain(purposeMarker, serialized, StringComparison.Ordinal);
         Assert.Contains("\"Purpose\":\"invalid-purpose\"", serialized, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [TestMethod]
     public void HardDeleteDoesNotRetainTombstone()
     {
         var ledger = CreateLedger();
         var assertion = CreateAssertion(
             handling: CreateHandling(
                 deleteDisposition: DeleteDisposition.HardDelete));
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Allowed,
             ledger.Append(Context(), assertion).Outcome);
 
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Allowed,
             ledger.Delete(Change(assertion)).Outcome);
 
-        Assert.Empty(ledger.Export(
+        Assert.IsEmpty(ledger.Export(
             Context(),
             "tenant-local-1",
             RecordedAt.AddHours(1)).Tombstones);
     }
 
-    [Theory]
-    [InlineData("digest", "record-digest-mismatch")]
-    [InlineData("version", "unsupported-contract-version")]
-    [InlineData("class", "invalid-assertion")]
-    [InlineData("source-digest", "invalid-provenance")]
-    [InlineData("extension", "invalid-extension")]
+    [TestMethod]
+    [DataRow("digest", "record-digest-mismatch")]
+    [DataRow("version", "unsupported-contract-version")]
+    [DataRow("class", "invalid-assertion")]
+    [DataRow("source-digest", "invalid-provenance")]
+    [DataRow("extension", "invalid-extension")]
     public void TamperVersionUnknownClassAndProvenanceFailuresAreDeterministic(
         string mutation,
         string reason)
@@ -596,16 +592,16 @@ public sealed class SemanticAssertionConformanceTests
 
         var result = ledger.Append(Context(), assertion);
 
-        Assert.Equal(SemanticEvaluationOutcome.Invalid, result.Outcome);
-        Assert.Equal(reason, result.Reason);
+        Assert.AreEqual(SemanticEvaluationOutcome.Invalid, result.Outcome);
+        Assert.AreEqual(reason, result.Reason);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ConcurrentLifecycleUpdatesAllowExactlyOneWinner()
     {
         var ledger = CreateLedger();
         var assertion = CreateAssertion();
-        Assert.Equal(
+        Assert.AreEqual(
             SemanticEvaluationOutcome.Allowed,
             ledger.Append(Context(), assertion).Outcome);
         var request = Change(assertion);
@@ -619,22 +615,22 @@ public sealed class SemanticAssertionConformanceTests
         start.Set();
         var results = await Task.WhenAll(operations);
 
-        Assert.Single(
-            results,
-            result => result.Outcome == SemanticEvaluationOutcome.Allowed);
-        Assert.Equal(
+        Assert.AreEqual(
+            1,
+            results.Count(result => result.Outcome == SemanticEvaluationOutcome.Allowed));
+        Assert.AreEqual(
             15,
             results.Count(result => result.Outcome == SemanticEvaluationOutcome.NotFound));
     }
 
-    [Fact]
+    [TestMethod]
     public void ProvenanceIsAppendOnlyAndEvidenceDigestMustMatch()
     {
         var ledger = new InMemorySemanticAssertionLedger();
         var source = CreateSource();
         ledger.AppendSource(Context(), source);
 
-        Assert.Throws<InvalidOperationException>(() => ledger.AppendSource(Context(), source));
+        Assert.ThrowsExactly<InvalidOperationException>(() => ledger.AppendSource(Context(), source));
     }
 
     private static InMemorySemanticAssertionLedger CreateLedger()

@@ -2,23 +2,24 @@ using Andreja.Modules.Identity;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class IdentityDomainTests
 {
-    [Fact]
+    [TestMethod]
     public void IdentityIdsUseGuidVersionSeven()
     {
-        Assert.Equal(7, TenantId.New().Value.Version);
-        Assert.Equal(7, AppUserId.New().Value.Version);
-        Assert.Equal(7, ExternalIdentityId.New().Value.Version);
-        Assert.Equal(7, MembershipId.New().Value.Version);
-        Assert.Equal(7, PrincipalId.New().Value.Version);
-        Assert.Equal(7, ContactId.New().Value.Version);
+        Assert.AreEqual(7, TenantId.New().Value.Version);
+        Assert.AreEqual(7, AppUserId.New().Value.Version);
+        Assert.AreEqual(7, ExternalIdentityId.New().Value.Version);
+        Assert.AreEqual(7, MembershipId.New().Value.Version);
+        Assert.AreEqual(7, PrincipalId.New().Value.Version);
+        Assert.AreEqual(7, ContactId.New().Value.Version);
     }
 
-    [Fact]
+    [TestMethod]
     public void ExternalIdentityRequiresHttpsIssuer()
     {
-        Assert.Throws<ArgumentException>(
+        Assert.ThrowsExactly<ArgumentException>(
             () => new ExternalIdentity(
                 ExternalIdentityId.New(),
                 AppUserId.New(),
@@ -26,7 +27,7 @@ public sealed class IdentityDomainTests
                 "subject"));
     }
 
-    [Fact]
+    [TestMethod]
     public void PrimaryIdentityMustBelongToUser()
     {
         var user = new AppUser(AppUserId.New(), "Owner");
@@ -36,25 +37,25 @@ public sealed class IdentityDomainTests
             "https://issuer.example",
             "subject");
 
-        Assert.Throws<InvalidOperationException>(
+        Assert.ThrowsExactly<InvalidOperationException>(
             () => user.SelectPrimaryIdentity(otherIdentity));
     }
 
-    [Fact]
+    [TestMethod]
     public void ScopedContextIsRequiredAndImmutable()
     {
         var accessor = new ScopedTenantPrincipalContext();
-        Assert.Throws<IdentityAccessDeniedException>(
+        Assert.ThrowsExactly<IdentityAccessDeniedException>(
             () => TenantPrincipalContext.Require(accessor));
 
         var context = CreateContext();
         accessor.Set(context);
 
-        Assert.Same(context, TenantPrincipalContext.Require(accessor));
-        Assert.Throws<InvalidOperationException>(() => accessor.Set(CreateContext()));
+        Assert.AreSame(context, TenantPrincipalContext.Require(accessor));
+        Assert.ThrowsExactly<InvalidOperationException>(() => accessor.Set(CreateContext()));
     }
 
-    [Fact]
+    [TestMethod]
     public void LastAuthenticationPathCannotBeRevoked()
     {
         var paths = new AuthenticationPathState(
@@ -62,15 +63,15 @@ public sealed class IdentityDomainTests
             ExternalIdentityCount: 0,
             UnusedRecoveryCodeCount: 0);
 
-        Assert.Throws<InvalidOperationException>(
+        Assert.ThrowsExactly<InvalidOperationException>(
             () => IdentityCredentialPolicy.EnsureCanRevokePasskey(paths));
     }
 
-    [Theory]
-    [InlineData(false, true, true, true)]
-    [InlineData(false, false, true, true)]
-    [InlineData(false, true, false, true)]
-    [InlineData(false, true, true, false)]
+    [TestMethod]
+    [DataRow(false, true, true, true)]
+    [DataRow(false, false, true, true)]
+    [DataRow(false, true, false, true)]
+    [DataRow(false, true, true, false)]
     public void BootstrapFailsUnlessEveryRequirementIsSatisfied(
         bool initialized,
         bool https,
@@ -87,7 +88,7 @@ public sealed class IdentityDomainTests
             return;
         }
 
-        Assert.Throws<InvalidOperationException>(
+        Assert.ThrowsExactly<InvalidOperationException>(
             () => IdentityCredentialPolicy.EnsureCanBootstrap(
                 initialized,
                 https,
@@ -95,27 +96,27 @@ public sealed class IdentityDomainTests
                 tokenVerified));
     }
 
-    [Fact]
+    [TestMethod]
     public void RecoveryRequiresRateLimitCodeAndNewPasskey()
     {
-        Assert.Throws<InvalidOperationException>(
+        Assert.ThrowsExactly<InvalidOperationException>(
             () => IdentityCredentialPolicy.EnsureCanRecover(
                 rateLimitAcquired: false,
                 recoveryCodeVerified: true,
                 newPasskeyAttestation: "attestation"));
-        Assert.Throws<InvalidOperationException>(
+        Assert.ThrowsExactly<InvalidOperationException>(
             () => IdentityCredentialPolicy.EnsureCanRecover(
                 rateLimitAcquired: true,
                 recoveryCodeVerified: false,
                 newPasskeyAttestation: "attestation"));
-        Assert.Throws<ArgumentException>(
+        Assert.ThrowsExactly<ArgumentException>(
             () => IdentityCredentialPolicy.EnsureCanRecover(
                 rateLimitAcquired: true,
                 recoveryCodeVerified: true,
                 newPasskeyAttestation: string.Empty));
     }
 
-    [Fact]
+    [TestMethod]
     public void RecoveryPathAllowsPasskeyRevocation()
     {
         var paths = new AuthenticationPathState(
@@ -126,7 +127,7 @@ public sealed class IdentityDomainTests
         IdentityCredentialPolicy.EnsureCanRevokePasskey(paths);
     }
 
-    [Fact]
+    [TestMethod]
     public void IdentityLinkRequiresRecentAuthenticationAndProviderProof()
     {
         var now = DateTimeOffset.UtcNow;
@@ -136,7 +137,7 @@ public sealed class IdentityDomainTests
             "proof",
             now.AddHours(-1));
 
-        Assert.Throws<InvalidOperationException>(
+        Assert.ThrowsExactly<InvalidOperationException>(
             () => IdentityCredentialPolicy.EnsureCanLinkExternalIdentity(
                 staleRequest,
                 now,
@@ -147,7 +148,7 @@ public sealed class IdentityDomainTests
             ProviderProof = string.Empty,
             AuthenticatedAt = now,
         };
-        Assert.Throws<ArgumentException>(
+        Assert.ThrowsExactly<ArgumentException>(
             () => IdentityCredentialPolicy.EnsureCanLinkExternalIdentity(
                 missingProof,
                 now,

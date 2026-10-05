@@ -13,9 +13,10 @@ using Microsoft.Extensions.Hosting;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class ForwardedIdentityIntegrationTests
 {
-    [Fact]
+    [TestMethod]
     public async Task TrustedLoopbackProxyRestoresExternalHttpsHostAndClient()
     {
         await using var host = await ProxyTestHost.StartAsync(CreateOptions());
@@ -28,14 +29,14 @@ public sealed class ForwardedIdentityIntegrationTests
         var result = await response.Content.ReadFromJsonAsync<ProxyProbe>();
 
         response.EnsureSuccessStatusCode();
-        Assert.NotNull(result);
-        Assert.True(result.Accepted);
-        Assert.Equal("https", result.Scheme);
-        Assert.Equal("localhost", result.Host);
-        Assert.Equal("203.0.113.10", result.RemoteAddress);
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.Accepted);
+        Assert.AreEqual("https", result.Scheme);
+        Assert.AreEqual("localhost", result.Host);
+        Assert.AreEqual("203.0.113.10", result.RemoteAddress);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task UntrustedForwarderCannotSpoofSchemeHostOrClient()
     {
         var configured = CreateOptions() with
@@ -51,16 +52,16 @@ public sealed class ForwardedIdentityIntegrationTests
             origin: "https://localhost");
         var result = await response.Content.ReadFromJsonAsync<ProxyProbe>();
 
-        Assert.NotNull(result);
-        Assert.False(result.Accepted);
-        Assert.Equal("http", result.Scheme);
-        Assert.Equal("127.0.0.1", result.RemoteAddress);
+        Assert.IsNotNull(result);
+        Assert.IsFalse(result.Accepted);
+        Assert.AreEqual("http", result.Scheme);
+        Assert.AreEqual("127.0.0.1", result.RemoteAddress);
     }
 
-    [Theory]
-    [InlineData("evil.example", "https://localhost")]
-    [InlineData("localhost", "https://evil.example")]
-    [InlineData("localhost:444", "https://localhost:444")]
+    [TestMethod]
+    [DataRow("evil.example", "https://localhost")]
+    [DataRow("localhost", "https://evil.example")]
+    [DataRow("localhost:444", "https://localhost:444")]
     public async Task WrongForwardedHostPortOrOriginFailsClosed(
         string forwardedHost,
         string origin)
@@ -74,11 +75,11 @@ public sealed class ForwardedIdentityIntegrationTests
             origin);
         var result = await response.Content.ReadFromJsonAsync<ProxyProbe>();
 
-        Assert.NotNull(result);
-        Assert.False(result.Accepted);
+        Assert.IsNotNull(result);
+        Assert.IsFalse(result.Accepted);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ConfiguredExternalPortMustMatchExactly()
     {
         var configured = CreateOptions() with
@@ -95,12 +96,12 @@ public sealed class ForwardedIdentityIntegrationTests
         var result = await response.Content.ReadFromJsonAsync<ProxyProbe>();
 
         response.EnsureSuccessStatusCode();
-        Assert.NotNull(result);
-        Assert.True(result.Accepted);
-        Assert.Equal("localhost:444", result.Host);
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.Accepted);
+        Assert.AreEqual("localhost:444", result.Host);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ForwardLimitUsesNearestValueAndCannotPromoteSpoofedHttps()
     {
         await using var host = await ProxyTestHost.StartAsync(CreateOptions());
@@ -112,13 +113,13 @@ public sealed class ForwardedIdentityIntegrationTests
             origin: "https://localhost");
         var result = await response.Content.ReadFromJsonAsync<ProxyProbe>();
 
-        Assert.NotNull(result);
-        Assert.False(result.Accepted);
-        Assert.Equal("http", result.Scheme);
-        Assert.Equal("203.0.113.10", result.RemoteAddress);
+        Assert.IsNotNull(result);
+        Assert.IsFalse(result.Accepted);
+        Assert.AreEqual("http", result.Scheme);
+        Assert.AreEqual("203.0.113.10", result.RemoteAddress);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task RecoveryLimiterPartitionsByValidatedForwardedClient()
     {
         var configured = CreateOptions() with
@@ -128,16 +129,16 @@ public sealed class ForwardedIdentityIntegrationTests
         };
         await using var host = await ProxyTestHost.StartAsync(configured);
 
-        Assert.Equal(HttpStatusCode.OK, await host.SendRecoveryAsync("203.0.113.1"));
-        Assert.Equal(HttpStatusCode.OK, await host.SendRecoveryAsync("203.0.113.1"));
-        Assert.Equal(
+        Assert.AreEqual(HttpStatusCode.OK, await host.SendRecoveryAsync("203.0.113.1"));
+        Assert.AreEqual(HttpStatusCode.OK, await host.SendRecoveryAsync("203.0.113.1"));
+        Assert.AreEqual(
             HttpStatusCode.TooManyRequests,
             await host.SendRecoveryAsync("203.0.113.1"));
-        Assert.Equal(HttpStatusCode.OK, await host.SendRecoveryAsync("203.0.113.2"));
-        Assert.Equal(HttpStatusCode.OK, await host.SendRecoveryAsync("203.0.113.2"));
+        Assert.AreEqual(HttpStatusCode.OK, await host.SendRecoveryAsync("203.0.113.2"));
+        Assert.AreEqual(HttpStatusCode.OK, await host.SendRecoveryAsync("203.0.113.2"));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task UntrustedForwardedClientsShareSafeRemoteAddressBucket()
     {
         var configured = CreateOptions() with
@@ -148,14 +149,14 @@ public sealed class ForwardedIdentityIntegrationTests
         };
         await using var host = await ProxyTestHost.StartAsync(configured);
 
-        Assert.Equal(HttpStatusCode.OK, await host.SendRecoveryAsync("203.0.113.1"));
-        Assert.Equal(HttpStatusCode.OK, await host.SendRecoveryAsync("203.0.113.2"));
-        Assert.Equal(
+        Assert.AreEqual(HttpStatusCode.OK, await host.SendRecoveryAsync("203.0.113.1"));
+        Assert.AreEqual(HttpStatusCode.OK, await host.SendRecoveryAsync("203.0.113.2"));
+        Assert.AreEqual(
             HttpStatusCode.TooManyRequests,
             await host.SendRecoveryAsync("198.51.100.1"));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task RecoveryLimiterHasBoundedGlobalAbuseCap()
     {
         var configured = CreateOptions() with
@@ -167,17 +168,17 @@ public sealed class ForwardedIdentityIntegrationTests
 
         for (var index = 1; index <= 20; index++)
         {
-            Assert.Equal(
+            Assert.AreEqual(
                 HttpStatusCode.OK,
                 await host.SendRecoveryAsync($"203.0.113.{index}"));
         }
 
-        Assert.Equal(
+        Assert.AreEqual(
             HttpStatusCode.TooManyRequests,
             await host.SendRecoveryAsync("198.51.100.1"));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task RecoveryGlobalCapIncludesTrailingSlashRoute()
     {
         var configured = CreateOptions() with
@@ -189,14 +190,14 @@ public sealed class ForwardedIdentityIntegrationTests
 
         for (var index = 1; index <= 20; index++)
         {
-            Assert.Equal(
+            Assert.AreEqual(
                 HttpStatusCode.OK,
                 await host.SendRecoveryAsync(
                     $"203.0.113.{index}",
                     LocalIdentityNetworkSecurity.RecoveryOptionsPath + "/"));
         }
 
-        Assert.Equal(
+        Assert.AreEqual(
             HttpStatusCode.TooManyRequests,
             await host.SendRecoveryAsync(
                 "198.51.100.1",
@@ -264,7 +265,7 @@ public sealed class ForwardedIdentityIntegrationTests
             await application.StartAsync();
 
             var server = application.Services.GetRequiredService<IServer>();
-            var address = Assert.Single(
+            var address = Assert.ContainsSingle(
                 server.Features.Get<IServerAddressesFeature>()!.Addresses);
             var client = new HttpClient(new SocketsHttpHandler
             {

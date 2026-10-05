@@ -7,9 +7,10 @@ using System.Text.Json;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class SkillHostTests
 {
-    [Fact]
+    [TestMethod]
     public async Task AuthorizedInvocationPreservesAllIdentitiesAndLeastDisclosure()
     {
         SkillExecutionContext? observed = null;
@@ -24,16 +25,16 @@ public sealed class SkillHostTests
             context,
             CancellationToken.None);
 
-        Assert.Equal(SkillResultStatus.Completed, result.Status);
-        Assert.NotNull(observed);
-        Assert.Equal(ExecutionContractFixture.TenantId, observed.TenantId);
-        Assert.Equal(ExecutionContractFixture.AppUserId, observed.AppUserId);
-        Assert.Equal(ExecutionContractFixture.PrincipalId, observed.PrincipalId);
-        Assert.Equal(DisclosureLevel.Summary, observed.EffectiveDisclosure);
-        Assert.Equal(ExecutionAuditOutcome.Allowed, Assert.Single(host.AuditEntries).Outcome);
+        Assert.AreEqual(SkillResultStatus.Completed, result.Status);
+        Assert.IsNotNull(observed);
+        Assert.AreEqual(ExecutionContractFixture.TenantId, observed.TenantId);
+        Assert.AreEqual(ExecutionContractFixture.AppUserId, observed.AppUserId);
+        Assert.AreEqual(ExecutionContractFixture.PrincipalId, observed.PrincipalId);
+        Assert.AreEqual(DisclosureLevel.Summary, observed.EffectiveDisclosure);
+        Assert.AreEqual(ExecutionAuditOutcome.Allowed, Assert.ContainsSingle(host.AuditEntries).Outcome);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task HostFailsClosedForEveryIdentityAndDeclaredPermissionMismatch()
     {
         var (host, manifest, context) = CreateHost();
@@ -82,15 +83,18 @@ public sealed class SkillHostTests
                 testCase.Context,
                 CancellationToken.None);
 
-            Assert.Equal(SkillResultStatus.Denied, result.Status);
-            Assert.Equal(testCase.Code, result.Failure?.Code);
+            Assert.AreEqual(SkillResultStatus.Denied, result.Status);
+            Assert.AreEqual(testCase.Code, result.Failure?.Code);
         }
 
-        Assert.Equal(cases.Length, host.AuditEntries.Count);
-        Assert.All(host.AuditEntries, entry => Assert.Equal(ExecutionAuditOutcome.Denied, entry.Outcome));
+        Assert.AreEqual(cases.Length, host.AuditEntries.Count);
+        foreach (var entry in host.AuditEntries)
+        {
+            Assert.AreEqual(ExecutionAuditOutcome.Denied, entry.Outcome);
+        }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task HostRejectsInactivePolicyGrantAndConsent()
     {
         var (host, manifest, context) = CreateHost();
@@ -134,18 +138,18 @@ public sealed class SkillHostTests
             },
         };
 
-        Assert.Equal(
+        Assert.AreEqual(
             "user-policy-inactive",
             (await host.InvokeAsync(invocation, expiredPolicy, CancellationToken.None)).Failure?.Code);
-        Assert.Equal(
+        Assert.AreEqual(
             "grant-inactive",
             (await host.InvokeAsync(invocation, revokedGrant, CancellationToken.None)).Failure?.Code);
-        Assert.Equal(
+        Assert.AreEqual(
             "consent-inactive",
             (await host.InvokeAsync(invocation, revokedConsent, CancellationToken.None)).Failure?.Code);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task HostRejectsManifestDigestVersionMutationAndUnknownTool()
     {
         var tools = new List<ToolDefinition>(
@@ -169,13 +173,13 @@ public sealed class SkillHostTests
         tools[0] = tools[0] with { Description = "Tampered after registration." };
         var mutationResult = await host.InvokeAsync(valid, context, CancellationToken.None);
 
-        Assert.Equal("manifest-tampered", digestResult.Failure?.Code);
-        Assert.Equal("skill-not-declared", versionResult.Failure?.Code);
-        Assert.Equal("tool-not-declared", toolResult.Failure?.Code);
-        Assert.Equal("manifest-tampered", mutationResult.Failure?.Code);
+        Assert.AreEqual("manifest-tampered", digestResult.Failure?.Code);
+        Assert.AreEqual("skill-not-declared", versionResult.Failure?.Code);
+        Assert.AreEqual("tool-not-declared", toolResult.Failure?.Code);
+        Assert.AreEqual("manifest-tampered", mutationResult.Failure?.Code);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ConcurrentInvocationsRemainIsolatedAndAudited()
     {
         var observed = new ConcurrentBag<(Guid User, Guid Principal)>();
@@ -190,17 +194,21 @@ public sealed class SkillHostTests
             Enumerable.Range(0, 64).Select(_ =>
                 host.InvokeAsync(invocation, context, CancellationToken.None).AsTask()));
 
-        Assert.All(results, result => Assert.Equal(SkillResultStatus.Completed, result.Status));
-        Assert.Equal(64, observed.Count);
-        Assert.All(
-            observed,
-            identity => Assert.Equal(
+        foreach (var result in results)
+        {
+            Assert.AreEqual(SkillResultStatus.Completed, result.Status);
+        }
+        Assert.AreEqual(64, observed.Count);
+        foreach (var identity in observed)
+        {
+            Assert.AreEqual(
                 (ExecutionContractFixture.AppUserId, ExecutionContractFixture.PrincipalId),
-                identity));
-        Assert.Equal(64, host.AuditEntries.Count);
+                identity);
+        }
+        Assert.AreEqual(64, host.AuditEntries.Count);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task DeniedAuditIsContentMinimized()
     {
         var (host, manifest, context) = CreateHost();
@@ -216,14 +224,14 @@ public sealed class SkillHostTests
 
         await host.InvokeAsync(invocation, context, CancellationToken.None);
 
-        var audit = Assert.Single(host.AuditEntries);
+        var audit = Assert.ContainsSingle(host.AuditEntries);
         var serialized = JsonSerializer.Serialize(audit);
         Assert.DoesNotContain(secret, serialized, StringComparison.Ordinal);
         Assert.DoesNotContain("title", serialized, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal("wrong-user", audit.ReasonCode);
+        Assert.AreEqual("wrong-user", audit.ReasonCode);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task HostReturnsStructuredCancellation()
     {
         var (host, manifest, context) = CreateHost();
@@ -235,8 +243,8 @@ public sealed class SkillHostTests
             context,
             cancellation.Token);
 
-        Assert.Equal(SkillResultStatus.Cancelled, result.Status);
-        Assert.Equal("cancelled", result.Failure?.Code);
+        Assert.AreEqual(SkillResultStatus.Cancelled, result.Status);
+        Assert.AreEqual("cancelled", result.Failure?.Code);
     }
 
     private static (

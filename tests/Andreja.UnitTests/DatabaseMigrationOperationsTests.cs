@@ -16,12 +16,13 @@ using System.Text.Json;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class DatabaseMigrationOperationsTests
 {
     private static readonly JsonSerializerOptions SerializerOptions =
         new(JsonSerializerDefaults.Web);
 
-    [Fact]
+    [TestMethod]
     public void NormalStartupContainsNoMigrationMutation()
     {
         var root = FindRepositoryRoot();
@@ -42,7 +43,7 @@ public sealed class DatabaseMigrationOperationsTests
         Assert.DoesNotContain("MigrateAsync", registration, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task PendingMigrationsFailReadinessWithoutApplying()
     {
         var executor = new FakeMigrationExecutor(["MigrationA"]);
@@ -52,24 +53,24 @@ public sealed class DatabaseMigrationOperationsTests
 
         var result = await check.CheckHealthAsync(new HealthCheckContext());
 
-        Assert.Equal(HealthStatus.Unhealthy, result.Status);
-        Assert.Equal(0, executor.MigrateCalls);
+        Assert.AreEqual(HealthStatus.Unhealthy, result.Status);
+        Assert.AreEqual(0, executor.MigrateCalls);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task PendingMigrationsFailStartupWithoutApplying()
     {
         var executor = new FakeMigrationExecutor(["MigrationA"]);
         await using var provider = CreateProvider(executor);
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+        var exception = await Assert.ThrowsExactlyAsync<InvalidOperationException>(
             () => DatabaseMigrationStartupVerifier.VerifyAsync(provider));
 
         Assert.Contains("explicit operator migration", exception.Message, StringComparison.Ordinal);
-        Assert.Equal(0, executor.MigrateCalls);
+        Assert.AreEqual(0, executor.MigrateCalls);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ExplicitCommandAppliesExactlyApprovedMigrations()
     {
         await using var fixture = await MigrationFixture.CreateAsync(["MigrationA"]);
@@ -82,13 +83,13 @@ public sealed class DatabaseMigrationOperationsTests
             provider,
             output);
 
-        Assert.Equal(0, exitCode);
-        Assert.Equal(1, executor.MigrateCalls);
-        Assert.Empty(executor.Pending);
+        Assert.AreEqual(0, exitCode);
+        Assert.AreEqual(1, executor.MigrateCalls);
+        Assert.IsEmpty(executor.Pending);
         Assert.Contains("Applied 1 approved", output.ToString(), StringComparison.Ordinal);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ExplicitCommandRejectsApprovalMismatchWithoutApplying()
     {
         await using var fixture = await MigrationFixture.CreateAsync(["MigrationA"]);
@@ -101,15 +102,15 @@ public sealed class DatabaseMigrationOperationsTests
             provider,
             output);
 
-        Assert.Equal(65, exitCode);
-        Assert.Equal(0, executor.MigrateCalls);
+        Assert.AreEqual(65, exitCode);
+        Assert.AreEqual(0, executor.MigrateCalls);
         Assert.Contains(
             "pending migrations do not match approval",
             output.ToString(),
             StringComparison.Ordinal);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ExplicitCommandReportsFailureWithoutClaimingSuccess()
     {
         await using var fixture = await MigrationFixture.CreateAsync(["MigrationA"]);
@@ -125,12 +126,12 @@ public sealed class DatabaseMigrationOperationsTests
             provider,
             output);
 
-        Assert.Equal(1, exitCode);
-        Assert.Equal(1, executor.MigrateCalls);
+        Assert.AreEqual(1, exitCode);
+        Assert.AreEqual(1, executor.MigrateCalls);
         Assert.DoesNotContain("synthetic", output.ToString(), StringComparison.Ordinal);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ExplicitCommandHonorsCancellation()
     {
         await using var fixture = await MigrationFixture.CreateAsync(["MigrationA"]);
@@ -148,12 +149,12 @@ public sealed class DatabaseMigrationOperationsTests
             output,
             cancellation.Token);
 
-        Assert.Equal(130, exitCode);
-        Assert.Equal(1, executor.MigrateCalls);
+        Assert.AreEqual(130, exitCode);
+        Assert.AreEqual(1, executor.MigrateCalls);
         Assert.Contains("cancelled", output.ToString(), StringComparison.Ordinal);
     }
 
-    [Fact]
+    [TestMethod]
     public void ProductionCompositionRegistersMigrationReadinessAndExecutor()
     {
         var directory = CreateScratchDirectory();
@@ -192,18 +193,17 @@ public sealed class DatabaseMigrationOperationsTests
             using var provider = services.BuildServiceProvider(
                 new ServiceProviderOptions { ValidateScopes = true });
             using var scope = provider.CreateScope();
-            Assert.IsType<EfDatabaseMigrationExecutor>(
+            Assert.IsInstanceOfType<EfDatabaseMigrationExecutor>(
                 scope.ServiceProvider.GetRequiredService<IDatabaseMigrationExecutor>());
-            var proposalStore = Assert.IsType<PostgreSqlProposalStore>(
+            var proposalStore = Assert.IsInstanceOfType<PostgreSqlProposalStore>(
                 scope.ServiceProvider.GetRequiredService<IProposalStore>());
-            Assert.IsAssignableFrom<IOpenLoopsProposalConfirmationStore>(proposalStore);
+            Assert.IsInstanceOfType<IOpenLoopsProposalConfirmationStore>(proposalStore);
             var registrations = provider
                 .GetRequiredService<IOptions<HealthCheckServiceOptions>>()
                 .Value.Registrations;
-            Assert.Contains(
-                registrations,
+            Assert.IsTrue(registrations.Any(
                 registration => registration.Name == "database-migrations" &&
-                    registration.Tags.Contains("ready"));
+                    registration.Tags.Contains("ready")));
         }
         finally
         {

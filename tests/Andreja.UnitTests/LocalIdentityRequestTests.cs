@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class LocalIdentityRequestTests
 {
     private static readonly LocalIdentityOptions Options = new()
@@ -12,13 +13,13 @@ public sealed class LocalIdentityRequestTests
         BootstrapTokenFile = Path.GetFullPath("unused"),
     };
 
-    [Theory]
-    [InlineData("https", "andreja.example", "https://andreja.example", true)]
-    [InlineData("http", "andreja.example", "http://andreja.example", false)]
-    [InlineData("https", "evil.example", "https://evil.example", false)]
-    [InlineData("https", "andreja.example", "https://evil.example", false)]
-    [InlineData("https", "sub.andreja.example", "https://sub.andreja.example", false)]
-    [InlineData("https", "andreja.example:444", "https://andreja.example:444", false)]
+    [TestMethod]
+    [DataRow("https", "andreja.example", "https://andreja.example", true)]
+    [DataRow("http", "andreja.example", "http://andreja.example", false)]
+    [DataRow("https", "evil.example", "https://evil.example", false)]
+    [DataRow("https", "andreja.example", "https://evil.example", false)]
+    [DataRow("https", "sub.andreja.example", "https://sub.andreja.example", false)]
+    [DataRow("https", "andreja.example:444", "https://andreja.example:444", false)]
     public void RelyingPartyRequestRequiresExactConfiguredHttpsOrigin(
         string scheme,
         string host,
@@ -30,26 +31,26 @@ public sealed class LocalIdentityRequestTests
         context.Request.Host = HostString.FromUriComponent(host);
         context.Request.Headers.Origin = origin;
 
-        Assert.Equal(
+        Assert.AreEqual(
             expected,
             LocalIdentityOperations.IsAcceptedRelyingPartyRequest(
                 context.Request,
                 Options));
     }
 
-    [Fact]
+    [TestMethod]
     public void MissingOriginFailsClosed()
     {
         var context = new DefaultHttpContext();
         context.Request.Scheme = "https";
         context.Request.Host = new HostString("andreja.example");
 
-        Assert.False(LocalIdentityOperations.IsAcceptedRelyingPartyRequest(
+        Assert.IsFalse(LocalIdentityOperations.IsAcceptedRelyingPartyRequest(
             context.Request,
             Options));
     }
 
-    [Fact]
+    [TestMethod]
     public void ProductionIdentityOptionsRequireBoundedRecoveryRateLimit()
     {
         var validator = new LocalIdentityOptionsValidator();
@@ -64,47 +65,42 @@ public sealed class LocalIdentityRequestTests
 
         var result = validator.Validate(null, invalid);
 
-        Assert.False(result.Succeeded);
-        Assert.NotNull(result.Failures);
-        Assert.Contains(
-            result.Failures!,
+        Assert.IsFalse(result.Succeeded);
+        Assert.IsNotNull(result.Failures);
+        Assert.IsTrue(result.Failures!.Any(
             failure => failure.Contains(
                 "BootstrapCeremonyLifetime",
-                StringComparison.Ordinal));
-        Assert.Contains(
-            result.Failures!,
-            failure => failure.Contains("Trusted proxy", StringComparison.Ordinal));
-        Assert.Contains(
-            result.Failures!,
-            failure => failure.Contains("RecoveryRateLimitAttempts", StringComparison.Ordinal));
-        Assert.Contains(
-            result.Failures!,
+                StringComparison.Ordinal)));
+        Assert.IsTrue(result.Failures.Any(
+            failure => failure.Contains("Trusted proxy", StringComparison.Ordinal)));
+        Assert.IsTrue(result.Failures.Any(
+            failure => failure.Contains("RecoveryRateLimitAttempts", StringComparison.Ordinal)));
+        Assert.IsTrue(result.Failures.Any(
             failure => failure.Contains(
                 "RecoveryGlobalRateLimitAttempts",
-                StringComparison.Ordinal));
-        Assert.Contains(
-            result.Failures!,
-            failure => failure.Contains("RecoveryRateLimitWindow", StringComparison.Ordinal));
+                StringComparison.Ordinal)));
+        Assert.IsTrue(result.Failures.Any(
+            failure => failure.Contains("RecoveryRateLimitWindow", StringComparison.Ordinal)));
     }
 
-    [Theory]
-    [InlineData(42, false)]
-    [InlineData(43, true)]
-    [InlineData(64, true)]
-    [InlineData(65, false)]
+    [TestMethod]
+    [DataRow(42, false)]
+    [DataRow(43, true)]
+    [DataRow(64, true)]
+    [DataRow(65, false)]
     public void RecoveryCodesAreLengthBoundedBeforeHashing(
         int length,
         bool expected) =>
-        Assert.Equal(
+        Assert.AreEqual(
             expected,
             LocalIdentityOperations.IsPlausibleRecoveryCode(
                 new string('A', length)));
 
-    [Fact]
+    [TestMethod]
     public void RecoveryCodeBoundsRejectWhitespaceShrinkageAndNull()
     {
-        Assert.False(LocalIdentityOperations.IsPlausibleRecoveryCode(null));
-        Assert.False(LocalIdentityOperations.IsPlausibleRecoveryCode(
+        Assert.IsFalse(LocalIdentityOperations.IsPlausibleRecoveryCode(null));
+        Assert.IsFalse(LocalIdentityOperations.IsPlausibleRecoveryCode(
             " " + new string(
                 'A',
                 LocalIdentityOperations.RecoveryCodeMinimumLength - 1)));

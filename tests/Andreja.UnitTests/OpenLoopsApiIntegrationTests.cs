@@ -24,27 +24,30 @@ using System.Reflection;
 
 namespace Andreja.UnitTests;
 
-public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApplicationFactory>
+[TestClass]
+public sealed class OpenLoopsApiIntegrationTests
 {
-    private readonly OpenLoopsWebApplicationFactory factory;
+    private static OpenLoopsWebApplicationFactory factory = null!;
 
-    public OpenLoopsApiIntegrationTests(OpenLoopsWebApplicationFactory factory)
-    {
-        this.factory = factory;
-    }
+    [ClassInitialize]
+    public static void InitializeClass(TestContext _) =>
+        factory = new OpenLoopsWebApplicationFactory();
 
-    [Fact]
+    [ClassCleanup]
+    public static void CleanupClass() => factory.Dispose();
+
+    [TestMethod]
     public async Task AnonymousUiRedirectsToExistingLoginAndApiReturnsJson401()
     {
         using var anonymous = factory.CreateAnonymousClient();
 
         var uiResponse = await anonymous.GetAsync("/");
 
-        Assert.Equal(HttpStatusCode.Redirect, uiResponse.StatusCode);
-        Assert.Equal("/Account/Login", uiResponse.Headers.Location?.AbsolutePath);
-        Assert.Equal("?ReturnUrl=%2F", uiResponse.Headers.Location?.Query);
+        Assert.AreEqual(HttpStatusCode.Redirect, uiResponse.StatusCode);
+        Assert.AreEqual("/Account/Login", uiResponse.Headers.Location?.AbsolutePath);
+        Assert.AreEqual("?ReturnUrl=%2F", uiResponse.Headers.Location?.Query);
         var loginResponse = await anonymous.GetAsync(uiResponse.Headers.Location);
-        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+        Assert.AreEqual(HttpStatusCode.OK, loginResponse.StatusCode);
 #if DEBUG
         Assert.Contains(
             "Sign in to the development workspace",
@@ -58,37 +61,37 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
 #endif
 
         var apiResponse = await anonymous.GetAsync($"{OpenLoopsApi.RoutePrefix}/tasks");
-        Assert.Equal(HttpStatusCode.Unauthorized, apiResponse.StatusCode);
-        Assert.Null(apiResponse.Headers.Location);
-        Assert.Equal("application/json", apiResponse.Content.Headers.ContentType?.MediaType);
-        Assert.Equal(
+        Assert.AreEqual(HttpStatusCode.Unauthorized, apiResponse.StatusCode);
+        Assert.IsNull(apiResponse.Headers.Location);
+        Assert.AreEqual("application/json", apiResponse.Content.Headers.ContentType?.MediaType);
+        Assert.AreEqual(
             "authentication-required",
             (await apiResponse.Content.ReadFromJsonAsync<ApiErrorDto>())?.Code);
 
         anonymous.DefaultRequestHeaders.Add("X-Andreja-Test-Authenticate", "true");
         var fakeHeaderResponse = await anonymous.GetAsync($"{OpenLoopsApi.RoutePrefix}/tasks");
-        Assert.Equal(HttpStatusCode.Unauthorized, fakeHeaderResponse.StatusCode);
-        Assert.Null(fakeHeaderResponse.Headers.Location);
+        Assert.AreEqual(HttpStatusCode.Unauthorized, fakeHeaderResponse.StatusCode);
+        Assert.IsNull(fakeHeaderResponse.Headers.Location);
     }
 
 #if DEBUG
-    [Fact]
+    [TestMethod]
     public async Task DevelopmentSignInUsesLocalReturnUrlAndEnablesUiAndApi()
     {
         using var authenticated = await factory.CreateDevelopmentSignedInClientAsync("/");
 
         var home = await authenticated.GetAsync("/");
-        Assert.Equal(HttpStatusCode.OK, home.StatusCode);
+        Assert.AreEqual(HttpStatusCode.OK, home.StatusCode);
         var unsafeResponse = await authenticated.PostAsJsonAsync(
             $"{OpenLoopsApi.RoutePrefix}/assistant/proposals",
             new AssistantTaskRequest { Message = "Must not be accepted" });
 
-        Assert.Equal(HttpStatusCode.BadRequest, unsafeResponse.StatusCode);
+        Assert.AreEqual(HttpStatusCode.BadRequest, unsafeResponse.StatusCode);
         var error = await unsafeResponse.Content.ReadFromJsonAsync<ApiErrorDto>();
-        Assert.Equal("invalid-antiforgery-token", error?.Code);
+        Assert.AreEqual("invalid-antiforgery-token", error?.Code);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task SignOutClearsTheAuthenticatedCookie()
     {
         using var client = await factory.CreateDevelopmentSignedInClientAsync("/");
@@ -130,7 +133,7 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
             login,
             "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"",
             RegexOptions.CultureInvariant);
-        Assert.True(tokenMatch.Success);
+        Assert.IsTrue(tokenMatch.Success);
 
         var response = await client.PostAsync(
             LocalAccountEndpoints.LogoutPath,
@@ -141,16 +144,16 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
             }));
         using var anonymousHome = await client.GetAsync("/");
 
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal(LocalAccountEndpoints.LoginPath, response.Headers.Location?.OriginalString);
-        Assert.Equal(HttpStatusCode.Redirect, anonymousHome.StatusCode);
-        Assert.Equal(
+        Assert.AreEqual(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.AreEqual(LocalAccountEndpoints.LoginPath, response.Headers.Location?.OriginalString);
+        Assert.AreEqual(HttpStatusCode.Redirect, anonymousHome.StatusCode);
+        Assert.AreEqual(
             LocalAccountEndpoints.LoginPath,
             anonymousHome.Headers.Location?.AbsolutePath);
     }
 #endif
 
-    [Fact]
+    [TestMethod]
     public async Task CookieAccessDeniedEventReturnsJson403ForApiWithoutRedirect()
     {
         var options = factory.Services
@@ -171,8 +174,8 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
 
         await options.Events.RedirectToAccessDenied(redirectContext);
 
-        Assert.Equal(StatusCodes.Status403Forbidden, httpContext.Response.StatusCode);
-        Assert.False(httpContext.Response.Headers.ContainsKey("Location"));
+        Assert.AreEqual(StatusCodes.Status403Forbidden, httpContext.Response.StatusCode);
+        Assert.IsFalse(httpContext.Response.Headers.ContainsKey("Location"));
         httpContext.Response.Body.Position = 0;
         using var reader = new StreamReader(httpContext.Response.Body);
         Assert.Contains(
@@ -182,18 +185,18 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
     }
 
 #if DEBUG
-    [Fact]
+    [TestMethod]
     public async Task AuthenticatedTypedApiCompletesTaskScenario()
     {
         using var client = await factory.CreateDevelopmentSignedInClientAsync("/");
-        var provider = Assert.IsType<AssistantProviderDto>(
+        var provider = Assert.IsInstanceOfType<AssistantProviderDto>(
             await client.GetFromJsonAsync<AssistantProviderDto>(
                 $"{OpenLoopsApi.RoutePrefix}/assistant/provider"));
-        Assert.True(provider.Ready);
-        Assert.Equal("deterministic", provider.Selection);
+        Assert.IsTrue(provider.Ready);
+        Assert.AreEqual("deterministic", provider.Selection);
         var token = await client.GetFromJsonAsync<AntiforgeryTokenDto>(
             OpenLoopsApi.AntiforgeryRoute);
-        Assert.NotNull(token);
+        Assert.IsNotNull(token);
 
         using var propose = new HttpRequestMessage(
             HttpMethod.Post,
@@ -208,9 +211,9 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         using var proposedResponse = await client.SendAsync(propose);
         proposedResponse.EnsureSuccessStatusCode();
         var proposed = await proposedResponse.Content.ReadFromJsonAsync<AssistantTaskResponse>();
-        var proposal = Assert.IsType<TaskProposalDto>(proposed?.Proposal);
+        var proposal = Assert.IsInstanceOfType<TaskProposalDto>(proposed?.Proposal);
 
-        Assert.Empty(await client.GetFromJsonAsync<TaskDto[]>(
+        Assert.IsEmpty(await client.GetFromJsonAsync<TaskDto[]>(
             $"{OpenLoopsApi.RoutePrefix}/tasks") ?? []);
 
         using var confirm = new HttpRequestMessage(
@@ -227,7 +230,7 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         using var confirmedResponse = await client.SendAsync(confirm);
         confirmedResponse.EnsureSuccessStatusCode();
         var confirmed = await confirmedResponse.Content.ReadFromJsonAsync<ProposalOutcomeDto>();
-        var task = Assert.IsType<TaskDto>(confirmed?.Task);
+        var task = Assert.IsInstanceOfType<TaskDto>(confirmed?.Task);
 
         using var complete = new HttpRequestMessage(
             HttpMethod.Post,
@@ -245,7 +248,7 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
 
         var export = await client.GetFromJsonAsync<TaskExportDto>(
             $"{OpenLoopsApi.RoutePrefix}/export");
-        Assert.Equal(TaskStatusDto.Completed, Assert.Single(export!.Tasks).Status);
+        Assert.AreEqual(TaskStatusDto.Completed, Assert.ContainsSingle(export!.Tasks).Status);
 
         using var delete = new HttpRequestMessage(
             HttpMethod.Delete,
@@ -253,15 +256,15 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         delete.Headers.Add(OpenLoopsApi.AntiforgeryHeader, token.Token);
         using var deletedResponse = await client.SendAsync(delete);
         deletedResponse.EnsureSuccessStatusCode();
-        Assert.Empty(await client.GetFromJsonAsync<TaskDto[]>(
+        Assert.IsEmpty(await client.GetFromJsonAsync<TaskDto[]>(
             $"{OpenLoopsApi.RoutePrefix}/tasks") ?? []);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task WebApplicationFactoryPreservesConfirmationReplayAndRejectsKeyReuse()
     {
         using var client = await factory.CreateDevelopmentSignedInClientAsync("/");
-        var token = Assert.IsType<AntiforgeryTokenDto>(
+        var token = Assert.IsInstanceOfType<AntiforgeryTokenDto>(
             await client.GetFromJsonAsync<AntiforgeryTokenDto>(
                 OpenLoopsApi.AntiforgeryRoute));
         using var propose = new HttpRequestMessage(
@@ -276,7 +279,7 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         propose.Headers.Add(OpenLoopsApi.AntiforgeryHeader, token.Token);
         using var proposedResponse = await client.SendAsync(propose);
         proposedResponse.EnsureSuccessStatusCode();
-        var proposal = Assert.IsType<TaskProposalDto>(
+        var proposal = Assert.IsInstanceOfType<TaskProposalDto>(
             (await proposedResponse.Content.ReadFromJsonAsync<AssistantTaskResponse>())?.Proposal);
 
         async Task<ProposalOutcomeDto> ConfirmAsync(
@@ -295,8 +298,8 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
             };
             request.Headers.Add(OpenLoopsApi.AntiforgeryHeader, token.Token);
             using var response = await client.SendAsync(request);
-            Assert.Equal(expectedStatus, response.StatusCode);
-            return Assert.IsType<ProposalOutcomeDto>(
+            Assert.AreEqual(expectedStatus, response.StatusCode);
+            return Assert.IsInstanceOfType<ProposalOutcomeDto>(
                 await response.Content.ReadFromJsonAsync<ProposalOutcomeDto>());
         }
 
@@ -306,11 +309,11 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
             proposal.Version + 1,
             HttpStatusCode.Conflict);
 
-        Assert.Equal("Applied", applied.Outcome);
-        Assert.Equal("IdempotentReplay", replay.Outcome);
-        Assert.Equal(applied.Task?.Id, replay.Task?.Id);
-        Assert.Equal("Conflict", conflictingReuse.Outcome);
-        Assert.Single(await client.GetFromJsonAsync<TaskDto[]>(
+        Assert.AreEqual("Applied", applied.Outcome);
+        Assert.AreEqual("IdempotentReplay", replay.Outcome);
+        Assert.AreEqual(applied.Task?.Id, replay.Task?.Id);
+        Assert.AreEqual("Conflict", conflictingReuse.Outcome);
+        Assert.ContainsSingle(await client.GetFromJsonAsync<TaskDto[]>(
             $"{OpenLoopsApi.RoutePrefix}/tasks") ?? []);
         using var delete = new HttpRequestMessage(
             HttpMethod.Delete,
@@ -321,10 +324,10 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
     }
 #endif
 
-    [Fact]
+    [TestMethod]
     public async Task ActualDiTypedClientsKeepConcurrentCircuitIdentitiesIsolated()
     {
-        Assert.Null(new HttpContextAccessor().HttpContext);
+        Assert.IsNull(new HttpContextAccessor().HttpContext);
         var handlerBuildsBefore = factory.HandlerBuildCount;
         using var first = factory.CreateCircuitApiClient(
             Guid.Parse("0198D117-3D00-7000-8000-00000000C101"),
@@ -338,8 +341,8 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         var proposals = await Task.WhenAll(
             first.Api.ProposeAsync("First circuit task"),
             second.Api.ProposeAsync("Second circuit task"));
-        var firstProposal = Assert.IsType<TaskProposalDto>(proposals[0].Proposal);
-        var secondProposal = Assert.IsType<TaskProposalDto>(proposals[1].Proposal);
+        var firstProposal = Assert.IsInstanceOfType<TaskProposalDto>(proposals[0].Proposal);
+        var secondProposal = Assert.IsInstanceOfType<TaskProposalDto>(proposals[1].Proposal);
         var confirmations = await Task.WhenAll(
             first.Api.ConfirmAsync(
                 firstProposal.Id,
@@ -349,15 +352,15 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
                 secondProposal.Id,
                 secondProposal.Version,
                 "circuit-second-confirm"));
-        var firstTask = Assert.IsType<TaskDto>(confirmations[0].Task);
-        var secondTask = Assert.IsType<TaskDto>(confirmations[1].Task);
+        var firstTask = Assert.IsInstanceOfType<TaskDto>(confirmations[0].Task);
+        var secondTask = Assert.IsInstanceOfType<TaskDto>(confirmations[1].Task);
 
         var lists = await Task.WhenAll(
             first.Api.ListAsync(),
             second.Api.ListAsync());
-        Assert.Equal("First circuit task", Assert.Single(lists[0]).Title);
-        Assert.Equal("Second circuit task", Assert.Single(lists[1]).Title);
-        Assert.Equal(handlerBuildsBefore + 1, factory.HandlerBuildCount);
+        Assert.AreEqual("First circuit task", Assert.ContainsSingle(lists[0]).Title);
+        Assert.AreEqual("Second circuit task", Assert.ContainsSingle(lists[1]).Title);
+        Assert.AreEqual(handlerBuildsBefore + 1, factory.HandlerBuildCount);
 
         var completions = await Task.WhenAll(
             first.Api.CompleteAsync(
@@ -368,14 +371,15 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
                 secondTask.Id,
                 secondTask.Version,
                 "circuit-second-complete"));
-        Assert.All(
-            completions,
-            completion => Assert.Equal(TaskStatusDto.Completed, completion.Task?.Status));
+        foreach (var completion in completions)
+        {
+            Assert.AreEqual(TaskStatusDto.Completed, completion.Task?.Status);
+        }
         var exports = await Task.WhenAll(
             first.Api.ExportAsync(),
             second.Api.ExportAsync());
-        Assert.Equal("First circuit task", Assert.Single(exports[0].Tasks).Title);
-        Assert.Equal("Second circuit task", Assert.Single(exports[1].Tasks).Title);
+        Assert.AreEqual("First circuit task", Assert.ContainsSingle(exports[0].Tasks).Title);
+        Assert.AreEqual("Second circuit task", Assert.ContainsSingle(exports[1].Tasks).Title);
 
         await Task.WhenAll(
             first.Api.DeleteAsync(
@@ -388,7 +392,7 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
                 "circuit-second-delete"));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task InteractiveInitializationFailureBecomesSafeUiState()
     {
         var page = new Home();
@@ -398,28 +402,28 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
             new OpenLoopsWebApplicationFactory.UnreachableOpenLoopsApiClient());
         var initialize = typeof(Home).GetMethod("OnInitializedAsync", flags)!;
 
-        await Assert.IsAssignableFrom<Task>(initialize.Invoke(page, null));
+        await Assert.IsInstanceOfType<Task>(initialize.Invoke(page, null));
 
-        Assert.True((bool)typeof(Home).GetProperty("Loaded", flags)!.GetValue(page)!);
-        Assert.Equal(
+        Assert.IsTrue((bool)typeof(Home).GetProperty("Loaded", flags)!.GetValue(page)!);
+        Assert.AreEqual(
             "Andreja could not reach the task API. Nothing was changed.",
             typeof(Home).GetProperty("ErrorMessage", flags)!.GetValue(page));
     }
 
-    [Theory]
-    [InlineData("/", true)]
-    [InlineData("/tasks?view=today", true)]
-    [InlineData("//example.test", false)]
-    [InlineData("/\\example.test", false)]
-    [InlineData("/\n/evil.example", false)]
-    [InlineData("/\r/evil.example", false)]
-    [InlineData("/\t/evil.example", false)]
-    [InlineData("https://example.test", false)]
-    [InlineData("", false)]
+    [TestMethod]
+    [DataRow("/", true)]
+    [DataRow("/tasks?view=today", true)]
+    [DataRow("//example.test", false)]
+    [DataRow("/\\example.test", false)]
+    [DataRow("/\n/evil.example", false)]
+    [DataRow("/\r/evil.example", false)]
+    [DataRow("/\t/evil.example", false)]
+    [DataRow("https://example.test", false)]
+    [DataRow("", false)]
     public void ReturnUrlMustBeLocal(string returnUrl, bool expected) =>
-        Assert.Equal(expected, LocalAccountEndpoints.IsLocalReturnUrl(returnUrl));
+        Assert.AreEqual(expected, LocalAccountEndpoints.IsLocalReturnUrl(returnUrl));
 
-    [Fact]
+    [TestMethod]
     public async Task UnsafeReturnUrlIsReplacedAndDevelopmentSignInIsAbsentInProduction()
     {
         using var development = factory.CreateAnonymousClient();
@@ -435,27 +439,27 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         using var production = productionFactory.CreateClient(
             new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         var productionRoot = await production.GetAsync("/");
-        Assert.Equal(HttpStatusCode.Redirect, productionRoot.StatusCode);
-        Assert.Equal(
+        Assert.AreEqual(HttpStatusCode.Redirect, productionRoot.StatusCode);
+        Assert.AreEqual(
             LocalAccountEndpoints.LoginPath,
             productionRoot.Headers.Location?.AbsolutePath);
         var productionLogin = await production.GetAsync(productionRoot.Headers.Location);
-        Assert.Equal(HttpStatusCode.OK, productionLogin.StatusCode);
+        Assert.AreEqual(HttpStatusCode.OK, productionLogin.StatusCode);
         Assert.Contains(
             "Sign in with a passkey",
             await productionLogin.Content.ReadAsStringAsync(),
             StringComparison.Ordinal);
         var developmentEndpoint = await production.GetAsync(
             "/Account/DevelopmentSignIn");
-        Assert.Equal(HttpStatusCode.NotFound, developmentEndpoint.StatusCode);
+        Assert.AreEqual(HttpStatusCode.NotFound, developmentEndpoint.StatusCode);
 #if !DEBUG
-        Assert.Null(typeof(LocalAccountEndpoints).GetField(
+        Assert.IsNull(typeof(LocalAccountEndpoints).GetField(
             "DevelopmentSignInPath",
             BindingFlags.Public | BindingFlags.Static));
 #endif
     }
 
-    [Fact]
+    [TestMethod]
     public async Task AccountPagesUseExternalPasskeyScriptAndStrictSecurityHeaders()
     {
         using var client = factory.CreateAnonymousClient();
@@ -468,17 +472,17 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         Assert.DoesNotContain("navigator.credentials", content, StringComparison.Ordinal);
         Assert.Contains("Sign in with a passkey", content, StringComparison.Ordinal);
         Assert.DoesNotContain("Account and security", content, StringComparison.Ordinal);
-        Assert.True(response.Headers.TryGetValues(
+        Assert.IsTrue(response.Headers.TryGetValues(
             "Content-Security-Policy",
             out var policies));
-        var policy = Assert.Single(policies);
+        var policy = Assert.ContainsSingle(policies);
         Assert.Contains("script-src 'self' 'nonce-", policy, StringComparison.Ordinal);
         Assert.Contains("frame-ancestors 'none'", policy, StringComparison.Ordinal);
         var nonce = Regex.Match(
             policy,
             """script-src 'self' 'nonce-([^']+)'""",
             RegexOptions.CultureInvariant);
-        Assert.True(nonce.Success);
+        Assert.IsTrue(nonce.Success);
         Assert.Contains(
             $"nonce=\"{nonce.Groups[1].Value}\"",
             content,
@@ -502,7 +506,7 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         Assert.Contains("tabindex=\"-1\"", recovery, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task AccountEnhancedNavigationKeepsIdempotentDelegatedHandlers()
     {
         var repositoryRoot = new DirectoryInfo(AppContext.BaseDirectory);
@@ -585,7 +589,7 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         }
     }
 
-    [Fact]
+    [TestMethod]
     public void DevelopmentPublicOriginMatchesCommittedHttpsLaunchProfile()
     {
         var repositoryRoot = Path.GetFullPath(
@@ -613,9 +617,9 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
             .GetProperty("applicationUrl")
             .GetString();
 
-        Assert.Equal("https://localhost:5001", publicOrigin);
+        Assert.AreEqual("https://localhost:5001", publicOrigin);
         Assert.Contains(publicOrigin!, applicationUrl!, StringComparison.Ordinal);
-        Assert.Equal(
+        Assert.AreEqual(
             "Development",
             launchSettings.RootElement
                 .GetProperty("profiles")
@@ -625,7 +629,7 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
                 .GetString());
     }
 
-    [Fact]
+    [TestMethod]
     public void DevelopmentTrustRelaxationIsLoopbackOnlyAndProductionRemainsStrict()
     {
         var developmentEnvironment = factory.Services
@@ -633,17 +637,17 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         using var developmentHandler =
             OpenLoopsServiceCollectionExtensions.CreateSameOriginHandler(
                 developmentEnvironment);
-        var callback = Assert.IsType<
+        var callback = Assert.IsInstanceOfType<
             Func<HttpRequestMessage, System.Security.Cryptography.X509Certificates.X509Certificate2?,
                 System.Security.Cryptography.X509Certificates.X509Chain?, SslPolicyErrors, bool>>(
                 developmentHandler.ServerCertificateCustomValidationCallback);
 
-        Assert.True(callback(
+        Assert.IsTrue(callback(
             new(HttpMethod.Get, "https://localhost:5001"),
             null,
             null,
             SslPolicyErrors.RemoteCertificateChainErrors));
-        Assert.False(callback(
+        Assert.IsFalse(callback(
             new(HttpMethod.Get, "https://example.test"),
             null,
             null,
@@ -655,7 +659,7 @@ public sealed class OpenLoopsApiIntegrationTests : IClassFixture<OpenLoopsWebApp
         using var productionHandler =
             OpenLoopsServiceCollectionExtensions.CreateSameOriginHandler(
                 productionEnvironment);
-        Assert.Null(productionHandler.ServerCertificateCustomValidationCallback);
+        Assert.IsNull(productionHandler.ServerCertificateCustomValidationCallback);
     }
 }
 
@@ -721,7 +725,7 @@ public sealed class OpenLoopsWebApplicationFactory : WebApplicationFactory<Progr
             login,
             "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"",
             RegexOptions.CultureInvariant);
-        Assert.True(tokenMatch.Success);
+        Assert.IsTrue(tokenMatch.Success);
         var token = WebUtility.HtmlDecode(tokenMatch.Groups[1].Value);
         var response = await client.PostAsync(
             LocalAccountEndpoints.DevelopmentSignInPath,
@@ -730,8 +734,8 @@ public sealed class OpenLoopsWebApplicationFactory : WebApplicationFactory<Progr
                 ["__RequestVerificationToken"] = token,
                 ["returnUrl"] = returnUrl,
             }));
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal(returnUrl, response.Headers.Location?.OriginalString);
+        Assert.AreEqual(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.AreEqual(returnUrl, response.Headers.Location?.OriginalString);
         return client;
     }
 #endif

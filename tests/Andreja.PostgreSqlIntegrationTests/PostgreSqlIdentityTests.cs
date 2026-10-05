@@ -14,84 +14,152 @@ using System.Text.Json;
 
 namespace Andreja.PostgreSqlIntegrationTests;
 
-public sealed class PostgreSqlIdentityTests : IAsyncLifetime
+[TestClass]
+public sealed class PostgreSqlIdentityTests
 {
-    private readonly string connectionString =
-        Environment.GetEnvironmentVariable("ANDREJA_TEST_POSTGRES")
-        ?? throw new InvalidOperationException(
-            "BLOCKED: set ANDREJA_TEST_POSTGRES to a disposable local PostgreSQL database.");
+    private static readonly string[] ExpectedVisibleTenantNames = ["ALPHA"];
+    private string connectionString = string.Empty;
 
     private ServiceProvider services = null!;
     private string tokenPath = null!;
     private string bootstrapToken = null!;
 
+    [TestInitialize]
     public async Task InitializeAsync()
     {
-        var databaseName = new Npgsql.NpgsqlConnectionStringBuilder(connectionString).Database;
-        if (string.IsNullOrWhiteSpace(databaseName)
-            || !databaseName.StartsWith("andreja_test_", StringComparison.Ordinal))
+        connectionString = Environment.GetEnvironmentVariable("ANDREJA_TEST_POSTGRES")
+            ?? throw new InvalidOperationException(
+                "BLOCKED: set ANDREJA_TEST_POSTGRES to a disposable local PostgreSQL database.");
+
+        try
         {
-            throw new InvalidOperationException(
-                "ANDREJA_TEST_POSTGRES must target a disposable database named andreja_test_*.");
-        }
-
-        var tokenBytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
-        bootstrapToken = Convert.ToBase64String(tokenBytes);
-        System.Security.Cryptography.CryptographicOperations.ZeroMemory(tokenBytes);
-        tokenPath = Path.Combine(AppContext.BaseDirectory, $"{Guid.NewGuid():N}.bootstrap");
-        await File.WriteAllTextAsync(tokenPath, bootstrapToken);
-        MakeReadOnly(tokenPath);
-
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
+            var databaseName = new Npgsql.NpgsqlConnectionStringBuilder(connectionString).Database;
+            if (string.IsNullOrWhiteSpace(databaseName)
+                || !databaseName.StartsWith("andreja_test_", StringComparison.Ordinal))
             {
-                [$"{LocalIdentityOptions.SectionName}:AuthenticationScheme"] =
-                    IdentityConstants.ApplicationScheme,
-                [$"{LocalIdentityOptions.SectionName}:RelyingPartyId"] = "localhost",
-                [$"{LocalIdentityOptions.SectionName}:AllowedOrigins:0"] = "https://localhost",
-                [$"{LocalIdentityOptions.SectionName}:BootstrapTokenFile"] = tokenPath,
-                [$"{LocalIdentityOptions.SectionName}:BootstrapTokenBytes"] = "32",
-                [$"{LocalIdentityOptions.SectionName}:MaximumPasskeysPerUser"] = "3",
-                [$"{LocalIdentityOptions.SectionName}:RecoveryCodeCount"] = "8",
-                [$"{LocalIdentityOptions.SectionName}:RecoveryCodeLifetime"] = "90.00:00:00",
-                [$"{LocalIdentityOptions.SectionName}:RecoveryRateLimitAttempts"] = "3",
-                [$"{LocalIdentityOptions.SectionName}:RecoveryRateLimitWindow"] = "00:15:00",
-            })
-            .Build();
-        var collection = new ServiceCollection();
-        collection.AddLogging();
-        collection.AddOptions();
-        collection.AddDataProtection();
-        collection.AddHttpContextAccessor();
-        collection.AddSingleton(TimeProvider.System);
-        collection.AddAndrejaIdentityPostgreSql(connectionString);
-        collection.AddAndrejaLocalIdentity(
-            configuration.GetRequiredSection(LocalIdentityOptions.SectionName));
-        collection.AddAndrejaOpenLoopsPostgreSql();
-        collection.AddScoped<OpenLoopsTaskApplication>();
-        services = collection.BuildServiceProvider();
+                throw new InvalidOperationException(
+                    "ANDREJA_TEST_POSTGRES must target a disposable database named andreja_test_*.");
+            }
 
-        await using var scope = services.CreateAsyncScope();
-        var database = scope.ServiceProvider.GetRequiredService<AndrejaIdentityDbContext>();
-        await database.Database.EnsureDeletedAsync();
-        await database.Database.MigrateAsync();
+            var tokenBytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
+            bootstrapToken = Convert.ToBase64String(tokenBytes);
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(tokenBytes);
+            tokenPath = Path.Combine(AppContext.BaseDirectory, $"{Guid.NewGuid():N}.bootstrap");
+            await File.WriteAllTextAsync(tokenPath, bootstrapToken);
+            MakeReadOnly(tokenPath);
+
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    [$"{LocalIdentityOptions.SectionName}:AuthenticationScheme"] =
+                        IdentityConstants.ApplicationScheme,
+                    [$"{LocalIdentityOptions.SectionName}:RelyingPartyId"] = "localhost",
+                    [$"{LocalIdentityOptions.SectionName}:AllowedOrigins:0"] = "https://localhost",
+                    [$"{LocalIdentityOptions.SectionName}:BootstrapTokenFile"] = tokenPath,
+                    [$"{LocalIdentityOptions.SectionName}:BootstrapTokenBytes"] = "32",
+                    [$"{LocalIdentityOptions.SectionName}:MaximumPasskeysPerUser"] = "3",
+                    [$"{LocalIdentityOptions.SectionName}:RecoveryCodeCount"] = "8",
+                    [$"{LocalIdentityOptions.SectionName}:RecoveryCodeLifetime"] = "90.00:00:00",
+                    [$"{LocalIdentityOptions.SectionName}:RecoveryRateLimitAttempts"] = "3",
+                    [$"{LocalIdentityOptions.SectionName}:RecoveryRateLimitWindow"] = "00:15:00",
+                })
+                .Build();
+            var collection = new ServiceCollection();
+            collection.AddLogging();
+            collection.AddOptions();
+            collection.AddDataProtection();
+            collection.AddHttpContextAccessor();
+            collection.AddSingleton(TimeProvider.System);
+            collection.AddAndrejaIdentityPostgreSql(connectionString);
+            collection.AddAndrejaLocalIdentity(
+                configuration.GetRequiredSection(LocalIdentityOptions.SectionName));
+            collection.AddAndrejaOpenLoopsPostgreSql();
+            collection.AddScoped<OpenLoopsTaskApplication>();
+            services = collection.BuildServiceProvider();
+
+            await using var scope = services.CreateAsyncScope();
+            var database = scope.ServiceProvider.GetRequiredService<AndrejaIdentityDbContext>();
+            await database.Database.EnsureDeletedAsync();
+            await database.Database.MigrateAsync();
+        }
+        catch (Exception initializationException)
+        {
+            try
+            {
+                await DisposeAsync();
+            }
+            catch (Exception cleanupException)
+            {
+                throw new AggregateException(
+                    "PostgreSQL identity test initialization and cleanup both failed.",
+                    initializationException,
+                    cleanupException);
+            }
+
+            throw;
+        }
     }
 
+    [TestCleanup]
     public async Task DisposeAsync()
     {
-        if (services is null)
+        List<Exception> cleanupFailures = [];
+        var currentServices = services;
+        if (currentServices is not null)
         {
-            return;
+            try
+            {
+                await using var scope = currentServices.CreateAsyncScope();
+                var database = scope.ServiceProvider.GetRequiredService<AndrejaIdentityDbContext>();
+                await database.Database.EnsureDeletedAsync();
+            }
+            catch (Exception exception)
+            {
+                cleanupFailures.Add(exception);
+            }
+            finally
+            {
+                try
+                {
+                    await currentServices.DisposeAsync();
+                }
+                catch (Exception exception)
+                {
+                    cleanupFailures.Add(exception);
+                }
+                finally
+                {
+                    services = null!;
+                }
+            }
         }
 
-        await using var scope = services.CreateAsyncScope();
-        var database = scope.ServiceProvider.GetRequiredService<AndrejaIdentityDbContext>();
-        await database.Database.EnsureDeletedAsync();
-        await services.DisposeAsync();
-        DeleteReadOnlyFile(tokenPath);
+        try
+        {
+            if (!string.IsNullOrEmpty(tokenPath))
+            {
+                DeleteReadOnlyFile(tokenPath);
+            }
+        }
+        catch (Exception exception)
+        {
+            cleanupFailures.Add(exception);
+        }
+        finally
+        {
+            tokenPath = string.Empty;
+            bootstrapToken = string.Empty;
+        }
+
+        if (cleanupFailures.Count > 0)
+        {
+            throw new AggregateException(
+                "PostgreSQL identity test cleanup failed.",
+                cleanupFailures);
+        }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task MigrationCreatesEmptyDatabaseAndEnforcesTwoTenantIsolation()
     {
         var tenantA = await SeedTenantAsync("TENANT-A");
@@ -104,14 +172,14 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
         var database = scope.ServiceProvider.GetRequiredService<AndrejaIdentityDbContext>();
         var visible = await database.Contacts.Select(contact => contact.NormalizedName).ToArrayAsync();
 
-        Assert.Equal(["ALPHA"], visible);
+        CollectionAssert.AreEqual(ExpectedVisibleTenantNames, visible);
         database.Contacts.Add(
             new Contact(ContactId.New(), tenantB.Context.TenantId, "FORBIDDEN", "Forbidden"));
-        await Assert.ThrowsAsync<IdentityAccessDeniedException>(
+        await Assert.ThrowsExactlyAsync<IdentityAccessDeniedException>(
             () => database.SaveChangesAsync());
     }
 
-    [Fact]
+    [TestMethod]
     public async Task CompositeReferenceAndIssuerSubjectUniquenessFailInDatabase()
     {
         var tenantA = await SeedTenantAsync("TENANT-A");
@@ -127,18 +195,18 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                     "CROSS-TENANT",
                     "Cross tenant",
                     tenantB.Context.PrincipalId));
-            await Assert.ThrowsAsync<DbUpdateException>(() => database.SaveChangesAsync());
+            await Assert.ThrowsExactlyAsync<DbUpdateException>(() => database.SaveChangesAsync());
         }
 
         await AddExternalIdentityAsync(tenantA, "https://issuer.example", "same-subject");
-        await Assert.ThrowsAsync<DbUpdateException>(
+        await Assert.ThrowsExactlyAsync<DbUpdateException>(
             () => AddExternalIdentityAsync(
                 tenantB,
                 "https://issuer.example",
                 "same-subject"));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task TaskMigrationPersistsIdempotentLifecycleAndEnforcesTenantIsolation()
     {
         var tenantA = await SeedTenantAsync("TASK-TENANT-A");
@@ -165,26 +233,26 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                 task,
                 Guid.CreateVersion7(),
                 "create-integration");
-            Assert.Equal(TaskMutationOutcome.Applied, created.Outcome);
+            Assert.AreEqual(TaskMutationOutcome.Applied, created.Outcome);
         }
 
         await using (var scope = CreateScope(contextB))
         {
             var store = scope.ServiceProvider.GetRequiredService<IOpenLoopsTaskStore>();
-            Assert.Empty(await store.ListAsync(contextB));
+            Assert.IsEmpty(await store.ListAsync(contextB));
             var crossTenant = await store.CompleteAsync(
                 contextB,
                 task.Id,
                 task.Version,
                 "complete-cross-tenant",
                 createdAt.AddMinutes(1));
-            Assert.Equal(TaskMutationOutcome.NotFound, crossTenant.Outcome);
+            Assert.AreEqual(TaskMutationOutcome.NotFound, crossTenant.Outcome);
         }
 
         await using (var scope = CreateScope(contextA))
         {
             var store = scope.ServiceProvider.GetRequiredService<IOpenLoopsTaskStore>();
-            var persisted = Assert.Single(await store.ListAsync(contextA));
+            var persisted = Assert.ContainsSingle(await store.ListAsync(contextA));
             var openVersion = persisted.Version;
             var completed = await store.CompleteAsync(
                 contextA,
@@ -199,13 +267,13 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                 "complete-integration",
                 createdAt.AddMinutes(2));
 
-            Assert.Equal(TaskMutationOutcome.Applied, completed.Outcome);
-            Assert.Equal(TaskMutationOutcome.IdempotentReplay, replay.Outcome);
-            Assert.Equal(OpenLoopTaskStatus.Completed, replay.Task?.Status);
+            Assert.AreEqual(TaskMutationOutcome.Applied, completed.Outcome);
+            Assert.AreEqual(TaskMutationOutcome.IdempotentReplay, replay.Outcome);
+            Assert.AreEqual(OpenLoopTaskStatus.Completed, replay.Task?.Status);
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ProposalConfirmationIsAtomicAndSurvivesProcessRestart()
     {
         var identity = await SeedTenantAsync("PROPOSAL-RESTART");
@@ -251,24 +319,24 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
         var database = restartedScope.ServiceProvider
             .GetRequiredService<AndrejaIdentityDbContext>();
 
-        Assert.Equal(ProposalTransitionOutcome.Applied, applied.Outcome);
-        Assert.Equal(ProposalTransitionOutcome.IdempotentReplay, replay.Outcome);
-        Assert.Equal(applied.Task?.Id, replay.Task?.Id);
-        Assert.Equal(ProposalTransitionOutcome.Conflict, conflictingReuse.Outcome);
-        Assert.Equal(ProposalTransitionOutcome.InvalidState, invalidState.Outcome);
-        Assert.Equal(ProposalState.Confirmed, replay.Proposal?.State);
-        Assert.Single(await database.OpenLoopTasks.AsNoTracking().ToArrayAsync());
+        Assert.AreEqual(ProposalTransitionOutcome.Applied, applied.Outcome);
+        Assert.AreEqual(ProposalTransitionOutcome.IdempotentReplay, replay.Outcome);
+        Assert.AreEqual(applied.Task?.Id, replay.Task?.Id);
+        Assert.AreEqual(ProposalTransitionOutcome.Conflict, conflictingReuse.Outcome);
+        Assert.AreEqual(ProposalTransitionOutcome.InvalidState, invalidState.Outcome);
+        Assert.AreEqual(ProposalState.Confirmed, replay.Proposal?.State);
+        Assert.ContainsSingle(await database.OpenLoopTasks.AsNoTracking().ToArrayAsync());
         var audits = await database.ProposalAudits.AsNoTracking().ToArrayAsync();
-        Assert.Equal(2, audits.Length);
-        Assert.Single(
-            audits,
-            audit => audit.Outcome == ProposalTransitionOutcome.Applied);
-        Assert.Equal(
+        Assert.AreEqual(2, audits.Length);
+        Assert.AreEqual(
+            1,
+            audits.Count(audit => audit.Outcome == ProposalTransitionOutcome.Applied));
+        Assert.AreEqual(
             2,
             await database.ProposalReceipts.AsNoTracking().CountAsync());
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ProposalCanonicalPayloadSurvivesTimestampPrecisionAndRestart()
     {
         var identity = await SeedTenantAsync("PROPOSAL-PRECISION");
@@ -307,16 +375,16 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                     "assistant:canonical-precision");
         }
 
-        Assert.Equal(TimeSpan.Zero, proposal.CreatedAt.Offset);
-        Assert.Equal(0, proposal.CreatedAt.Ticks % TimeSpan.TicksPerMicrosecond);
+        Assert.AreEqual(TimeSpan.Zero, proposal.CreatedAt.Offset);
+        Assert.AreEqual(0, proposal.CreatedAt.Ticks % TimeSpan.TicksPerMicrosecond);
         using (var payload = JsonDocument.Parse(proposal.Operation.CanonicalPayload))
         {
             var root = payload.RootElement;
             var payloadCreatedAt = root.GetProperty("createdAt").GetDateTimeOffset();
             var payloadDueAt = root.GetProperty("dueAt").GetDateTimeOffset();
-            Assert.Equal(proposal.CreatedAt, payloadCreatedAt);
-            Assert.Equal(TimeSpan.Zero, payloadDueAt.Offset);
-            Assert.Equal(0, payloadDueAt.Ticks % TimeSpan.TicksPerMicrosecond);
+            Assert.AreEqual(proposal.CreatedAt, payloadCreatedAt);
+            Assert.AreEqual(TimeSpan.Zero, payloadDueAt.Offset);
+            Assert.AreEqual(0, payloadDueAt.Ticks % TimeSpan.TicksPerMicrosecond);
         }
 
         ProposalConfirmationResult applied;
@@ -330,12 +398,12 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             var application = persistedScope.ServiceProvider
                 .GetRequiredService<OpenLoopsTaskApplication>();
             var persisted = await application.GetProposalAsync(context, proposal.ProposalId);
-            Assert.NotNull(persisted);
-            Assert.Equal(proposal.CreatedAt, persisted.CreatedAt);
-            Assert.Equal(
+            Assert.IsNotNull(persisted);
+            Assert.AreEqual(proposal.CreatedAt, persisted.CreatedAt);
+            Assert.AreEqual(
                 proposal.Operation.CanonicalPayload,
                 persisted.Operation.CanonicalPayload);
-            Assert.Equal(proposal.Operation.PayloadDigest, persisted.Operation.PayloadDigest);
+            Assert.AreEqual(proposal.Operation.PayloadDigest, persisted.Operation.PayloadDigest);
             applied = await application.ConfirmAsync(
                 context,
                 proposal.ProposalId,
@@ -356,18 +424,18 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             proposal.ProposalId,
             proposal.Version,
             "precision-confirmation");
-        var persistedTask = Assert.Single(await restarted.ListAsync(context));
+        var persistedTask = Assert.ContainsSingle(await restarted.ListAsync(context));
 
-        Assert.Equal(ProposalTransitionOutcome.Applied, applied.Outcome);
-        Assert.Equal(ProposalTransitionOutcome.IdempotentReplay, replay.Outcome);
-        Assert.Equal(applied.Task?.Id, replay.Task?.Id);
-        Assert.Equal(TimeSpan.Zero, persistedTask.CreatedAt.Offset);
-        Assert.Equal(0, persistedTask.CreatedAt.Ticks % TimeSpan.TicksPerMicrosecond);
-        Assert.Equal(TimeSpan.Zero, persistedTask.DueAt?.Offset);
-        Assert.Equal(0, persistedTask.DueAt?.Ticks % TimeSpan.TicksPerMicrosecond);
+        Assert.AreEqual(ProposalTransitionOutcome.Applied, applied.Outcome);
+        Assert.AreEqual(ProposalTransitionOutcome.IdempotentReplay, replay.Outcome);
+        Assert.AreEqual(applied.Task?.Id, replay.Task?.Id);
+        Assert.AreEqual(TimeSpan.Zero, persistedTask.CreatedAt.Offset);
+        Assert.AreEqual(0, persistedTask.CreatedAt.Ticks % TimeSpan.TicksPerMicrosecond);
+        Assert.AreEqual(TimeSpan.Zero, persistedTask.DueAt?.Offset);
+        Assert.AreEqual(0, persistedTask.DueAt?.Ticks % TimeSpan.TicksPerMicrosecond);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ConcurrentProposalConfirmationsCommitExactlyOneEffect()
     {
         var identity = await SeedTenantAsync("PROPOSAL-CONCURRENCY");
@@ -395,24 +463,24 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             ConfirmAsync("concurrent-confirm-a"),
             ConfirmAsync("concurrent-confirm-b"));
 
-        Assert.Single(
-            results,
-            result => result.Outcome == ProposalTransitionOutcome.Applied);
-        Assert.Single(
-            results,
-            result => result.Outcome == ProposalTransitionOutcome.Conflict);
+        Assert.AreEqual(
+            1,
+            results.Count(result => result.Outcome == ProposalTransitionOutcome.Applied));
+        Assert.AreEqual(
+            1,
+            results.Count(result => result.Outcome == ProposalTransitionOutcome.Conflict));
         await using var verification = CreateScope(context);
         var database = verification.ServiceProvider
             .GetRequiredService<AndrejaIdentityDbContext>();
-        Assert.Single(await database.OpenLoopTasks.AsNoTracking().ToArrayAsync());
-        Assert.Single(
+        Assert.ContainsSingle(await database.OpenLoopTasks.AsNoTracking().ToArrayAsync());
+        Assert.ContainsSingle(
             await database.ProposalAudits
                 .AsNoTracking()
                 .Where(audit => audit.Outcome == ProposalTransitionOutcome.Applied)
                 .ToArrayAsync());
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ConfirmationRecoversFromCrashBeforeAndAfterCommit()
     {
         var identity = await SeedTenantAsync("PROPOSAL-CRASH");
@@ -439,7 +507,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             crashingScope.ServiceProvider
                 .GetRequiredService<ScopedTenantPrincipalContext>()
                 .Set(context);
-            await Assert.ThrowsAsync<SimulatedProcessCrashException>(
+            await Assert.ThrowsExactlyAsync<SimulatedProcessCrashException>(
                 () => crashingScope.ServiceProvider
                     .GetRequiredService<OpenLoopsTaskApplication>()
                     .ConfirmAsync(
@@ -456,14 +524,14 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             var pending = await application.GetProposalAsync(
                 context,
                 beforeCommitProposal.ProposalId);
-            Assert.Equal(ProposalState.Pending, pending?.State);
-            Assert.Empty(await application.ListAsync(context));
+            Assert.AreEqual(ProposalState.Pending, pending?.State);
+            Assert.IsEmpty(await application.ListAsync(context));
             var retry = await application.ConfirmAsync(
                 context,
                 beforeCommitProposal.ProposalId,
                 beforeCommitProposal.Version,
                 "crash-before-commit");
-            Assert.Equal(ProposalTransitionOutcome.Applied, retry.Outcome);
+            Assert.AreEqual(ProposalTransitionOutcome.Applied, retry.Outcome);
         }
 
         await using (var crashingServices = CreateProposalServiceProvider(
@@ -473,7 +541,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             crashingScope.ServiceProvider
                 .GetRequiredService<ScopedTenantPrincipalContext>()
                 .Set(context);
-            await Assert.ThrowsAsync<SimulatedProcessCrashException>(
+            await Assert.ThrowsExactlyAsync<SimulatedProcessCrashException>(
                 () => crashingScope.ServiceProvider
                     .GetRequiredService<OpenLoopsTaskApplication>()
                     .ConfirmAsync(
@@ -492,14 +560,14 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                     afterCommitProposal.ProposalId,
                     afterCommitProposal.Version,
                     "crash-after-commit");
-            Assert.Equal(ProposalTransitionOutcome.IdempotentReplay, replay.Outcome);
-            Assert.Equal(2, (await restarted.ServiceProvider
+            Assert.AreEqual(ProposalTransitionOutcome.IdempotentReplay, replay.Outcome);
+            Assert.AreEqual(2, (await restarted.ServiceProvider
                 .GetRequiredService<OpenLoopsTaskApplication>()
                 .ListAsync(context)).Count);
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ProposalConfirmationFailsClosedForWrongIdentityPurposeAndOrphanReferences()
     {
         var owner = await SeedTenantAsync("PROPOSAL-OWNER");
@@ -527,7 +595,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                     proposal.ProposalId,
                     proposal.Version,
                     "wrong-tenant-confirm");
-            Assert.Equal(ProposalTransitionOutcome.NotFound, result.Outcome);
+            Assert.AreEqual(ProposalTransitionOutcome.NotFound, result.Outcome);
         }
 
         var wrongUser = context with { AppUserId = AppUserId.New() };
@@ -540,7 +608,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                     proposal.ProposalId,
                     proposal.Version,
                     "wrong-user-confirm");
-            Assert.Equal(ProposalTransitionOutcome.Denied, result.Outcome);
+            Assert.AreEqual(ProposalTransitionOutcome.Denied, result.Outcome);
         }
 
         await using (var scope = CreateScope(otherPrincipal))
@@ -552,13 +620,13 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                     proposal.ProposalId,
                     proposal.Version,
                     "wrong-principal-confirm");
-            Assert.Equal(ProposalTransitionOutcome.Denied, result.Outcome);
+            Assert.AreEqual(ProposalTransitionOutcome.Denied, result.Outcome);
         }
 
         var wrongPurpose = context with { Purpose = "task.export" };
         await using (var scope = CreateScope(wrongPurpose))
         {
-            await Assert.ThrowsAsync<IdentityAccessDeniedException>(
+            await Assert.ThrowsExactlyAsync<IdentityAccessDeniedException>(
                 () => scope.ServiceProvider
                     .GetRequiredService<OpenLoopsTaskApplication>()
                     .ConfirmAsync(
@@ -583,11 +651,11 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                 },
                 context.AppUserId);
             database.Proposals.Add(orphan);
-            await Assert.ThrowsAsync<DbUpdateException>(() => database.SaveChangesAsync());
+            await Assert.ThrowsExactlyAsync<DbUpdateException>(() => database.SaveChangesAsync());
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task BootstrapIsAtomicSingleUseAndPersistsPasskeyAndHashedRecoveryCodes()
     {
         BootstrapIdentityResult created;
@@ -609,37 +677,35 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
         await using (var scope = services.CreateAsyncScope())
         {
             var database = scope.ServiceProvider.GetRequiredService<AndrejaIdentityDbContext>();
-            Assert.Single(await database.Tenants.IgnoreQueryFilters().ToArrayAsync());
-            Assert.Single(await database.Memberships.IgnoreQueryFilters().ToArrayAsync());
-            Assert.Single(await database.IdentityBootstrapStates.ToArrayAsync());
+            Assert.ContainsSingle(await database.Tenants.IgnoreQueryFilters().ToArrayAsync());
+            Assert.ContainsSingle(await database.Memberships.IgnoreQueryFilters().ToArrayAsync());
+            Assert.ContainsSingle(await database.IdentityBootstrapStates.ToArrayAsync());
             var storedCodes = await database.IdentityRecoveryCodes.ToArrayAsync();
-            Assert.Equal(8, storedCodes.Length);
-            Assert.All(storedCodes, code =>
+            Assert.AreEqual(8, storedCodes.Length);
+            foreach (var code in storedCodes)
             {
-                Assert.Equal(32, code.LookupHash.Length);
-                Assert.Equal(16, code.Salt.Length);
-                Assert.Equal(32, code.VerificationHash.Length);
-            });
-            Assert.DoesNotContain(
-                created.RecoveryCodes,
-                plaintext => storedCodes.Any(code =>
+                Assert.AreEqual(32, code.LookupHash.Length);
+                Assert.AreEqual(16, code.Salt.Length);
+                Assert.AreEqual(32, code.VerificationHash.Length);
+            }
+            Assert.IsFalse(created.RecoveryCodes.Any(plaintext => storedCodes.Any(code =>
                     Convert.ToBase64String(code.LookupHash) == plaintext
-                    || Convert.ToBase64String(code.VerificationHash) == plaintext));
+                    || Convert.ToBase64String(code.VerificationHash) == plaintext)));
 
             var users = scope.ServiceProvider.GetRequiredService<UserManager<AspNetIdentityUser>>();
-            var persisted = Assert.Single(
+            var persisted = Assert.ContainsSingle(
                 await users.Users.Where(user => user.Id == created.User.Id).ToArrayAsync());
-            Assert.Equal(reservedCredentialUserId, persisted.Id);
-            var passkey = Assert.Single(await users.GetPasskeysAsync(persisted));
-            Assert.Equal(credentialId, passkey.CredentialId);
-            Assert.Equal(
+            Assert.AreEqual(reservedCredentialUserId, persisted.Id);
+            var passkey = Assert.ContainsSingle(await users.GetPasskeysAsync(persisted));
+            CollectionAssert.AreEqual(credentialId, passkey.CredentialId);
+            Assert.AreEqual(
                 "Local owner",
                 await scope.ServiceProvider
                     .GetRequiredService<IAppUserDisplayNameResolver>()
                     .ResolveAsync(persisted));
 
             var operations = scope.ServiceProvider.GetRequiredService<LocalIdentityOperations>();
-            await Assert.ThrowsAsync<InvalidOperationException>(
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(
                 () => operations.CompleteBootstrapAsync(
                     CreateSecureRequest(),
                     bootstrapToken,
@@ -651,7 +717,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ConcurrentBootstrapAllowsExactlyOneCommit()
     {
         async Task<bool> AttemptAsync(byte discriminator)
@@ -681,15 +747,15 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
 
         var outcomes = await Task.WhenAll(AttemptAsync(1), AttemptAsync(2));
 
-        Assert.Single(outcomes, outcome => outcome);
+        Assert.AreEqual(1, outcomes.Count(outcome => outcome));
         await using var scope = services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<AndrejaIdentityDbContext>();
-        Assert.Single(await database.IdentityBootstrapStates.ToArrayAsync());
-        Assert.Single(await database.Tenants.IgnoreQueryFilters().ToArrayAsync());
-        Assert.Single(await database.Memberships.IgnoreQueryFilters().ToArrayAsync());
+        Assert.ContainsSingle(await database.IdentityBootstrapStates.ToArrayAsync());
+        Assert.ContainsSingle(await database.Tenants.IgnoreQueryFilters().ToArrayAsync());
+        Assert.ContainsSingle(await database.Memberships.IgnoreQueryFilters().ToArrayAsync());
     }
 
-    [Fact]
+    [TestMethod]
     public async Task RecoveryRotatesCodesReplacesPasskeysAndInvalidatesSecurityStamp()
     {
         byte[] initialCredential = [10, 11, 12, 13];
@@ -714,12 +780,12 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
         var users = recoveryScope.ServiceProvider
             .GetRequiredService<UserManager<AspNetIdentityUser>>();
         var before = await users.FindByIdAsync(bootstrap.User.Id.ToString("D"));
-        Assert.NotNull(before);
+        Assert.IsNotNull(before);
         var oldStamp = before.SecurityStamp;
         var start = await operations.BeginRecoveryAsync(
             bootstrap.RecoveryCodes[0],
             CancellationToken.None);
-        Assert.NotNull(start);
+        Assert.IsNotNull(start);
         byte[] replacementCredential = [20, 21, 22, 23];
 
         var recovered = await operations.CompleteRecoveryAsync(
@@ -727,23 +793,23 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             CreatePasskey(replacementCredential),
             CancellationToken.None);
 
-        Assert.Equal(8, recovered.RecoveryCodes.Count);
+        Assert.AreEqual(8, recovered.RecoveryCodes.Count);
         var after = await users.FindByIdAsync(bootstrap.User.Id.ToString("D"));
-        Assert.NotNull(after);
-        Assert.NotEqual(oldStamp, after.SecurityStamp);
-        var passkey = Assert.Single(await users.GetPasskeysAsync(after));
-        Assert.Equal(replacementCredential, passkey.CredentialId);
-        Assert.Null(await operations.BeginRecoveryAsync(
+        Assert.IsNotNull(after);
+        Assert.AreNotEqual(oldStamp, after.SecurityStamp);
+        var passkey = Assert.ContainsSingle(await users.GetPasskeysAsync(after));
+        CollectionAssert.AreEqual(replacementCredential, passkey.CredentialId);
+        Assert.IsNull(await operations.BeginRecoveryAsync(
             bootstrap.RecoveryCodes[0],
             CancellationToken.None));
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(
             () => operations.CompleteRecoveryAsync(
                 start,
                 CreatePasskey([30, 31, 32]),
                 CancellationToken.None));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task PasskeyLimitAndLastAuthenticationPathFailClosed()
     {
         BootstrapIdentityResult bootstrap;
@@ -767,7 +833,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             CreatePasskey([46, 47, 48]),
             "Backup two",
             CancellationToken.None);
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(
             () => operations.RegisterPasskeyAsync(
                 bootstrap.User,
                 CreatePasskey([49, 50, 51]),
@@ -794,15 +860,15 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
         }
 
         await database.SaveChangesAsync(CancellationToken.None);
-        var remaining = Assert.Single(await users.GetPasskeysAsync(bootstrap.User));
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        var remaining = Assert.ContainsSingle(await users.GetPasskeysAsync(bootstrap.User));
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(
             () => operations.RevokePasskeyAsync(
                 bootstrap.User,
                 remaining.CredentialId,
                 CancellationToken.None));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ConcurrentDistinctRegistrationsSerializeToPasskeyLimit()
     {
         BootstrapIdentityResult bootstrap;
@@ -830,7 +896,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             var users = scope.ServiceProvider
                 .GetRequiredService<UserManager<AspNetIdentityUser>>();
             var user = await users.FindByIdAsync(bootstrap.User.Id.ToString("D"));
-            Assert.NotNull(user);
+            Assert.IsNotNull(user);
             if (Interlocked.Increment(ref ready) == 3)
             {
                 allUsersLoaded.SetResult();
@@ -862,19 +928,18 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             RegisterAsync(2),
             RegisterAsync(3));
 
-        Assert.Equal(2, outcomes.Count(outcome => outcome));
+        Assert.AreEqual(2, outcomes.Count(outcome => outcome));
         await using var verificationScope = services.CreateAsyncScope();
         var verificationUsers = verificationScope.ServiceProvider
             .GetRequiredService<UserManager<AspNetIdentityUser>>();
         var persisted = await verificationUsers.FindByIdAsync(
             bootstrap.User.Id.ToString("D"));
-        Assert.NotNull(persisted);
+        Assert.IsNotNull(persisted);
         var passkeys = await verificationUsers.GetPasskeysAsync(persisted);
-        Assert.Equal(3, passkeys.Count);
-        Assert.Contains(
-            passkeys,
-            passkey => passkey.CredentialId.SequenceEqual(new byte[] { 60, 61, 62 }));
-        Assert.Equal(
+        Assert.AreEqual(3, passkeys.Count);
+        Assert.IsTrue(passkeys.Any(
+            passkey => passkey.CredentialId.SequenceEqual(new byte[] { 60, 61, 62 })));
+        Assert.AreEqual(
             2,
             passkeys.Count(passkey =>
                 passkey.CredentialId.Length == 3
@@ -882,7 +947,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
                 && passkey.CredentialId[2] == 71));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ConcurrentDuplicatePasskeyRegistrationFailsClosed()
     {
         BootstrapIdentityResult bootstrap;
@@ -911,7 +976,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             var users = scope.ServiceProvider
                 .GetRequiredService<UserManager<AspNetIdentityUser>>();
             var user = await users.FindByIdAsync(bootstrap.User.Id.ToString("D"));
-            Assert.NotNull(user);
+            Assert.IsNotNull(user);
             if (Interlocked.Increment(ref ready) == 2)
             {
                 bothUsersLoaded.SetResult();
@@ -942,21 +1007,21 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             RegisterAsync("Duplicate one"),
             RegisterAsync("Duplicate two"));
 
-        Assert.Single(outcomes, outcome => outcome);
+        Assert.AreEqual(1, outcomes.Count(outcome => outcome));
         await using var verificationScope = services.CreateAsyncScope();
         var verificationUsers = verificationScope.ServiceProvider
             .GetRequiredService<UserManager<AspNetIdentityUser>>();
         var persisted = await verificationUsers.FindByIdAsync(
             bootstrap.User.Id.ToString("D"));
-        Assert.NotNull(persisted);
+        Assert.IsNotNull(persisted);
         var passkeys = await verificationUsers.GetPasskeysAsync(persisted);
-        Assert.Equal(2, passkeys.Count);
-        Assert.Single(
-            passkeys,
-            passkey => passkey.CredentialId.SequenceEqual(duplicateCredentialId));
+        Assert.AreEqual(2, passkeys.Count);
+        Assert.AreEqual(
+            1,
+            passkeys.Count(passkey => passkey.CredentialId.SequenceEqual(duplicateCredentialId)));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ConcurrentRevocationPreservesOneAuthenticationPath()
     {
         BootstrapIdentityResult bootstrap;
@@ -1001,7 +1066,7 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             var users = scope.ServiceProvider
                 .GetRequiredService<UserManager<AspNetIdentityUser>>();
             var user = await users.FindByIdAsync(bootstrap.User.Id.ToString("D"));
-            Assert.NotNull(user);
+            Assert.IsNotNull(user);
             try
             {
                 await scope.ServiceProvider
@@ -1025,17 +1090,17 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
             RevokeAsync(credentialIds[0]),
             RevokeAsync(credentialIds[1]));
 
-        Assert.Single(outcomes, outcome => outcome);
+        Assert.AreEqual(1, outcomes.Count(outcome => outcome));
         await using var verificationScope = services.CreateAsyncScope();
         var verificationUsers = verificationScope.ServiceProvider
             .GetRequiredService<UserManager<AspNetIdentityUser>>();
         var persisted = await verificationUsers.FindByIdAsync(
             bootstrap.User.Id.ToString("D"));
-        Assert.NotNull(persisted);
-        Assert.Single(await verificationUsers.GetPasskeysAsync(persisted));
+        Assert.IsNotNull(persisted);
+        Assert.ContainsSingle(await verificationUsers.GetPasskeysAsync(persisted));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task RecentAuthenticationGrantIsConsumedExactlyOnce()
     {
         BootstrapIdentityResult bootstrap;
@@ -1075,9 +1140,9 @@ public sealed class PostgreSqlIdentityTests : IAsyncLifetime
 
         var outcomes = await Task.WhenAll(ConsumeAsync(), ConsumeAsync());
 
-        Assert.Single(outcomes, consumed => consumed);
+        Assert.AreEqual(1, outcomes.Count(consumed => consumed));
         await using var verificationScope = services.CreateAsyncScope();
-        Assert.False(await verificationScope.ServiceProvider
+        Assert.IsFalse(await verificationScope.ServiceProvider
             .GetRequiredService<IRecentAuthenticationGrantStore>()
             .IsValidAsync(
                 bootstrap.User.Id,
