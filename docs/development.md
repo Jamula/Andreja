@@ -46,6 +46,12 @@ architecture test assemblies with `dotnet test --test-modules`. This uses MTP
 directly without repeating MSBuild evaluation; local aggregate runs can still
 use `--solution` or `--project`.
 
+When changing the test suite, update
+`docs\research\test-suite-current-inventory-112.json` with the expected MTP
+discovery and TRX counters. Keep
+`docs\research\test-suite-baseline-112.json` immutable as historical
+pre-migration evidence.
+
 ## Validate
 
 Run these commands from the repository root:

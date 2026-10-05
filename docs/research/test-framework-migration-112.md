@@ -17,6 +17,10 @@ checkpoint records all three assemblies in Debug and Release before
 conversion; its source counters and timing samples are in
 [`test-suite-baseline-112.md`](test-suite-baseline-112.md) and
 [`test-suite-baseline-112.json`](test-suite-baseline-112.json).
+The historical baseline is immutable. Ongoing CI reads the explicitly
+maintained [`test-suite-current-inventory-112.json`](test-suite-current-inventory-112.json);
+its initial values record the MTP results below and preserve the same
+executable-row totals as the baseline.
 
 The priority authorized only this scoped test-framework migration. No
 production behavior, database schema, or product capability was changed.
@@ -66,14 +70,17 @@ was listed once but expanded to two executable rows.
 | Release | PostgreSQL | 22 / 22 | 22 / 22 | 22 / 0 / 0 |
 | **Release total** | | **292 / 293** | **293 / 293** | **293 / 0 / 0** |
 
-The fail-closed parity script passed in Debug and Release. It verified the
-three-project inventory, each MTP discovered count against the pre-migration
-TRX executable-row count, and exact total/executed/passed/failed/skipped TRX
-counters for the service-free assemblies. Hosted CI builds the configuration
-first, runs Unit and Architecture modules with `dotnet test --test-modules`,
-retains one TRX per assembly, and uploads parity/report evidence for 14 days.
-PostgreSQL runtime is reported unavailable in hosted CI without a disposable
-database; it is never represented as passed or skipped there.
+The fail-closed parity script passed in Debug and Release. It verifies the
+three-project inventory, MTP discovery against the current inventory's
+`discovered` values, and exact total/executed/passed/failed/skipped TRX counters
+against that same current inventory. The initial current inventory matches the
+pre-migration executable-row totals shown above. Future test additions or
+removals update the current inventory in the same change; the historical
+baseline is not rewritten. Hosted CI builds the configuration first, runs
+Unit and Architecture modules with `dotnet test --test-modules`, retains one
+TRX per assembly, and uploads parity/report evidence for 14 days. PostgreSQL
+runtime is reported unavailable in hosted CI without a disposable database;
+it is never represented as passed or skipped there.
 
 Filtered MTP module runs passed in both configurations:
 

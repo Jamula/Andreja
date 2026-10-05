@@ -10,7 +10,7 @@ param(
     [Parameter(Mandatory)]
     [string] $OutputPath,
 
-    [string] $BaselinePath = 'docs/research/test-suite-baseline-112.json',
+    [string] $InventoryPath = 'docs/research/test-suite-current-inventory-112.json',
 
     [string] $RepositoryRoot = (Get-Location).Path
 )
@@ -21,7 +21,8 @@ $report = [ordered]@{
     schema_version = 1
     status = 'running'
     configuration = $Configuration
-    baseline_path = $BaselinePath
+    inventory_path = $InventoryPath
+    historical_baseline_path = $null
     sdk_version = $null
     runner = $null
     projects = [ordered]@{}
@@ -29,25 +30,44 @@ $report = [ordered]@{
 }
 
 try {
-    $baselinePath = if ([IO.Path]::IsPathRooted($BaselinePath)) {
-        $BaselinePath
+    $inventoryPath = if ([IO.Path]::IsPathRooted($InventoryPath)) {
+        $InventoryPath
     } else {
-        Join-Path $RepositoryRoot $BaselinePath
+        Join-Path $RepositoryRoot $InventoryPath
     }
-    $baseline = Get-Content -LiteralPath $baselinePath -Raw | ConvertFrom-Json
+    $inventory = Get-Content -LiteralPath $inventoryPath -Raw | ConvertFrom-Json
+    if ($inventory.schema_version -ne 1 -or $inventory.inventory_kind -ne 'current') {
+        throw "Expected a schema-version 1 current test inventory at '$InventoryPath'."
+    }
+    if ([string]::IsNullOrWhiteSpace($inventory.historical_baseline_path)) {
+        throw "Current inventory '$InventoryPath' must reference the immutable historical baseline."
+    }
+    $historicalBaselinePath = if ([IO.Path]::IsPathRooted($inventory.historical_baseline_path)) {
+        $inventory.historical_baseline_path
+    } else {
+        Join-Path $RepositoryRoot $inventory.historical_baseline_path
+    }
+    if (-not (Test-Path -LiteralPath $historicalBaselinePath -PathType Leaf)) {
+        throw "Historical baseline '$($inventory.historical_baseline_path)' is missing."
+    }
     $global = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'global.json') -Raw |
         ConvertFrom-Json
     $report.sdk_version = $global.sdk.version
     $report.runner = $global.test.runner
-    if ($report.sdk_version -ne $baseline.sdk_version) {
-        throw "SDK version '$($report.sdk_version)' differs from baseline '$($baseline.sdk_version)'."
+    $report.inventory_path = $InventoryPath
+    $report.historical_baseline_path = $inventory.historical_baseline_path
+    if ($report.sdk_version -ne $inventory.sdk_version) {
+        throw "SDK version '$($report.sdk_version)' differs from current inventory '$($inventory.sdk_version)'."
     }
     if ($report.runner -ne 'Microsoft.Testing.Platform') {
         throw "Expected Microsoft.Testing.Platform in global.json; found '$($report.runner)'."
     }
+    if ($inventory.runner -ne $report.runner) {
+        throw "Runner '$($report.runner)' differs from current inventory '$($inventory.runner)'."
+    }
 
     $expectedProjects = @(
-        $baseline.projects.PSObject.Properties |
+        $inventory.projects.PSObject.Properties |
             ForEach-Object { $_.Value.path.Replace('/', [IO.Path]::DirectorySeparatorChar) } |
             Sort-Object
     )
@@ -62,7 +82,7 @@ try {
     if ($projectDifference.Count -gt 0) {
         $difference = $projectDifference |
             ForEach-Object { "$($_.SideIndicator) $($_.InputObject)" }
-        throw "Test-project inventory differs from the pre-migration baseline:`n$($difference -join "`n")"
+        throw "Test-project inventory differs from the current inventory:`n$($difference -join "`n")"
     }
 
     $resolvedResultsRoot = if ([IO.Path]::IsPathRooted($ResultsRoot)) {
@@ -70,13 +90,13 @@ try {
     } else {
         Join-Path $RepositoryRoot $ResultsRoot
     }
-    foreach ($property in $baseline.projects.PSObject.Properties) {
+    foreach ($property in $inventory.projects.PSObject.Properties) {
         $assembly = $property.Name
         $project = $property.Value
         $projectPath = Join-Path $RepositoryRoot (
             $project.path.Replace('/', [IO.Path]::DirectorySeparatorChar))
         if (-not (Test-Path -LiteralPath $projectPath -PathType Leaf)) {
-            throw "Baseline project '$assembly' is missing at '$($project.path)'."
+            throw "Current inventory project '$assembly' is missing at '$($project.path)'."
         }
 
         $discoveryOutput = & dotnet test `
@@ -96,9 +116,9 @@ try {
         }
         $discovered = [int]$discoveryMatch.Groups[1].Value
         $expected = $project.$Configuration
-        $expectedDiscovery = [int]$expected.trx_total
+        $expectedDiscovery = [int]$expected.discovered
         if ($discovered -ne $expectedDiscovery) {
-            throw "Discovery mismatch for '$assembly' ($Configuration): expected $expectedDiscovery executable rows from baseline TRX, found $discovered."
+            throw "Discovery mismatch for '$assembly' ($Configuration): expected $expectedDiscovery rows from current inventory, found $discovered."
         }
 
         $projectReport = [ordered]@{

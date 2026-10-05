@@ -87,7 +87,7 @@ jobs:
           ./.github/scripts/test-dotnet-test-parity.ps1
           -Configuration '${{ matrix.configuration }}'
           -ResultsRoot 'artifacts/${{ matrix.configuration }}/test-results'
-          -BaselinePath 'docs/research/test-suite-baseline-112.json'
+          -InventoryPath 'docs/research/test-suite-current-inventory-112.json'
           -OutputPath 'artifacts/${{ matrix.configuration }}/test-inventory-parity.json'
 
       - id: report

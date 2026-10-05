@@ -53,7 +53,7 @@ $commands = switch ($Kind) {
             "dotnet build $postgresProject --configuration $Configuration --no-restore"
             "dotnet test --test-modules tests/Andreja.UnitTests/bin/$Configuration/net10.0/Andreja.UnitTests.dll --no-build --report-trx --report-trx-filename Andreja.UnitTests-$Configuration.trx --results-directory artifacts/$Configuration/test-results/Andreja.UnitTests"
             "dotnet test --test-modules tests/Andreja.ArchitectureTests/bin/$Configuration/net10.0/Andreja.ArchitectureTests.dll --no-build --report-trx --report-trx-filename Andreja.ArchitectureTests-$Configuration.trx --results-directory artifacts/$Configuration/test-results/Andreja.ArchitectureTests"
-            "pwsh -NoProfile -File .github/scripts/test-dotnet-test-parity.ps1 -Configuration $Configuration -ResultsRoot artifacts/$Configuration/test-results -BaselinePath docs/research/test-suite-baseline-112.json -OutputPath artifacts/$Configuration/test-inventory-parity.json"
+            "pwsh -NoProfile -File .github/scripts/test-dotnet-test-parity.ps1 -Configuration $Configuration -ResultsRoot artifacts/$Configuration/test-results -InventoryPath docs/research/test-suite-current-inventory-112.json -OutputPath artifacts/$Configuration/test-inventory-parity.json"
         )
     }
     'format' {

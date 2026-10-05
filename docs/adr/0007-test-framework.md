@@ -101,10 +101,14 @@ results, warm service-free timings, five-run live PostgreSQL timings, package
 signatures/licenses, vulnerability and SAST results, CI artifact boundary,
 IDE limitation, and rollback procedure are recorded in
 [`docs/research/test-framework-migration-112.md`](../research/test-framework-migration-112.md).
-The fail-closed parity script passed against the committed xUnit executable
-row counts. All Unit, Architecture, and live PostgreSQL runs passed with zero
-failures or skips; no temporary PostgreSQL databases remained after each
-project-mode run, and the ephemeral container was removed.
+The fail-closed parity script passed against the explicit current MTP inventory
+at [`docs/research/test-suite-current-inventory-112.json`](../research/test-suite-current-inventory-112.json).
+That ongoing-CI inventory was initialized with the same executable-row counts
+as the immutable xUnit baseline; future test changes update the current
+inventory without rewriting historical measurements. All Unit, Architecture,
+and live PostgreSQL runs passed with zero failures or skips; no temporary
+PostgreSQL databases remained after each project-mode run, and the ephemeral
+container was removed.
 Independent quality review identified a setup-failure cleanup leak in the
 identity fixture; both PostgreSQL cleanup paths now attempt their independent
 actions and aggregate failures. The reviewer re-checked the corrected paths
