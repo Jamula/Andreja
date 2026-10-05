@@ -13,9 +13,10 @@ using Microsoft.Extensions.Options;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class PasskeyUserHandleTests
 {
-    [Fact]
+    [TestMethod]
     public async Task BuiltInAssertionResolvesExactReservedBootstrapUserHandle()
     {
         using var key = ECDsa.Create();
@@ -70,9 +71,9 @@ public sealed class PasskeyUserHandleTests
             credentialId,
             Guid.CreateVersion7().ToString("D"));
 
-        Assert.True(successful.Succeeded, successful.Failure?.Message);
-        Assert.Same(user, successful.User);
-        Assert.False(mismatched.Succeeded);
+        Assert.IsTrue(successful.Succeeded, successful.Failure?.Message);
+        Assert.AreSame(user, successful.User);
+        Assert.IsFalse(mismatched.Succeeded);
     }
 
     private static async Task<PasskeyAssertionResult<AspNetIdentityUser>>

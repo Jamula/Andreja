@@ -3,9 +3,10 @@ using Andreja.Platform.Contracts.Sharing;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class ConsentAndDisclosureTests
 {
-    [Fact]
+    [TestMethod]
     public void BilateralConsentRequiresReceiverAcceptanceAndOffererActivation()
     {
         var (record, offerer, receiver, now) = CreateConsent();
@@ -21,14 +22,14 @@ public sealed class ConsentAndDisclosureTests
             offerer,
             now.AddMinutes(2));
 
-        Assert.Equal(
-            [ConsentState.Offered, ConsentState.Accepted, ConsentState.Active],
-            active.Timeline.Select(item => item.State));
-        Assert.Throws<InvalidOperationException>(
+        CollectionAssert.AreEqual(
+            new[] { ConsentState.Offered, ConsentState.Accepted, ConsentState.Active },
+            active.Timeline.Select(item => item.State).ToArray());
+        Assert.ThrowsExactly<InvalidOperationException>(
             () => ConsentPolicy.Transition(record, ConsentState.Active, offerer, now.AddMinutes(1)));
     }
 
-    [Fact]
+    [TestMethod]
     public void GrantRequiresActiveConsentAndExactPurpose()
     {
         var (record, offerer, receiver, now) = CreateConsent();
@@ -53,14 +54,14 @@ public sealed class ConsentAndDisclosureTests
             null,
             record.ConsentId);
 
-        Assert.True(ConsentPolicy.IsGrantActive(
+        Assert.IsTrue(ConsentPolicy.IsGrantActive(
             grant,
             active,
             receiver,
             "trip.plan",
             "read",
             now.AddMinutes(3)));
-        Assert.False(ConsentPolicy.IsGrantActive(
+        Assert.IsFalse(ConsentPolicy.IsGrantActive(
             grant,
             active,
             receiver,
@@ -69,7 +70,7 @@ public sealed class ConsentAndDisclosureTests
             now.AddMinutes(3)));
     }
 
-    [Fact]
+    [TestMethod]
     public void ActiveConsentCanBeRevokedButNotReactivated()
     {
         var (record, offerer, receiver, now) = CreateConsent();
@@ -85,8 +86,8 @@ public sealed class ConsentAndDisclosureTests
             receiver,
             now.AddMinutes(3));
 
-        Assert.Equal(ConsentState.Revoked, revoked.Timeline[^1].State);
-        Assert.Throws<InvalidOperationException>(
+        Assert.AreEqual(ConsentState.Revoked, revoked.Timeline[^1].State);
+        Assert.ThrowsExactly<InvalidOperationException>(
             () => ConsentPolicy.Transition(
                 revoked,
                 ConsentState.Active,
@@ -94,23 +95,23 @@ public sealed class ConsentAndDisclosureTests
                 now.AddMinutes(4)));
     }
 
-    [Fact]
+    [TestMethod]
     public void DisclosurePolicyCanReduceButNeverWiden()
     {
-        Assert.Equal(
+        Assert.AreEqual(
             DisclosureLevel.Timing,
             DisclosurePolicy.Reduce(
                 DisclosureLevel.Full,
                 DisclosureLevel.Summary,
                 DisclosureLevel.Timing));
-        Assert.Throws<ArgumentOutOfRangeException>(
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(
             () => DisclosurePolicy.Reduce(
                 (DisclosureLevel)99,
                 DisclosureLevel.Full,
                 DisclosureLevel.Full));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ShareAuditRecordsAllowAndDenyWithoutPayloadContent()
     {
         var sink = new InMemoryShareAuditSink();
@@ -145,8 +146,13 @@ public sealed class ConsentAndDisclosureTests
         await sink.AppendAsync(allowed, CancellationToken.None);
         await sink.AppendAsync(denied, CancellationToken.None);
 
-        Assert.Equal([ShareAuditOutcome.Allowed, ShareAuditOutcome.Denied], sink.Entries.Select(x => x.Outcome));
-        Assert.All(sink.Entries, entry => Assert.DoesNotContain("content", entry.ToString(), StringComparison.OrdinalIgnoreCase));
+        CollectionAssert.AreEqual(
+            new[] { ShareAuditOutcome.Allowed, ShareAuditOutcome.Denied },
+            sink.Entries.Select(x => x.Outcome).ToArray());
+        foreach (var entry in sink.Entries)
+        {
+            Assert.DoesNotContain("content", entry.ToString(), StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     private static (ConsentRecord Record, Guid Offerer, Guid Receiver, DateTimeOffset Now)

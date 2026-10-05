@@ -9,7 +9,7 @@ Create an empty local database whose name starts with `andreja_test_`, then run:
 
 ```powershell
 $env:ANDREJA_TEST_POSTGRES = 'Host=localhost;Database=andreja_test_identity;Username=postgres;Password=<local-only>'
-dotnet test tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj
+dotnet test --project tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj
 ```
 
 The fixture refuses any other database name, drops it before and after the run,

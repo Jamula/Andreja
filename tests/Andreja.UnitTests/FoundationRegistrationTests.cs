@@ -6,9 +6,10 @@ using Microsoft.Extensions.Options;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class FoundationRegistrationTests
 {
-    [Fact]
+    [TestMethod]
     public void FoundationRegistersEachDeclaredModuleAndAdapter()
     {
         var configuration = CreateConfiguration("test");
@@ -18,11 +19,11 @@ public sealed class FoundationRegistrationTests
 
         using var provider = services.BuildServiceProvider();
 
-        Assert.Equal(6, provider.GetServices<IModuleBoundary>().Count());
-        Assert.Equal(4, provider.GetServices<IAdapterBoundary>().Count());
+        Assert.AreEqual(6, provider.GetServices<IModuleBoundary>().Count());
+        Assert.AreEqual(4, provider.GetServices<IAdapterBoundary>().Count());
     }
 
-    [Fact]
+    [TestMethod]
     public void FoundationRejectsInvalidOptions()
     {
         var configuration = CreateConfiguration(string.Empty);
@@ -31,7 +32,7 @@ public sealed class FoundationRegistrationTests
         services.AddAndrejaFoundation(configuration);
 
         using var provider = services.BuildServiceProvider();
-        Assert.Throws<OptionsValidationException>(
+        Assert.ThrowsExactly<OptionsValidationException>(
             () => provider.GetRequiredService<IOptions<AndrejaHostOptions>>().Value);
     }
 

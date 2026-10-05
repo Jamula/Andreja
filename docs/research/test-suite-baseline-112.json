@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "issue": 112,
+  "measured_on": "2026-10-04",
+  "source_commit": "a80ddef9a5938dba01c4c6e5a53747756a083a04",
+  "sdk_version": "10.0.301",
+  "target_framework": "net10.0",
+  "framework": "xUnit 2.9.3",
+  "runner": "VSTest",
+  "test_sdk": "Microsoft.NET.Test.Sdk 18.9.0",
+  "xunit_adapter": "xunit.runner.visualstudio 4.0.0",
+  "postgres_image": "postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3",
+  "projects": {
+    "Andreja.UnitTests": {
+      "path": "tests/Andreja.UnitTests/Andreja.UnitTests.csproj",
+      "Debug": {
+        "discovered": 256,
+        "trx_total": 257,
+        "executed": 257,
+        "passed": 257,
+        "failed": 0,
+        "skipped": 0,
+        "first_run_seconds": 58.79
+      },
+      "Release": {
+        "discovered": 252,
+        "trx_total": 253,
+        "executed": 253,
+        "passed": 253,
+        "failed": 0,
+        "skipped": 0,
+        "first_run_seconds": 47.7
+      }
+    },
+    "Andreja.ArchitectureTests": {
+      "path": "tests/Andreja.ArchitectureTests/Andreja.ArchitectureTests.csproj",
+      "Debug": {
+        "discovered": 18,
+        "trx_total": 18,
+        "executed": 18,
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0,
+        "first_run_seconds": 45.31
+      },
+      "Release": {
+        "discovered": 18,
+        "trx_total": 18,
+        "executed": 18,
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0,
+        "first_run_seconds": 21.49
+      }
+    },
+    "Andreja.PostgreSqlIntegrationTests": {
+      "path": "tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj",
+      "Debug": {
+        "discovered": 22,
+        "trx_total": 22,
+        "executed": 22,
+        "passed": 22,
+        "failed": 0,
+        "skipped": 0,
+        "first_run_seconds": 35.03
+      },
+      "Release": {
+        "discovered": 22,
+        "trx_total": 22,
+        "executed": 22,
+        "passed": 22,
+        "failed": 0,
+        "skipped": 0,
+        "first_run_seconds": 32.21
+      }
+    }
+  },
+  "service_free_warm_runs": {
+    "Debug": {
+      "cases_per_run": 275,
+      "passed_per_run": 275,
+      "failed_per_run": 0,
+      "skipped_per_run": 0,
+      "duration_seconds": [10.57, 8.03, 7.52, 9.15, 7.48]
+    },
+    "Release": {
+      "cases_per_run": 271,
+      "passed_per_run": 271,
+      "failed_per_run": 0,
+      "skipped_per_run": 0,
+      "duration_seconds": [10.79, 9.67, 7.42, 8.67, 9.06]
+    }
+  },
+  "postgres_warm_runs": {
+    "Debug": {
+      "cases_per_run": 22,
+      "passed_per_run": 22,
+      "failed_per_run": 0,
+      "skipped_per_run": 0,
+      "duration_seconds": [21.03, 20.73, 21.36, 20.19, 20.12]
+    },
+    "Release": {
+      "cases_per_run": 22,
+      "passed_per_run": 22,
+      "failed_per_run": 0,
+      "skipped_per_run": 0,
+      "duration_seconds": [21.57, 21.51, 21.25, 22.29, 24.86]
+    }
+  },
+  "filter_probes": [
+    {
+      "project": "Andreja.UnitTests",
+      "filter": "FullyQualifiedName~SemanticAssertionConformanceTests",
+      "total": 39,
+      "executed": 39,
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "project": "Andreja.UnitTests",
+      "filter": "FullyQualifiedName~PortabilityCommandTests",
+      "total": 2,
+      "executed": 2,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "project": "Andreja.ArchitectureTests",
+      "filter": "FullyQualifiedName~ModuleReferenceAllowlistRejectsNonApprovedAssemblies",
+      "total": 8,
+      "executed": 8,
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    }
+  ]
+}

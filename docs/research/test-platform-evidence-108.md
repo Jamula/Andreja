@@ -6,6 +6,11 @@
   suite migration, or product behavior change
 - **Reproduction:** [`scripts/evidence/test-platform-spike`](../../scripts/evidence/test-platform-spike/)
 
+> **Historical snapshot:** This report records the evidence and outstanding
+> gates as of 2026-08-28. Issue #112 later completed the production-suite
+> migration; the current measurements and validation are in
+> [`test-framework-migration-112.md`](test-framework-migration-112.md).
+
 ## Outcome and authority
 
 **Decision already recorded:** Cyrus selected MSTest with Microsoft Testing

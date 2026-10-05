@@ -25,11 +25,12 @@ using System.Text.Json;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class OpenAiCompatibleConformanceTests
 {
     private const string CredentialValue = "conformance-secret-not-for-logs";
 
-    [Fact]
+    [TestMethod]
     public async Task MapsSuccessfulTypedToolAndContentFreeUsage()
     {
         await using var server = await ConformanceServer.StartAsync(async (context, _) =>
@@ -51,20 +52,20 @@ public sealed class OpenAiCompatibleConformanceTests
             CancellationToken.None);
         var response = await session.CompleteAsync(Request(), CancellationToken.None);
 
-        Assert.True(
+        Assert.IsTrue(
             response.Status == AssistantResponseStatus.Completed,
             response.Failure?.Code);
-        Assert.Equal("Review this proposal.", response.Content);
-        var call = Assert.Single(response.ToolCalls);
-        Assert.Equal(OpenLoopsSkill.ProposeTaskTool, call.ToolName);
-        Assert.Equal("Renew library card", call.Arguments["title"].GetString());
-        Assert.Equal(21, response.Usage.InputUnits);
-        Assert.Equal(7, response.Usage.OutputUnits);
-        Assert.Equal(1, response.Usage.ToolCount);
-        Assert.Equal("completed", response.Usage.ResultClass);
+        Assert.AreEqual("Review this proposal.", response.Content);
+        var call = Assert.ContainsSingle(response.ToolCalls);
+        Assert.AreEqual(OpenLoopsSkill.ProposeTaskTool, call.ToolName);
+        Assert.AreEqual("Renew library card", call.Arguments["title"].GetString());
+        Assert.AreEqual(21, response.Usage.InputUnits);
+        Assert.AreEqual(7, response.Usage.OutputUnits);
+        Assert.AreEqual(1, response.Usage.ToolCount);
+        Assert.AreEqual("completed", response.Usage.ResultClass);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ConfiguredByokCreatesOnlyReviewableOpenLoopsProposal()
     {
         await using var server = await ConformanceServer.StartAsync(async (context, _) =>
@@ -97,20 +98,20 @@ public sealed class OpenAiCompatibleConformanceTests
             context,
             "Prepare my quarterly review");
 
-        Assert.NotNull(result.Proposal);
-        Assert.Null(result.ErrorCode);
-        Assert.Empty(await application.ListAsync(context));
+        Assert.IsNotNull(result.Proposal);
+        Assert.IsNull(result.ErrorCode);
+        Assert.IsEmpty(await application.ListAsync(context));
         Assert.Contains(
             "Prepare quarterly review",
             result.Proposal.Diff.AfterCanonical,
             StringComparison.Ordinal);
     }
 
-    [Theory]
-    [InlineData("unapproved_tool", """{"title":"Not allowed"}""", "provider-unknown-tool")]
-    [InlineData("open-loops_propose-task", """{"title":12}""", "provider-malformed-tool")]
-    [InlineData("open-loops_propose-task", """{"details":"Missing title"}""", "provider-malformed-tool")]
-    [InlineData("open-loops_propose-task", """not-json""", "provider-malformed-tool")]
+    [TestMethod]
+    [DataRow("unapproved_tool", """{"title":"Not allowed"}""", "provider-unknown-tool")]
+    [DataRow("open-loops_propose-task", """{"title":12}""", "provider-malformed-tool")]
+    [DataRow("open-loops_propose-task", """{"details":"Missing title"}""", "provider-malformed-tool")]
+    [DataRow("open-loops_propose-task", """not-json""", "provider-malformed-tool")]
     public async Task RejectsUnknownOrMalformedToolCalls(
         string toolName,
         string arguments,
@@ -121,12 +122,12 @@ public sealed class OpenAiCompatibleConformanceTests
         var response = await CompleteAsync(
             Provider(server.Client, new MutableCredentialStore(CredentialValue)));
 
-        Assert.Equal(AssistantResponseStatus.Failed, response.Status);
-        Assert.Equal(expectedCode, response.Failure?.Code);
-        Assert.Empty(response.ToolCalls);
+        Assert.AreEqual(AssistantResponseStatus.Failed, response.Status);
+        Assert.AreEqual(expectedCode, response.Failure?.Code);
+        Assert.IsEmpty(response.ToolCalls);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ReportsMalformedJsonWithoutLeakingProviderBody()
     {
         await using var server = await ConformanceServer.StartAsync(async (context, _) =>
@@ -137,14 +138,14 @@ public sealed class OpenAiCompatibleConformanceTests
         var response = await CompleteAsync(
             Provider(server.Client, new MutableCredentialStore(CredentialValue)));
 
-        Assert.Equal("provider-malformed-json", response.Failure?.Code);
+        Assert.AreEqual("provider-malformed-json", response.Failure?.Code);
         Assert.DoesNotContain(
             CredentialValue,
             JsonSerializer.Serialize(response),
             StringComparison.Ordinal);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task TimeoutAndCallerCancellationAreDistinct()
     {
         await using var server = await ConformanceServer.StartAsync(async (context, _) =>
@@ -158,9 +159,9 @@ public sealed class OpenAiCompatibleConformanceTests
 
         var timedOut = await CompleteAsync(timedProvider);
 
-        Assert.Equal(AssistantResponseStatus.Failed, timedOut.Status);
-        Assert.Equal("provider-timeout", timedOut.Failure?.Code);
-        Assert.True(timedOut.Failure?.IsTransient);
+        Assert.AreEqual(AssistantResponseStatus.Failed, timedOut.Status);
+        Assert.AreEqual("provider-timeout", timedOut.Failure?.Code);
+        Assert.IsTrue(timedOut.Failure?.IsTransient);
 
         var cancellationProvider = Provider(
             server.Client,
@@ -171,11 +172,11 @@ public sealed class OpenAiCompatibleConformanceTests
         using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
         var cancelled = await session.CompleteAsync(Request(), cancellation.Token);
 
-        Assert.Equal(AssistantResponseStatus.Cancelled, cancelled.Status);
-        Assert.Null(cancelled.Failure);
+        Assert.AreEqual(AssistantResponseStatus.Cancelled, cancelled.Status);
+        Assert.IsNull(cancelled.Failure);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task RetriesOnlyRetryableProviderErrors()
     {
         await using var retryServer = await ConformanceServer.StartAsync(async (context, call) =>
@@ -197,9 +198,9 @@ public sealed class OpenAiCompatibleConformanceTests
         var retried = await CompleteAsync(
             Provider(retryServer.Client, new MutableCredentialStore(CredentialValue)));
 
-        Assert.Equal(AssistantResponseStatus.Completed, retried.Status);
-        Assert.Equal(1, retried.Usage.RetryCount);
-        Assert.Equal(2, retryServer.CallCount);
+        Assert.AreEqual(AssistantResponseStatus.Completed, retried.Status);
+        Assert.AreEqual(1, retried.Usage.RetryCount);
+        Assert.AreEqual(2, retryServer.CallCount);
 
         await using var rejectedServer = await ConformanceServer.StartAsync((context, _) =>
         {
@@ -209,12 +210,12 @@ public sealed class OpenAiCompatibleConformanceTests
         var rejected = await CompleteAsync(
             Provider(rejectedServer.Client, new MutableCredentialStore(CredentialValue)));
 
-        Assert.Equal("provider-rejected-request", rejected.Failure?.Code);
-        Assert.False(rejected.Failure?.IsTransient);
-        Assert.Equal(1, rejectedServer.CallCount);
+        Assert.AreEqual("provider-rejected-request", rejected.Failure?.Code);
+        Assert.IsFalse(rejected.Failure?.IsTransient);
+        Assert.AreEqual(1, rejectedServer.CallCount);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task RejectsOversizedResponsesBeforeJsonParsing()
     {
         await using var server = await ConformanceServer.StartAsync(async (context, _) =>
@@ -229,10 +230,10 @@ public sealed class OpenAiCompatibleConformanceTests
 
         var response = await CompleteAsync(provider);
 
-        Assert.Equal("provider-response-too-large", response.Failure?.Code);
+        Assert.AreEqual("provider-response-too-large", response.Failure?.Code);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task RejectsRedirectsAndEndpointConfusion()
     {
         await using var server = await ConformanceServer.StartAsync((context, _) =>
@@ -244,8 +245,8 @@ public sealed class OpenAiCompatibleConformanceTests
         var redirected = await CompleteAsync(
             Provider(server.Client, new MutableCredentialStore(CredentialValue)));
 
-        Assert.Equal("provider-redirect-rejected", redirected.Failure?.Code);
-        Assert.Equal(1, server.CallCount);
+        Assert.AreEqual("provider-redirect-rejected", redirected.Failure?.Code);
+        Assert.AreEqual(1, server.CallCount);
 
         var confused = Provider(
             server.Client,
@@ -254,11 +255,11 @@ public sealed class OpenAiCompatibleConformanceTests
             Policy());
         var endpointRejected = await CompleteAsync(confused);
 
-        Assert.Equal("endpoint-not-allowed", endpointRejected.Failure?.Code);
-        Assert.Equal(1, server.CallCount);
+        Assert.AreEqual("endpoint-not-allowed", endpointRejected.Failure?.Code);
+        Assert.AreEqual(1, server.CallCount);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ProviderErrorsNeverExposeCredentialOrResponseBody()
     {
         await using var server = await ConformanceServer.StartAsync(async (context, _) =>
@@ -271,12 +272,12 @@ public sealed class OpenAiCompatibleConformanceTests
             Provider(server.Client, new MutableCredentialStore(CredentialValue)));
         var serialized = JsonSerializer.Serialize(response);
 
-        Assert.Equal("provider-rejected-request", response.Failure?.Code);
+        Assert.AreEqual("provider-rejected-request", response.Failure?.Code);
         Assert.DoesNotContain(CredentialValue, serialized, StringComparison.Ordinal);
         Assert.DoesNotContain("invalid key", serialized, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task MetricsContainOnlyContentFreeBoundedTags()
     {
         var observedTags = new ConcurrentBag<KeyValuePair<string, object?>>();
@@ -319,21 +320,21 @@ public sealed class OpenAiCompatibleConformanceTests
         var response = await CompleteAsync(
             Provider(server.Client, new MutableCredentialStore(CredentialValue)));
 
-        Assert.Equal(AssistantResponseStatus.Completed, response.Status);
-        Assert.Contains(
-            observedTags,
+        Assert.AreEqual(AssistantResponseStatus.Completed, response.Status);
+        Assert.IsTrue(observedTags.Any(
             tag => tag.Key == "result.class"
-                && string.Equals(tag.Value as string, "completed", StringComparison.Ordinal));
-        Assert.All(
-            observedTags,
-            tag => Assert.Equal("result.class", tag.Key));
+                && string.Equals(tag.Value as string, "completed", StringComparison.Ordinal)));
+        foreach (var tag in observedTags)
+        {
+            Assert.AreEqual("result.class", tag.Key);
+        }
         var serializedTags = JsonSerializer.Serialize(observedTags);
         Assert.DoesNotContain(CredentialValue, serializedTags, StringComparison.Ordinal);
         Assert.DoesNotContain("canary", serializedTags, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("conformance-model", serializedTags, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task CredentialRotationAndRevocationApplyWithoutRestart()
     {
         var expectedCredential = "first-credential";
@@ -351,19 +352,19 @@ public sealed class OpenAiCompatibleConformanceTests
         var store = new MutableCredentialStore(expectedCredential);
         var provider = Provider(server.Client, store);
 
-        Assert.Equal(AssistantResponseStatus.Completed, (await CompleteAsync(provider)).Status);
+        Assert.AreEqual(AssistantResponseStatus.Completed, (await CompleteAsync(provider)).Status);
         expectedCredential = "rotated-credential";
         store.Rotate(expectedCredential);
-        Assert.Equal(AssistantResponseStatus.Completed, (await CompleteAsync(provider)).Status);
+        Assert.AreEqual(AssistantResponseStatus.Completed, (await CompleteAsync(provider)).Status);
 
         store.Revoke();
         var revoked = await CompleteAsync(provider);
 
-        Assert.Equal("credential-revoked", revoked.Failure?.Code);
-        Assert.Equal(2, server.CallCount);
+        Assert.AreEqual("credential-revoked", revoked.Failure?.Code);
+        Assert.AreEqual(2, server.CallCount);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ExternalEndpointStopsBeforeCallWithoutNumericBudgetEnvelope()
     {
         await using var server = await ConformanceServer.StartAsync((context, _) =>
@@ -383,11 +384,11 @@ public sealed class OpenAiCompatibleConformanceTests
 
         var response = await CompleteAsync(provider);
 
-        Assert.Equal("budget-exhausted", response.Failure?.Code);
-        Assert.Equal(0, server.CallCount);
+        Assert.AreEqual("budget-exhausted", response.Failure?.Code);
+        Assert.AreEqual(0, server.CallCount);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ApprovedHttpsEndpointCanUseBoundedEnvelope()
     {
         await using var server = await ConformanceServer.StartAsync((context, _) =>
@@ -411,13 +412,13 @@ public sealed class OpenAiCompatibleConformanceTests
 
         var response = await CompleteAsync(provider);
 
-        Assert.True(
+        Assert.IsTrue(
             response.Status == AssistantResponseStatus.Completed,
             response.Failure?.Code);
-        Assert.Equal(1, server.CallCount);
+        Assert.AreEqual(1, server.CallCount);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task DeterministicProviderRemainsOfflineFallback()
     {
         var provider = OpenLoopsSkill.CreateDeterministicProvider();
@@ -427,12 +428,12 @@ public sealed class OpenAiCompatibleConformanceTests
 
         var response = await session.CompleteAsync(Request(), CancellationToken.None);
 
-        Assert.Equal(AssistantResponseStatus.Completed, response.Status);
-        Assert.Equal("deterministic", response.Usage.Provider);
-        Assert.Single(response.ToolCalls);
+        Assert.AreEqual(AssistantResponseStatus.Completed, response.Status);
+        Assert.AreEqual("deterministic", response.Usage.Provider);
+        Assert.ContainsSingle(response.ToolCalls);
     }
 
-    [Fact]
+    [TestMethod]
     public void OpenLoopsSelectionResolvesConfiguredByokAdapter()
     {
         var configuration = CreateByokConfiguration();
@@ -445,24 +446,24 @@ public sealed class OpenAiCompatibleConformanceTests
 
         var provider = serviceProvider.GetRequiredService<IAssistantProvider>();
 
-        Assert.IsType<OpenAiCompatibleAssistantAdapter>(provider);
+        Assert.IsInstanceOfType<OpenAiCompatibleAssistantAdapter>(provider);
     }
 
-    [Theory]
-    [InlineData("Endpoint", "")]
-    [InlineData("Endpoint", "not a uri")]
-    [InlineData("Endpoint", "https://user@provider.example/v1")]
-    [InlineData("Endpoint", "https://provider.example/v1#fragment")]
-    [InlineData("Endpoint", "http://provider.example/v1")]
-    [InlineData("AllowedEndpoints:0", "")]
-    [InlineData("AllowedEndpoints:0", "not a uri")]
-    [InlineData("AllowedEndpoints:0", "https://other.example/v1")]
-    [InlineData("Model", "")]
-    [InlineData("CredentialHandle", "")]
-    [InlineData("CredentialHandle", "raw-secret-value")]
-    [InlineData("ApprovedExternalTotalUnits", "-1")]
-    [InlineData("ApprovedExternalTotalUnits", "1")]
-    [InlineData("MaximumInputUnits", "0")]
+    [TestMethod]
+    [DataRow("Endpoint", "")]
+    [DataRow("Endpoint", "not a uri")]
+    [DataRow("Endpoint", "https://user@provider.example/v1")]
+    [DataRow("Endpoint", "https://provider.example/v1#fragment")]
+    [DataRow("Endpoint", "http://provider.example/v1")]
+    [DataRow("AllowedEndpoints:0", "")]
+    [DataRow("AllowedEndpoints:0", "not a uri")]
+    [DataRow("AllowedEndpoints:0", "https://other.example/v1")]
+    [DataRow("Model", "")]
+    [DataRow("CredentialHandle", "")]
+    [DataRow("CredentialHandle", "raw-secret-value")]
+    [DataRow("ApprovedExternalTotalUnits", "-1")]
+    [DataRow("ApprovedExternalTotalUnits", "1")]
+    [DataRow("MaximumInputUnits", "0")]
     public void InvalidByokOptionsFailThroughStableOptionsValidation(
         string option,
         string value)
@@ -471,32 +472,29 @@ public sealed class OpenAiCompatibleConformanceTests
         var services = new ServiceCollection();
         services.AddLogging();
 
-        var registrationFailure = Record.Exception(() =>
-            services.AddAndrejaOpenLoops(
-                configuration,
-                new TestEnvironment { EnvironmentName = Environments.Development }));
-
-        Assert.Null(registrationFailure);
+        services.AddAndrejaOpenLoops(
+            configuration,
+            new TestEnvironment { EnvironmentName = Environments.Development });
         using var serviceProvider = services.BuildServiceProvider();
-        var exception = Assert.Throws<OptionsValidationException>(
+        var exception = Assert.ThrowsExactly<OptionsValidationException>(
             () => serviceProvider.GetRequiredService<IAssistantProvider>());
         Assert.Contains(
             OpenLoopsServiceCollectionExtensions.OpenAiValidationMessage,
             exception.Failures);
-        Assert.Null(exception.InnerException);
+        Assert.IsNull(exception.InnerException);
     }
 
-    [Fact]
+    [TestMethod]
     public void ProductionByokHandlerKeepsPlatformTlsValidationAndRedirectsDisabled()
     {
         using var handler = OpenLoopsServiceCollectionExtensions.CreateOpenAiHandler(Profile());
 
-        Assert.Null(handler.SslOptions.RemoteCertificateValidationCallback);
-        Assert.False(handler.AllowAutoRedirect);
-        Assert.Equal(DecompressionMethods.None, handler.AutomaticDecompression);
+        Assert.IsNull(handler.SslOptions.RemoteCertificateValidationCallback);
+        Assert.IsFalse(handler.AllowAutoRedirect);
+        Assert.AreEqual(DecompressionMethods.None, handler.AutomaticDecompression);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task FileCredentialStoreReadsRotationAndEmptyFileAsRevocation()
     {
         var path = Path.Join(
@@ -515,7 +513,7 @@ public sealed class OpenAiCompatibleConformanceTests
                 "credential://assistant/file-test",
                 CancellationToken.None))
             {
-                Assert.Equal("first-file-secret", new string(first!.Value));
+                Assert.AreEqual("first-file-secret", new string(first!.Value));
             }
 
             MakeWritable(path);
@@ -524,18 +522,18 @@ public sealed class OpenAiCompatibleConformanceTests
                 "credential://assistant/file-test",
                 CancellationToken.None))
             {
-                Assert.Equal("rotated-file-secret", new string(rotated!.Value));
+                Assert.AreEqual("rotated-file-secret", new string(rotated!.Value));
             }
 
             MakeWritable(path);
             await WriteReadOnlySecretAsync(path, string.Empty);
-            Assert.Null(await store.ResolveAsync(
+            Assert.IsNull(await store.ResolveAsync(
                 "credential://assistant/file-test",
                 CancellationToken.None));
 
             MakeWritable(path);
             File.Delete(path);
-            await Assert.ThrowsAsync<FileNotFoundException>(async () =>
+            await Assert.ThrowsExactlyAsync<FileNotFoundException>(async () =>
                 await store.ResolveAsync(
                     "credential://assistant/file-test",
                     CancellationToken.None));
@@ -550,7 +548,7 @@ public sealed class OpenAiCompatibleConformanceTests
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task CredentialFileFailuresAreContentFreeTypedFailures()
     {
         var missingPath = Path.Join(
@@ -591,11 +589,11 @@ public sealed class OpenAiCompatibleConformanceTests
             byte[] invalidUtf8 = [0xC3, 0x28];
             await WriteReadOnlyBytesAsync(invalidUtf8Path, invalidUtf8);
             var invalidStore = Store(invalidUtf8Path);
-            var invalidException = await Assert.ThrowsAsync<InvalidDataException>(async () =>
+            var invalidException = await Assert.ThrowsExactlyAsync<InvalidDataException>(async () =>
                 await invalidStore.ResolveAsync(
                     "credential://assistant/conformance",
                     CancellationToken.None));
-            Assert.IsType<DecoderFallbackException>(invalidException.InnerException);
+            Assert.IsInstanceOfType<DecoderFallbackException>(invalidException.InnerException);
             await AssertCredentialUnavailableAsync(
                 invalidStore,
                 invalidUtf8Path,
@@ -609,7 +607,7 @@ public sealed class OpenAiCompatibleConformanceTests
         }
     }
 
-    [Fact]
+    [TestMethod]
     public async Task AccessDeniedIsTypedButProgrammerFailureIsNotCaught()
     {
         const string deniedDetail = "denied-path-and-secret-canary";
@@ -619,27 +617,30 @@ public sealed class OpenAiCompatibleConformanceTests
 
         var programmerFailure = new InvalidOperationException("programmer-failure-canary");
         using var client = CreateNeverSendClient();
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var exception = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
             CompleteAsync(
                 Provider(
                     client,
                     new ThrowingCredentialStore(programmerFailure))));
-        Assert.Same(programmerFailure, exception);
+        Assert.AreSame(programmerFailure, exception);
     }
 
-    [Fact]
+    [TestMethod]
     public void AssistantCredentialDisposalZeroesObservableBuffer()
     {
         var credential = new AssistantCredential("buffer-secret-canary");
         var field = typeof(AssistantCredential).GetField(
             "value",
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-        var buffer = Assert.IsType<char[]>(field!.GetValue(credential));
+        var buffer = Assert.IsInstanceOfType<char[]>(field!.GetValue(credential));
 
         credential.Dispose();
 
-        Assert.All(buffer, character => Assert.Equal('\0', character));
-        Assert.Throws<ObjectDisposedException>(() => _ = credential.Value.Length);
+        foreach (var character in buffer)
+        {
+            Assert.AreEqual('\0', character);
+        }
+        Assert.ThrowsExactly<ObjectDisposedException>(() => _ = credential.Value.Length);
     }
 
     private static IConfiguration CreateByokConfiguration(
@@ -691,9 +692,9 @@ public sealed class OpenAiCompatibleConformanceTests
         using var client = CreateNeverSendClient();
         var response = await CompleteAsync(Provider(client, store));
 
-        Assert.Equal(AssistantResponseStatus.Failed, response.Status);
-        Assert.Equal("credential-unavailable", response.Failure?.Code);
-        Assert.False(response.Failure?.IsTransient);
+        Assert.AreEqual(AssistantResponseStatus.Failed, response.Status);
+        Assert.AreEqual("credential-unavailable", response.Failure?.Code);
+        Assert.IsFalse(response.Failure?.IsTransient);
         var serialized = JsonSerializer.Serialize(response);
         foreach (var forbidden in forbiddenValues)
         {
@@ -789,21 +790,21 @@ public sealed class OpenAiCompatibleConformanceTests
         HttpContext context,
         string expectedCredential)
     {
-        Assert.Equal(
+        Assert.AreEqual(
             $"Bearer {expectedCredential}",
             context.Request.Headers.Authorization.ToString());
         using var reader = new StreamReader(context.Request.Body);
         var body = await reader.ReadToEndAsync();
         Assert.DoesNotContain(expectedCredential, body, StringComparison.Ordinal);
         var request = JsonSerializer.Deserialize<JsonElement>(body);
-        Assert.Equal("conformance-model", request.GetProperty("model").GetString());
+        Assert.AreEqual("conformance-model", request.GetProperty("model").GetString());
         var function = request
             .GetProperty("tools")[0]
             .GetProperty("function");
-        Assert.Equal(
+        Assert.AreEqual(
             "open-loops_propose-task",
             function.GetProperty("name").GetString());
-        Assert.False(
+        Assert.IsFalse(
             function.GetProperty("parameters").GetProperty("additionalProperties").GetBoolean());
     }
 

@@ -10,6 +10,11 @@
 - **Outcome:** Retain `xunit.runner.visualstudio` 4.0.0 and
   `Microsoft.NET.Test.Sdk` 18.9.0 with xUnit 2.9.3.
 
+> **Historical snapshot:** This report records issue #109's state through
+> 2026-09-07. Issue #112 later replaced the production test runner; the current
+> migration evidence is in
+> [`test-framework-migration-112.md`](test-framework-migration-112.md).
+
 ## Scope and baseline
 
 PR [#141](https://github.com/Jamula/Andreja/pull/141) had already updated

@@ -7,58 +7,57 @@ using System.Text.Json;
 
 namespace Andreja.UnitTests;
 
+[TestClass]
 public sealed class ManifestContractTests
 {
-    [Fact]
+    [TestMethod]
     public void SkillAndChannelManifestsRoundTripEveryRequiredContractSection()
     {
         var skill = ExecutionContractFixture.SkillManifest();
         var channel = ExecutionContractFixture.ChannelManifest();
 
-        var skillRoundTrip = Assert.IsType<SkillManifest>(
+        var skillRoundTrip = Assert.IsInstanceOfType<SkillManifest>(
             JsonSerializer.Deserialize<SkillManifest>(JsonSerializer.Serialize(skill)));
-        var channelRoundTrip = Assert.IsType<ChannelManifest>(
+        var channelRoundTrip = Assert.IsInstanceOfType<ChannelManifest>(
             JsonSerializer.Deserialize<ChannelManifest>(JsonSerializer.Serialize(channel)));
 
-        Assert.Equal(
+        Assert.AreEqual(
             JsonSerializer.Serialize(skill),
             JsonSerializer.Serialize(skillRoundTrip));
-        Assert.Equal(
+        Assert.AreEqual(
             JsonSerializer.Serialize(channel),
             JsonSerializer.Serialize(channelRoundTrip));
-        Assert.Equal("andreja.skill-manifest.v1", skillRoundTrip.SchemaVersion);
-        Assert.Equal("andreja.channel-manifest.v1", channelRoundTrip.SchemaVersion);
-        Assert.Equal("1.0.0", skillRoundTrip.Version);
-        Assert.Equal("1.0.0", channelRoundTrip.Version);
-        Assert.NotEmpty(skillRoundTrip.Permissions.DeclaredCapabilities);
-        Assert.NotEmpty(skillRoundTrip.Permissions.AllowedPurposes);
-        Assert.NotEmpty(skillRoundTrip.Permissions.DataClasses);
-        Assert.NotEmpty(skillRoundTrip.HelpSupport.SupportRoute);
-        Assert.NotEmpty(skillRoundTrip.Compatibility.SupportedPlatformVersions);
-        Assert.NotEmpty(channelRoundTrip.Permissions.DeclaredCapabilities);
-        Assert.NotEmpty(channelRoundTrip.Provider.DeliveryTopology.Reason!);
-        Assert.All(
-            ExplicitNotApplicableFields(skillRoundTrip).Concat(
-                ExplicitNotApplicableFields(channelRoundTrip)),
-            field =>
-            {
-                Assert.Equal(ManifestApplicability.NotApplicable, field.Applicability);
-                Assert.True(field.HasNullValue);
-                Assert.False(string.IsNullOrWhiteSpace(field.Reason));
-            });
+        Assert.AreEqual("andreja.skill-manifest.v1", skillRoundTrip.SchemaVersion);
+        Assert.AreEqual("andreja.channel-manifest.v1", channelRoundTrip.SchemaVersion);
+        Assert.AreEqual("1.0.0", skillRoundTrip.Version);
+        Assert.AreEqual("1.0.0", channelRoundTrip.Version);
+        Assert.IsNotEmpty(skillRoundTrip.Permissions.DeclaredCapabilities);
+        Assert.IsNotEmpty(skillRoundTrip.Permissions.AllowedPurposes);
+        Assert.IsNotEmpty(skillRoundTrip.Permissions.DataClasses);
+        Assert.IsNotEmpty(skillRoundTrip.HelpSupport.SupportRoute);
+        Assert.IsNotEmpty(skillRoundTrip.Compatibility.SupportedPlatformVersions);
+        Assert.IsNotEmpty(channelRoundTrip.Permissions.DeclaredCapabilities);
+        Assert.IsNotEmpty(channelRoundTrip.Provider.DeliveryTopology.Reason!);
+        foreach (var field in ExplicitNotApplicableFields(skillRoundTrip).Concat(
+                     ExplicitNotApplicableFields(channelRoundTrip)))
+        {
+            Assert.AreEqual(ManifestApplicability.NotApplicable, field.Applicability);
+            Assert.IsTrue(field.HasNullValue);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(field.Reason));
+        }
     }
 
-    [Theory]
-    [InlineData("1")]
-    [InlineData("v1.0.0")]
-    [InlineData("1.0")]
-    [InlineData("")]
+    [TestMethod]
+    [DataRow("1")]
+    [DataRow("v1.0.0")]
+    [DataRow("1.0")]
+    [DataRow("")]
     public void HostsRejectNonSemanticArtifactVersions(string version)
     {
         var skill = ExecutionContractFixture.SkillManifest() with { Version = version };
         var channel = ExecutionContractFixture.ChannelManifest() with { Version = version };
 
-        Assert.Throws<ArgumentException>(() =>
+        Assert.ThrowsExactly<ArgumentException>(() =>
             new InMemorySkillHost().Register(
                 skill,
                 new Dictionary<string, SkillToolHandler>
@@ -70,7 +69,7 @@ public sealed class ManifestContractTests
                             null,
                             null)),
                 }));
-        Assert.Throws<ArgumentException>(() =>
+        Assert.ThrowsExactly<ArgumentException>(() =>
             new InMemoryChannelHost().Register(
                 channel,
                 new Dictionary<string, ChannelOperationHandler>
@@ -83,7 +82,7 @@ public sealed class ManifestContractTests
                 }));
     }
 
-    [Fact]
+    [TestMethod]
     public void MissingExplicitNonApplicabilityReasonFailsRegistration()
     {
         var skill = ExecutionContractFixture.SkillManifest();
@@ -95,7 +94,7 @@ public sealed class ManifestContractTests
             },
         };
 
-        Assert.Throws<ArgumentException>(() =>
+        Assert.ThrowsExactly<ArgumentException>(() =>
             new InMemorySkillHost().Register(
                 invalid,
                 new Dictionary<string, SkillToolHandler>
@@ -109,7 +108,7 @@ public sealed class ManifestContractTests
                 }));
     }
 
-    [Fact]
+    [TestMethod]
     public void UnknownManifestSchemaVersionsFailRegistration()
     {
         var skill = ExecutionContractFixture.SkillManifest() with
@@ -121,7 +120,7 @@ public sealed class ManifestContractTests
             SchemaVersion = "andreja.channel-manifest.v2",
         };
 
-        Assert.Throws<ArgumentException>(() =>
+        Assert.ThrowsExactly<ArgumentException>(() =>
             new InMemorySkillHost().Register(
                 skill,
                 new Dictionary<string, SkillToolHandler>
@@ -133,7 +132,7 @@ public sealed class ManifestContractTests
                             null,
                             null)),
                 }));
-        Assert.Throws<ArgumentException>(() =>
+        Assert.ThrowsExactly<ArgumentException>(() =>
             new InMemoryChannelHost().Register(
                 channel,
                 new Dictionary<string, ChannelOperationHandler>
@@ -146,7 +145,7 @@ public sealed class ManifestContractTests
                 }));
     }
 
-    [Fact]
+    [TestMethod]
     public void ApplicableMetadataCannotSmuggleANonApplicabilityReason()
     {
         var channel = ExecutionContractFixture.ChannelManifest();
@@ -161,7 +160,7 @@ public sealed class ManifestContractTests
             },
         };
 
-        Assert.Throws<ArgumentException>(() =>
+        Assert.ThrowsExactly<ArgumentException>(() =>
             new InMemoryChannelHost().Register(
                 invalid,
                 new Dictionary<string, ChannelOperationHandler>

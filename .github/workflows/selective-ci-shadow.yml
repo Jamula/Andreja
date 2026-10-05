@@ -308,7 +308,7 @@ jobs:
         run: |
           for configuration in Debug Release; do
             dotnet build Andreja.slnx --configuration "$configuration" --no-restore
-            dotnet test Andreja.slnx --configuration "$configuration" --no-build
+            dotnet test --solution Andreja.slnx --configuration "$configuration" --no-build
           done
       - name: Verify format and vulnerabilities
         shell: pwsh
@@ -380,7 +380,7 @@ jobs:
           dotnet build tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj --configuration Release --no-restore
           dotnet format tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj --verify-no-changes --no-restore
           pwsh -NoProfile -File .github/scripts/invoke-nuget-vulnerability-scan.ps1 -OnlyPostgreSql -OutputPath artifacts/vulnerability/postgresql.json
-          dotnet test tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj --configuration Release --no-build
+          dotnet test --project tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj --configuration Release --no-build
       - if: always()
         name: Upload bounded PostgreSQL vulnerability evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

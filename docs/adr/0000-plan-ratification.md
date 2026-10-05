@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `e842eb02be46fa7cf2099c33d5aa913d4efc0a4c1d825da29cc311c09cc1eb40`
+- **Current proposed Plan SHA-256:** `f9e107401d80b901b0a8c0f924af5119d58ba74aaa8321df901ecad196539f7e`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -472,3 +472,34 @@ not match the merged `docs/plan.md`.
   decision package to the governed status-artifact inventory and require its
   hash to be checked by documentation CI. No Cyrus decision or authorization is
   recorded by this proposal.
+
+### 2026-10-04 — proposed test-framework migration status
+
+- **Tracking issue:** [#112](https://github.com/Jamula/Andreja/issues/112)
+- **Pull request:** [#180](https://github.com/Jamula/Andreja/pull/180)
+- **Plan SHA-256:** `3650c766b165c460644aab1abf46d0a7d62c90c8a8be3ccd5e56430d1cbbbf4d`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed execution-status/evidence amendment; no
+  re-ratification, ADR 0007 acceptance, production behavior change, or phase exit
+  is authorized.
+- **Scope:** Record the issue-authorized, atomic MSTest/Microsoft Testing
+  Platform migration and link its measured baseline, parity, runtime,
+  performance, and rollback evidence. Visual Studio and VS Code Test Explorer
+  discovery remain unverified on the local host; the #112 issue remains open.
+
+### 2026-10-05 — proposed current-main and feedback-security hash reconciliation
+
+- **Tracking issues:** [#112](https://github.com/Jamula/Andreja/issues/112) and
+  [#156](https://github.com/Jamula/Andreja/issues/156)
+- **Pull requests:** [#180](https://github.com/Jamula/Andreja/pull/180) and
+  [#177](https://github.com/Jamula/Andreja/pull/177)
+- **Plan SHA-256:** `f9e107401d80b901b0a8c0f924af5119d58ba74aaa8321df901ecad196539f7e`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed plan/hash reconciliation; no re-ratification,
+  approval, implementation, or activation is implied.
+- **Scope:** Preserve the pending MSTest/MTP status update from current main and
+  the proposed feedback-security status-artifact inventory from PR #177 in the
+  plan. Preserve the accepted plan hash and both earlier pending amendment
+  records. Neither issue's decision is approved, and no collection,
+  publication, provider, spend, provisioning, deployment, intake activation,
+  or support commitment is authorized.

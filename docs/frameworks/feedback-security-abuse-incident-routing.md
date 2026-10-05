@@ -87,7 +87,8 @@ flowchart LR
   end
 
   subgraph AUTH["Authenticated Andreja tenant data plane"]
-    A[Authenticated submitter] --> AE[Andreja authenticated endpoint]
+    A[Authenticated submitter] --> AOR[Authenticated Andreja app/form origin]
+    AOR -->|app-scoped cookie and CSRF token; exact Origin checked; no secret in URL or referrer| AE[Andreja authenticated endpoint]
     AE -->|validate session, derive tenant and authorize action| AA[Authenticated authorization boundary]
     AA --> AV[Tenant-bound validation, origin and abuse controls]
     AV --> AI[Authenticated-boundary incident ingress and classification]
@@ -133,9 +134,14 @@ flowchart LR
    authenticated-user principal field; it does not ignore the field and
    continue processing.
 2. An authenticated request derives its tenant only from a validated server
-   session. Every read and mutation authorizes both tenant and record ownership
-   after that authorization boundary; a client-supplied tenant or record ID
-   never grants authorization or selects a tenant.
+   session. It enters only from the authenticated Andreja app/form origin;
+   that origin's app-scoped cookie is not a public-origin credential. Enforce
+   exact allowed-origin and CSRF checks, and keep secrets out of URLs and
+   referrers. Validate the server session, derive the tenant, and authorize the
+   action before tenant-bound validation. Every read and mutation authorizes
+   both tenant and record ownership after that authorization boundary; a
+   client-supplied tenant or record ID never grants authorization or selects a
+   tenant.
 3. Public and authenticated intake are separate deployments with
    boundary-specific validation, incident ingress, case/tracking/contact/
    quarantine stores, queues, workers, credentials, and access roles. There is
@@ -263,7 +269,25 @@ are proposals in the #155 privacy package, not approved schedules.
    loses its candidate after commit, it must use the approved recovery route.
    Concurrent rotations have one committed winner and never leave two active
    credentials.
-9. Use generic, non-enumerating outcomes for accepted, quarantined, rejected,
+9. Recovery is a credential mutation, not a lookup or verifier reset. A
+   tracking reference alone is never proof: before approved recovery proof
+   succeeds, missing, guessed, stale, revoked, inaccessible, and existing
+   references receive equivalent outward responses, disclose no existence,
+   and receive no new secret. Only after proof succeeds may recovery issue a
+   new secret. Use the same client-held candidate and unique idempotency-key
+   protocol as rotation: atomically install only the candidate's one-way
+   verifier and revoke every prior verifier for that reference in one
+   transaction/CAS, leaving exactly one active verifier. Return the candidate
+   only after commit; never persist its raw or recoverable form. A pre-commit
+   failure, including process failure, leaves the old verifier(s) valid and
+   returns no candidate; a retry uses the same client-held candidate and
+   idempotency key after approved proof. After commit, only the new verifier
+   remains active. If acknowledgment is lost or the process fails after
+   commit, retry with the same key and candidate verifies the active verifier
+   and completion marker and acknowledges without another swap. Never roll
+   back to an old verifier or reconstruct a secret. If the client loses its
+   candidate, recovery requires a new approved proof.
+10. Use generic, non-enumerating outcomes for accepted, quarantined, rejected,
    duplicate, missing, and incident cases; never reflect prohibited content.
    Bound response timing classes and avoid status differences that reveal
    screening, record, or incident existence.
@@ -300,7 +324,8 @@ credential, prompt, or incident content.
 | Public tenant-less record ID, cookie, receipt, or correlation value is replayed against authenticated or incident service | Deny; no trust or credential is shared across those boundaries. |
 | Guessed, collided, missing, duplicate, stale, revoked, expired, and valid-but-unproved references are queried | No record-existence, category, duplicate, incident, or tenant signal before proof; all pre-proof results satisfy the same outward response contract. Collision insertion retries safely without aliasing a record. |
 | Wrong, stale, revoked, replayed, or concurrently used secret/nonce; CSRF request; hostile or missing `Origin` | Deny state change; no secret or sensitive detail in response; no duplicate transition. |
-| Recovery, rotation, storage failure, process crash before/after commit, and two concurrent rotations | A pre-commit failure leaves the old verifier valid. A post-commit response loss leaves only the candidate verifier valid; retry with the same idempotency key and same client-held candidate returns the completion response without another swap, while a different candidate with that key is rejected. If client state is lost after commit, use the approved recovery route. Concurrent CAS rotations have one winner and never leave two active credentials. |
+| Recovery with missing/guessed/stale/revoked references before proof; storage failure, process failure before/after commit, acknowledgment loss, and concurrent recoveries | Before approved proof, disclose no existence and issue no secret; missing, guessed, stale, revoked, inaccessible, and existing references receive equivalent outward responses. After proof, return a new secret only after atomic commit installs its one-way verifier and revokes every prior verifier, leaving exactly one active. A pre-commit failure, including process failure before commit, leaves the old verifier(s) valid and returns no secret. After commit, including acknowledgment loss or process failure after commit, only the new verifier remains active; retry with the same idempotency key and client-held candidate acknowledges completion without another swap. Concurrent recovery CAS operations have one committed winner and leave exactly one active verifier. No raw or recoverable secret is persisted. |
+| Rotation with storage failure, process crash before/after commit, acknowledgment loss, and two concurrent rotations | A pre-commit failure leaves the old verifier valid. A post-commit response loss leaves only the candidate verifier valid; retry with the same idempotency key and same client-held candidate returns the completion response without another swap, while a different candidate with that key is rejected. If client state is lost after commit, use the approved recovery route. Concurrent CAS rotations have one winner and never leave two active credentials. |
 | Malformed, oversized, slow, burst, concurrent, duplicate, and high-cost submissions | Enforced measured bounds hold before expensive work; accepted data is durable before success; no silent loss, unbounded retry, or unbounded dead-letter growth. |
 | Secret/PII/incident detector match, uncertain result, or false positive | No match excerpt in logs or ordinary triage; route to restricted review; appeal is private, accessible, and does not reveal a record to an unproved requester. |
 | Deduplication candidate lookup for public and authenticated submissions, including authenticated tenants A and B | Public submissions never compare with authenticated candidates; an authenticated session searches only its validated tenant's authorized candidates. No out-of-scope candidate reaches similarity evaluation; tenant context is used only to partition/authorize lookup and is absent from the similarity key. |

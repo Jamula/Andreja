@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "inventory_kind": "current",
+  "updated_on": "2026-10-04",
+  "historical_baseline_path": "docs/research/test-suite-baseline-112.json",
+  "sdk_version": "10.0.301",
+  "target_framework": "net10.0",
+  "runner": "Microsoft.Testing.Platform",
+  "projects": {
+    "Andreja.UnitTests": {
+      "path": "tests/Andreja.UnitTests/Andreja.UnitTests.csproj",
+      "Debug": {
+        "discovered": 257,
+        "trx_total": 257,
+        "executed": 257,
+        "passed": 257,
+        "failed": 0,
+        "skipped": 0
+      },
+      "Release": {
+        "discovered": 253,
+        "trx_total": 253,
+        "executed": 253,
+        "passed": 253,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    "Andreja.ArchitectureTests": {
+      "path": "tests/Andreja.ArchitectureTests/Andreja.ArchitectureTests.csproj",
+      "Debug": {
+        "discovered": 18,
+        "trx_total": 18,
+        "executed": 18,
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0
+      },
+      "Release": {
+        "discovered": 18,
+        "trx_total": 18,
+        "executed": 18,
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    "Andreja.PostgreSqlIntegrationTests": {
+      "path": "tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj",
+      "Debug": {
+        "discovered": 22,
+        "trx_total": 22,
+        "executed": 22,
+        "passed": 22,
+        "failed": 0,
+        "skipped": 0
+      },
+      "Release": {
+        "discovered": 22,
+        "trx_total": 22,
+        "executed": 22,
+        "passed": 22,
+        "failed": 0,
+        "skipped": 0
+      }
+    }
+  }
+}
