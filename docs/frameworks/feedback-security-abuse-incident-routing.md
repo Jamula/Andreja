@@ -333,13 +333,14 @@ credential, prompt, or incident content.
 | Queue, quarantine, dead-letter, key, database, publisher, or incident route outage | Before acceptance, fail safely without success-shaped acknowledgment. After durable acceptance, preserve the record and report a safe state. Never route incident content to ordinary triage or public GitHub. |
 | Search logs, traces, metrics, alerts, browser history/referrer, queue metadata, email provider metadata, export, and backup for raw receipt secrets or prohibited content | No raw secret or prohibited content is present; deletion/revocation remains effective after restore and replay. |
 | Attempt to publish a restricted, quarantined, incident, or unconsented draft | Deny publication. Any allowed publication is sanitized, exact-previewed, consented to by digest/version, and revalidated after material edits. |
-| Submit or appeal without a screen reader, account, email, or bot-challenge capability | Accessible alternative works without weakening boundary checks; email and bot challenge are not mandatory proof or the only route. |
+| Submit and appeal using a screen reader | Future exact-release evidence uses keyboard operation and a screen reader for submission and appeal, including form labels/instructions, validation/error announcements, and confirmation/status; record the screen reader/version and results. |
+| Submit or appeal without an account, email, or bot-challenge capability | Separately test an accessible alternative without weakening boundary checks; email and bot challenge are not mandatory proof or the only route. |
 
-Required evidence includes test source and exact command/result, tested release
-commit, independent review, safe canary coverage for prohibited log fields,
-negative authorization results, load/queue/cost bounds, retention/purge/backup
-replay results, and accessible-route evidence. No such evidence is attached to
-this proposal.
+Required future exact-release evidence includes test source and exact
+command/result, tested release commit, independent review, safe canary coverage
+for prohibited log fields, negative authorization results, load/queue/cost
+bounds, retention/purge/backup replay results, and both accessible-route
+results above. No such evidence is attached to this proposal.
 
 ## Open decisions and blockers
 
