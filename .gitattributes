@@ -6,6 +6,11 @@
 .squad/rai/audit-trail.md merge=union
 .squad/fact-checker/audit-trail.md merge=union
 
+# Casting transaction manifests hash the exact SDK-written LF bytes.
+.squad/casting/registry.json text eol=lf
+.squad/casting/history.json text eol=lf
+.squad/casting/registry-history.commit.json text eol=lf
+
 # Portable operational artifacts
 *.sh text eol=lf
 Dockerfile text eol=lf
