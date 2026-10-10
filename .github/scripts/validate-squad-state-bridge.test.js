@@ -121,6 +121,10 @@ test('accepts the approved two-layer static contract', (t) => {
   assert.deepEqual(validateRepository(fixture(t)), []);
 });
 
+test('checked-in repository satisfies the upgraded two-layer static contract', () => {
+  assert.deepEqual(validateRepository(path.resolve(__dirname, '..', '..')), []);
+});
+
 test('rejects a local-backend fallback', (t) => {
   const root = fixture(t);
   writeJson(root, path.join('.squad', 'config.json'), {
@@ -286,13 +290,13 @@ test('rejects a mismatched bridge package version', (t) => {
     mcpServers: {
       squad_state: {
         command: 'npx',
-        args: ['-y', '@bradygaster/squad-cli@0.11.0', 'state-mcp'],
+        args: ['-y', '@bradygaster/squad-cli@0.13.1', 'state-mcp'],
         env: {},
         tools: REQUIRED_MCP_TOOLS,
       },
     },
   });
-  assert.match(validateRepository(root).join('\n'), /squad-cli@0\.13\.1/);
+  assert.match(validateRepository(root).join('\n'), /squad-cli@1\.0\.0/);
 });
 
 test('rejects a wildcard MCP tool grant', (t) => {
@@ -348,7 +352,7 @@ test('rejects an empty readable coordinator file', (t) => {
   assert.match(validateRepository(root).join('\n'), /squad\.agent\.md must not be empty/);
 });
 
-test('checked-in coordinator and template retain synchronized v0.13.1 recovery wording', () => {
+test('checked-in coordinator and template retain synchronized fail-closed recovery wording', () => {
   const repositoryRoot = path.resolve(__dirname, '..', '..');
   const sources = [
     path.join(repositoryRoot, '.github', 'agents', 'squad.agent.md'),
@@ -365,7 +369,7 @@ test('checked-in coordinator and template retain synchronized v0.13.1 recovery w
   assert.equal(recoveryParagraphs[0][0], recoveryParagraphs[1][0]);
 });
 
-test('checked-in coordinator and template retain the exact v0.13.1 prohibition list', () => {
+test('checked-in coordinator and template retain the exact governed prohibition list', () => {
   const repositoryRoot = path.resolve(__dirname, '..', '..');
   const sources = [
     path.join(repositoryRoot, '.github', 'agents', 'squad.agent.md'),
@@ -416,7 +420,7 @@ test('rejects a required prohibition moved outside its bounded list', (t) => {
   );
   assert.match(
     validateRepository(root).join('\n'),
-    /prohibition list must exactly match the v0\.13\.1 contract/,
+    /prohibition list must exactly match the v1\.0\.0 contract/,
   );
 });
 
@@ -565,7 +569,7 @@ test('rejects a conflicting reported Squad version', (t) => {
       `Report \`Squad v${SQUAD_VERSION}\`, then report \`Squad v0.12.0\`.`,
     ),
   );
-  assert.match(validateRepository(root).join('\n'), /must report only Squad v0\.13\.1/);
+  assert.match(validateRepository(root).join('\n'), /must report only Squad v1\.0\.0/);
 });
 
 test('rejects prefixed conflicting numeric Squad versions', (t) => {
@@ -578,7 +582,7 @@ test('rejects prefixed conflicting numeric Squad versions', (t) => {
       `Report \`Squad v${SQUAD_VERSION}\`, \`_Squad v0.12.0\`, and \`xSquad v0.12.0\`.`,
     ),
   );
-  assert.match(validateRepository(root).join('\n'), /must report only Squad v0\.13\.1/);
+  assert.match(validateRepository(root).join('\n'), /must report only Squad v1\.0\.0/);
 });
 
 test('rejects canonical plus malformed reported Squad version tokens', (t) => {
@@ -600,7 +604,7 @@ test('rejects canonical plus malformed reported Squad version tokens', (t) => {
     );
     assert.match(
       validateRepository(root).join('\n'),
-      /must report only Squad v0\.13\.1/,
+      /must report only Squad v1\.0\.0/,
       `should reject Squad v${malformedVersion}`,
     );
   }

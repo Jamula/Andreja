@@ -23,10 +23,9 @@ jobs:
             const fs = require('fs');
             const issue = context.payload.issue;
             const label = context.payload.label.name;
-            const slugify = value => value
-              .toLowerCase()
-              .replace(/[^a-z0-9]+/g, '-')
-              .replace(/^-+|-+$/g, '');
+            function slugify(value) {
+              return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+            }
             const findMemberBySlug = (lines, memberName) => {
               let inMembersTable = false;
               const matches = [];
@@ -103,7 +102,7 @@ jobs:
                 '',
                 `@copilot has been assigned and will pick this up automatically.`,
                 '',
-                `> The coding agent will create a \`copilot/*\` branch and open a draft PR.`,
+                `> The coding agent will create a \`copilot/${issue.number}-{slug}\` branch and open a draft PR.`,
                 `> Review the PR as you would any team member's work.`,
               ].join('\n');
             } else {
