@@ -549,5 +549,15 @@
     "status": "active",
     "createdAt": "2026-10-11T23:43:56.015Z",
     "updatedAt": "2026-10-11T23:43:56.015Z"
+  },
+  {
+    "id": "841b38c7-18c2-40dd-9d06-746b08ed0c21",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Cyrus ratifies exact current plan as plan of record with separate gates",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-direct-response-facilitated-by-spock-cyrus-ratifies-exact-current-plan-as-plan-of-record-with-separat-841b38c7.md",
+    "status": "active",
+    "createdAt": "2026-10-11T23:46:01.392Z",
+    "updatedAt": "2026-10-11T23:46:01.392Z"
   }
 ]
