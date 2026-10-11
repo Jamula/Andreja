@@ -1,0 +1,5 @@
+### 2026-10-11T06-16-35: Cyrus requests AMEND feedback-privacy-v1; approval and activation remain blocked
+**By:** Deanna Troi (Cyrus Jamula decision relayed)
+**What:** Cyrus requests AMEND feedback-privacy-v1; approval and activation remain blocked
+**References:** https://github.com/Jamula/Andreja/issues/155, https://github.com/Jamula/Andreja/pull/172
+**Why:** At 2026-10-10T23:16:07.815-07:00 Cyrus Jamula explicitly said "AMEND and proceed", in response to the recommendation to resolve transfer and hold-record policy before approval. This authorizes preparing that narrowly scoped amendment, not approving the policy or authorizing collection, publication, provider selection, spending, deployment, launch, support commitments, or counsel sign-off. Original package: docs/legal/feedback-privacy-retention-dsr.md; feedback-privacy-v1 / feedback-notice-v1; LF-normalized SHA-256 60b331d01c7412ddec29914299d8dab8437729565bb581999b844f7a02bf452d. Revised package requires a fresh human decision and preserves downstream activation gates.
