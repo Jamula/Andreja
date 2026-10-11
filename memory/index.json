@@ -418,5 +418,15 @@
     "status": "active",
     "createdAt": "2026-10-11T16:36:15.777Z",
     "updatedAt": "2026-10-11T16:36:15.777Z"
+  },
+  {
+    "id": "7bfff90e-7932-4226-a57c-18703d28e6ad",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Agent sign-off for code changes",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-copilot-agent-sign-off-for-code-changes-7bfff90e.md",
+    "status": "active",
+    "createdAt": "2026-10-11T16:37:07.047Z",
+    "updatedAt": "2026-10-11T16:37:07.047Z"
   }
 ]
