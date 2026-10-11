@@ -39,9 +39,12 @@ as approved.
 distinct scoped hold-record inventory. Its initial revision
 `49f07d8be9400fb544b073de8311781bf3460811` was rejected and superseded;
 it is historical evidence only, not the current dependency snapshot.
-No current dependency commit or content hash is pinned here until its final
-version is reconciled. Neither the proposal nor a documentation merge is an
-approved privacy output.
+#193 merged as `615d89b0cab9168fc87560b3666c65bfbf5a438c`; the revised proposed
+privacy artifact `docs/legal/feedback-privacy-retention-dsr.md` has Git blob
+`ca2dca777dd0ab6c5ca21e2b1f40d61d8da91da5` and LF-normalized content SHA-256
+`d50dbd302c7ed139ee2acbf6e7923e72198c3f217dc46abc00c81818c49bb34e`,
+matching the current plan inventory. This pins the merged proposal only.
+Neither the proposal nor a documentation merge is an approved privacy output.
 Cyrus's direction to Deanna to **AMEND and proceed** authorizes that amendment,
 not acceptance, a new proof policy, or activation. Recheck the final privacy
 revision before recording #156 reviews; do not bind them to obsolete v1 text.
