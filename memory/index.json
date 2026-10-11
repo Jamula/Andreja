@@ -338,5 +338,15 @@
     "status": "active",
     "createdAt": "2026-10-11T06:18:54.567Z",
     "updatedAt": "2026-10-11T06:18:54.567Z"
+  },
+  {
+    "id": "39698d5d-f92c-4a1c-97d4-fe87c769f7ed",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Proactive PR feedback handling",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-proactive-pr-feedback-handling-39698d5d.md",
+    "status": "active",
+    "createdAt": "2026-10-11T06:20:46.672Z",
+    "updatedAt": "2026-10-11T06:20:46.672Z"
   }
 ]
