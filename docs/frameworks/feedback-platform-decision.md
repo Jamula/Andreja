@@ -65,20 +65,26 @@ The proposed #155 package and its retention table remain unapproved. Cyrus
 reopened #155 because the automatic closure on PR #172's merge did not meet
 the explicit human-decision criterion; neither historical issue closure nor
 that merge is approval. Cyrus directed Deanna Troi to amend and proceed on
-transfer and hold-policy gaps on
-2026-10-10. Deanna reports the successor draft as feedback-privacy-v1.1 /
-feedback-notice-v1.1 in draft PR #193, with the package SHA256
-`25b21c71590df22c48a3351a3a5af163c4130d63a93bb3b7dc08181ffe673649`.
-That draft is **unapproved**. Its transfer and hold inventories below are
-requirements for the #157 evidence map, not completed provider evidence,
-counsel advice, or approval. Do not inherit a retention period until Cyrus
-explicitly approves the revised #155 package.
+transfer and hold-policy gaps on 2026-10-10. The latest inspected #193 state
+(2026-10-11) is draft/open at head `7b2be3342f90b57334d23172d323dfa75fad5bff`;
+the LF SHA256 of
+`docs/legal/feedback-privacy-retention-dsr.md` at that head is
+`97258a63859e3eff0209088ecf6aa1b3e40d5aa52809e1116d81764e476058bf`,
+replacing the previously cited `25b21c...` file hash. This draft is
+**unapproved**. Its transfer and hold inventories below are requirements for
+the #157 evidence map, not completed provider evidence, counsel advice, or
+approval. The current expiry procedure still leaves a frozen minimum in place
+after day 14 while labeling further retention unauthorized until a decision;
+Sarek flags that post-deadline disposition for resolution. Do not treat it as
+an approved hold rule or inherit any retention period until Cyrus explicitly
+approves the revised #155 package.
 
 The #156 proposal and its existing merged source (PR #177) are also
-unapproved. Tuvok is preparing a proposed supplement; its verifier/namespace,
-generation/nonce/idempotency, response/stub, boundary-key, and abuse-evidence
-controls must be reviewed before this topology can pass. This document
-proposes no security verdict and does not assign runtime abuse thresholds.
+unapproved. Tuvok's proposed supplement in draft PR #194 adds verifier/
+namespace, generation/nonce/idempotency, response/stub, boundary-key, and
+abuse-evidence controls that must be reviewed before this topology can pass.
+This document proposes no security verdict and does not assign runtime abuse
+thresholds.
 
 ## Provider-neutral topology proposal
 
@@ -353,11 +359,16 @@ public provider price source, excluding free-tier offsets and discounts:
 
 Each estimate records service, SKU/tier, region, currency, billing granularity,
 quantity, unit rate, source URL and retrieval date, included/overage threshold,
-tax treatment, uncertainty, and a higher-than-forecast stop. Quark must
-separately report fixed minimums and variable ceilings. Budgets/alerts are
-detective only; the actual hard stop is enforced before resource creation or
-message send, with an independent test that the stop works. No unmetered
-fallback or automatic quota increase is allowed.
+tax treatment, uncertainty, minimum commitment/term, partial-period proration,
+early-cancellation charge, and a higher-than-forecast stop. Quark must
+separately report fixed minimums and variable ceilings, including support and
+other ancillary charges. Budgets/alerts are detective only; the actual hard
+stop is enforced before resource creation or message send, with an independent
+test that the stop works. Before any future authorization, document the
+meter-reading and reservation cadence, maximum provider-metering delay, and
+fail-closed behavior for stale or unavailable usage; reconcile delayed usage
+before the next billable action. No unmetered fallback or automatic quota
+increase is allowed.
 
 ### Proposed synthetic exercise bounds (not runtime abuse policy)
 
@@ -415,10 +426,11 @@ field with a specific value and include its source/owner:
 | Provider and account | `[provider]`, `[non-production account/project/subscription ID]`, segregated from production | Account owner, no production credentials/data, billing owner, policy controls and resource quota |
 | Region and network | `[one named provider region]`, isolated project/VPC/subnets, restricted ingress/egress | Residency/transfer review, no cross-region features, firewall and outbound-destination test |
 | API/worker | One immutable OCI digest, one API and one worker per authorized boundary | Release commit+digest, role/identity map, no autoscale, TTL tags/deny-after-expiry |
-| Data stores | Separate case/contact/receipt stores per boundary; no cross-boundary shared identity | Field/classification schema, encryption/key inventory, access log and deletion test |
+| Data stores | Separate case/contact/receipt stores per boundary; no cross-boundary shared identity | Field/classification schema, encryption/key inventory, access log and deletion test; preserve separate contact-vault custody |
 | Queue | One separate queue per boundary; identifiers only | Retention/TTL, max message/size, retry and dead-letter rules from approved #156; purge receipt |
-| Quarantine/dead-letter store | If queue-recovery testing is in scope: one isolated store per boundary, synthetic metadata only, no case body/contact/verifier; `[authorized maximum records and bytes]` | Name the boundary-specific, least-privilege incident role(s) in private authorization; record TTL, access log, purge receipt and any separately allowlisted backup scope. Otherwise exclude the scenario and keep its evidence blocked. |
+| Queue-recovery/dead-letter store | If queue-recovery testing is in scope: one isolated store per boundary, synthetic queue metadata only, no case body/contact/verifier; `[authorized maximum records and bytes]`. This is not the privacy-screening quarantine store. | Name the boundary-specific, least-privilege incident role(s) in private authorization; record TTL, access log, purge receipt and any separately allowlisted backup scope. Exclude content-bearing privacy-screening quarantine unless it is separately inventoried and approved under #155/#156; otherwise keep that evidence blocked. |
 | Incident evidence store | If incident-response testing is in scope: one isolated, content-free store per boundary; `[authorized maximum records and bytes]`; no feedback content, contact destination, verifier or credentials | Name boundary-specific incident/security access roles in private authorization, with audited access; record retention/TTL and purge receipt. No backup by default; any backup requires an explicit allowlist, #155 scope and deletion/restore evidence. Otherwise exclude the scenario and keep its evidence blocked. |
+| Delivery callback ingress and event store | One authenticated callback endpoint and restricted event store per boundary; opaque provider event reference and minimal event class only; `[authorized maximum records and bytes]` | #156-approved callback authentication/replay/deduplication controls, boundary-specific credentials and access roles, retention/TTL, deletion propagation, and purge receipt. No backup by default; an authorized restore test must explicitly allowlist its scope. |
 | Backup | One encrypted same-region snapshot per database, if needed for the authorized restore test | Approved duration under #155, automatic expiry, key recovery, tombstone replay and purge evidence |
 | Sender and DNS | Dedicated non-production child domain(s), exact SPF/DKIM/DMARC record set, and a separate provider sender identity/credential set per boundary | Domain-owner approval, boundary-specific validation and alignment test, recipient restriction, removal plan; no production-domain root changes or shared sender credentials |
 | Recipients and messages | Maximum 2 verifier-controlled recipients and 100 generated test messages | Named recipient custody in the private #158 authorization only; safe templates, no personal/case content |
@@ -441,22 +453,51 @@ records. A test result that cannot be exercised locally is `Blocked` or
 
 | Scenario | Local/paper setup | Required result/evidence |
 |---|---|---|
-| Provider outage | Stub queue, database, key provider, and mail adapter failures independently and in combination | Accepted records remain durable or receive a safe non-enumerating failure; retries are bounded and idempotent; no silent loss or message duplication; safe status remains available where its approved store is healthy; no unapproved response stub is persisted |
+| Provider outage and acceptance boundary | Stub queue, database, key provider, and each boundary-specific mail adapter independently and in combination, both before and after durable case commit | Before durable commit, return a safe non-enumerating failure and never claim `Received`; after commit, keep the accepted record and approved safe status despite downstream failure. Retries are bounded and idempotent; no silent loss or duplicate transition; no unapproved response stub is persisted |
+| Public/authenticated isolation | Submit generated requests across both boundaries, including forged tenant/principal fields and cross-boundary callback references | Public intake creates no tenant-plane artifact; authenticated intake derives tenant only from the validated server session. Stores, queues, workers, service identities, callback credentials, event stores, and operator paths remain boundary-specific; no cross-boundary read, write, or event routing |
 | Queue recovery | Pause worker, fill the proposed test queue to its later authorized cap, restart worker, replay a message and deliver the same event twice | No cross-boundary read/write, duplicate lifecycle transition, raw content in queue, or unbounded backlog; if the quarantined/dead-letter path is exercised, use only its separately allowlisted boundary store and roles; result is owner-visible and purgeable |
 | Quarantine and incident evidence | Keep the scenario `Blocked` until #155/#156 and #158 authorize the boundary-specific stores, access roles, record/byte/retention ceilings, and backup scope; then inject synthetic failures and exercise allow/deny, cap, TTL, purge, and (only if allowlisted) restore cases | No case content, contact, verifier, credentials, cross-boundary access or unbounded evidence; access is role-checked and audited; over-cap and unconfigured cases fail closed; deletion and any authorized restore produce scoped receipts |
-| Delivery reconciliation | Generate accepted, delayed, bounced, complained, suppressed and duplicate email events with fake provider IDs | Event handler authenticates provider events, deduplicates and maps only minimal status; suppression blocks further sends; provider `delivered` never becomes user `Verified`; web/status route remains usable |
+| Delivery reconciliation | Generate accepted, delayed, bounced, complained, suppressed and duplicate email events with fake provider IDs independently in each boundary | Each boundary authenticates its own provider events, deduplicates and maps only minimal status in its own event store; suppression blocks further sends; provider `delivered` never becomes user `Verified`; callback state cannot cross boundaries |
+| Bounce/complaint and non-email recovery | Exercise absent, changed, bounced, complained-about, and suppressed destinations; attempt status, DSR, verification and reopen through the approved non-email route | Suppress further sends as required; do not reveal whether a record or destination exists; preserve safe status and rights access without relying on email. Exact proof, response and appeal behavior remains gated by #155/#156 |
+| Email accessibility | Render equivalent plain-text and accessible HTML messages; exercise challenge and recovery with keyboard and assistive-technology-compatible local fixtures | Meaning and actions are equivalent; challenge, verification and recovery have accessible alternatives; no tracking pixel or inaccessible email-only path. This is a planned check, not a user accessibility result |
 | Privacy and recipient control | Use only generated cases and verifier-owned test fixtures; attempt an unlisted-recipient send and include prohibited fields in a fake message/event | Deny before send; no case body, direct identifiers, tenant or secret in template, event, logs, traces, alerts or error body; record no personal destination in public evidence |
 | Cost stop | Fake metering just below, at and above the later numeric cap; run concurrent resource-create and send requests; inject unknown price/usage | Reserve before action; exact approved threshold stops all billable work; race cannot overspend; missing metering, price, or reconciliation is fail-closed; alerts alone do not count as a stop |
 | Residency/transfer boundary | Inspect generated IaC and resource configuration for primary/backup/log/queue/event/key region and subprocessors; attempt a disallowed region/transfer | Policy denies unapproved region/transfer; support and metadata paths are independently inventoried; no claim of residency based only on database region |
+| Lifecycle and status audit | Replay authorized and unauthorized status, ownership, duplicate, delivery, verification and reopen transitions with generated identities | Only approved roles can transition state; audit is content-free and idempotent; delivery never implies verification; exact state, receipt and proof semantics remain blocked on #155/#156 |
+| Observability and aggregate metrics | Inject synthetic sentinel values through each boundary's planned logs, traces, alerts, event stores and aggregate path; attempt a cross-domain join | No content, direct identifiers, pseudonymous references, destinations, verifiers or provider payloads leak; only approved thresholded aggregates are available. Group thresholds and retention remain unselected until #155/#156 approval |
 | Deletion and restore | Create synthetic case/contact/receipt/queue/event/backup artifacts, delete under approved #155 policy, restore a test backup | Each destination returns a scoped receipt; tombstone replays before restored data is available; no deleted case/contact/secret resurrects; held fields remain narrowly restricted pending approved hold |
 | Teardown/cancellation | Expire/revoke the exercise and simulate cancellation, purge, DNS and key-revocation failures | Endpoint denies new use; sender/credentials/keys/queues/stores are disabled or purged; failures stay open and block success; evidence includes content-free completion receipts and cost reconciliation |
 | Portability/exit | Export synthetic PostgreSQL records, schema/migration version, safe queue state, and encrypted backup manifest; import into local OCI/PostgreSQL reference | Domain records and approved metadata restore without provider IDs; duplicate delivery remains safe; vendor keys are not presumed exportable; limitations and any user-visible loss are explicit |
 
-Before any live exercise, Data must map the local results to the exact-release
-acceptance scenarios in the framework, including provider failure, queue
-recovery, delivery reconciliation, approved cost-stop behavior, and complete
-teardown. No local result substitutes for the separate #158 controlled
-exercise.
+### Planned coverage map to the 14 Phase 1B acceptance scenarios
+
+This is a scope crosswalk, not an execution report. Every item remains
+unexecuted against an exact release; rows marked outside the platform plan
+remain blocked until #158 supplies the required functional, help, or runbook
+evidence. A local/paper scenario cannot substitute for that evidence.
+
+| #158 scenario | Related local/paper scenario or evidence owner | #157 status |
+|---|---|---|
+| 1. Tenant-less public receipt and boundary isolation | Public/authenticated isolation; teardown | Planned locally; exact-release evidence remains for #158 |
+| 2. Authenticated consent preview and tenant isolation | Public/authenticated isolation; privacy and recipient control | Consent UX/evidence is outside this platform plan; blocked for #158 |
+| 3. Default exclusions and safe error/log handling | Privacy and recipient control; observability and aggregate metrics | Planned locally; exact exclusion suite and approved #155/#156 fields remain for #158 |
+| 4. Submitter/non-user rights, proof, conflicts, appeal and propagation | Deletion and restore; lifecycle and status audit | Proof, conflict and appeal behavior remains blocked on #155; exact-release rights evidence belongs to #158 |
+| 5. Abuse, replay, injection, cost and accessible-alternative controls | Queue recovery; quarantine and incident evidence; cost stop; email accessibility | Planned only after #156 defines controls and #158 authorizes the exercise; no numeric runtime threshold is supplied here |
+| 6. Dedupe before GitHub with independent tracking/follow-up/reopen | Queue recovery; delivery reconciliation; lifecycle and status audit | Platform replay plan only; application dedupe/publication tests remain for #158 |
+| 7. Exact preview, publication consent, kill switch and incident recovery | No platform publication test; use the approved application/privacy/security acceptance suite | Outside this platform package; blocked on #155/#156 and #158 |
+| 8. Private vulnerability and personal-data incident routes | Quarantine and incident evidence; teardown/cancellation | Restricted stores remain unapproved; exact private-route evidence belongs to #156/#158 |
+| 9. External status, help, verification and reopen without repository access | Bounce/complaint and non-email recovery; delivery reconciliation | Planned route-availability checks; canonical help and exact proof flow remain for #158 |
+| 10. Authorized lifecycle transitions, ownership, delivery and verification | Lifecycle and status audit; queue recovery; delivery reconciliation | Planned locally; exact transition contract remains gated by #155/#156 |
+| 11. Minimal transactional email, accessibility, suppression, retention and cost | Delivery reconciliation; bounce/complaint recovery; email accessibility; cost stop | Planned locally; live sender, recipient and provider evidence remains unauthorized |
+| 12. Thresholded aggregate metrics without identifiers or joins | Observability and aggregate metrics | Planned locally; privacy thresholds and exact-release evidence remain for #155/#158 |
+| 13. Canonical accessible help/status/DSR/consent content | No platform content test; Guinan/#93 and #158 own the reviewed help evidence | Outside this platform package; blocked until version, accessibility, ownership and stale-link evidence is supplied |
+| 14. Reviewed, exercised runbooks and blocking owners for unresolved failures | Teardown/cancellation; quarantine and incident evidence | Plan only; exact-release drills and residual-failure ownership remain for #158 |
+
+Before any live exercise, Data must replace this planned crosswalk with
+exact-release results and evidence for every applicable criterion, including
+provider failure, queue recovery, delivery reconciliation, approved cost-stop
+behavior, and complete teardown. No local result substitutes for the separate
+#158 controlled exercise.
 
 ## Review and decision record
 
@@ -465,7 +506,7 @@ exercise.
 | Jett Reno | Platform topology, operational failure paths, portability and teardown | Draft recommendation only |
 | Quark | Region/SKU quote, fixed/variable units, hard stop, cancellation, and cost cap | Pending; no priced recommendation or numeric cap |
 | Spock | Architecture and boundary compatibility | Pending |
-| Tuvok | Security, abuse, key, queue and staging controls | Pending; #156 remains proposed/unapproved; operational review identified #157 topology and restricted-store evidence gaps |
+| Tuvok | Security, abuse, key, queue and staging controls | Pending; the bounded topology feedback has been incorporated; #156 and its supplement remain proposed/unapproved |
 | Deanna Troi | Privacy, transfer, retention, recipient and hold alignment | Pending; #155 amendment in progress |
 | Sarek | Legal/contract, role, transfer and jurisdiction review | Pending |
 | Guinan | Intake/status/email workflow and non-email fallback | Pending |
