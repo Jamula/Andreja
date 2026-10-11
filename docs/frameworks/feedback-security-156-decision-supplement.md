@@ -74,7 +74,9 @@ required reviews on the same version set.
 Use a common pre-proof processing response for accepted, quarantined, rejected,
 duplicate, missing, and incident cases. The proposed message is:
 **"Request processed. This does not confirm that a case exists or was accepted.
-Use the private status or appeal route with your receipt."**
+If you have a receipt, use private status. If you do not have a receipt or a
+return channel, use private appeal; neither is required to submit an appeal.
+An appeal does not grant case access or recovery."**
 It contains no user-supplied text, destination hints, classification, duplicate
 target, tenant, repository mapping, or incident details.
 
@@ -117,7 +119,15 @@ tenant, reference, or receipt field and has no lookup by reference, contact,
 content, or time. Every outcome uses the pre-proof processing response above:
 same status, body schema and length bucket, headers, rate accounting, timing
 tolerance and notification behavior, so appeal reveals neither case existence
-nor classification. Appeals use the common abuse limits, never a per-victim or
+nor classification. After #155 approval and separate activation evidence, every
+processing response must expose the same clearly labeled **Private status** and
+**Private appeal (no receipt required)** entry points, independent of outcome.
+The appeal entry point opens the separate intake directly without a receipt,
+account, or return-channel prerequisite; its instructions state that submission
+does not establish ownership or grant case access or recovery. Evidence must
+show these entry points are discoverable and keyboard/screen-reader operable.
+Until then, show no active route or claim that appeal is available.
+Appeals use the common abuse limits, never a per-victim or
 per-reference lockout, and an accessible non-web alternative remains available
 under the existing accessible-alternative rule.
 
@@ -289,7 +299,7 @@ passes. Use synthetic canaries only; never keep raw receipt values in reports.
 | FS156-04 | Issuance and candidate RNG failure, malformed lengths, proxy/error capture, browser refresh and export/restore | At least 128 bits required; proposed generator uses 32 CSPRNG bytes with no fallback. Store only verifier; canary scan covers response capture, URLs/history/referrers, persistent browser storage, logs/traces/metrics/alerts/queues/provider metadata and backups. |
 | FS156-05 | Crash/fault at every rotation/recovery transaction boundary; lost response; simultaneous swaps/recovery vs revoke/delete | On rollback the previously valid credential is the only valid one (zero when none was valid before recovery, never a new one); exactly one committed candidate after every successful swap or recovery; zero after committed deletion/revocation; never more than one active verifier. Nonce/grant/event/marker commit or roll back together; stale sessions deny. Retry cannot create a second transition. |
 | FS156-06 | Replay nonce, consumed proof grant, idempotency key alone; changed actor/key candidate/scope; missing/hostile origin or CSRF | Zero unauthorized transitions for verify/reopen/recovery/rotate/revoke/contact/consent and every mutation; legitimate lost-response retry authenticates with committed candidate, not spent proof. |
-| FS156-07 | False proof, lost receipt and no return channel; non-user/conflicting claim and scoped hold | No existence disclosure before approved proof; no operator shortcut or submitter preference; restrict disputed processing, preserve permitted partial result and accessible private appeal. Lost-receipt/no-return-channel appeal uses the disabled non-lookup route: identical processing response (status, body bucket, headers, timing, notification) for existing/missing/held/incident cases, no receipt/tenant/reference input, no access, status, recovery or release, no reply except to a #155-verified destination, no per-victim lockout. Block execution until #155 proof/hold policy is valid. |
+| FS156-07 | False proof, lost receipt and no return channel; non-user/conflicting claim and scoped hold | No existence disclosure before approved proof; no operator shortcut or submitter preference; restrict disputed processing, preserve permitted partial result and accessible private appeal. Lost-receipt/no-return-channel appeal uses the disabled non-lookup route: identical processing response (status, body bucket, headers, timing, notification) for existing/missing/held/incident cases, no receipt/tenant/reference input, no access, status, recovery or release, no reply except to a #155-verified destination, no per-victim lockout. Once separately authorized for activation, identical discoverable keyboard/screen-reader-operable status/appeal entry points and common guidance let a person without receipt, account or return channel reach and submit the appeal; no prerequisite or copy requires the missing receipt. No active route or availability claim before approval/activation. Block execution until #155 proof/hold policy is valid. |
 | FS156-08 | Cap boundary/flood, slow input, challenge/screen/index/queue outages | Enforce every measured register cap, bounded cost/retry/storage, durable acceptance and protected incident route; accessible alternate never bypasses authorization or admits unbounded work. |
 | FS156-09 | Ordinary triage/sender/publisher/admin tries incident/contact/key/backup access; consent withdrawal during publish | Deny unauthorized reads/writes; no secret/incident GitHub publication; consent digest/version and restriction rechecked at publication commit. No split-check race. |
 | FS156-10 | Multipart, undeclared fields, encoded file uploads, remote URLs and malicious markup in text | Attachments rejected without durable bytes; no URL fetching/scanner/provider action or markup execution. Text remains untrusted; secret/high-risk screen runs before dedupe/triage. |
