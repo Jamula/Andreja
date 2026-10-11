@@ -318,5 +318,15 @@
     "status": "active",
     "createdAt": "2026-09-26T20:16:39.341Z",
     "updatedAt": "2026-09-26T20:16:39.341Z"
+  },
+  {
+    "id": "64f8e51c-0634-402d-be7d-b6a4dc34b3e2",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Archive completed child sessions",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-archive-completed-child-sessions-64f8e51c.md",
+    "status": "active",
+    "createdAt": "2026-10-11T06:17:27.136Z",
+    "updatedAt": "2026-10-11T06:17:27.136Z"
   }
 ]
