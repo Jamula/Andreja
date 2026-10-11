@@ -6,7 +6,12 @@
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `e2044133f47deba7dcbbd4d931f2ec0e9a866432726d982182617716f7abfad2`
 - **Current proposed Plan SHA-256:** `a530ff3a7ee2b55fc5e1bc3ccf59b309ba554590baa19404c886cce5b1387886`
-- **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
+- **Accepted plan content:** [PR #202](https://github.com/Jamula/Andreja/pull/202)
+  at merge commit
+  [`861bff7c6d74be5a497e7a0f706a3a92bdae9ddc`](https://github.com/Jamula/Andreja/commit/861bff7c6d74be5a497e7a0f706a3a92bdae9ddc)
+  ([explicit Cyrus decision](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115249785))
+- **Historical accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
+- **Historical accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
 
