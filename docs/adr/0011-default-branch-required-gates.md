@@ -58,9 +58,19 @@ Protect the default branch with repository ruleset `21199927`,
    - `C# SAST (DevSkim)`.
 
 Keep the required approval count at zero, code-owner review disabled, and
-last-push approval disabled while only one qualified human maintainer exists.
-Copilot review and code-quality annotations remain advisory. They do not count
-as independent human approval.
+last-push approval disabled. For ordinary code changes, require an explicit
+favorable, independent sign-off from either Copilot or a separately dispatched
+team lead, bound to the exact current PR head. A team lead must not author or
+self-review the change. Copilot's `COMMENTED` review state is not itself
+approval: its review content must express a favorable verdict for that head.
+A review request, completion notice, missing comment, stale review, or
+unresolved finding is not sign-off. Findings and review threads must be
+resolved, and all required checks must pass on the current head before
+PR-level auto-merge is enabled. A new head invalidates sign-off. On rejection,
+the original author is locked out from revising that artifact; another agent
+must own the revision. This
+procedural sign-off is not a native GitHub approval and does not authorize a
+human-approval setting, a bypass, or a weakening of required checks.
 
 Enable GitHub secret scanning and repository push protection. A push-protection
 bypass is an exception requiring a recorded GitHub reason and immediate review
@@ -96,9 +106,8 @@ Until merge queue is activated, the maintainer serializes merges:
 3. verify every required check on the current head SHA;
 4. resolve all review threads;
 5. confirm no other merge changed `main` after the checks completed; and
-6. use GitHub squash merge only after a human confirms every required rule is
-   satisfied; never push directly to `main` and never use auto-merge (see
-   "Consequences" below).
+6. record an eligible exact-head sign-off and resolve all findings before
+   enabling PR-level auto-merge; never push directly to `main`.
 
 Emergency remediation follows the same pull-request and required-check path.
 If GitHub cannot enforce the rules, stop merges. Do not create a bypass actor
@@ -118,10 +127,12 @@ operator, reason, and follow-up issue.
 - Secret detection and supported push blocking are active without new paid
   services or production resources.
 - Merge throughput remains serialized until queue behavior is proven.
-- Repository `allow_auto_merge` remains `false` for as long as
-  [#104](https://github.com/Jamula/Andreja/issues/104)'s premature-auto-merge
-  race is open, per `docs/plan.md:134-146`. This ADR does not authorize
-  auto-merge and does not weaken that containment.
+- The historical containment proposal required repository
+  `allow_auto_merge=false` while #104 was open. Issue #104 closed
+  `NOT_PLANNED` on 2026-10-11; the live repository setting was observed as
+  `true` that day and is preserved. The plan's older status statement is
+  superseded by a proposed correction. This proposed ADR amendment does not
+  change GitHub settings.
 - The repository depends on GitHub-hosted enforcement. The runbook therefore
   requires live API inspection, ETag-aware rollback evidence, and periodic
   negative canaries rather than relying on repository text alone.
@@ -130,8 +141,10 @@ operator, reason, and follow-up issue.
 
 - **Require one approval now:** rejected because the sole maintainer cannot
   provide independent approval and the rule would deadlock legitimate work.
-- **Count Copilot review as approval:** rejected because advisory automation is
-  not an accountable human approver.
+- **Treat review-request or completion metadata as sign-off:** rejected because
+  only an explicit favorable verdict bound to the exact head demonstrates
+  review; a Copilot verdict or independent team-lead verdict may satisfy the
+  procedural code-review gate without representing native human approval.
 - **Enable merge queue immediately:** rejected because no real `merge_group`
   run proves that all required contexts report and drain.
 - **Rely only on documented merge procedure:** rejected because enforceable

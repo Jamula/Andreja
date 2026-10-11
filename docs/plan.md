@@ -136,20 +136,43 @@ Pages containment is the completed prerequisite under
 [#106](https://github.com/Jamula/Andreja/pull/106) completed the status
 reconciliation at merge commit `7a1fc20`.
 
-The exact premature-auto-merge race in
-[#104](https://github.com/Jamula/Andreja/issues/104) is currently contained because
-repository auto-merge is disabled (`allow_auto_merge=false`). This is containment,
-not the full required outcome: #104 remains open, and merged PR
-[#115](https://github.com/Jamula/Andreja/pull/115) (`c93c6be`) contributed
-human-blocked design evidence only. No external GitHub App/worker or always-present
-review-completion gate exists or is authorized.
+The premature-auto-merge race tracked by
+[#104](https://github.com/Jamula/Andreja/issues/104) was closed
+`NOT_PLANNED` on 2026-10-11; that closure does not implement a review gate or
+ratify a policy change. The accepted plan still records repository
+`allow_auto_merge=false` as containment, while a live read on 2026-10-11
+reported `allow_auto_merge=true`; preserve that repository setting. The older
+plan statement that it was `false` describes the former #104 containment and
+is superseded by this proposed status correction. No repository setting was
+changed.
+
+This proposed amendment replaces the human-approval assumption for ordinary
+code changes with an explicit favorable, independent sign-off by either
+Copilot or a separately dispatched team lead. Sign-off must identify the exact
+current PR head; Copilot's native `COMMENTED` review state alone is not a
+verdict, and a request, completion notice, absent comment, stale review, or
+unresolved finding is not sign-off. A team lead cannot sign off their own
+change. Preserve all required checks and review-thread resolution. Do not
+enable PR-level auto-merge until one of those sign-offs is recorded for the
+current head; a new head invalidates it. This procedural proposal does not claim an always-present automated gate,
+change repository settings, or authorize a human/native-account approval
+requirement. If the reviewer rejects a change, the author is locked out from
+revising that artifact; a different agent must own the revision.
+
+The exact-head, independent-review, unresolved-thread, and rejection-lockout
+requirements remain. Material-risk, legal, policy, counsel, ratification,
+spend, activation, and launch gates remain separately governed and are not
+waived by code-review sign-off. Merged PR
+[#115](https://github.com/Jamula/Andreja/pull/115) (`c93c6be`) remains
+human-blocked design evidence only; no external GitHub App/worker or
+always-present review-completion gate exists or is authorized.
 
 The next safe engineering lane is fail-closed selective CI under
-[#102](https://github.com/Jamula/Andreja/issues/102), only while repository
-auto-merge remains disabled. It must keep stable, always-present, fail-closed
-aggregate checks on pull-request, merge-group, and default-branch paths.
-Implementation of #102 must not depend on, substitute for, or weaken #115 or #104;
-unknown or unclassified changes must fail closed into the full relevant suite.
+[#102](https://github.com/Jamula/Andreja/issues/102). It must keep stable,
+always-present, fail-closed aggregate checks on pull-request, merge-group, and
+default-branch paths. Implementation of #102 must not depend on, substitute
+for, or weaken #115 or #104; unknown or unclassified changes must fail closed
+into the full relevant suite.
 
 Public launch, a real Copilot provider, managed cloud, federation, and production
 connectors remain deferred to their later phases and explicit gates.
