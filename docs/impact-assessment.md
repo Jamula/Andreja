@@ -1,0 +1,112 @@
+# Proposed integrated impact and classification assessment
+
+- **Status:** Proposed; not approved and not a gate-closing assessment
+- **Prepared by:** Spock, Chief Architect
+- **Tracking:** [Issue #2](https://github.com/Jamula/Andreja/issues/2)
+- **Evidence baseline:** pinned `main` at `142f227e8457a573010a3c333e94e0eda0a8d6ac`
+- **Required challenge:** Tuvok (security), Deanna Troi (privacy), Rai (AI safety); pending
+- **Final human decision:** Cyrus; pending
+
+## Authority and limits
+
+This document is a reversible proposal prepared under coordinator-directed
+autonomous documentation work. It does not record Cyrus's authorization,
+approval, ratification, legal classification, residual-risk acceptance, or a
+decision to close any gate. A picker response entered by Picard as a proxy was
+explicitly corrected on issue #2 and is not human authorization. Merge,
+specialist challenge, issue closure, and this document's existence cannot
+substitute for a decision that requires Cyrus personally.
+
+This snapshot integrates evidence already in the repository for the bounded
+Phase 1A self-hosted application, contract-only seams, and future/gated
+capabilities. It is not a runtime audit, penetration test, legal opinion,
+accessibility conformance claim, production authorization, or Phase 1A exit
+record. Its findings describe documentation and cited local evidence; they do
+not establish live use, incidents, provider behavior, or harm.
+
+## Scope and people potentially affected
+
+The current documented user outcome is an owner-directed Open Loops flow:
+prepare a task proposal, inspect it, confirm or reject it, and manage the
+resulting task. The threat model and privacy baseline describe the deterministic
+provider as the local/default path. BYOK is an optional, gated external
+disclosure path; no paid live-provider evidence is claimed here. Connectors,
+sharing/federation, managed hosting, public product/help hosting, support
+intake, and third-party execution remain future/gated.
+
+Potentially affected people include:
+
+| People | Evidence-based exposure or benefit | Assessment boundary |
+|---|---|---|
+| Account owner and authenticated app user | Can manage owner-directed tasks and review proposed writes; task text may contain highly sensitive details. | Exact confirmation and tenant authorization have local evidence; informed, voluntary, accessible, and uncoerced consent is not proved by a passing test. |
+| People named or described in user content, including household members, children, colleagues, and other non-users | Their personal or sensitive information may appear in ordinary task text even though they have no account or direct relationship with Andreja. | No authority, consent, or shared-tenant status may be inferred from mention or proximity. Current model/sharing exposure is denied by default; any exception needs a separate reviewed decision. |
+| Self-host operator and other people with host, database, key, backup, or telemetry access | They control operational custody and may be able to inspect or lose locally stored content. | Application authorization does not protect against root/database/key custody. Operator duties do not confer user consent or permission to inspect another person's data. |
+| Provider personnel or downstream subprocessors | Could receive content only if an external provider path is activated and data is deliberately sent. | No live paid call, provider-side retention behavior, or provider deletion evidence is claimed. |
+| Developers, reviewers, and support responders | May encounter repository or diagnostic material during review or incident work. | Use synthetic, content-free evidence; support intake is not deployed. Do not put personal content, credentials, prompts, or connector material in review artifacts. |
+
+## Integrated impact findings
+
+| Dimension | Proposed finding from current evidence | Evidence and confidence | Open decision or evidence |
+|---|---|---|---|
+| Human agency and control | Proposal-only assistant writes, exact review, tenant-scoped authorization, and server-side policy checks constrain the current task flow. Confirmation does not by itself prove comprehension, accessibility, voluntariness, or freedom from coercion. | `docs/threat-model.md`; `docs/privacy.md`; `docs/testing-matrix.md`. High confidence for documented contract; human outcome evidence is absent. | Accessibility and coercion review for supported paths; keep consequential action blocked on policy bypass, deceptive confirmation, or inaccessible review. |
+| Data classes and purpose | The privacy inventory classifies identity, task, proposal, audit, provider-usage, and recovery data; free-text tasks can contain highly sensitive information. | `docs/privacy.md#data-inventory-and-classification`; current schema and local tests. High confidence that the documented data classes exist; no regulatory classification is made. | Reconcile data classes and purposes at any new recipient or data-flow boundary. |
+| Provider exposure and authorization | Operator BYOK configuration and a provider/retention disclosure are documented. Operator enablement is not evidence that each affected user authorized a specific disclosure. | `docs/phase-1a/byok-security-privacy.md`; `docs/privacy.md#local-provider-and-model-exposure`. High confidence about the written contract; request-level user authorization evidence is absent. | Decide the proposed user-level authorization boundary below; prove it in UI/API and negative tests before external activation. |
+| Non-user privacy and safety | A user may enter information about another person without that person's participation. The privacy baseline prohibits inferring consent, authority, or a shared tenant from mention or household status. | `docs/privacy.md#sensitive-life-household-and-non-user-data`; `docs/threat-model.md#abuse-and-misuse-cases`. High confidence for stated constraints; no representative user study is cited. | Preserve default denial for sensitive/non-user model exposure and sharing; require a separate approved review for any exception or household capability. |
+| AI uncertainty, provenance, and misuse | Provider output is untrusted; the current provider can propose but not confirm a task. Semantic provenance is contract-only and in-memory, not a deployed graph or inference service. | `docs/threat-model.md#provenance-and-semantic-integrity`; `docs/privacy.md#provenance-audit-consent-and-sharing`; `docs/testing-matrix.md`. High confidence for documented local contracts; no live model-quality or harmful-output evidence. | Keep provider/semantic claims bounded to tested behavior; require adverse and provenance evidence before broadening model access. |
+| Fairness, accessibility, and inclusion | Automated UI contracts cover labels, keyboard-native controls, reduced motion, and breakpoints, but manual assistive-technology and representative-user evidence remains open. | `docs/testing-matrix.md`. High confidence that manual evidence is marked blocked; no claim of equal outcomes. | Obtain human accessibility review and document supported-path gaps, owners, and remediation before launch. |
+| Security, recovery, and service continuity | Local controls and negative tests exist for identity, isolation, proposal lifecycle, and portability; combined encrypted recovery/sign-in and genuine update/rollback evidence remain blocked. | `docs/threat-model.md#evidence-map`; `docs/phase-1a/evidence-44.md`; `docs/testing-matrix.md`. High confidence for listed evidence gaps; no production exposure or incident rate is inferred. | Keep missing recovery, trusted release, numeric objective, and high/critical-risk decisions as independent stops. |
+| Financial and environmental sustainability | Phase 0 has a $0 cloud-infrastructure cap; the documented external model budget is zero absent separate approval. No spend or environmental measurement is established by this assessment. | `docs/adr/0000-plan-ratification.md`; `docs/phase-1a/byok-security-privacy.md`; `docs/cost-model.md`. High confidence for the written boundaries; no live consumption measurement. | Do not make a paid call or provision resources under this proposal. Any nonzero envelope needs its own explicit human approval and metering. |
+| Stakeholders, incentives, and legal posture | Self-host ownership, provider/operator interests, and affected non-users may diverge. The current evidence does not resolve controller/processor roles, Washington or other jurisdictional applicability, lawful basis, or counsel conclusions. | `docs/charter.md#ethics-and-sustainability-impact-assessment`; `docs/legal/regulatory-applicability.md`. High confidence that no legal conclusion is established here. | Keep legal classification and qualified-counsel review separate. No jurisdiction or team location is treated as legal evidence. |
+| Alternatives and evidence limits | The deterministic local path is the lower-disclosure option for this bounded task flow; the repository documents it as default. No comparative user-outcome or provider-quality study is cited. | `docs/privacy.md#local-provider-and-model-exposure`; test matrix. Medium confidence for relative disclosure; effectiveness comparison is not measured. | Reassess alternatives only with a defined user outcome and evidence; do not treat roadmap inclusion as approval. |
+
+## Proposed BYOK authorization boundary
+
+The existing contract describes a deliberate **operator** choice to configure
+BYOK and an authenticated surface that discloses the selected provider/model and
+operator-authored recipient/retention terms. Those controls do not demonstrate
+that another signed-in user has authorized the disclosure, and they cannot
+establish consent or authority for a non-user whose information appears in a
+request.
+
+For specialist and human review only, the proposed boundary is:
+
+1. Operator configuration is necessary to make a provider profile available,
+   but is not sufficient authority to send a user's content.
+2. Before the first external request, the affected signed-in user must receive an
+   accurate, accessible disclosure of recipient, model, purpose, data classes,
+   provider retention limits/unknowns, and available controls, then affirmatively
+   opt in within a defined scope. No default-on or silent enablement is proposed.
+3. A change to endpoint/recipient, model, purpose, data ceiling, or material
+   retention disclosure invalidates the prior authorization and requires fresh
+   review before further egress.
+4. The user-facing control must make revocation understandable and stop future
+   calls before credential resolution or network I/O. Provider-side deletion or
+   recall is not promised. Existing credential-file revocation is evidence for
+   stopping access to the secret, not evidence of a complete user-consent UX.
+5. A user cannot grant authority on behalf of a non-user merely by entering
+   their information. Sensitive or non-user data remains denied by default
+   unless a separately reviewed, approved purpose and data boundary establishes
+   an acceptable basis.
+
+These are proposed product and trust-boundary requirements, not descriptions of
+current implementation. The runtime, UI, stored consent, invalidation on
+recipient/scope changes, and affected-person handling have not been evidenced by
+this proposal. Tuvok and Deanna Troi must challenge the boundary; Cyrus must
+separately decide whether to approve it before implementation or external
+activation.
+
+## Evidence and stop conditions
+
+This proposal cites repository artifacts and their stated local evidence only.
+It does not add test results, user research, provider terms, incident data,
+legal conclusions, or approvals. Before any gate can close, the exact revised
+threat/privacy artifacts and this assessment need independent exact-revision
+challenge, each material claim needs linked evidence or a named gap, and Cyrus
+must separately decide the assessment and residual risks.
+
+Pause the affected work or external flow if authorization scope, recipient,
+purpose, data class, non-user impact, or revocation cannot be established; if a
+high/critical residual threat remains unresolved; if evidence contradicts a
+claim; or if a required reviewer or human decision is missing. This proposed
+assessment does not waive any existing plan, ADR, legal, cost, evidence, or
+release gate.

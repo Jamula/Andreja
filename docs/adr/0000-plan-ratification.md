@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `9ef275df708b154489627e71b2677497aee0b26d47791af9e58535d67c5efae8`
+- **Current proposed Plan SHA-256:** `ff82d1fc29a12fa1d5d69b5d87e2ff1504be8a270d03593e4564c6fd10b10fc6`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -600,3 +600,22 @@ not match the merged `docs/plan.md`.
   after its `NOT_PLANNED` closure and record the observed `true` setting without
   changing repository configuration. Do not change separate material-risk,
   legal, policy, counsel, ratification, spend, activation, or launch gates.
+
+### 2026-10-11 — proposed canonical threat, privacy, and impact reconciliation
+
+- **Tracking issue:** [#2](https://github.com/Jamula/Andreja/issues/2)
+- **Pull request:** pending draft
+- **Plan SHA-256:** `ff82d1fc29a12fa1d5d69b5d87e2ff1504be8a270d03593e4564c6fd10b10fc6`
+- **Approver:** Cyrus Jamula; **pending**
+- **Approval status:** No Cyrus authorization or approval is claimed. Picard
+  corrected the proxy-picker attribution on issue #2; no human decision is
+  inferred from it.
+- **Classification:** Proposed documentation/status amendment; no
+  re-ratification or gate closure.
+- **Scope:** Refresh the current status-artifact hashes for the proposed
+  threat/privacy corrections, add the proposed integrated impact/classification
+  assessment to the tracked inventory, and clarify that BYOK operator
+  configuration does not evidence affected-user authorization. Specialist
+  challenge of this revision and Cyrus's separate decision remain pending. This
+  proposal does not approve policy, legal classification, residual risk,
+  runtime/data collection, external activation, spend, launch, or Phase 1A exit.

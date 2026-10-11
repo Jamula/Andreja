@@ -128,6 +128,9 @@ class StatusArtifactHashTests(unittest.TestCase):
             self.expected,
         )
 
+    def test_integrated_impact_assessment_is_tracked(self) -> None:
+        self.assertIn("docs/impact-assessment.md", self.expected)
+
     def test_proposed_plan_hash_preserves_separate_accepted_hash(self) -> None:
         accepted = "a" * 64
         proposed = "b" * 64
