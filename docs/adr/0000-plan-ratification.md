@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `c3086adee0337bd3d6d92ea777bea873ae50aba1c3de8305768a49aebc32ddc3`
+- **Current proposed Plan SHA-256:** `9ef275df708b154489627e71b2677497aee0b26d47791af9e58535d67c5efae8`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -582,3 +582,21 @@ not match the merged `docs/plan.md`.
   until recipient appointment and direct-contact verification. Refresh the
   feedback-support status-artifact hash. The accepted plan hash and unrelated
   pending decisions remain unchanged.
+
+### 2026-10-11 — proposed agent sign-off policy reconciliation
+
+- **Tracking issue:** None; user-directed documentation reconciliation.
+- **Pull request:** pending
+- **Plan SHA-256:** `9ef275df708b154489627e71b2677497aee0b26d47791af9e58535d67c5efae8`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed ordinary code-review process amendment; no
+  re-ratification or change to repository settings is authorized by this
+  proposal.
+- **Scope:** Replace the ordinary code-change human-approval assumption with
+  either explicit favorable Copilot review or independently dispatched
+  team-lead sign-off, both bound to the exact current head; preserve required
+  checks, finding/thread resolution, independent-review origin, and rejection
+  lockout. Correct the former #104 `allow_auto_merge=false` containment status
+  after its `NOT_PLANNED` closure and record the observed `true` setting without
+  changing repository configuration. Do not change separate material-risk,
+  legal, policy, counsel, ratification, spend, activation, or launch gates.

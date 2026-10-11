@@ -7,10 +7,25 @@ operate the publisher.
 
 ## Operational status: BLOCKED
 
-Do not add `Andreja review policy` to the ruleset. Keep affected PRs draft or
-under a documented manual merge hold. The normative containment requirement is
-that repository `allow_auto_merge` remain `false` until the review gate is
-operational. Do not represent this package as an operational gate.
+Do not add `Andreja review policy` to the ruleset. This package remains design
+evidence only and is not an operational gate. The former #104 containment
+required repository `allow_auto_merge=false`. Issue #104 closed `NOT_PLANNED`
+on 2026-10-11, and a live read that day observed `allow_auto_merge=true`;
+preserve that setting. The older plan statement is superseded by a proposed
+status correction. Do not change repository settings under this runbook.
+
+For ordinary code changes, the proposed procedural gate is an explicit,
+favorable, independent sign-off by either the exact Copilot reviewer or a
+separately dispatched team lead. It must identify the current PR head. A
+Copilot `COMMENTED` state without favorable review content, a review request,
+completion notice, missing comment, stale sign-off, or unresolved finding does
+not qualify. The team lead must not be the author or self-review the change.
+Keep all required checks and review-thread resolution. Do not enable
+PR-level auto-merge until the exact-head sign-off is present and findings are
+resolved; a new head invalidates the sign-off. This is a procedural proposal,
+not native GitHub approval, not an automated control, and not a human
+approval requirement. Separate material-risk, legal, policy, counsel,
+ratification, spend, activation, and launch gates remain unchanged.
 
 At this revision:
 
@@ -28,8 +43,8 @@ At this revision:
 
 A read-only GitHub API inspection of `Jamula/Andreja` observed:
 
-- repository `allow_auto_merge` is `true`, contrary to the normative
-  containment requirement above;
+- repository `allow_auto_merge` is `true`, contrary to the former #104
+  containment policy recorded above;
 - active ruleset `21199927` has no bypass actors and requires review-thread
   resolution;
 - the ruleset requires only these four status checks, each from integration
@@ -38,18 +53,16 @@ A read-only GitHub API inspection of `Jamula/Andreja` observed:
 - `Build and test (Debug)` is absent from the required checks; and
 - the `Andreja review policy` App context is absent.
 
-This is a dated observation, not desired policy or evidence that the review
-gate is active. No live GitHub settings were changed during this inspection.
-The mismatch between the observed `allow_auto_merge=true` value and the
-normative `false` requirement remains unresolved; do not claim the containment
-is currently enforced.
+This dated observation is historical evidence, not evidence that the review
+gate is active. A read-only API inspection on 2026-10-11 again observed
+`allow_auto_merge=true`, which is preserved. No live GitHub settings were
+changed. The `false` value above records the former #104 containment; the
+proposed status correction records its closure and current setting.
 
-The exact next human prerequisite is explicit authorization and provisioning
-of a dedicated GitHub App plus an independently protected webhook worker or
-credential broker outside repository GitHub Actions. That future deployment
-must return the identity, permissions, revision, provenance, durable-state,
-negative-canary, and rollback evidence listed below before a separate reviewed
-change may enable rollout.
+The separate worker design remains blocked and unimplemented. No external
+worker provisioning is requested or required by the proposed manual
+sign-off procedure. Do not provision a worker or imply that this design
+package provides automated enforcement.
 
 ## Repository Actions boundary
 
@@ -281,21 +294,36 @@ diff identity changes, the worker re-observes **every** latest source against
 the new identity before evaluation. Old reductions remain bound only to their
 old event and epoch IDs.
 
-## Review evidence
+## Proposed manual review evidence
 
-Every ready PR requires:
+For ordinary code changes, the proposed manual procedure accepts either:
 
 1. the newest native review from exact Copilot reviewer user ID `175728472`,
-   login `copilot-pull-request-reviewer[bot]`, type `Bot`, on the current head;
-2. an exact-App attestation binding that review ID to exact PR/head/base;
-3. zero unresolved review threads after full GraphQL pagination; and
-4. independent current-policy evidence for every persisted architecture,
-   security, privacy, or quality requirement.
+   login `copilot-pull-request-reviewer[bot]`, type `Bot`, on the current head,
+   with review content expressing an explicit favorable verdict; or
+2. an independent team-lead sign-off separately dispatched for that change,
+   recording the genuine lead identity, favorable verdict, PR, and exact head.
 
-For human evidence, only the newest candidate for a domain counts. It must be a
-current `write`, `maintain`, or `admin` human distinct from the PR author, bind
-the exact current diff and policy digest, and approve. A copied, stale,
-dismissed, or rejected newest candidate blocks; the evaluator never falls back.
+For either route, the author cannot self-review; every finding and review
+thread must be resolved; and all required checks must pass on the current head.
+On rejection, the author is locked out from revising that artifact; a different
+agent must own the revision.
+
+This procedural sign-off is not a native GitHub `APPROVED` review or a claim
+that a comment changes GitHub's approval state. A Copilot `COMMENTED` review
+qualifies only when its content explicitly gives the favorable verdict for
+the exact current head; the state alone is insufficient. Record the genuine
+reviewer identity and evidence; never invent or infer an identity from an
+absent comment. Do not enable PR-level auto-merge before qualifying sign-off
+and finding resolution. A new head, a newer unfavorable verdict, a reopened
+thread, or a finding invalidates readiness; no fallback to stale evidence is
+permitted.
+
+## Future automated-worker evidence model
+
+This model applies only if a separate automated review-gate worker is
+authorized and implemented. It is not a prerequisite to the proposed manual
+team-lead sign-off and is not operational in this repository.
 
 For specialist automation, the external broker must authenticate an exact
 allowlisted App, run ID/attempt, immutable workflow revision, repository, head,
