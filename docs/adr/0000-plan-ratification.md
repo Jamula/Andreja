@@ -700,7 +700,7 @@ not match the merged `docs/plan.md`.
 ### 2026-10-11 — proposed source-status inventory reconciliation
 
 - **Tracking issue:** [#73](https://github.com/Jamula/Andreja/issues/73)
-- **Pull request:** Pending draft PR creation
+- **Pull request:** [#203](https://github.com/Jamula/Andreja/pull/203) (draft)
 - **Plan SHA-256:** `a530ff3a7ee2b55fc5e1bc3ccf59b309ba554590baa19404c886cce5b1387886`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed source-status and current-hash inventory
