@@ -1,0 +1,5 @@
+### 2026-10-11T06-35-12: Stop PR193 revision: live second Data rejection locks Sarek out
+**By:** Sarek
+**What:** Stop PR193 revision: live second Data rejection locks Sarek out
+**References:** PR #193 comment6106275562, Reviewer protocol, Local6f6b9e1
+**Why:** Live PR193 comment6106275562 at2026-10-11T06:32:33Z records independent Sarek task-agent revision7b2be3342f90b57334d23172d323dfa75fad5bff and second Data REJECT; both Deanna and Sarek now locked out of further revision. This session independently produced local6f6b9e1 with separate Data proposed-documentation APPROVE before learning that provenance, but that does not override reviewer role lockout. No publication/remote overwrite performed; no further revision/advice/coauthoring by Sarek. Coordinator notified to assign eligible third author and resolve human/counsel disposition gate. #193 OPEN head7b2be334; native reviews absent. #155 remains OPEN and policy Proposed. Local work is persisted only; it is not authorized as next artifact. Not eligible for archival until verified handoff/no ongoing ownership/open PR constraints.
