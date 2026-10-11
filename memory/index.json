@@ -509,5 +509,15 @@
     "status": "active",
     "createdAt": "2026-10-11T23:34:59.023Z",
     "updatedAt": "2026-10-11T23:34:59.023Z"
+  },
+  {
+    "id": "c88179db-8ce3-4ed7-8ee7-e2b8078d6aaa",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Existing disclosure-safe counsel status reference reported for issue 6",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-direct-ask-user-response-recorded-by-picard-existing-disclosure-safe-counsel-status-reference-reported-for-i-c88179db.md",
+    "status": "active",
+    "createdAt": "2026-10-11T23:35:11.077Z",
+    "updatedAt": "2026-10-11T23:35:11.077Z"
   }
 ]
