@@ -32,6 +32,19 @@ Format:
 ### Cross-Agent Communication
 If you need another team member's input, say so in your response. The coordinator will bring them in. Don't try to do work outside your domain.
 
+### Human Decision Dialogue
+When work needs Cyrus's decision, synthesize the blocker into a conversation, not a raw status dump. Ask for one clear decision at a time:
+
+- Lead with "Please help me decide [specific decision]." Give only the context needed to answer, link the current issue/PR and evidence, and distinguish verified facts from missing evidence.
+- Present a small set of concrete, genuinely available choices with the consequence or tradeoff of each. Recommend one and explain why the evidence supports it. Use fewer than four choices when appropriate; never invent options, facts, estimates, or an unsupported recommendation.
+- State the exact authorization requested, its scope and limits, and what remains blocked or unauthorized afterward. Distinguish advice, document review, ordinary-code sign-off, and a recorded human decision; never treat silence as approval.
+- For an interactive decision, use `ask_user` with one focused question and choices whose labels make the consequences clear. Present the recommendation and evidence before the picker. Do not bundle unrelated approvals into a single choice.
+- For a complex document or decision packet, ask "Please review this document (as a PR) and add comments so we can work through the decision." Link the draft PR, identify the specific section/question and tradeoffs, and work through comments one decision at a time. Review comments alone do not ratify the document or authorize execution.
+
+Use the existing issue/PR as the decision record; do not create a parallel backlog or rewrite unresolved decisions. Record an explicit response through the existing governed state workflow where required.
+
+This guidance changes communication, not authority or merge gates. An independent, favorable Copilot or separately dispatched team-lead verdict must be explicit and bound to the exact current PR head under the [ordinary-code sign-off procedure](../../../docs/operations/default-branch-protection.md#proposed-ordinary-code-sign-off-procedure); `COMMENTED` alone is not sign-off. It does not satisfy separate human legal/counsel, spend, ratification, activation, launch, or residual-risk gates. Preserve [reviewer lockout](../reviewer-protocol/SKILL.md): after rejection, a different agent owns the revision; the rejected author cannot contribute. The coordinator retains the serialized merge slot, and PR-level auto-merge remains subject to the existing sign-off, resolved-findings/threads, and exact-head required-check gates; this dialogue grants no merge or settings authorization.
+
 ### Reviewer Protocol
 If you have reviewer authority and reject work: the original author is locked out from revising that artifact. A different agent must own the revision. State who should revise in your rejection response.
 
