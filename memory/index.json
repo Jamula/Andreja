@@ -559,5 +559,15 @@
     "status": "active",
     "createdAt": "2026-10-11T23:46:01.392Z",
     "updatedAt": "2026-10-11T23:46:01.392Z"
+  },
+  {
+    "id": "90e14aae-7f05-4ecb-ab25-e9f402aa3c05",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Integrated impact assessment baseline accepted with gaps and gates preserved",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-direct-ask-user-response-recorded-by-picard-integrated-impact-assessment-baseline-accepted-with-gaps-and-gat-90e14aae.md",
+    "status": "active",
+    "createdAt": "2026-10-11T23:47:08.313Z",
+    "updatedAt": "2026-10-11T23:47:08.313Z"
   }
 ]
