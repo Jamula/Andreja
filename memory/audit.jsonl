@@ -108,3 +108,4 @@
 {"timestamp":"2026-10-11T06:25:06.875Z","action":"search","reason":"Search returned 0 result(s)"}
 {"timestamp":"2026-10-11T06:25:15.700Z","action":"search","reason":"Search returned 0 result(s)"}
 {"timestamp":"2026-10-11T06:25:35.942Z","action":"search","reason":"Search returned 0 result(s)"}
+{"timestamp":"2026-10-11T06:25:49.159Z","action":"write","id":"94be509a-796e-419b-ba52-98833a1bfe82","class":"DECISION","title":"PR sync review and merge sequence","path":".squad\\decisions\\inbox\\cyrus-jamula-pr-sync-review-and-merge-sequence-94be509a.md","reason":"Content is allowed for governed local memory","actor":"Cyrus Jamula","provider":"local"}
