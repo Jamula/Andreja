@@ -285,7 +285,7 @@ revised by exact-revision challenge.
 | Abuse — Resource/cost exhaustion | 2 | 3 | Moderate (6) | Low; input/response bounds and zero external budget are documented; production rates are unknown. |
 | Abuse — Malicious publisher/update | 2 | 5 | High (10) | Low; pinned dependencies, scans, and trust policy exist; hosted signing and genuine rollback evidence remain blocked. |
 | Abuse — Backup/export coercion or theft | 2 | 5 | High (10) | Low; encryption and exclusion rules exist; operator-held copies and combined recovery evidence remain gaps. |
-| Abuse — Support/reviewer exposure | 1 | 4 | Low (4) | Low; content-free review boundaries are documented; no deployed support intake exists. |
+| Abuse — Support/reviewer exposure | 3 | 4 | High (12) | Low; one mistaken attachment or paste to an existing issue/PR can disclose highly sensitive content. Written prohibitions and undeployed product intake are not independent tested preventive barriers for that path; no incident is claimed. |
 | Abuse — Malicious operator/host compromise | 3 | 5 | High (15) | Low; operator/root custody is an explicit trust boundary that application controls cannot mitigate. |
 
 ### Basis and stops for the revised candidate ratings
@@ -324,6 +324,33 @@ review, not reliance on the future-feature prohibition. Dedicated survivor-safet
 operator-independent access/revocation/export/recovery evidence remains absent;
 future amplification stays gated. The unresolved High candidate invokes the same
 release/Phase 1A exit stop, with Cyrus's separate decision still pending.
+
+**Support/reviewer exposure:** At rejected head
+`b816653e849135a4ab36af1b23e0ab8449309fff`, the support/reviewer rule below and
+[`docs/privacy.md`](privacy.md#telemetry-support-feedback-and-public-surfaces)
+prohibit sensitive review material. `.github/ISSUE_TEMPLATE/bug.yml` and
+`.github/ISSUE_TEMPLATE/feedback.yml` request sanitized text and a declarative
+privacy checkbox; `.github/pull_request_template.md` likewise asks authors to
+confirm exclusion of personal data. These are author duties, not demonstrated
+content inspection or attachment rejection before disclosure. One mistaken
+attachment or paste to an existing issue/PR bypasses those duties without
+requiring activation of the future product intake.
+The attachment-off and screening requirements in
+[`docs/frameworks/feedback-security-abuse-incident-routing.md`](frameworks/feedback-security-abuse-incident-routing.md)
+are proposed for that future service; they do not establish enforcement on
+existing GitHub issues/PRs. No path-specific evidence demonstrates multiple
+independent tested preventive barriers. Under the proposed rubric, Possible (3)
+and Major impact (4) therefore give **High (12)** rather than Rare/Low (4).
+Highly sensitive personal/non-user content is the consequence considered;
+reusable-secret exposure can be more severe and retains its existing stop.
+No leak, event frequency, or live upload test is claimed.
+Guinan with Tuvok/Deanna Troi owns the existing synthetic/content-free review
+boundary. Suspected exposure requires stopping affected artifact sharing,
+restricted containment/assessment without copying the content into public
+review, credential revocation/rotation where relevant, and content-free
+re-evidence before resumption. The unresolved High candidate invokes the
+existing release/Phase 1A exit stop; Cyrus's residual-risk decision remains
+separate and pending.
 
 ## Abuse and misuse cases
 
@@ -479,6 +506,7 @@ inventory and exclusions; this table maps only threat-model controls.
 | Telemetry/offline | `Test-TelemetryEvidence.ps1`, `Test-OfflineEvidence.ps1`, operations tests and #44 evidence | **Implemented/current tested profile** |
 | OCI trust and update/rollback | Accepted ADR 0010, supply-chain scripts/policy/workflow, negative cases, and #44 matrix | **Keyless policy/workflow implemented; first hosted signature and genuine update/rollback evidence blocked** |
 | Combined encrypted recovery and restored sign-in | Backup/restore scripts, [recovery runbook](operations/identity-recovery.md), #44 matrix | **Evidence-blocked** |
+| Existing issue/PR support/reviewer content exclusion | Privacy support boundary, issue forms, PR template, and proposed feedback-security package at `b816653e849135a4ab36af1b23e0ab8449309fff` | **Documented duties; path-specific independent preventive-barrier evidence absent. No live upload test run** |
 
 Passing deterministic or local evidence does not replace the separately trusted OCI
 key, encrypted combined recovery/sign-in, second signed update/rollback revision,
@@ -495,6 +523,7 @@ acceptance.
 | No approved retention, SLO, RPO/RTO, spend, or high/critical residual-risk decision | Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek; Platform Operations, Hosting and FinOps — Jett Reno, Quark; Cyrus decides | No exit, external paid call, or public commitment |
 | Provider retains disclosed request or changes terms | Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Platform Operations, Hosting and FinOps — Jett Reno, Quark | Disable endpoint/profile until disclosure, purpose, terms, budget, and revocation are current |
 | New query/instrumentation leaks content or crosses tenants | Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Platform Operations, Hosting and FinOps — Jett Reno, Quark | Immediately stop release/telemetry, contain, rotate if needed, correct and add negative evidence |
+| Sensitive content is mistakenly attached or pasted to an existing issue/PR or shared with reviewers | Web, Public Site and User Experience — Guinan; Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek; Cyrus decides residual risk | Stop affected artifact sharing on suspected exposure; restrict/contain and assess without public content copies, revoke/rotate exposed authority where relevant, and re-evidence with synthetic/content-free material before resumption. Unresolved High (12) remains subject to the existing release/Phase 1A exit stop; future intake gates do not prevent this current path |
 | Confirmation becomes bypassable, deceptive, inaccessible, or replayable | Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Web, Public Site and User Experience — Jadzia Dax, Neelix, Guinan; Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek | Stop consequential actions until exact review, binding, policy, idempotency, and accessibility pass |
 | Non-user/child/household harm or sensitive inference lacks lawful/ethical purpose and consent | Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek; Cyrus decides | Do not activate; dedicated decision and abuse evidence required |
 | Self-host operator is also a coercive or abusive household actor | Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek; Platform Operations, Hosting and FinOps — Jett Reno, Quark; Cyrus decides | App-layer controls are insufficient for current task/device/custody misuse. Pause affected use on credible coercion/stalking; require safety review and evidence addressing access/custody gaps before resumption, without promising safe notification or revocation on an abuser-controlled host. No multi-person household feature until an operator-independent safety, access, revocation, export, and recovery design is approved and tested |
