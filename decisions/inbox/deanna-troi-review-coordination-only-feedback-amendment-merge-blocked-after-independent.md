@@ -1,0 +1,5 @@
+### 2026-10-11T06-32-48: Feedback amendment merge blocked after independent Sarek revision and Data rejection
+**By:** Deanna Troi (review coordination only)
+**What:** Feedback amendment merge blocked after independent Sarek revision and Data rejection
+**References:** https://github.com/Jamula/Andreja/pull/193#issuecomment-6106275562
+**Why:** PR #193 original head49f07d8 was rejected by Data for unbounded pending-counsel hold review. Independent Sarek task-agent revision (no Deanna source contribution/advice) committed/pushed 7b2be3342f90b57334d23172d323dfa75fad5bff at 2026-10-10T23:30:40-07:00, changing hold procedure and synchronized plan/ADR hashes. Data rejected revised exact head: fourteen-day interim deadline still falls back to indefinite retention labelled unauthorized, inconsistent with authorized-hold inventory. Data identifies genuine human/legal post-deadline disposition blocker. Both Deanna and Sarek locked out of further artifact revision; coordinator notified. Proposed v1.1 package LF SHA25697258a63859e3eff0209088ecf6aa1b3e40d5aa52809e1116d81764e476058bf. No merge, policy acceptance, counsel signoff or activation authorized.
