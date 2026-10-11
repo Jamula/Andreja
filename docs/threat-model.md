@@ -5,12 +5,15 @@
   and explicitly gated future capabilities
 - **Owner:** Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek
 - **Required challenge:** Tuvok (security), Deanna Troi (privacy), and
-  Rai (AI safety); pending
+  Rai (AI safety); pending for this proposed revision; baseline challenge is
+  recorded on issue #2
 - **Residual-risk acceptance:** Cyrus; pending
 - **Classification/impact assessment:** Open; this model does not satisfy that gate
   without an explicitly approved assessment and cited evidence
 - **Tracking:** [Issue #116](https://github.com/Jamula/Andreja/issues/116)
-- **Last reviewed:** 2026-08-25
+- **Last reviewed (baseline):** 2026-10-11; read-only challenge of pinned `main`
+  `142f227e8457a573010a3c333e94e0eda0a8d6ac`; this proposed revision awaits
+  independent challenge
 
 This is Andreja's canonical threat model. It reconciles the ratified
 [platform plan](plan.md), the
@@ -23,7 +26,9 @@ The proposed [company charter](charter.md#human-and-agent-authority) supplies th
 human/agent authority constraints used here but is not itself ratified. The
 [semantic-graph contract](semantic-graph.md) supplies detailed semantic/provenance
 threat rules, and the [testing matrix](testing-matrix.md) owns the current
-test/evidence inventory.
+test/evidence inventory. The proposed [integrated impact and classification
+assessment](impact-assessment.md) remains unapproved and does not close the open
+assessment gate.
 
 ## Status vocabulary and method
 
@@ -33,6 +38,37 @@ test/evidence inventory.
 | **Contract-only** | Versioned contracts and deterministic local conformance tests exist, with no live integration or durable future-state store. |
 | **Evidence-blocked** | A control is incomplete or lacks required independent/combined proof, so the associated exit remains blocked. |
 | **Future/gated** | No current activation is authorized; a decision, design, evidence, and residual-risk acceptance are required first. |
+
+### Proposed likelihood and severity method
+
+The following ordinal method and candidate ratings are proposed for specialist
+challenge; they are not an accepted risk policy or residual-risk decision.
+Likelihood describes the documented current profile, not an annual probability:
+
+| Level | Likelihood | Evidence guide |
+|---|---|---|
+| 1 | Rare | Multiple independent, tested barriers must fail; no current-profile event is evidenced. |
+| 2 | Unlikely | A credible targeted path exists, but access or multiple control failures are needed; no current-profile event is evidenced. |
+| 3 | Possible | A credible path is reachable through ordinary conditions or one realistic control failure. |
+| 4 | Likely | The path has low barriers, weak/untested controls, or recurring conditions. |
+| 5 | Almost certain | The event is observed or expected in ordinary operation of the documented profile. |
+
+| Level | Impact severity | Indicative consequence |
+|---|---|---|
+| 1 | Negligible | Transient inconvenience with no sensitive-data or authority impact. |
+| 2 | Minor | Limited, readily reversible disruption or exposure. |
+| 3 | Moderate | Material but bounded disruption, integrity loss, or personal-data impact. |
+| 4 | Major | Highly sensitive disclosure, consequential loss, or substantial impact to a person or non-user. |
+| 5 | Severe | Cross-tenant/reusable-authority compromise, irreversible high-impact loss, or credible serious harm to people. |
+
+Proposed score is likelihood × impact: 1–4 **Low**, 5–9 **Moderate**,
+10–16 **High**, and 17–25 **Critical**. An unknown input is **Unrated**, not
+zero or Low; it remains unresolved rather than being accepted by assumption.
+Whether a particular unrated threat independently blocks an exit remains for
+the required reviewers and Cyrus to decide. The existing High/Critical stop
+rule remains in force. Candidate values below are low-confidence ordinal
+judgments from repository evidence and require Tuvok's exact-revision challenge;
+they do not replace incident, production, or user-impact evidence.
 
 The model uses STRIDE (Spoofing, Tampering, Repudiation, Information disclosure,
 Denial of service, and Elevation of privilege) to examine security failures and
@@ -182,7 +218,7 @@ informed, voluntary, accessible, or uncoerced consent.
 | **Tampering — import/export** | Archive path traversal, checksum substitution, duplicate/conflicting import, or malicious semantic extension changes state | Authenticated encrypted archive, safe relative paths, SHA-256/length checks, schema/version/exclusion validation, clean-instance requirement, write-free dry run, serialized import ID, atomic commit, no remote context fetch or secrets | Archive key/distribution and exporter authenticity depend on operator custody. **Implemented/current portability. Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Platform Operations, Hosting and FinOps — Jett Reno, Quark.** |
 | **Spoofing/tampering — hosted release identity** | An actor, fork, unrelated workflow, branch, mutable tag, altered bundle/root, or transparency bypass is accepted as an Andreja release | Tag-only GitHub Actions job; commit-on-protected-main check; job-only `id-token: write`; exact issuer/repository/workflow identity/name/revision/trigger/ref matching; pinned Cosign; retained standardized bundle; independently authenticated/pre-positioned TUF root outside evidence must match the retained copy and is the only Cosign root; inclusion-promise/proof and SCT required; network-blocked verification; local operator mode cannot satisfy hosted release | GitHub repository/tag/workflow protection, Fulcio, CT, Rekor, and TUF compromise remain external trust risks. Public records permanently disclose approved repository/workflow/ref/digest metadata. **Implemented policy/workflow; first reviewed hosted signature evidence pending. Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek; Platform Operations — Jett Reno; Cyrus accepts residual risk.** |
 | **Repudiation** | Actor denies confirmation, recovery, deletion, sharing, or import | Content-minimized identity/task/proposal audit, version, actor, source, outcome, occurrence time, import ledger, idempotency evidence; share/semantic audit contracts | Audit is not non-repudiation, legal proof, or permission for indefinite retention; operator can alter DB. **Current plus contract-only. Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek.** |
-| **Information disclosure — BYOK** | Credential, prompt, task, error body, or provider endpoint details leak | Exact endpoint allowlist, non-loopback budget stop before credential resolution, file-only credential value, no redirects/decompression, bounded response, content-free errors/metrics, UI recipient/retention disclosure, rotate/revoke path | Provider receives the deliberately sent request/schema and may retain it; operator disclosure may be stale. No paid live evidence. **Current seam; gated external activation. Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Platform Operations, Hosting and FinOps — Jett Reno, Quark.** |
+| **Information disclosure — BYOK** | Credential, prompt, task, error body, or provider endpoint details leak | Exact endpoint allowlist, non-loopback budget stop before credential resolution, file-only credential value, no redirects/decompression, bounded response, content-free errors/metrics, UI recipient/retention disclosure, credential revoke path | Provider receives the deliberately sent request/schema and may retain it; operator disclosure may be stale. Operator enablement is not evidence of each affected user's authorization; user-level scope/change/revocation behavior is not evidenced. No paid live evidence. **Current seam; gated external activation. Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Platform Operations, Hosting and FinOps — Jett Reno, Quark.** |
 | **Information disclosure — telemetry** | Auto-instrumentation exports URL/user/task/prompt/secret content | Attribute allowlist processor, no formatted/scoped/state logging, prohibited-key counters, synthetic canaries, local collector evidence | Values under allowed route/method/status fields and new instruments require review; remote collector is unapproved. **Implemented/current local; future/gated remote. Platform Operations, Hosting and FinOps — Jett Reno, Quark.** |
 | **Information disclosure — backup/export** | Dump, archive, key history, or restore manifest leaks user data/secrets | Encryption, separate keys, declared exclusions, least-privilege destinations, checksum and clean-instance verification, no secret values in manifests | Combined encrypted recovery custody is unproven; operators may mishandle copies. **Application export current; recovery evidence-blocked. Platform Operations, Hosting and FinOps — Jett Reno, Quark.** |
 | **Information disclosure — public/support** | Private docs, product data, preview, issue, screenshot, or feedback payload becomes public | Product/public-site separation contract, loopback/private-review-only prototype, no analytics/intake, secret/content prohibition in repository artifacts | Historical Pages bytes/provider logs/caches may remain; future host logs IPs. **Contained history; future/gated site/support. Web, Public Site and User Experience — Jadzia Dax, Neelix, Guinan; Customer Success, Feedback and Support — Guinan.** |
@@ -202,6 +238,54 @@ informed, voluntary, accessible, or uncoerced consent.
 | **Disclosure** | Provider, connector, peer, telemetry, backup, export, issue, or preview receives excessive data. Default local custody, explicit recipient/purpose, least disclosure, export exclusions, redaction, and kill/revoke paths constrain flows. | External retention cannot be controlled after disclosure. New recipients require review |
 | **Unawareness** | User does not understand model recipient, retention, proposal consequence, inference, or sharing terms. UI discloses provider/model/recipient/retention and exact proposal; consent terms are versioned and purpose-bound. | Accessibility, coercion, provider-term drift, and comprehension need continuing evidence |
 | **Non-compliance with stated policy** | Implementation, operator, or provider behavior diverges from this baseline. Docs/hash/contract tests, telemetry canaries, negative tests, explicit gates, and stop conditions expose drift. | No legal compliance claim; qualified counsel and jurisdiction-specific analysis remain separate |
+
+## Proposed per-threat ratings
+
+These are candidate residual ratings for the documented Phase 1A profile, not
+accepted determinations. `Confidence` applies to the likelihood estimate; impact
+is a proposed consequence classification. Gated rows are not scored because
+activation is unauthorized, not because their risk is zero. Any rating may be
+revised by exact-revision challenge.
+
+| Threat row | Likelihood | Impact | Proposed tier | Confidence / evidence basis |
+|---|---:|---:|---|---|
+| Spoofing — bootstrap/recovery | 2 | 5 | High (10) | Low; protected one-time state and negative tests reduce likelihood, but host/recovery compromise remains. |
+| Spoofing — session/recent auth | 2 | 5 | High (10) | Low; cookie, antiforgery, recent-auth, and session invalidation tests exist; shared-device compromise remains. |
+| Spoofing — tenant/principal | 1 | 5 | Moderate (5) | Low; server-scoped context, composite constraints, and two-tenant tests are independent evidence; regressions remain possible. |
+| Tampering — proposal | 2 | 4 | Moderate (8) | Low; version/digest/policy checks are tested; deceptive confirmation and UI regression remain. |
+| Tampering — manifest/tool call | 2 | 4 | Moderate (8) | Low; strict typed-tool validation is tested for first-party code; third-party execution is gated. |
+| Tampering — database/migration | 2 | 5 | High (10) | Low; migrations are explicit and reviewed, but a trusted or malicious administrator can alter data and rollback proof is missing. |
+| Tampering — import/export | 2 | 4 | Moderate (8) | Low; safe-path, checksum, dry-run, and atomic-import controls have local evidence; operator custody remains. |
+| Spoofing/tampering — hosted release identity | 2 | 5 | High (10) | Low; exact-claim verification policy exists, but first reviewed hosted signature evidence remains blocked. |
+| Repudiation | 2 | 3 | Moderate (6) | Low; minimized audit and idempotency evidence exist; the operator can alter the database and retention is unresolved. |
+| Information disclosure — BYOK | Gated | 4 | Not scored | High confidence that live external activation is gated; likelihood and affected-user authorization evidence are absent. |
+| Information disclosure — telemetry | 1 | 4 | Low (4) | Low; local allowlist/canary evidence exists; new instruments and remote collectors are not covered. |
+| Information disclosure — backup/export | 3 | 5 | High (15) | Low; export has local evidence, but combined encrypted recovery custody and restored sign-in remain blocked. |
+| Information disclosure — public/support | Gated | 4 | Not scored | High confidence that current public/support activation is gated; residual third-party copies/logs are not fully observable. |
+| Denial of service — identity/provider | 2 | 3 | Moderate (6) | Low; bounded input, timeout, cancellation, and retry controls have local tests; distributed production rates are unknown. |
+| Denial of service — database/offline | 3 | 4 | High (12) | Low; database-plus-key recovery and production availability objectives remain unproven. |
+| Elevation of privilege — direct mutation | 1 | 5 | Moderate (5) | Low; proposal-only provider tools, server authorization, and lifecycle tests are documented; process compromise remains. |
+| Elevation of privilege — grant/share | Contract-only | 4 | Not scored | High confidence that no live transport or persistent revocation path is active; contract fixtures do not establish live risk. |
+| LINDDUN — Linkability | 2 | 3 | Moderate (6) | Low; raw identity telemetry is prohibited, but operator/database correlation remains possible. |
+| LINDDUN — Identifiability | 3 | 4 | High (12) | Low; free-text task content may identify owners or non-users and cannot be perfectly classified. |
+| LINDDUN — Non-repudiation harm | 2 | 3 | Moderate (6) | Low; audits are minimized; numeric retention/deletion policy remains blocked. |
+| LINDDUN — Detectability | 2 | 3 | Moderate (6) | Low; generic failures and local search reduce exposure; traffic/operator visibility remains. |
+| LINDDUN — Disclosure | 2 | 4 | Moderate (8) | Low; local custody and recipient limits exist; external retention cannot be controlled after disclosure. |
+| LINDDUN — Unawareness | 3 | 4 | High (12) | Low; disclosure is documented, but comprehension, accessibility, coercion, and term drift lack human evidence. |
+| LINDDUN — Non-compliance with stated policy | 2 | 4 | Moderate (8) | Low; documentation and tests detect some drift; no legal-compliance claim or comprehensive runtime monitor exists. |
+| Abuse — Coercive control or stalking | Gated | 5 | Not scored | High confidence that live sharing/connectors are gated; a mentioned non-user may still appear in current task text. |
+| Abuse — Child surveillance or unsafe child-directed use | Gated | 5 | Not scored | High confidence that no child workflow is approved; no age/guardian authority design exists. |
+| Abuse — Elder/dependent-adult financial or care exploitation | Gated | 5 | Not scored | High confidence that related workflows are future/gated; no authority or safeguarding evidence exists. |
+| Abuse — Health or finance overreach | 2 | 5 | High (10) | Low; autonomous consequential action is prohibited and task flow is proposal-only; sensitive content may still be entered. |
+| Abuse — Sensitive inference/shadow profile | Contract-only | 5 | Not scored | High confidence that semantic storage/inference is contract-only; no durable graph or embedding evidence exists. |
+| Abuse — Prompt/tool injection | 2 | 4 | Moderate (8) | Low; content is treated as data and typed tools are constrained; provider output remains untrusted. |
+| Abuse — Confirmation fatigue/deceptive proposal | 3 | 4 | High (12) | Low; exact proposal review is tested; informed, accessible, and uncoerced confirmation is not proved. |
+| Abuse — Destructive retry/race | 1 | 4 | Low (4) | Low; versioning, idempotency, locks, and concurrency tests exist; new mutation paths can regress. |
+| Abuse — Resource/cost exhaustion | 2 | 3 | Moderate (6) | Low; input/response bounds and zero external budget are documented; production rates are unknown. |
+| Abuse — Malicious publisher/update | 2 | 5 | High (10) | Low; pinned dependencies, scans, and trust policy exist; hosted signing and genuine rollback evidence remain blocked. |
+| Abuse — Backup/export coercion or theft | 2 | 5 | High (10) | Low; encryption and exclusion rules exist; operator-held copies and combined recovery evidence remain gaps. |
+| Abuse — Support/reviewer exposure | 1 | 4 | Low (4) | Low; content-free review boundaries are documented; no deployed support intake exists. |
+| Abuse — Malicious operator/host compromise | 3 | 5 | High (15) | Low; operator/root custody is an explicit trust boundary that application controls cannot mitigate. |
 
 ## Abuse and misuse cases
 
