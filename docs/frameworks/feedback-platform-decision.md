@@ -65,18 +65,20 @@ The proposed #155 package and its retention table remain unapproved. Cyrus
 reopened #155 because the automatic closure on PR #172's merge did not meet
 the explicit human-decision criterion; neither historical issue closure nor
 that merge is approval. Cyrus directed Deanna Troi to amend and proceed on
-transfer and hold-policy gaps on 2026-10-10. The latest inspected #193 state
-(2026-10-11) is draft/open at head `7b2be3342f90b57334d23172d323dfa75fad5bff`;
-the LF SHA256 of
-`docs/legal/feedback-privacy-retention-dsr.md` at that head is
-`97258a63859e3eff0209088ecf6aa1b3e40d5aa52809e1116d81764e476058bf`,
-replacing the previously cited `25b21c...` file hash. This draft is
-**unapproved**. Its transfer and hold inventories below are requirements for
+transfer and hold-policy gaps on 2026-10-10. The independent third-author
+proposal in [PR #193](https://github.com/Jamula/Andreja/pull/193) remains
+**unapproved**; its exact current package hash is recorded in the
+[plan status inventory](../plan.md) and [ADR 0000](../adr/0000-plan-ratification.md),
+not a volatile PR-head snapshot here. Its transfer and hold inventories below are requirements for
 the #157 evidence map, not completed provider evidence, counsel advice, or
-approval. The current expiry procedure still leaves a frozen minimum in place
-after day 14 while labeling further retention unauthorized until a decision;
-Sarek flags that post-deadline disposition for resolution. Do not treat it as
-an approved hold rule or inherit any retention period until Cyrus explicitly
+approval. The proposed expiry procedure has one nonrenewable seven-calendar-day
+interval from the original hold expiry or metadata purge trigger. Executable
+human/qualified-counsel post-deadline disposition, including the no-fresh-decision
+case, must be authorized before the affected route or interval can operate.
+Continued preservation needs documented scope-specific counsel authority and
+duration; binding duties remain protected. Missing decisions block release,
+not autorenewal or indefinite frozen-content storage. Do not treat this as an
+approved hold rule or inherit any retention period until Cyrus explicitly
 approves the revised #155 package.
 
 The #156 proposal and its existing merged source (PR #177) are also

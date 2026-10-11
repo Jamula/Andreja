@@ -2,15 +2,26 @@
 
 ## Status and authority
 
-- **Status:** Proposed for Cyrus approval; collection and publication remain blocked
+- **Status:** Human AMEND recorded; revised proposal awaiting approval; collection and publication remain blocked
 - **Decision issue:** [#155](https://github.com/Jamula/Andreja/issues/155)
 - **Parent framework:** [Feedback and support framework](../frameworks/feedback-support.md)
 - **Accountable owner:** Deanna Troi
 - **Legal lead:** Sarek
 - **Required reviewers:** Tuvok, Guinan, and Data
 - **Decision authority:** Cyrus Jamula
-- **Decision version:** `feedback-privacy-v1`
-- **Notice version:** `feedback-notice-v1`
+- **Decision version:** `feedback-privacy-v1.1`
+- **Notice version:** `feedback-notice-v1.1`
+
+Cyrus Jamula directed **AMEND and proceed** on 2026-10-10 in response to
+“AMEND feedback-privacy-v1: resolve transfer and hold-record policy before
+approval.” This authorizes only this amendment, not policy approval, activation,
+or counsel signoff. The superseded `feedback-privacy-v1` / `feedback-notice-v1`
+package has LF-normalized SHA-256
+`60b331d01c7412ddec29914299d8dab8437729565bb581999b844f7a02bf452d`.
+Issue #155 closed through the merge of PR #172 without a human approval record
+and has been reopened for the exact policy decision.
+The revised package's exact hash is recorded in the plan status inventory and
+ADR 0000; merging either revision does not satisfy the decision gate.
 
 This package turns the parent framework's privacy and legal gates into a
 decision-ready policy. It is not legal advice, does not record privileged
@@ -25,19 +36,25 @@ spend or support commitments, or authorize launch.
 
 ## Recommended decision
 
-Approve `feedback-privacy-v1` subject to all of these gates:
+Submit `feedback-privacy-v1.1` for a new explicit human decision subject to all
+of these gates:
 
 1. The deploying operator and launch jurisdictions are named in a release
    artifact.
 2. Counsel confirms or replaces each conditional lawful-basis hypothesis and
    any jurisdiction-specific response period, appeal, minor, employee, or
    sensitive-data requirement.
-3. Every processor and independent recipient is named, contracted, and checked
-   against this inventory before receiving data.
+3. Every processor and independent recipient is named, reviewed under its
+   applicable terms, and checked against this inventory and the transfer
+   register below before receiving data.
 4. The notice is completed with operator contact details and is tested against
    the deployed fields, routes, recipients, and schedules.
 5. Tuvok, Guinan, and Data accept the implementation evidence required below.
-6. Cyrus separately approves activation after the provider, architecture,
+6. Before the affected route can activate, Cyrus and qualified,
+   jurisdiction-appropriate counsel resolve and authorize the scope-specific
+   post-deadline disposition described in the hold expiry procedure below.
+   The seven-day proposal cannot be used without that executable decision.
+7. Cyrus separately approves activation after the provider, architecture,
    security, cost, support-capacity, and launch packages are complete.
 
 If a gate is unresolved, the affected route or field stays disabled. An
@@ -52,7 +69,7 @@ processed. A self-hosted operator is not automatically acting for Jamula.
 | Channel or action | Role decision | External role and boundary |
 | --- | --- | --- |
 | Official Jamula tenant-less public intake | The named Jamula operating entity is controller. It owns the notice, intake purposes, rights responses, and deletion decisions. | Hosting, queue, storage, email, anti-abuse, and support vendors are processors only after a data-processing agreement, subprocessor review, deletion terms, incident terms, and transfer/residency review. |
-| Feedback inside a self-hosted Andreja instance | The deploying operator is controller. Andreja software is not a recipient merely because it supplied the code. | Local infrastructure vendors follow the operator's role determination. Jamula receives nothing unless the person separately chooses a sanitized Jamula publication or transfer route. |
+| Feedback inside a self-hosted Andreja instance | The deploying operator is controller. Andreja software is not a recipient merely because it supplied the code. | Local infrastructure vendors follow the operator's role determination. Private cross-operator transfer to Jamula is disabled in v1.1. Only the separately previewed, consented sanitized GitHub publication route may disclose an approved draft after all gates pass. |
 | Official hosted Andreja app feedback | The named service operator is controller for account-linked intake. Authentication proves access only; it does not authorize collecting tenant content. | Identity, hosting, storage, and delivery vendors are processors under approved terms. |
 | Help escalation from a feedback case | The controller for the originating intake remains controller for the escalation and decides whether escalation is necessary. | A contracted help/escalation vendor is a processor only for the documented escalation purpose and approved fields; counsel, authorities, or affected people receive information only under the incident/legal conditions below. |
 | Direct repository issue by a contributor | The contributor intentionally gives content to GitHub and repository participants under GitHub's terms. The repository operator is a controller for moderation, response, and project records. | Treat GitHub as an independent controller for the public collaboration service and its own platform purposes. A different role may be claimed only after review of the exact account terms. The repository is not a processor-confidential support system. |
@@ -70,6 +87,59 @@ residency safeguards, incident notification and cooperation, rights-request
 assistance, audit evidence, retention enforcement, and verified deletion or
 return at termination. Contract expiry, role drift, an unapproved subprocessor,
 or an incompatible term disables transfer to that provider.
+
+### Recipient and transfer register: required evidence
+
+This register constrains the defined channels; it does not add a private
+self-host-to-Jamula transfer channel. That channel remains disabled unless a
+future human-approved amendment defines both operators' roles, permitted
+fields, purpose/basis, consent semantics, retention, rights handling, and the
+parent envelope/notice contract. Publication consent cannot authorize it.
+
+Before activation, the operator must maintain a restricted, versioned register
+with one entry for each recipient and data flow, not just one vendor name or
+advertised storage region. Include hosting, queues, storage, email, anti-abuse,
+help escalation, remote administration/support, replicas, backup storage and
+restore paths, subprocessors and onward recipients, and independent-controller
+GitHub publication. Remote access and backup copies require assessment even
+when primary hosting remains in one country.
+
+Each entry must identify:
+
+- the named deploying operator and its jurisdiction, recipient legal entity,
+  controller/processor role and purpose, exact permitted fields/record classes,
+  source and destination systems, endpoint, and disclosure scope;
+- all processing, storage, backup, remote-access, and onward-transfer countries,
+  recipient/subprocessor identities, access roles, and a dated data-flow map;
+- the exact applicable contract/terms and subprocessor-list versions, effective
+  and expiry dates, change-notice duties, deletion/return and rights-assistance
+  evidence, plus the matching public provider-notice version;
+- jurisdiction-appropriate counsel's dated applicability determination, whether
+  a transfer mechanism is required and the selected mechanism if any, its
+  scope/validity evidence, required transfer-risk assessment and supplementary
+  safeguards, and unresolved limitations; no mechanism is assumed or claimed
+  effective before that determination;
+- the accountable operator owner, privacy/security/counsel review references,
+  review date, next review no later than 90 days, expiry, and explicit
+  approval/block state for the exact flow and release.
+
+Vendor reputation, encryption, a data-residency statement, or consent alone is
+not proof of a valid transfer. Optional GitHub publication consent authorizes
+only the exact previewed disclosure; it is not a shortcut around applicable
+transfer requirements. Review GitHub's independent-controller terms, locations,
+and onward-copy limitations separately from processor agreements. No register
+entry grants control over independent copies or promises their recall.
+
+Check authorization immediately before each transfer and before enabling a
+backup, restore, remote-access, or onward path. Missing, invalid, expired,
+overdue, or differently scoped evidence, changed terms/countries/subprocessors,
+or an unresolved counsel determination halts the affected transfer and retries.
+Disable the affected egress/access path, restrict already held copies, and route
+minimal facts privately to the operator, Deanna Troi, Tuvok, and Sarek/counsel.
+Permit only separately authorized restricted containment, return, or deletion;
+remediation is not permission for a new unreviewed transfer. Resume only after
+fresh scope-matched evidence and explicit operator authorization under the
+approved human policy; otherwise the route stays disabled.
 
 ## Purpose, field, and derived-record inventory
 
@@ -108,6 +178,8 @@ withdrawable without losing the private support route.
 | Destination receipt: destination, scoped record class, job ID, result, time, and provider/object reference | Reconcile propagation and support a safe completion claim | Legal accountability/LI hypothesis | Restricted privacy and operations roles; no case body or public disclosure | Retain three years after completion or final failure resolution, then hard-delete |
 | Restricted exception-queue entry: destination, failure class, retry count, scope, owner, review/expiry, and safe resolution | Block false completion claims and manage unresolved propagation failures | LI for security and rights protection | Restricted privacy/security/operations roles; no ordinary support or public access | Delete on verified resolution plus 90 days; unresolved entries require a 30-day review and expire no later than one year unless a scoped hold applies |
 | Backup deletion tombstone: source scope, record classes, digest, creation time, expiry, and replay status | Prevent deleted content from returning after backup restore | Legal accountability/LI hypothesis; same covered record basis | Restricted backup operators and privacy/security roles; no content payload | Retain until all backups containing the scope expire, then 90 additional days for replay evidence, then hard-delete |
+| Separate hold authorization/decision record: hold ID, restricted source/DSR references, legal/security category, purpose, conditional basis and counsel decision reference, authorizer and owner, exact fields/classes/systems covered, start, review and expiry dates, end condition, access list, safe reason code, renewal/release decisions and times, partial-deletion and propagation receipts | Prove, limit, review, and end a necessary exception; not retain a second copy of held content | Legal obligation only where counsel identifies an applicable duty; otherwise a documented LI/security or legal-claims hypothesis requires counsel confirmation. No automatic basis on expiry | Segregated privacy/security hold administrators and authorized counsel on need-to-know access; operations receives only scoped enforcement instructions, never ordinary support, models, metrics, or GitHub | Review at least every 90 days and before expiry; each authorization lasts at most 90 days unless counsel documents a binding preservation duration with the same 90-day review. Retain minimized metadata for three years after final hold release or final held-scope deletion/propagation resolution, whichever is later, then hard-delete unless a separately authorized counsel exception with review and expiry applies |
+| Held content: only the exact source fields and necessary derived copies named by a hold record, separately isolated from its metadata | Preserve only evidence required by the authorized legal/security purpose | The specific counsel-confirmed duty or documented security/legal-claims hypothesis for this scope; not the submitter's preference or original consent by default | Named restricted custodians/counsel; no ordinary support, publication, dedupe, optional messages, metrics, or model reuse | Covered content follows the authorized hold only; unaffected data keeps its normal purge schedule. On release apply overdue source deletion within seven days, reconcile derived copies, and expire backups under the 35-day maximum with tombstone replay. Mandatory preservation cannot be destroyed by a timer; use the expiry procedure below |
 | Private incident evidence created after unauthorized publication | Contain, investigate, notify, prevent recurrence, and establish necessary facts | Legal obligation or LI/security and legal-claims hypotheses, as counsel confirms | Restricted incident responders, counsel, affected processors, and authorities/people only when approved | One year after closure by default; extend only under a documented legal/security hold with 90-day review |
 | Encrypted backups containing the above records | Recover the service from loss or corruption | Same purpose and basis as source record; no independent use | Restricted backup operators and contracted infrastructure processors | Rolling maximum 35 days. Deleted records are not restored into active service; erase through expiry and replay deletion tombstones after restore |
 | Aggregate support metrics made only from controlled categories and thresholded time buckets | Improve intake quality, accessibility, and support operations | LI; outside personal-data scope only after documented irreversible anonymization | Restricted support-quality roles; no advertising, ranking, pricing, targeting, or user-level joins | Source events follow their source schedule. Thresholded aggregate buckets retain 24 months, then delete or re-approve |
@@ -140,14 +212,15 @@ removal/redaction request and cannot guarantee recall of independent copies.
 The deployed notice must render the following meaning before any field accepts
 input. Bracketed values are release-blocking configuration, not optional text.
 
-> **Feedback privacy notice - version feedback-notice-v1**
+> **Feedback privacy notice - version feedback-notice-v1.1**
 >
 > **Who is responsible.** [Legal operator name and address] operates this
 > feedback route and decides how the information is used. Contact
 > [privacy contact] privately about this notice or your rights. If you run your
 > own Andreja instance, its operator is responsible for that instance; your
-> private submission is not sent to Jamula unless the form clearly shows and
-> you choose a separate transfer or publication.
+> private submission is not sent to Jamula. Private cross-operator transfer is
+> not available; only a separately previewed and consented sanitized GitHub
+> publication may be offered after its gates pass.
 >
 > **What to send.** Send only the short description, expected and actual
 > outcome, minimal reproduction steps, impact, and optional contact method
@@ -170,7 +243,10 @@ input. Bracketed values are release-blocking configuration, not optional text.
 > personnel receive only what they need. Approved hosting, storage, delivery,
 > and anti-abuse providers process limited information under contract. The
 > current provider and subprocessor list, locations, and transfer safeguards are
-> at [provider notice link]. A contracted help-escalation provider may receive
+> at [provider notice link], including remote access, backups, and onward
+> recipients. Transfers stay disabled until the operator and counsel have
+> confirmed the required safeguards; choosing publication does not waive them.
+> A contracted help-escalation provider may receive
 > only the approved fields needed for that escalation. Counsel, authorities, or
 > affected people may receive limited incident information only when the
 > approved incident/legal conditions require it.
@@ -195,7 +271,19 @@ input. Bracketed values are release-blocking configuration, not optional text.
 > months; personal content is removed when discovered and stale content is
 > minimized or removed after that review. Independent copies may remain under
 > their controllers' rules. A documented legal or security hold may delay a
-> narrow deletion, and we will explain the permitted result when we can.
+> narrow deletion. Held content is isolated from ordinary reuse and reviewed
+> at least every 90 days; other fields are still deleted on schedule. Separate
+> minimized hold-decision metadata is kept for three years after final release
+> or deletion resolution, whichever is later, unless a reviewed, authorized
+> legal exception requires longer. Unconfirmed preservation questions do not
+> renew a hold: any authorized interim interval is one nonrenewable
+> seven-calendar-day interval from the original expiry or metadata purge
+> trigger. [Approved scope-specific post-deadline disposition and outcome]
+> applies when no fresh decision is recorded. Continued
+> preservation requires documented scope-specific counsel authority and
+> duration. Binding preservation duties remain protected.
+> We will explain the permitted partial
+> result and appeal route without exposing other people or protected evidence.
 >
 > **Your choices and rights.** You may submit without optional diagnostics,
 > publication, or follow-up. Use your private receipt or contact
@@ -358,13 +446,96 @@ restore must apply deletion tombstones before restored data becomes available.
 Metrics are recomputed or deleted if a person remains identifiable or a
 threshold is broken; demonstrably anonymous aggregates need not be changed.
 
-A hold is not a blanket copy. It requires an authorized owner, legal/security
-category, exact fields and systems, start, review date, end condition, access
-list, and reason that can be disclosed safely. Held data is isolated from
-ordinary support, publication, metrics, and model use. Review every 90 days and
-delete promptly when the hold ends. Partial deletion proceeds around the hold.
-Silence, timeout, case status, or submitter preference cannot release a conflict
-or hold for the submitter.
+### Hold authorization, expiry, and release procedure
+
+A hold is not a blanket copy. Create the separate minimized hold record in the
+inventory before imposing an exception; record authority, necessary purpose,
+conditional basis, exact content scope, access, review/expiry, and end condition.
+Sarek/jurisdiction-appropriate counsel must identify any binding duty or confirm
+the proposed legal-claims basis; Deanna Troi and Tuvok must authorize a
+purpose-limited security hold within the approved policy. Unconfirmed legal
+ambiguity goes to restricted counsel review, not an indefinite default hold.
+Keep held content separate from metadata and isolate both from ordinary reuse.
+Do not put privileged advice or disputed content in the metadata.
+
+Review necessity and scope at least every 90 days and before the recorded
+expiry. Renewal requires an affirmative authorized decision with current
+evidence, reason, exact scope, next review, expiry/end condition, and counsel
+review for legal exceptions. Silence, case status, or requester preference
+cannot renew or widen it. A documented mandatory duration still requires
+90-day reviews; the review timer is not authority to destroy required evidence.
+
+At expiry without renewal, stop all discretionary held-content processing and
+escalate immediately and privately to the accountable owner, Cyrus Jamula, and
+qualified counsel. Release a discretionary hold and execute overdue source
+deletion within seven days where the approved disposition authorizes it, with
+propagation receipts and backup tombstones. Apply the same decision gate to
+hold metadata at its three-year purge trigger; metadata is not a loophole for
+keeping held content.
+
+Distinguish a **documented binding preservation duty** from a speculative or
+unconfirmed risk. Counsel must identify the duty, covered fields/classes and
+systems, authority, required duration/end condition, and next review/expiry.
+Preserve that scope for the documented binding duration; a seven-day timer is
+not authority to destroy mandatory evidence. Unaffected fields and stores
+continue their normal deletion schedules. A suspected duty, open case,
+requester preference, or unresolved counsel question is not that documentation.
+
+For unconfirmed risk, the proposed operational interval is **one nonrenewable
+seven-calendar-day interval from the ORIGINAL hold expiry or metadata purge
+trigger**, not from detection, escalation, assignment, review, or reopening.
+Record the original trigger timestamp and time zone and the resulting deadline
+at once. Late discovery does not restart the clock; if the deadline has passed,
+no interim interval remains. This proposal is not itself lawful-basis or
+retention authority.
+
+- **Preactivation disposition gate:** Cyrus and qualified counsel must approve
+  an executable, scope-specific disposition covering the deadline, including
+  the no-fresh-decision case, before the affected route or this interval may
+  operate. Record authority, basis, exact scope, duration/end condition, owner,
+  decision reference, execution deadline, and propagation/backup obligations.
+  They must resolve whether the covered scope can lawfully be deleted or must
+  be preserved under documented authority. Agents may not select either
+  outcome. This decision is unresolved in #155; no interim storage is enabled
+  by AMEND or documentation merge.
+- **During an authorized interval:** isolate only the approved disputed scope;
+  add no new data or derived copies and prohibit ordinary reuse. Record
+  content-free access logs and require two named custodians for any access.
+  Escalate immediately, not at the end of the interval, with the original
+  deadline and the specific unresolved question.
+- **By the seven-day deadline:** execute the preauthorized disposition or a
+  recorded scope-specific counsel-authorized preservation decision with its
+  binding authority or confirmed basis, duration/end condition, next review,
+  and expiry. Any continued preservation must have that documented authority;
+  it is not a renewal of the interim interval.
+- **Absent, invalid, expired, or differently scoped decision:** block route
+  activation/release, collection, publication, and discretionary processing;
+  escalate again at the deadline to Cyrus, the accountable owner, and qualified
+  counsel as a blocking incident. No second interval, clock reset, weekly
+  reporting fallback, or agent-managed frozen-content store is authorized.
+  Missed decisions block release; they do not renew retention or authorize
+  automatic destruction. A binding duty already documented remains protected.
+  If an existing incident has no applicable authorized disposition, it is a
+  genuine human/counsel decision blocker, not an executable agent retention
+  policy. Resolve that disposition through the authorized incident process
+  before resuming the affected route; do not claim lawful deletion, lawful
+  continued storage, or completion from this proposal.
+
+The specific outstanding decision is the lawful, executable disposition at the
+original trigger plus seven calendar days for scope with no documented binding
+duty and no fresh counsel decision. Neither silent preservation nor timer-based
+destruction is selected here. Until Cyrus and qualified counsel resolve it and
+the implementation proves enforcement, this procedure remains Proposed and
+the affected route remains disabled.
+
+Partial deletion proceeds for all unaffected fields and stores. Release records
+must evidence held-scope purge/disassociation, derived-copy reconciliation, and
+remaining backup expiry; no completion claim while propagation is unresolved.
+Rights responses use verified entitlement and safe reason categories, identify
+partial or delayed results and review/appeal routes where permitted, and never
+expose another person, privileged advice, held content, or record existence to
+an unverified requester. Silence or timeout cannot release a conflict for the
+submitter.
 
 Reopening a case does not reset age silently. It creates a new activity event
 and documented continuing need. One owner-approved renewed-need extension may
@@ -414,9 +585,9 @@ unretractable copies without reproducing them.
 | Private content is published or remains public after withdrawal | Critical | Separate exact-draft consent, immediate revalidation, least-privilege publisher, removal runbook, copy-limit warning | Medium/high because independent copies cannot be guaranteed; explicit residual-risk acceptance required |
 | Contact, tracking, and case data become linkable profiles | High | Separate stores/keys, source-scoped references, no user timelines or cross-product joins, short schedules | Low/medium |
 | Abuse controls create inaccessible or discriminatory denial | Medium/high | Coarse purpose-limited signals, accessible alternative, human appeal, no cross-site profile, error monitoring | Medium; Guinan and Data review |
-| Vendor terms conflict with deletion, role, transfer, or reuse limits | High | Provider inventory, contract and subprocessor gate, deletion/incident evidence, stop on drift | Unaccepted until provider package |
+| Vendor terms or access paths conflict with deletion, role, transfer, or reuse limits | High | Exact-flow recipient/transfer register including hosting, remote access, backups, subprocessors, and independent GitHub; counsel scope/validity evidence; fail closed on missing, expired, or changed evidence | Unaccepted until operator/jurisdiction, counsel, and provider package decisions; policy text is not deployed evidence |
 | Backups or derived stores resurrect deleted content | High | 35-day maximum, tombstone replay before restore availability, propagation ledger and drill | Medium; implementation evidence required |
-| Holds become indefinite shadow retention | High | Exact scope, separation, owner, 90-day review, end condition, partial deletion | Low/medium with counsel oversight |
+| Holds become indefinite shadow retention or timers destroy legally required evidence | High | Separate minimized hold inventory, conditional basis, scoped content isolation, 90-day affirmative review/renewal, bounded metadata trigger, partial deletion, restricted overdue escalation, counsel-authorized exceptions | Unaccepted until counsel confirms exceptions and implementation proves expiry, release, and safe rights responses |
 
 The assessment is proportionate to a voluntary, low-volume feedback route with
 unstructured text and possible public disclosure. Reassess before attachments,
@@ -461,14 +632,45 @@ Activation requires tests and a controlled exercise proving:
     controlled content without public reproduction, preserves only minimized
     private evidence, triggers notification/legal assessment, seeks available
     cache removal, and records unretractable copies.
-11. Retention jobs purge each class at its trigger, holds preserve only their
-    exact scope, 90-day hold review is enforced, and metrics suppress a bucket
-    that falls below the approved threshold after deletion.
+11. Retention jobs purge each class at its trigger, hold metadata and content
+    have separate inventories/access/schedules, 90-day review and affirmative
+    renewal are enforced, and unaffected fields still delete. Expired
+    discretionary holds purge overdue content; an identified preservation duty
+    cannot be destroyed by timer expiry. Metadata purges at its three-year
+    trigger unless an authorized, reviewed counsel exception applies; silence
+    never renews either record. Prove the single seven-calendar-day deadline
+    from the original expiry/purge trigger, including late discovery,
+    metadata expiry, reopening, and time-zone boundaries; none resets the
+    clock. Missing, expired, or differently scoped disposition authority
+    prevents activation and interval use. Exercise immediate and deadline
+    escalation, execution of the preauthorized no-fresh-decision disposition,
+    and counsel-authorized binding preservation with exact scope/duration.
+    A missed decision blocks release, not autorenewal; neither an indefinite
+    frozen store nor destruction of mandatory evidence is a passing fallback.
+    These are required future exercises, not evidence already produced.
+    Overdue preservation, partial deletion, propagation, and safe rights/appeal
+    responses have negative evidence.
+    Metrics suppress a bucket below the approved threshold after deletion.
 12. Processor failure, deletion failure, provider-term drift, missing
     subprocessor information, or unknown residency blocks the affected route
     rather than silently retaining or disclosing data.
+13. Missing/invalid/expired/overdue or differently scoped transfer evidence,
+    changed recipient/role/country/terms, remote access, backup/restore paths,
+    or onward subprocessors blocks affected egress and retries. Exercise
+    GitHub's independent transfer gate even with valid publication consent;
+    residency or vendor branding alone cannot pass. Restricted remediation
+    cannot disclose to another unapproved recipient, and restart requires
+    fresh scope-matched evidence and explicit authorization. A private
+    self-host-to-Jamula transfer remains disabled and cannot be enabled by
+    publication consent or a processor-register entry.
 
 ## Review and decision record
+
+### Historical specialist verdicts — original v1 proposal
+
+These are the recorded recommendations carried forward from the original
+proposal associated with PR #172, not fresh acceptance of v1.1 or evidence that
+its implementation gates passed. Preserve them as historical context only.
 
 | Role | Required recorded result |
 | --- | --- |
@@ -476,9 +678,29 @@ Activation requires tests and a controlled exercise proving:
 | Sarek, Legal Lead | **Approve with incorporated amendments.** Role allocations remain deployment-specific; processor terms, GitHub's then-current role/terms, applicable rights and deadlines, lawful bases, periods, transfers, notification, and holds require counsel confirmation. |
 | Tuvok, Security Reviewer | **Approve with incorporated amendments.** Activation requires evidence for atomic restriction, replay-resistant proof, anti-enumeration, publisher authorization, least privilege, idempotent deletion reconciliation, and the publisher kill switch. |
 | Guinan, Workflow Reviewer | **Approve with incorporated amendments.** Activation requires comprehensible accountless/non-user routes, accessible proof alternatives, consequence-free refusal, specific outcome language, and private appeal. |
-| Data, Testability Reviewer | **Approve with incorporated amendments.** All twelve scenarios and the version-set consistency checks are release-blocking; unknown fields and evidence gaps fail closed. |
-| Cyrus Jamula, Decision Authority | **Pending:** record `approve`, `amend`, or `reject` with date and any conditions in issue #155. |
+| Data, Testability Reviewer | **Approve with incorporated amendments.** All twelve original scenarios and the version-set consistency checks were release-blocking; unknown fields and evidence gaps fail closed. |
+
+### Current v1.1 decision and review state
+
+- **Cyrus Jamula:** explicit human **AMEND**, 2026-10-10, authorizes revision
+  only. Approval of this exact revised package remains **pending**.
+- **Deanna Troi:** scoped amendment prepared; no fresh approval verdict implied.
+- **Rejected revisions:** Data rejected original head `49f07d8` and second
+  author Sarek's head `7b2be3342f90b57334d23172d323dfa75fad5bff` because recurring
+  reviews and the fourteen-day/weekly frozen-content fallback still allowed
+  indefinite retention. Deanna and Sarek are locked out of this revision.
+- **Independent third author:** Picard drafted this governance/evidence gate
+  without locked-author advice or contribution. Fresh exact-head Data review
+  is required; prior verdicts do not accept this revision.
+- **Post-deadline disposition:** unresolved human/qualified-counsel
+  preactivation decision in open #155; no legal conclusion supplied here.
+- **Sarek/counsel, Tuvok, Guinan, and Data:** review of v1.1, its notice, and
+  thirteen implementation/negative-evidence scenarios remains **pending**.
+- Record a new explicit approve/amend/reject disposition bound to v1.1 and its
+  exact hash in the linked decision record; #155's earlier closed state is historical,
+  not an approval. Counsel confirmation and separate activation remain required.
 
 Issue closure, label changes, PR merge, or specialist approval do not approve
-this package. Only Cyrus's explicit recorded decision does. Until then, all
+this package. Only Cyrus's explicit recorded approval does; AMEND is not that
+approval. Until then, all
 feedback collection and publication described here remain future/gated.

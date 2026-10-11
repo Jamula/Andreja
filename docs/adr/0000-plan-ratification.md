@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `2e342eea842d6f296b2c2e105b53e7f8ca70f1fa46d1637efa616e9c99a0e37e`
+- **Current proposed Plan SHA-256:** `6c0ca695251307e1a3918c14e7556063c892f1bb3ce560aab4f4c21a5e870a33`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -521,3 +521,47 @@ not match the merged `docs/plan.md`.
   authentication, network/model call, content exposure, spend, canary,
   deployment, publication, merge, or launch. The plan remains pending
   re-ratification under this ADR's two-hash policy.
+
+### 2026-10-10 — human AMEND of proposed feedback transfer and hold-record policy
+
+- **Tracking issue:** [#155](https://github.com/Jamula/Andreja/issues/155), formerly closed
+  through merged source PR [#172](https://github.com/Jamula/Andreja/pull/172)
+  without human policy approval; reopened for the exact policy decision
+- **Pull request:** [#193](https://github.com/Jamula/Andreja/pull/193); #172 is
+  historical source evidence, not review of the revised package.
+- **Human direction:** Cyrus Jamula, 2026-10-10, “AMEND and proceed” after
+  “AMEND feedback-privacy-v1: resolve transfer and hold-record policy before
+  approval”; amendment authorization only, not approval or counsel signoff.
+- **Decision / notice versions:** `feedback-privacy-v1.1` /
+  `feedback-notice-v1.1`
+- **Revised package LF-normalized SHA-256:**
+  `d50dbd302c7ed139ee2acbf6e7923e72198c3f217dc46abc00c81818c49bb34e`
+- **Superseded v1 package LF-normalized SHA-256:**
+  `60b331d01c7412ddec29914299d8dab8437729565bb581999b844f7a02bf452d`
+- **Plan SHA-256:** `6c0ca695251307e1a3918c14e7556063c892f1bb3ce560aab4f4c21a5e870a33`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed policy/status amendment authorized for revision
+  only; no plan re-ratification, privacy approval, counsel signoff, collection,
+  publication, provider, spend, deployment, activation, launch, support
+  commitment, or phase exit is authorized.
+- **Scope:** Define exact-flow recipient/transfer evidence and fail-closed
+  handling for hosting, remote access, backups, subprocessors, and independent
+  GitHub transfers; keep the undefined private self-host-to-Jamula transfer
+  channel disabled. Separately inventory minimized hold metadata and held
+  content, conditional purpose/basis, access, review, expiry/affirmative
+  renewal, retention triggers, partial deletion, safe rights responses, and
+  authorized counsel exceptions that do not auto-destroy required evidence.
+  Synchronize the notice, risks, negative-evidence requirements, framework,
+  privacy baseline, and plan hashes. Original specialist verdicts remain
+  historical; review and approval of this exact revision remain pending.
+  Preserve the accepted plan hash, all unrelated pending amendment decisions,
+  and #104 merge gates unchanged.
+- **Independent third-author retention amendment:** Picard replaces the
+  rejected indefinite fallback with one nonrenewable seven-calendar-day
+  interval from original hold expiry or metadata purge trigger, immediate and
+  deadline escalation, and documented scope-specific counsel authority and
+  duration for continuation. Binding duties remain protected. The lawful
+  post-deadline disposition is an unresolved human/qualified-counsel
+  preactivation gate in #155, not delegated to agents or presumed from merge.
+  Fresh exact-head Data review is required; Deanna and Sarek remain locked out
+  of this revision. This amendment remains Proposed.
