@@ -569,5 +569,15 @@
     "status": "active",
     "createdAt": "2026-10-11T23:47:08.313Z",
     "updatedAt": "2026-10-11T23:47:08.313Z"
+  },
+  {
+    "id": "f937a0b3-7382-4239-b996-41450a934063",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Cyrus confirms all three artifacts as current plan-of-record baseline",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-direct-message-facilitated-by-spock-cyrus-confirms-all-three-artifacts-as-current-plan-of-record-bas-f937a0b3.md",
+    "status": "active",
+    "createdAt": "2026-10-11T23:47:49.239Z",
+    "updatedAt": "2026-10-11T23:47:49.239Z"
   }
 ]
