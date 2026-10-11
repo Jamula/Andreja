@@ -1,0 +1,5 @@
+### 2026-10-11T06-16-07: Keep auto-merge with native review safeguards
+**By:** Jett Reno
+**What:** Keep auto-merge with native review safeguards
+**References:** Jamula/Andreja#104, Jamula/Andreja#115
+**Why:** Cyrus selected option 3 (native-only containment) and explicitly wants auto-merge. Applied to active default-branch ruleset 21199927: require one approving review and require approval of the latest push. Preserved stale-review dismissal, review-thread resolution, the existing four required checks, and zero bypass actors. Repository allow_auto_merge remains true. This does not prove asynchronous Copilot review completion before auto-merge, so the original race-specific acceptance criterion remains unresolved; #104 remains open. No worker, credentials, hosting, spend, or other ruleset changes were authorized.
