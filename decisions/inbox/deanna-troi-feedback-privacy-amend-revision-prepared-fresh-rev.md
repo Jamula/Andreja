@@ -1,0 +1,5 @@
+### 2026-10-11T06-21-59: Feedback privacy AMEND revision prepared; fresh review and human decision pending
+**By:** Deanna Troi
+**What:** Feedback privacy AMEND revision prepared; fresh review and human decision pending
+**References:** https://github.com/Jamula/Andreja/issues/155, https://github.com/Jamula/Andreja/pull/193
+**Why:** Cyrus's AMEND-only directive produced draft https://github.com/Jamula/Andreja/pull/193 at commit 49f07d8be9400fb544b073de8311781bf3460811. Proposed revision feedback-privacy-v1.1 / feedback-notice-v1.1. LF-normalized package SHA-256: 25b21c71590df22c48a3351a3a5af163c4130d63a93bb3b7dc08181ffe673649. Concrete current-text gaps: generic transfer safeguards lacked a defined evidence register; hold records lacked separate inventory/lifecycle rules. Draft adds both and preserves historical verdicts as historical. No new approval, counsel confirmation, or activation authority. Fresh specialist review then human approval/amend/reject remain pending.
