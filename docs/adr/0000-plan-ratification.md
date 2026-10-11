@@ -569,7 +569,7 @@ not match the merged `docs/plan.md`.
 ### 2026-10-11 — proposed conflict-class feedback-routing correction
 
 - **Tracking issue:** [#3](https://github.com/Jamula/Andreja/issues/3)
-- **Pull request:** Pending
+- **Pull request:** [#198](https://github.com/Jamula/Andreja/pull/198) (draft)
 - **Plan SHA-256:** `c3086adee0337bd3d6d92ea777bea873ae50aba1c3de8305768a49aebc32ddc3`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed prerequisite-only routing correction and
