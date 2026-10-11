@@ -33,14 +33,44 @@ not change visibility as part of this runbook; that decision belongs to issue
 configuration state only; it does not read or reproduce secret-scanning
 alerts.
 
-Repository `allow_auto_merge` was found `true` on 2026-09-07, contradicting the
-accepted containment for [#104](https://github.com/Jamula/Andreja/issues/104)
-recorded in `docs/plan.md:134-146`, which requires it `false`. It has been
-reset to `false` as part of this change. Do not re-enable it; see "Serialized
-merge procedure" below.
+The accepted containment for [#104](https://github.com/Jamula/Andreja/issues/104)
+required repository `allow_auto_merge=false` while the issue was open. The
+2026-09-07 runbook recorded that it observed `true` and reset it to `false`.
+Issue #104 closed `NOT_PLANNED` on 2026-10-11; a read-only inspection that day
+observed `allow_auto_merge=true`. The closure neither implements a review gate
+nor ratifies this proposed policy. Preserve the observed `true` setting; this
+documentation changes no repository settings. The repository setting permits
+auto-merge to be enabled on an individual pull request; it does not enable
+auto-merge on any pull request by itself.
 
 The ETag and feature state are observations, not constants. Always read the
 live values before making a decision.
+
+## Proposed ordinary-code sign-off procedure
+
+For ordinary code changes, the proposed manual gate is one explicit, favorable,
+independent sign-off bound to the exact current pull request head:
+
+- an explicit favorable verdict in the current Copilot review content; or
+- a favorable verdict from a team lead separately dispatched for that change,
+  who is not its author.
+
+Copilot's native `COMMENTED` state alone is not a verdict. A review request,
+completion notice, missing comment, stale or unfavorable verdict, or unresolved
+finding is not sign-off. Record the genuine reviewer identity, verdict, pull
+request, and exact head. Every finding and review thread must be resolved, and
+all required checks must pass on that same head, before enabling PR-level
+auto-merge. A new head invalidates sign-off; a newer unfavorable verdict or a
+reopened finding or thread invalidates readiness. After rejection, the original
+author is locked out from revising that artifact; a different agent must own
+the revision.
+
+This proposed procedure is not a native GitHub `APPROVED` review, does not
+require human/native-account approval, and is not enforced by an always-present
+automated gate. The required approval count remains zero. The separate external
+review-gate worker remains blocked and unimplemented. Separate issue-specific
+material-risk, legal, counsel, ratification, spend, activation, and launch gates
+are unaffected and are not satisfied by this code-review sign-off.
 
 ## Inspect without mutation
 
@@ -89,17 +119,16 @@ Merge one pull request at a time while merge queue is disabled:
 4. Resolve every review thread.
 5. Re-read the base SHA immediately before merge. If it changed, update and
    rerun checks.
-6. Squash merge through GitHub only after a human confirms every required
-   rule is satisfied. Never push directly to `main`.
+6. Verify an eligible exact-head sign-off, resolved findings and review
+   threads, and passing required checks on that same head before enabling
+   PR-level auto-merge. Never push directly to `main`.
 7. Confirm the resulting `main` push runs the required workflows.
 
-Do not use auto-merge. The accepted plan's [#104](https://github.com/Jamula/Andreja/issues/104)
-premature-auto-merge race remains open and is currently contained only because
-repository `allow_auto_merge` is `false` (`docs/plan.md:134-146`). Required
-checks can finish before asynchronous review (for example Copilot review)
-completes, and no always-present review-completion gate exists yet. Enabling
-auto-merge would let a pull request merge in that gap. Restoring or leaving
-`allow_auto_merge` enabled is not authorized by this runbook.
+The repository's `allow_auto_merge=true` setting only makes PR-level
+auto-merge available; it does not enable it for a pull request. Under this
+proposal, enable it for a PR only after the sign-off procedure above is
+satisfied. Required checks alone are not review sign-off, and the procedure
+does not claim automated enforcement.
 
 ## Negative canary
 

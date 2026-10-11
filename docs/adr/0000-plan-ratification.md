@@ -586,7 +586,7 @@ not match the merged `docs/plan.md`.
 ### 2026-10-11 — proposed agent sign-off policy reconciliation
 
 - **Tracking issue:** None; user-directed documentation reconciliation.
-- **Pull request:** pending
+- **Pull request:** [#200](https://github.com/Jamula/Andreja/pull/200) (draft)
 - **Plan SHA-256:** `9ef275df708b154489627e71b2677497aee0b26d47791af9e58535d67c5efae8`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed ordinary code-review process amendment; no
