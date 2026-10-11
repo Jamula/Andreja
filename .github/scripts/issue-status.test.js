@@ -13,6 +13,7 @@ const {
   resolveEvent,
 } = require('./issue-status');
 const {
+  LABELS,
   branchNamesByIssue,
   closingIssueNumbers,
   expandPullRequestPromotions,
@@ -23,6 +24,10 @@ const {
   pullRequestIssueNumbers,
   pullRequestNumbersFromTimeline,
   linkedPullRequestNumbers,
+  markLandedOnDefaultBranch,
+  markVerifiedPromotions,
+  normalizePullRequest,
+  run,
   selectPullRequestsForIssue,
   targetIssueNumbers,
   updateBranchEvidence,
@@ -489,6 +494,7 @@ test('stack promotion follows a merged base branch to the default branch', () =>
     baseRef: 'stack/integration',
     headRef: 'stack/layer',
     headRepository: 'Jamula/Andreja',
+    mergeCommitSha: 'layer',
   };
   const promotion = {
     number: 11,
@@ -498,6 +504,7 @@ test('stack promotion follows a merged base branch to the default branch', () =>
     baseRef: 'main',
     headRef: 'stack/integration',
     headRepository: 'Jamula/Andreja',
+    promotionSourceShas: new Set(['layer']),
   };
   const collision = {
     number: 11,
@@ -530,6 +537,7 @@ test('stack promotion rejects a default merge older than the issue layer', () =>
     baseRef: 'stack/integration',
     headRef: 'stack/layer',
     headRepository: 'Jamula/Andreja',
+    mergeCommitSha: 'layer',
   };
   const stalePromotion = {
     number: 11,
@@ -539,6 +547,7 @@ test('stack promotion rejects a default merge older than the issue layer', () =>
     baseRef: 'main',
     headRef: 'stack/integration',
     headRepository: 'Jamula/Andreja',
+    promotionSourceShas: new Set(['layer']),
   };
 
   assert.deepEqual(
@@ -558,6 +567,7 @@ test('reopening after a stack promotion returns the issue to backlog', () => {
     baseRef: 'stack/integration',
     headRef: 'stack/layer',
     headRepository: 'Jamula/Andreja',
+    mergeCommitSha: 'layer',
   };
   const promotion = {
     number: 11,
@@ -567,6 +577,7 @@ test('reopening after a stack promotion returns the issue to backlog', () => {
     baseRef: 'main',
     headRef: 'stack/integration',
     headRepository: 'Jamula/Andreja',
+    promotionSourceShas: new Set(['layer']),
   };
   const expanded = expandPullRequestPromotions(
     [layer],
@@ -662,3 +673,636 @@ test('write workflow executes only trusted pinned automation with least privileg
     assert.match(reference, /^[0-9a-f]{40}$/);
   }
 });
+
+test('stacked PR merged into a non-default base counts only when its merge commit reached the default branch', async () => {
+  const statuses = { landed: 'ahead', same: 'identical', stray: 'diverged', behind: 'behind' };
+  const compared = [];
+  const github = {
+    rest: { repos: { compareCommitsWithBasehead: async ({ basehead }) => {
+      compared.push(basehead);
+      const sha = basehead.split('...')[0];
+      return { data: { status: statuses[sha] } };
+    } } },
+  };
+  const make = (number, sha, extra = {}) => ({
+    number,
+    state: 'closed',
+    draft: false,
+    merged_at: '2026-08-24T20:00:00Z',
+    base: { ref: 'squad/stack' },
+    head: { ref: `squad/layer-${number}`, repo: { full_name: 'o/r' } },
+    body: 'Closes #70',
+    merge_commit_sha: sha,
+    ...extra,
+  });
+  const rawPullRequests = [
+    make(1, 'landed'), make(2, 'same'), make(3, 'stray'), make(4, 'behind'),
+    make(5, undefined), make(6, 'landed', { merged_at: null }),
+    make(7, 'landed', { base: { ref: 'main' } }),
+  ];
+  const pullRequests = rawPullRequests.map(normalizePullRequest);
+  assert.equal(pullRequests[0].mergeCommitSha, rawPullRequests[0].merge_commit_sha);
+  assert.equal(pullRequests[0].merged, true);
+  assert.equal(pullRequests[5].merged, false);
+  const result = await markLandedOnDefaultBranch({
+    github,
+    context: { repo: { owner: 'o', repo: 'r' } },
+    defaultBranch: 'main',
+    pullRequests,
+  });
+
+  assert.deepEqual(result.map((pr) => pr.baseRef),
+    ['main', 'main', 'squad/stack', 'squad/stack', 'squad/stack', 'squad/stack', 'main']);
+  assert.equal(result[0].originalBaseRef, 'squad/stack');
+  assert.deepEqual(compared, [
+    'landed...main', 'same...main', 'stray...main', 'behind...main',
+  ]);
+  assert.equal(deriveStatus({ pullRequests: [result[0]] }), STATUS.MERGED);
+  assert.equal(deriveStatus({ pullRequests: [result[2]] }), STATUS.BRANCH_ONLY);
+});
+
+test('merge commit comparisons bound deferred requests and deduplicate SHAs', async () => {
+  const pending = [];
+  const compared = [];
+  let active = 0;
+  let peak = 0;
+  const github = {
+    rest: { repos: { compareCommitsWithBasehead: ({ basehead }) => {
+      compared.push(basehead);
+      active += 1;
+      peak = Math.max(peak, active);
+      return new Promise((resolve) => pending.push(() => {
+        active -= 1;
+        resolve({ data: { status: 'ahead' } });
+      }));
+    } } },
+  };
+  const shas = ['one', 'one', 'two', 'three', 'two', 'four'];
+  const resultPromise = markLandedOnDefaultBranch({
+    github,
+    context: { repo: { owner: 'o', repo: 'r' } },
+    defaultBranch: 'main',
+    pullRequests: shas.map((sha, index) => ({
+      number: index + 1, merged: true, baseRef: 'stack/base', mergeCommitSha: sha,
+    })),
+  });
+
+  for (const sha of ['one', 'two', 'three', 'four']) {
+    // Allow continuations to run while the current compare remains deferred.
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(active, 1);
+    assert.equal(pending.length, 1);
+    assert.equal(compared.at(-1), `${sha}...main`);
+    pending.shift()();
+  }
+  const result = await resultPromise;
+  assert.equal(peak, 1);
+  assert.equal(active, 0);
+  assert.deepEqual(compared, ['one...main', 'two...main', 'three...main', 'four...main']);
+  assert.deepEqual(result.map((pr) => pr.baseRef), shas.map(() => 'main'));
+});
+
+test('promotion ancestry requires a recorded head and accepts only ahead or identical', async () => {
+  const compared = [];
+  const layer = {
+    number: 1, merged: true, baseRef: 'stack/base', mergeCommitSha: 'layer',
+  };
+  const candidates = ['ahead', 'identical', 'behind', 'diverged', undefined]
+    .map((headSha, index) => ({
+      number: index + 2, state: 'open', headRef: 'stack/base', headSha,
+      headRepository: 'o/r',
+    }));
+  const result = await markVerifiedPromotions({
+    github: { rest: { repos: { compareCommitsWithBasehead: async ({ basehead }) => {
+      compared.push(basehead);
+      return { data: { status: basehead.split('...')[1] } };
+    } } } },
+    context: { repo: { owner: 'o', repo: 'r' } },
+    defaultBranch: 'main',
+    repositoryFullName: 'o/r',
+    pullRequests: [layer, ...candidates,
+      { ...layer, number: 9, mergeCommitSha: undefined },
+      { ...candidates[0], number: 10, headRepository: 'other/fork' }],
+  });
+  assert.deepEqual(compared,
+    ['layer...ahead', 'layer...identical', 'layer...behind', 'layer...diverged']);
+  assert.deepEqual(result.map((pr) => [...pr.promotionSourceShas]),
+    [[], ['layer'], ['layer'], [], [], [], [], []]);
+  const expanded = expandPullRequestPromotions([result[0]], result, 'main', 'o/r');
+  assert.deepEqual(expanded.map((pr) => pr.number), [1, 2, 3]);
+  assert.equal(deriveStatus({ pullRequests: expanded }), STATUS.READY);
+});
+
+test('promotion comparisons are sequential and deduplicate commit pairs', async () => {
+  const pending = [];
+  const compared = [];
+  let active = 0;
+  let peak = 0;
+  const operation = markVerifiedPromotions({
+    github: { rest: { repos: { compareCommitsWithBasehead: ({ basehead }) => {
+      compared.push(basehead);
+      active += 1;
+      peak = Math.max(peak, active);
+      return new Promise((resolve) => pending.push(() => {
+        active -= 1;
+        resolve({ data: { status: 'ahead' } });
+      }));
+    } } } },
+    context: { repo: { owner: 'o', repo: 'r' } },
+    defaultBranch: 'main',
+    repositoryFullName: 'o/r',
+    pullRequests: [
+      { number: 1, merged: true, baseRef: 'stack/base', mergeCommitSha: 'layer' },
+      ...['one', 'one', 'two'].map((headSha, index) => ({
+        number: index + 2, headRef: 'stack/base', headSha, headRepository: 'o/r',
+      })),
+    ],
+  });
+  for (const head of ['one', 'two']) {
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(active, 1);
+    assert.equal(pending.length, 1);
+    assert.equal(compared.at(-1), `layer...${head}`);
+    pending.shift()();
+  }
+  const result = await operation;
+  assert.equal(peak, 1);
+  assert.equal(active, 0);
+  assert.deepEqual(compared, ['layer...one', 'layer...two']);
+  assert.deepEqual(result.map((pr) => [...pr.promotionSourceShas]),
+    [[], ['layer'], ['layer'], ['layer']]);
+});
+
+test('only the earliest proven default landing promotes a layer across branch reuse', async () => {
+  const pullRequests = [
+    {
+      number: 10, merged: true, mergedAt: '2026-08-24T20:00:00Z',
+      baseRef: 'stack/integration', mergeCommitSha: 'layer',
+    },
+    {
+      number: 13, merged: true, mergedAt: '2026-08-24T22:00:00Z',
+      baseRef: 'stack/integration', mergeCommitSha: 'new-layer',
+    },
+    {
+      number: 11, merged: true, mergedAt: '2026-08-24T21:00:00Z',
+      baseRef: 'main', headRef: 'stack/integration', headSha: 'old-head',
+      headRepository: 'o/r',
+    },
+    {
+      number: 12, merged: true, mergedAt: '2026-08-24T23:00:00Z',
+      baseRef: 'main', headRef: 'stack/integration', headSha: 'later-head',
+      headRepository: 'o/r',
+    },
+  ];
+  const github = {
+    rest: { repos: { compareCommitsWithBasehead: async () =>
+      ({ data: { status: 'ahead' } }) } },
+  };
+  const options = {
+    github,
+    context: { repo: { owner: 'o', repo: 'r' } },
+    defaultBranch: 'main',
+    repositoryFullName: 'o/r',
+  };
+  const forward = await markVerifiedPromotions({
+    ...options, pullRequests,
+  });
+  const reverse = await markVerifiedPromotions({
+    ...options, pullRequests: [...pullRequests].reverse(),
+  });
+
+  for (const result of [forward, reverse]) {
+    assert.deepEqual(
+      Object.fromEntries(result.map((pr) => [
+        pr.number, [...pr.promotionSourceShas],
+      ])),
+      { 10: [], 11: ['layer'], 12: ['new-layer'], 13: [] });
+  }
+});
+
+for (const intermediary of [false, true]) {
+  for (const reuseState of ['open', 'draft', 'closed', 'merged']) {
+    test(`landed stack rejects ${reuseState} ${intermediary ? 'intermediary' : 'default'} branch reuse`, async () => {
+      const pullRequests = [
+        {
+          number: 10, state: 'closed', merged: true,
+          mergedAt: '2026-08-24T19:00:00Z',
+          baseRef: 'stack/integration', headRef: 'stack/layer',
+          headRepository: 'Jamula/Andreja', mergeCommitSha: 'layer',
+          body: 'Closes #70',
+        },
+        {
+          number: 11, state: 'closed', merged: true,
+          mergedAt: '2026-08-24T20:00:00Z',
+          baseRef: 'stack/root', headRef: 'stack/integration',
+          headSha: 'old-middle-head', headRepository: 'Jamula/Andreja',
+          mergeCommitSha: 'old-middle',
+        },
+        {
+          number: 12, state: 'closed', merged: true,
+          mergedAt: '2026-08-24T21:00:00Z',
+          baseRef: 'main', headRef: 'stack/root',
+          headSha: 'old-root-head', headRepository: 'Jamula/Andreja',
+          mergeCommitSha: 'old-root',
+        },
+        {
+          number: 13, state: reuseState === 'open' || reuseState === 'draft'
+            ? 'open' : 'closed',
+          isDraft: reuseState === 'draft', merged: reuseState === 'merged',
+          mergedAt: reuseState === 'merged' ? '2026-08-24T23:00:00Z' : null,
+          baseRef: intermediary ? 'stack/reused-root' : 'main',
+          headRef: 'stack/integration', headSha: 'reused-middle-head',
+          headRepository: 'Jamula/Andreja', mergeCommitSha: 'reused-middle',
+        },
+        ...(intermediary && reuseState === 'merged' ? [{
+          number: 14, state: 'closed', merged: true,
+          mergedAt: '2026-08-25T00:00:00Z',
+          baseRef: 'main', headRef: 'stack/reused-root',
+          headSha: 'reused-root-head', headRepository: 'Jamula/Andreja',
+          mergeCommitSha: 'reused-root',
+        }] : []),
+      ];
+      const ancestors = {
+        main: ['layer', 'old-middle', 'reused-middle'],
+        'old-middle-head': ['layer'],
+        'old-root-head': ['layer', 'old-middle'],
+        'reused-middle-head': ['layer', 'old-middle'],
+        'reused-root-head': ['layer', 'old-middle', 'reused-middle'],
+      };
+      for (const ordered of [pullRequests, [...pullRequests].reverse()]) {
+        const options = {
+          github: { rest: { repos: { compareCommitsWithBasehead: async ({ basehead }) => {
+            const [source, head] = basehead.split('...');
+            return { data: { status: ancestors[head]?.includes(source) ? 'ahead' : 'diverged' } };
+          } } } },
+          context: { repo: { owner: 'Jamula', repo: 'Andreja' } },
+          defaultBranch: 'main',
+          repositoryFullName: 'Jamula/Andreja',
+        };
+        const verified = await markVerifiedPromotions({
+          ...options,
+          pullRequests: await markLandedOnDefaultBranch({ ...options, pullRequests: ordered }),
+        });
+        const expanded = selectPullRequestsForIssue({
+          pullRequests: verified, issueNumber: 70,
+          repository: options.context.repo,
+          repositoryFullName: options.repositoryFullName,
+          defaultBranch: 'main', latestReopenedAt: '2026-08-24T22:00:00Z',
+        });
+        assert.equal(deriveStatus({ pullRequests: expanded }), STATUS.BACKLOG);
+        assert.deepEqual(expanded.map((pr) => pr.number), [10, 11, 12]);
+        const original = selectPullRequestsForIssue({
+          pullRequests: verified, issueNumber: 70,
+          repository: options.context.repo,
+          repositoryFullName: options.repositoryFullName, defaultBranch: 'main',
+        });
+        assert.equal(deriveStatus({ pullRequests: original }), STATUS.MERGED);
+      }
+    });
+  }
+}
+
+for (const intermediary of [false, true]) {
+  for (const state of ['open', 'draft', 'merged']) {
+    test(`first ${intermediary ? 'intermediary' : 'default'} ${state} promotion after reopen remains visible`, async () => {
+      const pullRequests = [
+        {
+          number: 10, state: 'closed', merged: true,
+          mergedAt: '2026-08-24T19:00:00Z',
+          baseRef: 'stack/integration', mergeCommitSha: 'layer',
+          headRepository: 'Jamula/Andreja', body: 'Closes #70',
+        },
+        {
+          number: 11, state: 'closed', merged: true,
+          mergedAt: '2026-08-24T20:00:00Z',
+          baseRef: 'stack/root', headRef: 'stack/integration',
+          headSha: 'middle-head', mergeCommitSha: 'middle',
+          headRepository: 'Jamula/Andreja',
+        },
+        {
+          number: 12, state: state === 'merged' ? 'closed' : 'open',
+          merged: state === 'merged', isDraft: state === 'draft',
+          mergedAt: state === 'merged' ? '2026-08-24T23:00:00Z' : null,
+          baseRef: intermediary ? 'stack/final' : 'main',
+          headRef: 'stack/root', headSha: 'root-head',
+          mergeCommitSha: 'root',
+          headRepository: 'Jamula/Andreja',
+        },
+        ...(intermediary && state === 'merged' ? [{
+          number: 13, state: 'closed', merged: true,
+          mergedAt: '2026-08-25T00:00:00Z',
+          baseRef: 'main', headRef: 'stack/final', headSha: 'final-head',
+          headRepository: 'Jamula/Andreja',
+        }] : []),
+      ];
+      const options = {
+        github: { rest: { repos: { compareCommitsWithBasehead: async ({ basehead }) =>
+          ({ data: { status: basehead.endsWith('...main') && state !== 'merged'
+            ? 'diverged' : 'ahead' } }) } } },
+        context: { repo: { owner: 'Jamula', repo: 'Andreja' } },
+        defaultBranch: 'main', repositoryFullName: 'Jamula/Andreja',
+      };
+      const verified = await markVerifiedPromotions({
+        ...options,
+        pullRequests: await markLandedOnDefaultBranch({ ...options, pullRequests }),
+      });
+      const expanded = selectPullRequestsForIssue({
+        pullRequests: verified, issueNumber: 70, repository: options.context.repo,
+        repositoryFullName: options.repositoryFullName, defaultBranch: 'main',
+        latestReopenedAt: '2026-08-24T22:00:00Z',
+      });
+      assert.deepEqual(expanded.map((pr) => pr.number),
+        intermediary && state === 'merged' ? [10, 11, 12, 13] : [10, 11, 12]);
+      assert.equal(deriveStatus({ pullRequests: expanded }),
+        state === 'merged' ? STATUS.MERGED : state === 'draft' ? STATUS.PR_DRAFT : STATUS.READY);
+    });
+  }
+}
+
+for (const missing of ['headSha', 'mergeCommitSha', 'mergedAt']) {
+  test(`missing ${missing} cannot prove a first transitive landing after reopen`, async () => {
+    const pullRequests = [
+      {
+        number: 10, state: 'closed', merged: true,
+        mergedAt: '2026-08-24T19:00:00Z',
+        baseRef: 'stack/integration', mergeCommitSha: 'layer',
+        headRepository: 'Jamula/Andreja', body: 'Closes #70',
+      },
+      {
+        number: 11, state: 'closed', merged: true,
+        mergedAt: '2026-08-24T20:00:00Z',
+        baseRef: 'stack/root', headRef: 'stack/integration',
+        headSha: 'middle-head', mergeCommitSha: 'middle',
+        headRepository: 'Jamula/Andreja',
+      },
+      {
+        number: 12, state: 'closed', merged: true,
+        mergedAt: '2026-08-24T23:00:00Z',
+        baseRef: 'main', headRef: 'stack/root', headSha: 'root-head',
+        headRepository: 'Jamula/Andreja',
+      },
+    ];
+    delete pullRequests[missing === 'mergeCommitSha' ? 1 : 2][missing];
+    const options = {
+      github: { rest: { repos: { compareCommitsWithBasehead: async () =>
+        ({ data: { status: 'ahead' } }) } } },
+      context: { repo: { owner: 'Jamula', repo: 'Andreja' } },
+      defaultBranch: 'main', repositoryFullName: 'Jamula/Andreja',
+    };
+    const verified = await markVerifiedPromotions({
+      ...options,
+      pullRequests: await markLandedOnDefaultBranch({ ...options, pullRequests }),
+    });
+    const expanded = selectPullRequestsForIssue({
+      pullRequests: verified, issueNumber: 70, repository: options.context.repo,
+      repositoryFullName: options.repositoryFullName, defaultBranch: 'main',
+      latestReopenedAt: '2026-08-24T22:00:00Z',
+    });
+    assert.equal(deriveStatus({ pullRequests: expanded }), STATUS.BACKLOG);
+  });
+}
+
+for (const status of [401, 403, 404, 429, 500, 503, undefined]) {
+  test(`merge commit comparison failure ${status ?? 'network'} aborts reconciliation`, async () => {
+    const error = Object.assign(new Error('comparison unavailable'), { status });
+    let calls = 0;
+    const github = {
+      rest: { repos: { compareCommitsWithBasehead: async () => {
+        calls += 1;
+        throw error;
+      } } },
+    };
+    await assert.rejects(markLandedOnDefaultBranch({
+      github,
+      context: { repo: { owner: 'o', repo: 'r' } },
+      defaultBranch: 'main',
+      pullRequests: ['first', 'second'].map((sha, index) => ({
+        number: index + 1, merged: true, baseRef: 'stack/base', mergeCommitSha: sha,
+      })),
+    }), (actual) => actual === error);
+    assert.equal(calls, 1);
+  });
+  test(`promotion comparison failure ${status ?? 'network'} propagates`, async () => {
+    const error = Object.assign(new Error('comparison unavailable'), { status });
+    let calls = 0;
+    await assert.rejects(markVerifiedPromotions({
+      github: { rest: { repos: { compareCommitsWithBasehead: async () => {
+        calls += 1;
+        throw error;
+      } } } },
+      context: { repo: { owner: 'o', repo: 'r' } },
+      defaultBranch: 'main',
+      repositoryFullName: 'o/r',
+      pullRequests: [
+        { number: 1, merged: true, baseRef: 'stack/base', mergeCommitSha: 'layer' },
+        ...['one', 'two'].map((headSha, index) => ({
+          number: index + 2, headRef: 'stack/base', headSha, headRepository: 'o/r',
+        })),
+      ],
+    }), (actual) => actual === error);
+    assert.equal(calls, 1);
+  });
+}
+
+for (const scenario of ['landed', 'error', 'reused', 'genuine', 'promotion-error']) {
+  const description = {
+    landed: 'maps merge_commit_sha before deriving labels',
+    error: 'aborts label writes on reachability errors',
+    reused: 'old landing plus unrelated post-reopen branch reuse remains backlog',
+    genuine: 'ancestry-proven post-reopen promotion remains merged',
+    'promotion-error': 'aborts label writes on promotion errors',
+  }[scenario];
+  test(`production REST evidence loader: ${description}`, async () => {
+    const comparisonFails = scenario === 'error' || scenario === 'promotion-error';
+    const hasPromotion = ['reused', 'genuine', 'promotion-error'].includes(scenario);
+    const listBranches = Symbol('listBranches');
+    const listPulls = Symbol('listPulls');
+    const listIssues = Symbol('listIssues');
+    const listEvents = Symbol('listEvents');
+    const writes = [];
+    const compared = [];
+    const error = Object.assign(new Error('rate limited'), { status: 403 });
+    const github = {
+      rest: {
+        repos: {
+          listBranches,
+          compareCommitsWithBasehead: async ({ basehead }) => {
+            compared.push(basehead);
+            if (scenario === 'error' ||
+                scenario === 'promotion-error' && basehead.endsWith('...later-head')) {
+              throw error;
+            }
+            return { data: { status:
+              scenario === 'genuine' && basehead.endsWith('...old-head')
+                ? 'diverged' : 'ahead' } };
+          },
+        },
+        pulls: { list: listPulls },
+        issues: {
+          listForRepo: listIssues,
+          listEventsForTimeline: listEvents,
+          getLabel: async ({ name }) => ({
+            data: { color: LABELS[name][0], description: LABELS[name][1] },
+          }),
+          get: async () => ({ data: { number: 70, state: 'open', labels: [] } }),
+          addLabels: async (parameters) => writes.push(parameters),
+          removeLabel: async (parameters) => writes.push(parameters),
+        },
+      },
+      paginate: async (endpoint) => {
+        if (endpoint === listIssues) return [{ number: 70 }];
+        if (endpoint === listPulls) return [{
+          number: 10,
+          state: 'closed',
+          draft: false,
+          merged_at: '2026-08-24T20:00:00Z',
+          base: { ref: 'stack/integration' },
+          head: { ref: 'stack/layer', repo: { full_name: 'Jamula/Andreja' } },
+          body: 'Closes #70',
+          merge_commit_sha: 'raw-rest-merge',
+        }, ...(hasPromotion ? [
+          {
+            number: 11,
+            state: 'closed',
+            merged_at: '2026-08-24T21:00:00Z',
+            base: { ref: 'main' },
+            head: {
+              ref: 'stack/integration', sha: 'old-head',
+              repo: { full_name: 'Jamula/Andreja' },
+            },
+            merge_commit_sha: 'old-landing',
+          },
+          {
+            number: 12,
+            state: 'closed',
+            merged_at: '2026-08-24T23:00:00Z',
+            base: { ref: 'main' },
+            head: {
+              ref: 'stack/integration', sha: 'later-head',
+              repo: { full_name: 'Jamula/Andreja' },
+            },
+            merge_commit_sha: 'later-landing',
+          },
+        ] : [])];
+        if (endpoint === listEvents && hasPromotion) {
+          return [{ event: 'reopened', created_at: '2026-08-24T22:00:00Z' }];
+        }
+        if (endpoint === listBranches || endpoint === listEvents ||
+            typeof endpoint === 'string' && endpoint.endsWith('/blocked_by')) {
+          return [];
+        }
+        assert.fail(`Unexpected pagination endpoint: ${String(endpoint)}`);
+      },
+      graphql: async () => ({
+        repository: { issue: { closedByPullRequestsReferences: { nodes: [] } } },
+      }),
+    };
+    const operation = run({
+      github,
+      context: {
+        eventName: 'schedule',
+        repo: { owner: 'Jamula', repo: 'Andreja' },
+        payload: { repository: {
+          default_branch: 'main',
+          full_name: 'Jamula/Andreja',
+          url: 'https://api.github.com/repos/Jamula/Andreja',
+        } },
+      },
+      core: { info: () => {} },
+    });
+    if (comparisonFails) {
+      await assert.rejects(operation, (actual) => actual === error);
+      assert.deepEqual(writes, []);
+    } else {
+      await operation;
+      assert.equal(writes.length, 1);
+      assert.equal(writes[0].issue_number, 70);
+      assert.deepEqual(writes[0].labels,
+        [scenario === 'reused' ? STATUS.BACKLOG : STATUS.MERGED]);
+    }
+    assert.deepEqual(compared, [
+      'raw-rest-merge...main',
+      ...(hasPromotion ? ['raw-rest-merge...old-head', 'raw-rest-merge...later-head'] : []),
+    ]);
+  });
+}
+
+for (const intermediary of [false, true]) {
+  for (const parentMergedAt of [
+    '2026-08-24T21:00:00Z',
+    '2026-08-24T22:00:00Z',
+    '2026-08-24T23:00:00Z',
+  ]) {
+    test(`reachable ${intermediary ? 'intermediary' : 'direct'} stack parent at ${parentMergedAt} respects reopen`, async () => {
+      const layer = normalizePullRequest({
+        number: 10,
+        state: 'closed',
+        merged_at: '2026-08-24T19:00:00Z',
+        base: { ref: 'stack/integration' },
+        head: { ref: 'stack/layer', repo: { full_name: 'Jamula/Andreja' } },
+        body: 'Closes #70',
+        merge_commit_sha: 'layer',
+      });
+      const middle = {
+        number: 11,
+        state: 'closed',
+        merged: true,
+        mergedAt: '2026-08-24T20:00:00Z',
+        baseRef: 'stack/root',
+        headRef: 'stack/integration',
+        headSha: 'middle-head',
+        headRepository: 'Jamula/Andreja',
+        mergeCommitSha: 'middle',
+      };
+      const parent = {
+        number: 12,
+        state: 'closed',
+        merged: true,
+        mergedAt: parentMergedAt,
+        baseRef: 'main',
+        headRef: intermediary ? 'stack/root' : 'stack/integration',
+        headSha: 'parent-head',
+        headRepository: 'Jamula/Andreja',
+      };
+      const github = {
+        rest: { repos: { compareCommitsWithBasehead: async () =>
+          ({ data: { status: 'ahead' } }) } },
+      };
+      const landedPullRequests = await markLandedOnDefaultBranch({
+        github,
+        context: { repo: { owner: 'Jamula', repo: 'Andreja' } },
+        defaultBranch: 'main',
+        pullRequests: intermediary ? [layer, middle, parent] : [layer, parent],
+      });
+      const pullRequests = await markVerifiedPromotions({
+        github,
+        context: { repo: { owner: 'Jamula', repo: 'Andreja' } },
+        defaultBranch: 'main',
+        repositoryFullName: 'Jamula/Andreja',
+        pullRequests: landedPullRequests,
+      });
+      assert.equal(pullRequests[0].baseRef, 'main');
+      assert.equal(pullRequests[0].originalBaseRef, 'stack/integration');
+      const expanded = selectPullRequestsForIssue({
+        pullRequests,
+        issueNumber: 70,
+        repository: { owner: 'Jamula', repo: 'Andreja' },
+        repositoryFullName: 'Jamula/Andreja',
+        defaultBranch: 'main',
+        latestReopenedAt: '2026-08-24T22:00:00Z',
+      });
+
+      assert.deepEqual(expanded.map((pr) => pr.number),
+        intermediary ? [10, 11, 12] : [10, 12]);
+      assert.equal(expanded[0].supersededByReopen, true);
+      if (intermediary) {
+        assert.equal(expanded[1].originalBaseRef, 'stack/root');
+        assert.equal(expanded[1].supersededByReopen, true);
+      }
+      assert.equal(expanded.at(-1).supersededByReopen,
+        parentMergedAt <= '2026-08-24T22:00:00Z');
+      assert.equal(deriveStatus({ pullRequests: expanded }),
+        parentMergedAt > '2026-08-24T22:00:00Z' ? STATUS.MERGED : STATUS.BACKLOG);
+    });
+  }
+}

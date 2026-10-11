@@ -113,11 +113,14 @@ function expandPullRequestPromotions(
   const branches = [];
 
   for (const pullRequest of directPullRequests) {
-    if (pullRequest.merged && pullRequest.baseRef !== defaultBranch &&
-        !isSuperseded(pullRequest)) {
+    const baseRef = pullRequest.originalBaseRef || pullRequest.baseRef;
+    // Reopen supersedes a merge, not its stack edge: a later parent can
+    // still promote the issue's implementation after the reopen.
+    if (pullRequest.merged && baseRef !== defaultBranch) {
       branches.push({
-        name: pullRequest.baseRef,
+        name: baseRef,
         after: pullRequest.mergedAt,
+        mergeCommitSha: pullRequest.mergeCommitSha,
       });
     }
   }
@@ -127,6 +130,7 @@ function expandPullRequestPromotions(
     for (const candidate of allPullRequests) {
       if (candidate.headRepository !== repositoryFullName ||
           candidate.headRef !== promotedBranch.name ||
+          !candidate.promotionSourceShas?.has(promotedBranch.mergeCommitSha) ||
           expanded.has(candidate.number)) {
         continue;
       }
@@ -141,10 +145,12 @@ function expandPullRequestPromotions(
         promotesIssue: true,
         supersededByReopen: isSuperseded(candidate),
       });
-      if (candidate.merged && candidate.baseRef !== defaultBranch) {
+      const baseRef = candidate.originalBaseRef || candidate.baseRef;
+      if (candidate.merged && baseRef !== defaultBranch) {
         branches.push({
-          name: candidate.baseRef,
+          name: baseRef,
           after: candidate.mergedAt,
+          mergeCommitSha: candidate.mergeCommitSha,
         });
       }
     }
@@ -294,9 +300,147 @@ function normalizePullRequest(pullRequest) {
     mergedAt: pullRequest.merged_at,
     baseRef: pullRequest.base?.ref,
     headRef: pullRequest.head?.ref,
+    headSha: pullRequest.head?.sha,
     headRepository: pullRequest.head?.repo?.full_name,
     body: pullRequest.body,
+    mergeCommitSha: pullRequest.merge_commit_sha,
   };
+}
+
+// A stacked PR merged into a non-default base can still land on the default
+// branch through the stack. Only verified reachability of its merge commit
+// counts; lookup errors abort reconciliation rather than change lifecycle labels.
+async function markLandedOnDefaultBranch({ github, context, pullRequests, defaultBranch }) {
+  const cache = new Map();
+  const landed = async (sha) => {
+    if (!cache.has(sha)) {
+      const { data } = await github.rest.repos.compareCommitsWithBasehead({
+        ...context.repo,
+        basehead: `${sha}...${defaultBranch}`,
+      });
+      cache.set(sha, data.status === 'ahead' || data.status === 'identical');
+    }
+    return cache.get(sha);
+  };
+
+  const result = [];
+  for (const pullRequest of pullRequests) {
+    if (!pullRequest.merged || !pullRequest.mergeCommitSha ||
+        pullRequest.baseRef === defaultBranch ||
+        !(await landed(pullRequest.mergeCommitSha))) {
+      result.push(pullRequest);
+      continue;
+    }
+    result.push({
+      ...pullRequest,
+      baseRef: defaultBranch,
+      originalBaseRef: pullRequest.baseRef,
+    });
+  }
+  return result;
+}
+
+async function markVerifiedPromotions({
+  github, context, pullRequests, defaultBranch, repositoryFullName,
+}) {
+  const cache = new Map();
+  const result = [];
+  for (const candidate of pullRequests) {
+    const promotionSourceShas = new Set();
+    if (candidate.headRepository === repositoryFullName && candidate.headSha) {
+      for (const layer of pullRequests) {
+        const baseRef = layer.originalBaseRef || layer.baseRef;
+        if (!layer.merged || !layer.mergeCommitSha ||
+            baseRef === defaultBranch || baseRef !== candidate.headRef ||
+            layer.number === candidate.number ||
+            (candidate.merged && (!layer.mergedAt || !candidate.mergedAt ||
+              Date.parse(candidate.mergedAt) < Date.parse(layer.mergedAt)))) {
+          continue;
+        }
+        // The head proves what this PR carries; its merge commit can include
+        // unrelated implementation already present on the destination branch.
+        const basehead = `${layer.mergeCommitSha}...${candidate.headSha}`;
+        if (!cache.has(basehead)) {
+          const { data } = await github.rest.repos.compareCommitsWithBasehead({
+            ...context.repo,
+            basehead,
+          });
+          cache.set(basehead, data.status === 'ahead' || data.status === 'identical');
+        }
+        if (cache.get(basehead)) {
+          promotionSourceShas.add(layer.mergeCommitSha);
+        }
+      }
+    }
+    result.push({ ...candidate, promotionSourceShas });
+  }
+
+  const isNativeDefault = (candidate) =>
+    candidate.baseRef === defaultBranch && !candidate.originalBaseRef;
+  const earliestLandings = new Map();
+  const intermediaries = new Map();
+  const pending = [];
+  const recordLanding = (sha, landing) => {
+    const current = earliestLandings.get(sha);
+    if (!current || landing.mergedAt < current.mergedAt ||
+        (landing.mergedAt === current.mergedAt && landing.number < current.number)) {
+      earliestLandings.set(sha, landing);
+      pending.push(sha);
+    }
+  };
+  for (const candidate of result) {
+    if (!candidate.merged) {
+      continue;
+    }
+    if (!isNativeDefault(candidate)) {
+      if (candidate.mergeCommitSha) {
+        const parents = intermediaries.get(candidate.mergeCommitSha) || [];
+        parents.push(candidate);
+        intermediaries.set(candidate.mergeCommitSha, parents);
+      }
+      continue;
+    }
+    if (!candidate.mergedAt) {
+      continue;
+    }
+    const mergedAt = Date.parse(candidate.mergedAt);
+    if (!Number.isFinite(mergedAt)) {
+      continue;
+    }
+    for (const sha of candidate.promotionSourceShas) {
+      recordLanding(sha, { mergedAt, number: candidate.number });
+    }
+  }
+
+  // Propagate first landings backward through verified merged stack edges.
+  // Reachability-rewritten bases are intermediaries, not timestamped landings.
+  for (let index = 0; index < pending.length; index += 1) {
+    const sha = pending[index];
+    const landing = earliestLandings.get(sha);
+    for (const candidate of intermediaries.get(sha) || []) {
+      for (const source of candidate.promotionSourceShas) {
+        recordLanding(source, landing);
+      }
+    }
+  }
+
+  return result.map((candidate) => {
+    const landing = candidate.merged
+      ? isNativeDefault(candidate)
+        ? { number: candidate.number }
+        : earliestLandings.get(candidate.mergeCommitSha)
+      : null;
+    const promotionSourceShas = new Set([...candidate.promotionSourceShas]
+      .filter((sha) => {
+        const earliest = earliestLandings.get(sha);
+        if (earliest) {
+          return earliest.number === landing?.number;
+        }
+        // Without a proven landing, pending stack promotions remain evidence.
+        return !candidate.merged || !isNativeDefault(candidate);
+      }));
+    return { ...candidate, promotionSourceShas };
+  });
 }
 
 async function loadRepositoryEvidence({ github, context }) {
@@ -316,7 +460,18 @@ async function loadRepositoryEvidence({ github, context }) {
 
   return {
     branchNamesByIssue: branchNamesByIssue(branches.map((branch) => branch.name)),
-    pullRequests: pullRequests.map(normalizePullRequest),
+    pullRequests: await markVerifiedPromotions({
+      github,
+      context,
+      pullRequests: await markLandedOnDefaultBranch({
+        github,
+        context,
+        pullRequests: pullRequests.map(normalizePullRequest),
+        defaultBranch: context.payload.repository.default_branch,
+      }),
+      defaultBranch: context.payload.repository.default_branch,
+      repositoryFullName: context.payload.repository.full_name,
+    }),
   };
 }
 
@@ -657,6 +812,8 @@ module.exports = {
   localGraphqlNumbers,
   latestIssueEventAt,
   linkedPullRequestNumbers,
+  markLandedOnDefaultBranch,
+  markVerifiedPromotions,
   normalizePullRequest,
   paginateGraphqlNumbers,
   pullRequestIssueNumbers,
