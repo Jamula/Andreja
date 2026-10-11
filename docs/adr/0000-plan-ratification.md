@@ -4,8 +4,8 @@
 - **Date:** 2026-08-23
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
-- **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `e2044133f47deba7dcbbd4d931f2ec0e9a866432726d982182617716f7abfad2`
+- **Accepted Plan SHA-256:** `e2044133f47deba7dcbbd4d931f2ec0e9a866432726d982182617716f7abfad2`
+- **Current proposed Plan SHA-256:** `a530ff3a7ee2b55fc5e1bc3ccf59b309ba554590baa19404c886cce5b1387886`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -674,3 +674,43 @@ not match the merged `docs/plan.md`.
   is not human authorization. No implementation, runtime/data collection,
   spend, resources, activation, publication, launch, merge, or Phase 1A exit
   is authorized.
+
+### 2026-10-11 — accepted exact current plan-of-record version
+
+- **Tracking issue:** [#73](https://github.com/Jamula/Andreja/issues/73)
+- **Pull request:** [#202](https://github.com/Jamula/Andreja/pull/202), source
+  for the exact plan version
+- **Plan SHA-256:** `e2044133f47deba7dcbbd4d931f2ec0e9a866432726d982182617716f7abfad2`
+- **Approver:** Cyrus Jamula
+- **Classification:** Accepted exact current plan-of-record version; separate
+  artifacts and gates remain separately governed.
+- **Decision:** Cyrus directly accepted this exact plan hash on
+  [#73](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115249785)
+  and confirmed that the cost, operating, and plan baselines are all approved
+  on [#73](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115264261).
+- **Scope:** This exact `docs/plan.md` version is the plan of record.
+  Historical accepted hash `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
+  remains provenance. The earlier pending status for this exact version is
+  superseded only as to the plan hash and its plan-of-record status.
+  Referenced Proposed artifacts and independent prerequisites remain gated;
+  this decision does not approve the entire impact assessment, accept High
+  residual risks, supply counsel or independent-review evidence, authorize
+  spending, collection, provider activation or launch, or declare Phase 0 exit.
+
+### 2026-10-11 — proposed source-status inventory reconciliation
+
+- **Tracking issue:** [#73](https://github.com/Jamula/Andreja/issues/73)
+- **Pull request:** Pending draft PR creation
+- **Plan SHA-256:** `a530ff3a7ee2b55fc5e1bc3ccf59b309ba554590baa19404c886cce5b1387886`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed source-status and current-hash inventory
+  reconciliation; no substantive plan amendment or re-ratification.
+- **Scope:** Reconcile the current source-status inventory with Cyrus's exact
+  accepted cost-model and operating-model source hashes, retain the accepted
+  plan hash above, and update only current file hashes and directly coupled
+  status/authority wording. The recorded decisions on the three exact
+  baselines remain accepted and are not pending this bookkeeping. Facts/policies
+  separation and a historical plan-delta packet are separate follow-on
+  artifacts, not acceptance prerequisites. This new plan hash is not accepted
+  by the earlier exact-hash decision; it represents this review-only status
+  proposal. No unrelated gate, approval, or authority is changed.

@@ -1,6 +1,15 @@
 # Andreja cost model
 
-- **Status:** Draft for ratification
+- **Status:** Accepted — financial-control framework only, by Cyrus Jamula on
+  2026-10-11 ([decision](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115160981);
+  [confirmed with the other plan-of-record baselines](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115264261))
+- **Accepted source SHA-256 (LF-normalized):**
+  `cf1f9d3a81684cc03478231eeb585f574bfa9b1522da9d4aed858059deb533aa`
+- **Version note:** The decision accepts the exact source hash above. This
+  status annotation does not amend the financial-control framework or authorize
+  a numeric envelope, purchase, account, provider call, cloud provisioning,
+  counsel/legal conclusion, residual-risk acceptance, collection, launch, plan
+  amendment, operating-model acceptance, or Phase 0 exit.
 - **Owner:** Quark (CFO, FinOps and Sustainability Lead)
 - **Issue:** [#11 - Establish burn, usage, and sponsorship controls](https://github.com/Jamula/Andreja/issues/11)
 - **Milestone:** [Phase 0 - Govern and decide](https://github.com/Jamula/Andreja/milestone/1)

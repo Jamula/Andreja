@@ -1,6 +1,16 @@
 # Andreja operating model
 
-- **Status:** Draft for ratification
+- **Status:** Accepted at the exact source version below by Cyrus Jamula on
+  2026-10-11 ([decision](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115232586);
+  [confirmed with the other plan-of-record baselines](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115264261))
+- **Accepted source SHA-256 (LF-normalized):**
+  `ecfa53473cd08972f269a822e0b55e13b5f68bf64f787f11fb474b8be316136d`
+- **Version note:** The decision accepts workstream ownership, handoffs, WIP
+  rules, and the human/agent authority framework as written at that exact hash.
+  This later bookkeeping copy updates status/authority statements and links;
+  facts/policies separation is a later amendment and is not included. Counsel
+  approval, residual-risk acceptance, spending, collection, deployment, launch,
+  and Phase 0 exit remain separately gated.
 - **Owner:** Picard (CEO and Lead/Captain), with Quark (CFO/FinOps)
 - **Issue:** [#14 - Ratify cohesive workstreams and MVP operating model](https://github.com/Jamula/Andreja/issues/14)
 - **Milestone:** [Phase 0 - Govern and decide](https://github.com/Jamula/Andreja/milestone/1)
@@ -12,9 +22,9 @@
 
 ## Authority statement
 
-Upon ratification (see **Status** above), this document will be the
-**authoritative source for workstream ownership**: who is accountable for each
-workstream, its boundaries and interfaces, GitHub ownership, RACI, artifact
+This document is the **authoritative source for workstream ownership**: who is
+accountable for each workstream, its boundaries and interfaces, GitHub
+ownership, RACI, artifact
 gates, handoffs, WIP limits, worktree/stacked-PR parallelism, integration
 ownership, the Customer Zero loop, the protected critical path, delight/urgency
 and stop/de-scope rules, and executive-versus-Cyrus authority.
@@ -24,13 +34,14 @@ scoring, sequencing, or launch: the issue scorecard, portfolio lanes,
 Must/Should/Could/Won't stage scope, and launch-stage evidence gates remain owned
 by [issue #5](https://github.com/Jamula/Andreja/issues/5) and its review-ready
 `docs/frameworks/prioritization-launch.md` (see `docs/plan.md`
-`## Roadmap prioritization and launch framework`). Neither framework has an
-explicit Cyrus ratification record, so `docs/plan.md` remains authoritative
-until that decision is recorded. If ratified, the prioritization framework owns
-**scoring, sequencing, and launch-stage gating**, while this document owns
-**who does the work, how they hand it off, and what authority they hold**.
-Neither document may silently override the other; a conflict is a `type:decision`
-issue, not a unilateral edit.
+`## Roadmap prioritization and launch framework`). That framework remains a
+separate review-ready draft without an explicit Cyrus ratification record, so
+`docs/plan.md` remains authoritative for scoring, sequencing, and launch-stage
+gating. This accepted operating model owns **who does the work, how they hand
+it off, and what authority they hold**. If the prioritization framework is
+separately ratified, it will own **scoring, sequencing, and launch-stage
+gating**. Neither document may silently override the other; a conflict is a
+`type:decision` issue, not a unilateral edit.
 
 ## Scope and non-duplication
 
@@ -346,10 +357,11 @@ creating a second backlog; Scribe logs automatically and never blocks.
   privacy/legal/evidence gates and cannot spend, sign, or publish.
 - **Quark (CFO) — ledger and spend path:** Quark owns the financial-controls
   source of truth (burn/income ledger, budgets, forecast/runway, unit
-  economics — `docs/plan.md` `## Cost and FinOps`; durable artifact pending
-  ratification under [issue #11](https://github.com/Jamula/Andreja/issues/11)
-  as `docs/cost-model.md` and `docs/business/sponsorship-policy.md`). Quark
-  facilitates the per-session Session Close Efficiency Review ledger entry
+  economics — `docs/plan.md` `## Cost and FinOps` and the accepted financial-
+  control framework in `docs/cost-model.md`). The cost-model decision accepts
+  no numeric envelope or spend; `docs/business/sponsorship-policy.md` remains
+  a separate draft under [issue #11](https://github.com/Jamula/Andreja/issues/11).
+  Quark facilitates the per-session Session Close Efficiency Review ledger entry
   (below) and posts aggregate findings to the relevant FinOps/retrospective
   issue. Quark **proposes** budgets and no-go recommendations to Picard and
   Cyrus; Quark cannot spend, sign, commit funds, or accept sponsorship —
@@ -380,8 +392,8 @@ creating a second backlog; Scribe logs automatically and never blocks.
   prompts/responses/personal data out of the ledger; identify failed/repeated
   work and one efficiency improvement; update the relevant FinOps or
   retrospective issue when action is required. Quark facilitates and this
-  ledger is the interim source of truth until `docs/cost-model.md` is ratified
-  under issue #11.
+  ledger reconciles to the accepted financial-control framework in
+  `docs/cost-model.md`; it does not approve any spend or numeric envelope.
 - **Retrospective with Enforcement** runs weekly if no retrospective log exists
   in the last 7 days: what shipped, what didn't, root cause on failures, and
   action items filed as issues (see "Recommended follow-up" below for the
@@ -454,6 +466,8 @@ use `type:chore` plus a link to the retrospective issue for retro-action items.
   issue #10; policy and operational gates require explicit Cyrus decisions in
   issues #155-#158, and closure alone has no approval effect):
   `docs/frameworks/feedback-support.md`.
-- Cost model and sponsorship policy (pending ratification under issue #11):
-  `docs/plan.md` `## Cost and FinOps`; future `docs/cost-model.md` and
+- Financial-control framework (accepted by Cyrus under issue #73; no numeric
+  envelope or spend authority): `docs/cost-model.md`, read with
+  `docs/plan.md` `## Cost and FinOps`.
+- Sponsorship policy (pending ratification under issue #11):
   `docs/business/sponsorship-policy.md`.
