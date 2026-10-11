@@ -325,6 +325,65 @@ public sealed class OpenLoopsApiIntegrationTests
 #endif
 
     [TestMethod]
+    public async Task ConfirmationRetryAfterLostResponseReusesKeyAndNewProposalGetsFreshKey()
+    {
+        using var retryFactory = new OpenLoopsWebApplicationFactory();
+        using var circuit = retryFactory.CreateCircuitApiClient(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid());
+        var api = new LostConfirmationResponseApiClient(circuit.Api);
+        var page = new Home();
+        var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+        typeof(Home).GetProperty("Api", flags)!.SetValue(page, api);
+        var proposalProperty = typeof(Home).GetProperty("Proposal", flags)!;
+        var confirm = typeof(Home).GetMethod("ConfirmAsync", flags)!;
+        var firstProposal = Assert.IsInstanceOfType<TaskProposalDto>(
+            (await api.ProposeAsync("Renew the library card")).Proposal);
+        proposalProperty.SetValue(page, firstProposal);
+
+        async Task ConfirmFromPageAsync() =>
+            await (Task)confirm.Invoke(page, null)!;
+
+        await ConfirmFromPageAsync();
+
+        Assert.AreEqual(firstProposal.Id, ((TaskProposalDto)proposalProperty.GetValue(page)!).Id);
+        Assert.AreEqual(
+            "The confirmation result is unknown. Retry this same confirmation safely.",
+            typeof(Home).GetProperty("ErrorMessage", flags)!.GetValue(page));
+        Assert.ContainsSingle(await circuit.Api.ListAsync());
+        Assert.AreEqual("Applied", api.ConfirmationOutcomes[0]);
+
+        await ConfirmFromPageAsync();
+
+        Assert.AreEqual(api.ConfirmationKeys[0], api.ConfirmationKeys[1]);
+        Assert.AreEqual("IdempotentReplay", api.ConfirmationOutcomes[1]);
+        Assert.IsNull(proposalProperty.GetValue(page));
+        Assert.AreEqual(
+            "That confirmation was already applied. No duplicate task was created.",
+            typeof(Home).GetProperty("StatusMessage", flags)!.GetValue(page));
+
+        var secondProposal = Assert.IsInstanceOfType<TaskProposalDto>(
+            (await api.ProposeAsync("Renew the library card")).Proposal);
+        proposalProperty.SetValue(page, secondProposal);
+        await ConfirmFromPageAsync();
+
+        Assert.AreNotEqual(api.ConfirmationKeys[1], api.ConfirmationKeys[2]);
+        Assert.AreEqual("Applied", api.ConfirmationOutcomes[2]);
+        var tasks = await circuit.Api.ListAsync();
+        Assert.AreEqual(2, tasks.Count);
+        Assert.AreNotEqual(tasks[0].Id, tasks[1].Id);
+
+        foreach (var task in tasks)
+        {
+            await circuit.Api.DeleteAsync(
+                task.Id,
+                task.Version,
+                $"confirmation-retry-cleanup-{Guid.NewGuid():N}");
+        }
+    }
+
+    [TestMethod]
     public async Task ActualDiTypedClientsKeepConcurrentCircuitIdentitiesIsolated()
     {
         Assert.IsNull(new HttpContextAccessor().HttpContext);
@@ -406,7 +465,7 @@ public sealed class OpenLoopsApiIntegrationTests
 
         Assert.IsTrue((bool)typeof(Home).GetProperty("Loaded", flags)!.GetValue(page)!);
         Assert.AreEqual(
-            "Andreja could not reach the task API. Nothing was changed.",
+            "Andreja could not reach the task API. Check your connection and try again.",
             typeof(Home).GetProperty("ErrorMessage", flags)!.GetValue(page));
     }
 
@@ -660,6 +719,66 @@ public sealed class OpenLoopsApiIntegrationTests
             OpenLoopsServiceCollectionExtensions.CreateSameOriginHandler(
                 productionEnvironment);
         Assert.IsNull(productionHandler.ServerCertificateCustomValidationCallback);
+    }
+
+    private sealed class LostConfirmationResponseApiClient(IOpenLoopsApiClient inner)
+        : IOpenLoopsApiClient
+    {
+        public List<string> ConfirmationKeys { get; } = [];
+
+        public List<string> ConfirmationOutcomes { get; } = [];
+
+        public Task<IReadOnlyList<TaskDto>> ListAsync(
+            CancellationToken cancellationToken = default) =>
+            inner.ListAsync(cancellationToken);
+
+        public Task<AssistantProviderDto> GetProviderAsync(
+            CancellationToken cancellationToken = default) =>
+            inner.GetProviderAsync(cancellationToken);
+
+        public Task<AssistantTaskResponse> ProposeAsync(
+            string message,
+            CancellationToken cancellationToken = default) =>
+            inner.ProposeAsync(message, cancellationToken);
+
+        public async Task<ProposalOutcomeDto> ConfirmAsync(
+            Guid proposalId,
+            long expectedVersion,
+            string idempotencyKey,
+            CancellationToken cancellationToken = default)
+        {
+            ConfirmationKeys.Add(idempotencyKey);
+            var result = await inner.ConfirmAsync(
+                proposalId,
+                expectedVersion,
+                idempotencyKey,
+                cancellationToken);
+            ConfirmationOutcomes.Add(result.Outcome);
+            if (ConfirmationKeys.Count == 1)
+            {
+                throw new HttpRequestException("Simulated lost confirmation response.");
+            }
+
+            return result;
+        }
+
+        public Task<TaskMutationOutcomeDto> CompleteAsync(
+            Guid taskId,
+            long expectedVersion,
+            string idempotencyKey,
+            CancellationToken cancellationToken = default) =>
+            inner.CompleteAsync(taskId, expectedVersion, idempotencyKey, cancellationToken);
+
+        public Task<TaskMutationOutcomeDto> DeleteAsync(
+            Guid taskId,
+            long expectedVersion,
+            string idempotencyKey,
+            CancellationToken cancellationToken = default) =>
+            inner.DeleteAsync(taskId, expectedVersion, idempotencyKey, cancellationToken);
+
+        public Task<TaskExportDto> ExportAsync(
+            CancellationToken cancellationToken = default) =>
+            inner.ExportAsync(cancellationToken);
     }
 }
 
