@@ -276,11 +276,12 @@ input. Bracketed values are release-blocking configuration, not optional text.
 > minimized hold-decision metadata is kept for three years after final release
 > or deletion resolution, whichever is later, unless a reviewed, authorized
 > legal exception requires longer. Unconfirmed preservation questions do not
-> renew a hold: the proposed interim interval is one nonrenewable seven-calendar-
-> day interval from the original expiry or metadata purge trigger. Continued
+> renew a hold: any authorized interim interval is one nonrenewable
+> seven-calendar-day interval from the original expiry or metadata purge
+> trigger. [Approved scope-specific post-deadline disposition and outcome]
+> applies when no fresh decision is recorded. Continued
 > preservation requires documented scope-specific counsel authority and
-> duration. Binding preservation duties remain protected; the operator must
-> resolve lawful post-deadline disposition before activating this route.
+> duration. Binding preservation duties remain protected.
 > We will explain the permitted partial
 > result and appeal route without exposing other people or protected evidence.
 >

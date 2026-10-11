@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `58c1791fce5987b5ed2aefbeab6544cc8348b2e10fe477e3fcd4042fa6ad5712`
+- **Current proposed Plan SHA-256:** `6c0ca695251307e1a3918c14e7556063c892f1bb3ce560aab4f4c21a5e870a33`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -535,10 +535,10 @@ not match the merged `docs/plan.md`.
 - **Decision / notice versions:** `feedback-privacy-v1.1` /
   `feedback-notice-v1.1`
 - **Revised package LF-normalized SHA-256:**
-  `5cd193f558b0704bc8a155d1129ece5043c487203084db307f0e954fe7956496`
+  `d50dbd302c7ed139ee2acbf6e7923e72198c3f217dc46abc00c81818c49bb34e`
 - **Superseded v1 package LF-normalized SHA-256:**
   `60b331d01c7412ddec29914299d8dab8437729565bb581999b844f7a02bf452d`
-- **Plan SHA-256:** `58c1791fce5987b5ed2aefbeab6544cc8348b2e10fe477e3fcd4042fa6ad5712`
+- **Plan SHA-256:** `6c0ca695251307e1a3918c14e7556063c892f1bb3ce560aab4f4c21a5e870a33`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed policy/status amendment authorized for revision
   only; no plan re-ratification, privacy approval, counsel signoff, collection,
