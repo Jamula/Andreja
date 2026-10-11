@@ -428,5 +428,15 @@
     "status": "active",
     "createdAt": "2026-10-11T16:37:07.047Z",
     "updatedAt": "2026-10-11T16:37:07.047Z"
+  },
+  {
+    "id": "3d37128d-4901-4b7f-a130-7310ed72a983",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "PR200 rejection and independent reassignment",
+    "path": ".squad\\decisions\\inbox\\squad-coordinator-pr200-rejection-and-independent-reassignment-3d37128d.md",
+    "status": "active",
+    "createdAt": "2026-10-11T16:57:57.575Z",
+    "updatedAt": "2026-10-11T16:57:57.575Z"
   }
 ]
