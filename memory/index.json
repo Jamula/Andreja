@@ -328,5 +328,15 @@
     "status": "active",
     "createdAt": "2026-10-11T06:17:27.136Z",
     "updatedAt": "2026-10-11T06:17:27.136Z"
+  },
+  {
+    "id": "15fc7576-4fa4-41fe-81db-f7d25ba592df",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Open pull requests early",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-open-pull-requests-early-15fc7576.md",
+    "status": "active",
+    "createdAt": "2026-10-11T06:18:54.567Z",
+    "updatedAt": "2026-10-11T06:18:54.567Z"
   }
 ]
