@@ -95,16 +95,42 @@ cross-region behavior remain subject to #155/#156 and Cyrus's decision.
 ```mermaid
 flowchart LR
   PUB[Public/help origin] -->|tenant-less| PI[Public intake API]
-  PI --> PS[Public case/contact/receipt stores]
-  PI --> PQ[Public queue: feedbackId + safe correlation only]
+  PI --> PV[Public validation and abuse controls]
+  PV --> PIC[Public incident classification]
+  PIC -->|incident content, restricted path only| PIS[Public restricted incident store]
+  PIC -->|ordinary| PSC[Public privacy and high-risk screen]
+  PSC -->|uncertain or unsafe| PZ[Public restricted quarantine store]
+  PSC -->|ordinary case| PS[Public private case store]
+  PSC -->|receipt state| PTR[Public tracking store]
+  PSC -->|optional follow-up only| PCV[Public separate contact vault]
+  PIS --> PIR[Public restricted incident responders]
+  PIS -.->|opaque incidentRef + source class only; no content or authority| PIO[Public restricted incident owner notification]
+  PIC -.->|opaque incidentRef only; no content or authority| PT[Public least-privilege triage]
+  PI -->|same safe, non-enumerating acknowledgment| PUB
+  PS --> PQ[Public queue: feedbackId + safe correlation only]
   PQ --> PW[Public worker]
-  PW --> PT[Public least-privilege triage]
+  PW -->|feedbackId lookup only| PS
+  PTR --> PSR[Public safe status/recovery route]
+  PSR --> PUB
 
   APP[Authenticated app origin] -->|server-derived tenant| AI[Authenticated intake API]
-  AI --> AS[Authenticated case/contact/receipt stores]
-  AI --> AQ[Authenticated queue: feedbackId + safe correlation only]
+  AI --> AV[Validate session and derive tenant]
+  AV --> AIC[Authenticated incident classification]
+  AIC -->|incident content, restricted path only| AIS[Authenticated restricted incident store]
+  AIC -->|ordinary| ASC[Authenticated privacy and high-risk screen]
+  ASC -->|uncertain or unsafe| AZ[Authenticated restricted quarantine store]
+  ASC -->|ordinary case| AS[Authenticated private case store]
+  ASC -->|receipt state| ATR[Authenticated tracking store]
+  ASC -->|optional follow-up only| ACV[Authenticated separate contact vault]
+  AIS --> AIR[Authenticated restricted incident responders]
+  AIS -.->|opaque incidentRef + source class only; no content or authority| AIO[Authenticated restricted incident owner notification]
+  AIC -.->|opaque incidentRef only; no content or authority| AT[Authorized tenant triage]
+  AI -->|safe, non-enumerating acknowledgment| APP
+  AS --> AQ[Authenticated queue: feedbackId + safe correlation only]
   AQ --> AW[Authenticated worker]
-  AW --> AT[Authorized tenant triage]
+  AW -->|authorized feedbackId lookup only| AS
+  ATR --> ASR[Authenticated safe status/recovery route]
+  ASR --> APP
 
   PT -->|approved, minimized send intent| PEA[Public outbound-only email adapter]
   AT -->|approved, minimized send intent| AEA[Authenticated outbound-only email adapter]
@@ -123,8 +149,9 @@ Proposed invariants for specialist review:
 
 1. Maintain separately deployed public and authenticated boundaries, with
    separate service identities, credentials, network rules, queues, workers,
-   datastore privileges, access roles, and backup scopes. Do not share a
-   worker, service identity, queue, or privileged operator path across them.
+   datastore privileges, incident/quarantine stores, access roles, and backup
+   scopes. Do not share a worker, service identity, queue, or privileged
+   operator path across them.
    The outbound email adapter, provider credentials, event receiver, and
    delivery-event store are also boundary-specific; neither provider callbacks
    nor internal event state may cross between boundaries.
@@ -426,10 +453,10 @@ field with a specific value and include its source/owner:
 | Provider and account | `[provider]`, `[non-production account/project/subscription ID]`, segregated from production | Account owner, no production credentials/data, billing owner, policy controls and resource quota |
 | Region and network | `[one named provider region]`, isolated project/VPC/subnets, restricted ingress/egress | Residency/transfer review, no cross-region features, firewall and outbound-destination test |
 | API/worker | One immutable OCI digest, one API and one worker per authorized boundary | Release commit+digest, role/identity map, no autoscale, TTL tags/deny-after-expiry |
-| Data stores | Separate case/contact/receipt stores per boundary; no cross-boundary shared identity | Field/classification schema, encryption/key inventory, access log and deletion test; preserve separate contact-vault custody |
+| Data stores | Separate case, tracking/receipt, and contact-vault stores per boundary; no cross-boundary shared identity | Field/classification schema, encryption/key inventory, access log and deletion test; preserve separate contact-vault custody |
 | Queue | One separate queue per boundary; identifiers only | Retention/TTL, max message/size, retry and dead-letter rules from approved #156; purge receipt |
 | Queue-recovery/dead-letter store | If queue-recovery testing is in scope: one isolated store per boundary, synthetic queue metadata only, no case body/contact/verifier; `[authorized maximum records and bytes]`. This is not the privacy-screening quarantine store. | Name the boundary-specific, least-privilege incident role(s) in private authorization; record TTL, access log, purge receipt and any separately allowlisted backup scope. Exclude content-bearing privacy-screening quarantine unless it is separately inventoried and approved under #155/#156; otherwise keep that evidence blocked. |
-| Incident evidence store | If incident-response testing is in scope: one isolated, content-free store per boundary; `[authorized maximum records and bytes]`; no feedback content, contact destination, verifier or credentials | Name boundary-specific incident/security access roles in private authorization, with audited access; record retention/TTL and purge receipt. No backup by default; any backup requires an explicit allowlist, #155 scope and deletion/restore evidence. Otherwise exclude the scenario and keep its evidence blocked. |
+| Incident evidence store | If incident-response testing is in scope: one isolated restricted store per boundary with separately approved fields/classes; staging uses generated synthetic incident fixtures only; `[authorized maximum records and bytes]` | Name boundary-specific responder/security roles in private authorization, with audited access; record retention/TTL, one-way notification fields and purge receipt. No backup by default; any backup requires an explicit allowlist, #155 scope and deletion/restore evidence. Otherwise exclude the scenario and keep its evidence blocked. |
 | Delivery callback ingress and event store | One authenticated callback endpoint and restricted event store per boundary; opaque provider event reference and minimal event class only; `[authorized maximum records and bytes]` | #156-approved callback authentication/replay/deduplication controls, boundary-specific credentials and access roles, retention/TTL, deletion propagation, and purge receipt. No backup by default; an authorized restore test must explicitly allowlist its scope. |
 | Backup | One encrypted same-region snapshot per database, if needed for the authorized restore test | Approved duration under #155, automatic expiry, key recovery, tombstone replay and purge evidence |
 | Sender and DNS | Dedicated non-production child domain(s), exact SPF/DKIM/DMARC record set, and a separate provider sender identity/credential set per boundary | Domain-owner approval, boundary-specific validation and alignment test, recipient restriction, removal plan; no production-domain root changes or shared sender credentials |
@@ -456,7 +483,8 @@ records. A test result that cannot be exercised locally is `Blocked` or
 | Provider outage and acceptance boundary | Stub queue, database, key provider, and each boundary-specific mail adapter independently and in combination, both before and after durable case commit | Before durable commit, return a safe non-enumerating failure and never claim `Received`; after commit, keep the accepted record and approved safe status despite downstream failure. Retries are bounded and idempotent; no silent loss or duplicate transition; no unapproved response stub is persisted |
 | Public/authenticated isolation | Submit generated requests across both boundaries, including forged tenant/principal fields and cross-boundary callback references | Public intake creates no tenant-plane artifact; authenticated intake derives tenant only from the validated server session. Stores, queues, workers, service identities, callback credentials, event stores, and operator paths remain boundary-specific; no cross-boundary read, write, or event routing |
 | Queue recovery | Pause worker, fill the proposed test queue to its later authorized cap, restart worker, replay a message and deliver the same event twice | No cross-boundary read/write, duplicate lifecycle transition, raw content in queue, or unbounded backlog; if the quarantined/dead-letter path is exercised, use only its separately allowlisted boundary store and roles; result is owner-visible and purgeable |
-| Quarantine and incident evidence | Keep the scenario `Blocked` until #155/#156 and #158 authorize the boundary-specific stores, access roles, record/byte/retention ceilings, and backup scope; then inject synthetic failures and exercise allow/deny, cap, TTL, purge, and (only if allowlisted) restore cases | No case content, contact, verifier, credentials, cross-boundary access or unbounded evidence; access is role-checked and audited; over-cap and unconfigured cases fail closed; deletion and any authorized restore produce scoped receipts |
+| Quarantine and incident evidence | Keep the scenario `Blocked` until #155/#156 and #158 authorize the boundary-specific stores, access roles, record/byte/retention ceilings, and backup scope; then inject synthetic failures and exercise allow/deny, cap, TTL, purge, and (only if allowlisted) restore cases | Only authorized synthetic fixtures enter restricted incident storage; no real case content, contact, verifier, credentials, cross-boundary access or unbounded evidence. Access is role-checked and audited; over-cap and unconfigured cases fail closed; deletion and any authorized restore produce scoped receipts |
+| Incident routing and one-way handoff | Inject a synthetic incident-class request in each boundary and separately fail its restricted incident store and owner-notification path | Restricted responders receive only their authorized scope; ordinary triage gets at most an opaque `incidentRef` and the submitter gets only a safe acknowledgment, never incident content or authority. No fallback to ordinary case/queue triage on store/alert failure; keep the route/evidence blocked and report only a non-enumerating outcome |
 | Delivery reconciliation | Generate accepted, delayed, bounced, complained, suppressed and duplicate email events with fake provider IDs independently in each boundary | Each boundary authenticates its own provider events, deduplicates and maps only minimal status in its own event store; suppression blocks further sends; provider `delivered` never becomes user `Verified`; callback state cannot cross boundaries |
 | Bounce/complaint and non-email recovery | Exercise absent, changed, bounced, complained-about, and suppressed destinations; attempt status, DSR, verification and reopen through the approved non-email route | Suppress further sends as required; do not reveal whether a record or destination exists; preserve safe status and rights access without relying on email. Exact proof, response and appeal behavior remains gated by #155/#156 |
 | Email accessibility | Render equivalent plain-text and accessible HTML messages; exercise challenge and recovery with keyboard and assistive-technology-compatible local fixtures | Meaning and actions are equivalent; challenge, verification and recovery have accessible alternatives; no tracking pixel or inaccessible email-only path. This is a planned check, not a user accessibility result |
