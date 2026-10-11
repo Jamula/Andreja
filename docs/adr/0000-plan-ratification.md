@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `ff82d1fc29a12fa1d5d69b5d87e2ff1504be8a270d03593e4564c6fd10b10fc6`
+- **Current proposed Plan SHA-256:** `f82c91114bb5d72c7610dbe46d1ba625e9b2187e0d91467beb6f690da4d0449a`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -619,3 +619,24 @@ not match the merged `docs/plan.md`.
   challenge of this revision and Cyrus's separate decision remain pending. This
   proposal does not approve policy, legal classification, residual risk,
   runtime/data collection, external activation, spend, launch, or Phase 1A exit.
+
+### 2026-10-11 — proposed independent Phase 0 packet revision
+
+- **Tracking issue:** [#2](https://github.com/Jamula/Andreja/issues/2)
+- **Pull request:** [#202](https://github.com/Jamula/Andreja/pull/202) (draft)
+- **Plan SHA-256:** `f82c91114bb5d72c7610dbe46d1ba625e9b2187e0d91467beb6f690da4d0449a`
+- **Approver:** Cyrus Jamula; **pending**
+- **Revision owner:** Jett Reno, independently of locked-out Spock following
+  Tuvok's challenge at `dc569e201c1cd1af5b8dc408d9315b25337660b2`.
+- **Classification:** Proposed documentation/status-artifact hash refresh;
+  no re-ratification, risk acceptance, or gate closure.
+- **Scope:** Separate current task/device/operator coercive-control risk from
+  future sharing/connector amplification; revise telemetry's unsupported Rare
+  rating to source-grounded Possible and recompute both High tiers and stop
+  links. Map the integrated assessment's open findings to accountable leads,
+  indicators, minimum evidence, and existing pause/remediation conditions.
+  Preserve the BYOK privacy proposal, accepted plan hash, and earlier amendment
+  history. Exact-revision specialist challenge and Cyrus's separate assessment,
+  authorization-boundary, and residual-risk decisions remain pending. The
+  corrected proxy-picker provenance still grants no human authorization,
+  runtime/data collection, activation, spend, launch, or Phase 1A exit.

@@ -2,8 +2,14 @@
 
 - **Status:** Proposed; not approved and not a gate-closing assessment
 - **Prepared by:** Spock, Chief Architect
+- **Independent revision owner:** Jett Reno, Platform/SRE Lead; Spock is locked
+  out of this revision following Tuvok's challenge of PR #202 head
+  `dc569e201c1cd1af5b8dc408d9315b25337660b2`
 - **Tracking:** [Issue #2](https://github.com/Jamula/Andreja/issues/2)
 - **Evidence baseline:** pinned `main` at `142f227e8457a573010a3c333e94e0eda0a8d6ac`
+- **Revision integration base:** `main` at
+  `6e9d06fb9642f724671bffa84bf3bbfcd590aa0d`; original evidence baseline
+  retained above, not replaced with a claim of fresh runtime evidence
 - **Required challenge:** Tuvok (security), Deanna Troi (privacy), Rai (AI safety); pending
 - **Final human decision:** Cyrus; pending
 
@@ -58,6 +64,34 @@ Potentially affected people include:
 | Financial and environmental sustainability | Phase 0 has a $0 cloud-infrastructure cap; the documented external model budget is zero absent separate approval. No spend or environmental measurement is established by this assessment. | `docs/adr/0000-plan-ratification.md`; `docs/phase-1a/byok-security-privacy.md`; `docs/cost-model.md`. High confidence for the written boundaries; no live consumption measurement. | Do not make a paid call or provision resources under this proposal. Any nonzero envelope needs its own explicit human approval and metering. |
 | Stakeholders, incentives, and legal posture | Self-host ownership, provider/operator interests, and affected non-users may diverge. The current evidence does not resolve controller/processor roles, Washington or other jurisdictional applicability, lawful basis, or counsel conclusions. | `docs/charter.md#ethics-and-sustainability-impact-assessment`; `docs/legal/regulatory-applicability.md`. High confidence that no legal conclusion is established here. | Keep legal classification and qualified-counsel review separate. No jurisdiction or team location is treated as legal evidence. |
 | Alternatives and evidence limits | The deterministic local path is the lower-disclosure option for this bounded task flow; the repository documents it as default. No comparative user-outcome or provider-quality study is cited. | `docs/privacy.md#local-provider-and-model-exposure`; test matrix. Medium confidence for relative disclosure; effectiveness comparison is not measured. | Reassess alternatives only with a defined user outcome and evidence; do not treat roadmap inclusion as approval. |
+
+### Proposed accountability and evidence mapping
+
+Each row below maps the corresponding open finding above to an existing
+[threat-model owner and stop](threat-model.md#residual-risks-owners-and-stop-conditions).
+The named lead is accountable for assembling evidence, not authorized to accept
+risk, change runtime behavior, or close a gate. Minimum evidence is **required,
+not supplied by this proposal**; absent evidence stays open. Indicators use
+synthetic tests, reviewed artifacts, or privacy-safe safety reports, not new
+monitoring or collection of people's content.
+
+| Open finding | Accountable lead / existing owner group | Indicator / minimum evidence to resolve the gap | Pause and remediation mapping |
+|---|---|---|---|
+| Human agency and control | Jadzia Dax; Web, Public Site and User Experience, with Core Platform and Trust challenge | Bypassed, misleading, inaccessible, or coerced confirmation. Exact-diff/actor/version/expiry/policy/replay negatives plus human keyboard and assistive-technology review of supported confirmation/error/retry paths; separate coercion review. | Existing confirmation stop: block consequential actions on a failed path, correct the review/binding/accessibility gap, and re-evidence before resumption. Passing lifecycle tests alone do not resolve voluntariness. |
+| Data classes and purpose | Deanna Troi; Trust, Security, Privacy and Legal | New class, purpose, recipient, or inventory mismatch. Reviewed flow-to-inventory map and minimization/access/retention negatives for each changed boundary. | Existing non-user/purpose and unauthorized-activation stops: do not activate the changed flow; correct inventory/policy and obtain required review/decision. |
+| Provider exposure and authorization | T'Pol; Core Platform and Architecture, with Jett Reno/Quark and Deanna Troi | Operator-only enablement, stale recipient/scope disclosure, or calls after revocation. Before external activation: synthetic UI/API evidence of scoped affirmative opt-in, changed recipient/model/purpose/data ceiling/disclosure invalidation, and revocation stopping calls before credential resolution/network I/O; separately reviewed non-user basis. | Existing provider stop: keep endpoint/profile disabled until authorization, disclosure, terms, budget, and revocation are evidenced and required human decisions recorded. This is not a runtime implementation authorization. |
+| Non-user privacy and safety | Deanna Troi; Trust, Security, Privacy and Legal, with Jett Reno/Quark for custody | Sensitive task text, unlocked-device access, operator custody, or credible coercion/stalking; no inferred consent. Synthetic current-task/device/custody abuse scenarios and independent safeguarding review identifying safeguards/gaps; operator-independent access/revocation/export/recovery proof before household features. | Current coercion/operator stop: pause affected use and review safety/custody before resumption. Future household/sharing amplification stays gated. Current High (15) candidate remains unresolved under the High/Critical exit stop. |
+| AI uncertainty, provenance, and misuse | Seven of Nine; Core Platform and Architecture / First-party Skills and Developer Ecosystem | Output treated as authority, unreviewed inference, or provenance loss. Adverse typed-tool/confirmation/purpose fixtures and source/review/correction/retraction evidence for any proposed semantic expansion; live quality evidence remains absent. | Existing direct-mutation/confirmation and sensitive-inference stops: block the affected action/expansion, correct policy/provenance and rerun adverse evidence; contract-only semantics do not authorize deployment. |
+| Fairness, accessibility, and inclusion | Jadzia Dax; Web, Public Site and User Experience, with Data for evidence and Rai for challenge | A supported review path cannot be understood or operated with keyboard/assistive technology, or outcomes differ without explanation. Human supported-path accessibility review with reproducible gaps/remediation, plus representative-user evidence before equal-outcome claims. | Existing inaccessible-confirmation stop blocks affected consequential actions; launch accessibility gate remains open. Correct the affected path and repeat human review; automated markup is not conformance proof. |
+| Security, recovery, and service continuity | Jett Reno; Platform Operations, Hosting and FinOps, with Core Platform and Trust challenge | Recovery/sign-in failure, missing trusted release/rollback proof, isolation failure, or telemetry content. Existing #44 combined encrypted recovery/sign-in, independent-root hosted signature/second-revision rollback, approved numeric objectives, and new-instrumentation negative evidence. | Existing compromise/recovery/release/telemetry stops apply: isolate/contain, rotate where needed, restore/correct and re-evidence. Revised telemetry High (12) and other unresolved High/Critical candidates block release/Phase 1A exit; no canary is counted as an independent preventive barrier. |
+| Financial and environmental sustainability | Quark; Platform Operations, Hosting and FinOps | Unknown/nonzero spend or unmeasured consumption claim. Separate approved numeric envelope and synthetic budget-stop/metering evidence before paid activation; defined measurement boundary before environmental claims. | Existing unknown/unapproved-spend stop: no paid call or provisioning; correct metering/limits and obtain the separate human decision. Phase 0 remains $0 cloud infrastructure. |
+| Stakeholders, incentives, and legal posture | Sarek; Trust, Security, Privacy and Legal | Unresolved affected-person authority, recipient role, jurisdiction, or lawful/ethical purpose. Exact-flow classification with qualified-counsel evidence where required, stakeholder/non-user impact review, and designated human decision. | Existing non-user/purpose stop plus independent plan/legal gates: keep the affected activation gated, reconcile roles/purpose and counsel gaps; neither location nor specialist review substitutes for Cyrus's decision. |
+| Alternatives and evidence limits | Seven of Nine; Core Platform and Architecture | Claimed benefit/quality exceeds the tested local contract or a proposed option adds egress without an evidenced outcome. Defined task outcome and synthetic adverse comparison before efficacy claims; reviewed recipient/data boundary before external comparison. | Existing provider/unauthorized-activation stops: retain the local/default boundary, withdraw unsupported claims, and re-evidence the proposal without activating alternatives. |
+
+Tuvok, Deanna Troi, and Rai must independently challenge this exact revision.
+Cyrus's assessment, authorization-boundary, and residual-risk decisions remain
+separate and pending; these mappings do not convert advisory findings into
+accepted policy or imply human ratification.
 
 ## Proposed BYOK authorization boundary
 
