@@ -521,3 +521,38 @@ not match the merged `docs/plan.md`.
   authentication, network/model call, content exposure, spend, canary,
   deployment, publication, merge, or launch. The plan remains pending
   re-ratification under this ADR's two-hash policy.
+
+### 2026-10-10 — human AMEND of proposed feedback transfer and hold-record policy
+
+- **Tracking issue:** [#155](https://github.com/Jamula/Andreja/issues/155), closed
+  through merged source PR [#172](https://github.com/Jamula/Andreja/pull/172)
+  without human policy approval
+- **Pull request:** Not opened for this scoped amendment; #172 is historical
+  source evidence, not review of the revised package.
+- **Human direction:** Cyrus Jamula, 2026-10-10, “AMEND and proceed” after
+  “AMEND feedback-privacy-v1: resolve transfer and hold-record policy before
+  approval”; amendment authorization only, not approval or counsel signoff.
+- **Decision / notice versions:** `feedback-privacy-v1.1` /
+  `feedback-notice-v1.1`
+- **Revised package LF-normalized SHA-256:**
+  `25b21c71590df22c48a3351a3a5af163c4130d63a93bb3b7dc08181ffe673649`
+- **Superseded v1 package LF-normalized SHA-256:**
+  `60b331d01c7412ddec29914299d8dab8437729565bb581999b844f7a02bf452d`
+- **Plan SHA-256:** `f40a0d25f24f3a0116039b4ef80f94e4ec15c7d14e2f20e46d82f6eea25db4ff`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed policy/status amendment authorized for revision
+  only; no plan re-ratification, privacy approval, counsel signoff, collection,
+  publication, provider, spend, deployment, activation, launch, support
+  commitment, or phase exit is authorized.
+- **Scope:** Define exact-flow recipient/transfer evidence and fail-closed
+  handling for hosting, remote access, backups, subprocessors, and independent
+  GitHub transfers; keep the undefined private self-host-to-Jamula transfer
+  channel disabled. Separately inventory minimized hold metadata and held
+  content, conditional purpose/basis, access, review, expiry/affirmative
+  renewal, retention triggers, partial deletion, safe rights responses, and
+  authorized counsel exceptions that do not auto-destroy required evidence.
+  Synchronize the notice, risks, negative-evidence requirements, framework,
+  privacy baseline, and plan hashes. Original specialist verdicts remain
+  historical; review and approval of this exact revision remain pending.
+  Preserve the accepted plan hash, all unrelated pending amendment decisions,
+  and #104 merge gates unchanged.
