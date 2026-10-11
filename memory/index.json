@@ -368,5 +368,15 @@
     "status": "active",
     "createdAt": "2026-10-11T06:26:38.628Z",
     "updatedAt": "2026-10-11T06:26:38.628Z"
+  },
+  {
+    "id": "35151927-0db0-4b17-a452-89381fa3aea3",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Autonomous merging after gates pass",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-autonomous-merging-after-gates-pass-35151927.md",
+    "status": "active",
+    "createdAt": "2026-10-11T06:27:58.206Z",
+    "updatedAt": "2026-10-11T06:27:58.206Z"
   }
 ]
