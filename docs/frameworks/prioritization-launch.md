@@ -39,9 +39,9 @@ not restate or own it. It does not redefine:
   contains and when it exits; this framework only adds scoring/sequencing/
   evidence-gate mechanics on top.
 - Workstream charters, accountable leads, RACI, artifact gates, handoff
-  format, WIP limits, and worktree/stacked-PR mechanics — those are proposed
-  in `docs/operating-model.md` (issue #14), which remains a draft pending
-  explicit ratification. This framework
+  format, WIP limits, and worktree/stacked-PR mechanics — those are accepted
+  in `docs/operating-model.md` (issue #14) for its exact recorded source
+  version. The later facts/policies separation is not included. This framework
   references workstreams by name for scoring/lane purposes only; see
   [Workstream and issue scorecard](#workstream-and-issue-scorecard) for the
   authority split.
@@ -139,18 +139,20 @@ secondary lane may be noted for cross-cutting work):
 
 ### Workstream ownership authority
 
-Portfolio lanes describe *what* is being built. Proposed workstream charters,
+Portfolio lanes describe *what* is being built. Accepted workstream charters,
 accountable leads, boundaries, RACI, and handoff mechanics are recorded in
 [`docs/operating-model.md`](../operating-model.md#workstream-charters-owners-and-boundaries)
-(issue #14), but neither framework has an explicit Cyrus ratification record.
-They are not restated here to avoid two competing documents for the same fact.
-Until ratification, `docs/plan.md` is authoritative. After explicit
-ratification, the intended authority split is:
+(issue #14); its exact-version decision is recorded on
+[issue #73](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115232586).
+The prioritization framework remains a separate, unratified proposal. The
+operating model is not restated here to avoid two competing documents for the
+same fact. `docs/plan.md` remains authoritative for prioritization until the
+framework is explicitly ratified. The authority split is:
 
-- **This framework (issue #5) will be authoritative for scoring, sequencing, and
-  launch-stage evidence gates** — the issue scorecard, portfolio lanes, and
-  Must/Should/Could/Won't stage scope below.
-- **`docs/operating-model.md` (issue #14) will be authoritative for who does the
+- **This framework (issue #5), if separately ratified, will be authoritative
+  for scoring, sequencing, and launch-stage evidence gates** — the issue
+  scorecard, portfolio lanes, and Must/Should/Could/Won't stage scope below.
+- **`docs/operating-model.md` (issue #14) is authoritative for who does the
   work, how they hand it off, and what authority they hold** — the
   workstream table, RACI, artifact gates, and WIP/integration rules.
 
