@@ -45,20 +45,23 @@ GitHub Actions does not expose native issue-dependency changes as a workflow
 trigger. A trusted hourly full reconciliation repairs dependency labels, PR-body
 reference edits, deleted branches, and stack promotions. For a stacked change,
 the reconciler follows a merged layer's base branch into a PR only when the
-layer's merge commit is an ancestor of that PR's recorded head commit, or verifies
-that the layer's merge commit is reachable from the default branch. Branch-name
-reuse alone is not promotion evidence; a missing merge or head SHA cannot prove
-a promotion. Commit comparisons run sequentially, once per unique commit pair
-(or merge SHA for default-branch reachability).
+layer's merge commit is an ancestor of that PR's recorded head commit. If multiple
+default-branch PRs prove the same layer, only the earliest timestamped landing is
+used as promotion evidence; a later PR reusing the branch cannot revive a layer
+already landed before an issue was reopened. The reconciler separately verifies
+that the layer's merge commit is reachable from the default branch. A missing
+merge or head SHA cannot prove a promotion. Commit comparisons run sequentially,
+once per unique commit pair (or merge SHA for default-branch reachability).
 Any comparison error (including an unavailable commit's HTTP 404) aborts
 reconciliation rather than treating missing evidence as a negative reachability
 result and writing incorrect lifecycle labels.
 
 Reopening an issue supersedes merges at or before the reopen timestamp. The
-original stack edges remain available: a parent promotion merged after the
-reopen can still yield `status:merged`, but a stack that landed entirely before
-the reopen cannot. Repeating the closing reference on the final PR remains
-recommended because it gives GitHub and reviewers an explicit closure record.
+original stack edges remain available: a layer first proven to reach the default
+branch after the reopen can still yield `status:merged`, but a stack that landed
+entirely before the reopen cannot. Repeating the closing reference on the final
+PR remains recommended because it gives GitHub and reviewers an explicit closure
+record.
 The workflow is idempotent and does not post comments.
 
 From **Actions > Issue Status > Run workflow**, leave the issue number blank to

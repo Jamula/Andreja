@@ -833,6 +833,53 @@ test('promotion comparisons are sequential and deduplicate commit pairs', async 
     [[], ['layer'], ['layer'], ['layer']]);
 });
 
+test('only the earliest proven default landing promotes a layer across branch reuse', async () => {
+  const pullRequests = [
+    {
+      number: 10, merged: true, mergedAt: '2026-08-24T20:00:00Z',
+      baseRef: 'stack/integration', mergeCommitSha: 'layer',
+    },
+    {
+      number: 13, merged: true, mergedAt: '2026-08-24T22:00:00Z',
+      baseRef: 'stack/integration', mergeCommitSha: 'new-layer',
+    },
+    {
+      number: 11, merged: true, mergedAt: '2026-08-24T21:00:00Z',
+      baseRef: 'main', headRef: 'stack/integration', headSha: 'old-head',
+      headRepository: 'o/r',
+    },
+    {
+      number: 12, merged: true, mergedAt: '2026-08-24T23:00:00Z',
+      baseRef: 'main', headRef: 'stack/integration', headSha: 'later-head',
+      headRepository: 'o/r',
+    },
+  ];
+  const github = {
+    rest: { repos: { compareCommitsWithBasehead: async () =>
+      ({ data: { status: 'ahead' } }) } },
+  };
+  const options = {
+    github,
+    context: { repo: { owner: 'o', repo: 'r' } },
+    defaultBranch: 'main',
+    repositoryFullName: 'o/r',
+  };
+  const forward = await markVerifiedPromotions({
+    ...options, pullRequests,
+  });
+  const reverse = await markVerifiedPromotions({
+    ...options, pullRequests: [...pullRequests].reverse(),
+  });
+
+  for (const result of [forward, reverse]) {
+    assert.deepEqual(
+      Object.fromEntries(result.map((pr) => [
+        pr.number, [...pr.promotionSourceShas],
+      ])),
+      { 10: [], 11: ['layer'], 12: ['new-layer'], 13: [] });
+  }
+});
+
 for (const status of [401, 403, 404, 429, 500, 503, undefined]) {
   test(`merge commit comparison failure ${status ?? 'network'} aborts reconciliation`, async () => {
     const error = Object.assign(new Error('comparison unavailable'), { status });
@@ -904,7 +951,7 @@ for (const scenario of ['landed', 'error', 'reused', 'genuine', 'promotion-error
               throw error;
             }
             return { data: { status:
-              scenario === 'reused' && basehead.endsWith('...later-head')
+              scenario === 'genuine' && basehead.endsWith('...old-head')
                 ? 'diverged' : 'ahead' } };
           },
         },

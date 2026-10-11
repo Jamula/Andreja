@@ -374,7 +374,35 @@ async function markVerifiedPromotions({
     }
     result.push({ ...candidate, promotionSourceShas });
   }
-  return result;
+
+  const earliestLandings = new Map();
+  for (const candidate of result) {
+    if (!candidate.merged || candidate.baseRef !== defaultBranch ||
+        candidate.originalBaseRef || !candidate.mergedAt) {
+      continue;
+    }
+    const mergedAt = Date.parse(candidate.mergedAt);
+    if (!Number.isFinite(mergedAt)) {
+      continue;
+    }
+    for (const sha of candidate.promotionSourceShas) {
+      const current = earliestLandings.get(sha);
+      if (!current || mergedAt < current.mergedAt ||
+          (mergedAt === current.mergedAt && candidate.number < current.number)) {
+        earliestLandings.set(sha, { mergedAt, number: candidate.number });
+      }
+    }
+  }
+
+  return result.map((candidate) => {
+    if (!candidate.merged || candidate.baseRef !== defaultBranch ||
+        candidate.originalBaseRef) {
+      return candidate;
+    }
+    const promotionSourceShas = new Set([...candidate.promotionSourceShas]
+      .filter((sha) => earliestLandings.get(sha)?.number === candidate.number));
+    return { ...candidate, promotionSourceShas };
+  });
 }
 
 async function loadRepositoryEvidence({ github, context }) {
