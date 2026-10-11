@@ -458,13 +458,33 @@ escalate privately to the authorized owner and counsel. Release a discretionary
 hold and execute overdue source deletion within seven days, with propagation
 receipts and backup tombstones. If an identified legal preservation duty
 continues, or release would risk destroying legally required data, retain only
-the disputed scope in restricted preservation pending urgent counsel decision,
-record the overdue state and next review within seven days, and prohibit
-ordinary reuse. This is not presumed renewal or permission to activate a route.
+the disputed scope in restricted preservation pending urgent counsel decision
+(interim preservation) and prohibit ordinary reuse. Interim preservation is
+bounded and is not presumed renewal or permission to activate a route:
+
+- **Record at once:** overdue date, disputed scope, custodians, and a hard
+  decision-due date of 14 days after expiry. Add no new data or derived copies.
+  Keep content-free access logs and require two named custodians for any access.
+- **Day 7 checkpoint:** confirm scope has not widened and counsel has the
+  question. A checkpoint is not a renewal.
+- **Day 14 deadline:** an authorized, reviewed counsel decision must exist. A
+  third seven-day review is not allowed. If none exists, escalate privately to
+  Cyrus Jamula as decision authority and the accountable owner, who must record
+  either a counsel decision or a human-chosen disposition (preserve or destroy)
+  with named authority. This policy and agents must not supply that legal
+  conclusion.
+- **If still undecided:** keep the frozen minimum (never auto-destroyed, because
+  it may be mandatory evidence), mark it a blocking overdue incident reported at
+  least weekly to the decision authority, and treat any further retention as
+  unauthorized until the decision is recorded. Reports are visibility only and
+  never renew the interim period.
+- **Release gate:** no collection, publication, or route activation while any
+  interim preservation is past day 14 without a recorded decision.
+
 Any continuation, including a hold-metadata retention exception at its purge
 trigger, requires an authorized, reviewed counsel decision with scope,
-duration/end condition, next review, and expiry; unresolved cases remain
-escalated and visibly overdue rather than silently renewed or auto-destroyed.
+duration/end condition, next review, and expiry; it never arises from silence,
+repeated checkpoints, or escalation reports.
 
 Partial deletion proceeds for all unaffected fields and stores. Release records
 must evidence held-scope purge/disassociation, derived-copy reconciliation, and

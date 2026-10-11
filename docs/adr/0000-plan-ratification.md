@@ -535,10 +535,10 @@ not match the merged `docs/plan.md`.
 - **Decision / notice versions:** `feedback-privacy-v1.1` /
   `feedback-notice-v1.1`
 - **Revised package LF-normalized SHA-256:**
-  `25b21c71590df22c48a3351a3a5af163c4130d63a93bb3b7dc08181ffe673649`
+  `97258a63859e3eff0209088ecf6aa1b3e40d5aa52809e1116d81764e476058bf`
 - **Superseded v1 package LF-normalized SHA-256:**
   `60b331d01c7412ddec29914299d8dab8437729565bb581999b844f7a02bf452d`
-- **Plan SHA-256:** `f40a0d25f24f3a0116039b4ef80f94e4ec15c7d14e2f20e46d82f6eea25db4ff`
+- **Plan SHA-256:** `e6a77a66f4781c6c9acddcb516da8277c30b993205a2e11feb8c771035296a41`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed policy/status amendment authorized for revision
   only; no plan re-ratification, privacy approval, counsel signoff, collection,
