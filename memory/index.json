@@ -348,5 +348,15 @@
     "status": "active",
     "createdAt": "2026-10-11T06:20:46.672Z",
     "updatedAt": "2026-10-11T06:20:46.672Z"
+  },
+  {
+    "id": "94be509a-796e-419b-ba52-98833a1bfe82",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "PR sync review and merge sequence",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-pr-sync-review-and-merge-sequence-94be509a.md",
+    "status": "active",
+    "createdAt": "2026-10-11T06:25:45.306Z",
+    "updatedAt": "2026-10-11T06:25:45.306Z"
   }
 ]
