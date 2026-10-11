@@ -22,13 +22,14 @@ publishers, return channels, backups, and administrators and gives intake-specif
 STRIDE/LINDDUN threats and a ten-row abuse register. Those analyses are reused,
 not recreated or reported as reviewed.
 
-Live #156 was open. Live [#155](https://github.com/Jamula/Andreja/issues/155) was
-closed, but its last decision-request comment did not record approval of
-`feedback-privacy-v1`. The [privacy package](../legal/feedback-privacy-retention-dsr.md)
-remains proposed. Its historical specialist recommendations do not approve
-this supplement, its subsequent amendments, or activation. Deanna is
-rechecking transfer and hold gaps; no retention duration, proof ladder,
-exception, or hold is inherited as approved.
+Live #156 and [#155](https://github.com/Jamula/Andreja/issues/155) are open.
+#155 was reopened during this preparation; its earlier closed state and last
+decision-request comment did not record approval of `feedback-privacy-v1`.
+The [privacy package](../legal/feedback-privacy-retention-dsr.md) remains proposed.
+Its historical specialist recommendations do not approve this supplement,
+its subsequent amendments, or activation. Deanna is rechecking transfer and
+hold gaps; no retention duration, proof ladder, exception, or hold is inherited
+as approved.
 
 Deanna's unmerged [#193](https://github.com/Jamula/Andreja/pull/193) proposes
 `feedback-privacy-v1.1` / `feedback-notice-v1.1` at commit
@@ -87,16 +88,22 @@ for that receipt; incident evidence still requires separate incident authority.
 
 **Unresolved #155 dependency:** receipt/stub purpose, recipient/access class,
 retention trigger/duration, purge and hold exception must be explicitly covered
-and approved. Existing private-case retention is not permission to create stubs.
-No stub or receipt is issued before origin/CSRF/schema checks, or when durable
-storage fails. A common failure response contains no receipt or acceptance
-claim. State-independent malformed/unauthorized/over-capacity failures may use a
-distinct failure class; they must not depend on lookup existence, content
-classification, or incident routing. Apply any abuse refusal uniformly before
-record lookup. Unproved lookup outcomes share status, body schema/length bucket,
-headers, rate accounting, and notification behavior, with a measured timing
-tolerance fixed in the reviewed release artifact. Data must test the distinction
-between processing and acceptance; a friendly response is not durability proof.
+and approved through a separate inventory/lifecycle amendment and human
+decision. Deanna confirmed that #193 is transfer/hold-only and does not include
+or authorize this new receipt/stub class. **Keep the proposed class disabled.**
+Existing private-case or proof-token retention is not permission to create
+stubs. Do not expand #193 or infer that its eventual approval clears this gap.
+
+In the proposed design, no stub or receipt is issued before origin/CSRF/schema
+checks, or when durable storage fails. A common failure response contains no
+receipt or acceptance claim. State-independent malformed/unauthorized/over-capacity
+failures may use a distinct failure class; they must not depend on lookup
+existence, content classification, or incident routing. Apply any abuse refusal
+uniformly before record lookup. Unproved lookup outcomes share status, body
+schema/length bucket, headers, rate accounting, and notification behavior, with
+a measured timing tolerance fixed in the reviewed release artifact. Data must
+test the distinction between processing and acceptance; a friendly response is
+not durability proof.
 
 ### Receipt custody and authorization namespace
 
