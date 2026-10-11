@@ -579,5 +579,15 @@
     "status": "active",
     "createdAt": "2026-10-11T23:47:49.239Z",
     "updatedAt": "2026-10-11T23:47:49.239Z"
+  },
+  {
+    "id": "0f90904c-9658-4219-8867-a41866fb960b",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Lock approved POR and execute remaining Phase zero work",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-copilot-lock-approved-por-and-execute-remaining-phase-zero-work-0f90904c.md",
+    "status": "active",
+    "createdAt": "2026-10-11T23:52:27.906Z",
+    "updatedAt": "2026-10-11T23:52:27.906Z"
   }
 ]
