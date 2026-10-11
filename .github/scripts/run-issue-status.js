@@ -375,10 +375,32 @@ async function markVerifiedPromotions({
     result.push({ ...candidate, promotionSourceShas });
   }
 
+  const isNativeDefault = (candidate) =>
+    candidate.baseRef === defaultBranch && !candidate.originalBaseRef;
   const earliestLandings = new Map();
+  const intermediaries = new Map();
+  const pending = [];
+  const recordLanding = (sha, landing) => {
+    const current = earliestLandings.get(sha);
+    if (!current || landing.mergedAt < current.mergedAt ||
+        (landing.mergedAt === current.mergedAt && landing.number < current.number)) {
+      earliestLandings.set(sha, landing);
+      pending.push(sha);
+    }
+  };
   for (const candidate of result) {
-    if (!candidate.merged || candidate.baseRef !== defaultBranch ||
-        candidate.originalBaseRef || !candidate.mergedAt) {
+    if (!candidate.merged) {
+      continue;
+    }
+    if (!isNativeDefault(candidate)) {
+      if (candidate.mergeCommitSha) {
+        const parents = intermediaries.get(candidate.mergeCommitSha) || [];
+        parents.push(candidate);
+        intermediaries.set(candidate.mergeCommitSha, parents);
+      }
+      continue;
+    }
+    if (!candidate.mergedAt) {
       continue;
     }
     const mergedAt = Date.parse(candidate.mergedAt);
@@ -386,21 +408,37 @@ async function markVerifiedPromotions({
       continue;
     }
     for (const sha of candidate.promotionSourceShas) {
-      const current = earliestLandings.get(sha);
-      if (!current || mergedAt < current.mergedAt ||
-          (mergedAt === current.mergedAt && candidate.number < current.number)) {
-        earliestLandings.set(sha, { mergedAt, number: candidate.number });
+      recordLanding(sha, { mergedAt, number: candidate.number });
+    }
+  }
+
+  // Propagate first landings backward through verified merged stack edges.
+  // Reachability-rewritten bases are intermediaries, not timestamped landings.
+  for (let index = 0; index < pending.length; index += 1) {
+    const sha = pending[index];
+    const landing = earliestLandings.get(sha);
+    for (const candidate of intermediaries.get(sha) || []) {
+      for (const source of candidate.promotionSourceShas) {
+        recordLanding(source, landing);
       }
     }
   }
 
   return result.map((candidate) => {
-    if (!candidate.merged || candidate.baseRef !== defaultBranch ||
-        candidate.originalBaseRef) {
-      return candidate;
-    }
+    const landing = candidate.merged
+      ? isNativeDefault(candidate)
+        ? { number: candidate.number }
+        : earliestLandings.get(candidate.mergeCommitSha)
+      : null;
     const promotionSourceShas = new Set([...candidate.promotionSourceShas]
-      .filter((sha) => earliestLandings.get(sha)?.number === candidate.number));
+      .filter((sha) => {
+        const earliest = earliestLandings.get(sha);
+        if (earliest) {
+          return earliest.number === landing?.number;
+        }
+        // Without a proven landing, pending stack promotions remain evidence.
+        return !candidate.merged || !isNativeDefault(candidate);
+      }));
     return { ...candidate, promotionSourceShas };
   });
 }

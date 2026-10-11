@@ -47,10 +47,14 @@ reference edits, deleted branches, and stack promotions. For a stacked change,
 the reconciler follows a merged layer's base branch into a PR only when the
 layer's merge commit is an ancestor of that PR's recorded head commit. If multiple
 default-branch PRs prove the same layer, only the earliest timestamped landing is
-used as promotion evidence; a later PR reusing the branch cannot revive a layer
-already landed before an issue was reopened. The reconciler separately verifies
-that the layer's merge commit is reachable from the default branch. A missing
-merge or head SHA cannot prove a promotion. Commit comparisons run sequentially,
+used as promotion evidence. That landing is propagated backward through every
+verified merged intermediary, and only edges leading to the source commit's
+first landing remain eligible. Open, draft, closed-unmerged, and later merged
+PRs reusing any branch in an already landed stack cannot revive the old layer,
+even when their heads inherit its commits from the default branch. Before a
+first landing is proven, pending promotions remain eligible. The reconciler
+separately verifies that the layer's merge commit is reachable from the default
+branch. A missing merge or head SHA cannot prove a promotion. Commit comparisons run sequentially,
 once per unique commit pair (or merge SHA for default-branch reachability).
 Any comparison error (including an unavailable commit's HTTP 404) aborts
 reconciliation rather than treating missing evidence as a negative reachability
