@@ -479,5 +479,15 @@
     "status": "active",
     "createdAt": "2026-10-11T17:49:38.653Z",
     "updatedAt": "2026-10-11T17:49:38.653Z"
+  },
+  {
+    "id": "dc6c0f67-f037-4e85-b272-36452a1cb979",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Bounded independent recipient verification authorized for #3",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-direct-ask-user-response-recorded-by-picard-bounded-independent-recipient-verification-authorized-for-3-dc6c0f67.md",
+    "status": "active",
+    "createdAt": "2026-10-11T23:33:27.235Z",
+    "updatedAt": "2026-10-11T23:33:27.235Z"
   }
 ]
