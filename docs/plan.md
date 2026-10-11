@@ -33,8 +33,8 @@ credential-free Copilot SDK compile/conformance toolchain spike; a limited real
 Copilot provider begins no earlier than Phase 1B after every provider entry gate
 passes. This plan reflects that accepted placement. The acceptance does not
 authorize runtime activation, spend, an account, or content disclosure; all
-provider entry gates and Cyrus's separate activation and residual-risk
-acceptance remain required.
+provider entry gates, Cyrus's separate, specific authorization for a synthetic
+canary, and his later activation and residual-risk acceptance remain required.
 
 #### Current artifact and implementation status
 
@@ -1602,9 +1602,10 @@ Exit gate checklist:
 Deliverables:
 
 - After a separate budget approval, one capped Azure managed reference deployment using the Phase 0-selected relational provider—PostgreSQL is the provisional reference—through OpenTofu with pinned providers, locked/encrypted state, CI workload identity, quotas, TTL/teardown, secrets, backups, health, OTel export, and cost evidence.
-- After ADR 0009's phase placement is accepted and every provider entry gate has current approval
-  and evidence, a limited real Copilot 1.0.x provider canary using synthetic
-  content and one dedicated non-user test identity. A consenting adult identity
+- Only after ADR 0009's phase placement is accepted, every provider entry gate
+  has current approval and evidence, and Cyrus separately authorizes that
+  specific synthetic canary, run a limited real Copilot 1.0.x provider canary
+  using synthetic content and one dedicated non-user test identity. A consenting adult identity
   is allowed only after that synthetic canary completes every required live gate.
   Start with per-user runtime isolation. Use a shared runtime only after adversarial evidence proves
   filesystem/session/tool/credential/concurrency/cleanup/cost isolation and
