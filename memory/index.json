@@ -499,5 +499,15 @@
     "status": "active",
     "createdAt": "2026-10-11T23:34:27.738Z",
     "updatedAt": "2026-10-11T23:34:27.738Z"
+  },
+  {
+    "id": "b8c8d75e-2576-499e-a149-6e75d7a7f9ea",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Cyrus ratifies exact cost-control framework under #73",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-direct-response-facilitated-by-spock-cyrus-ratifies-exact-cost-control-framework-under-73-b8c8d75e.md",
+    "status": "active",
+    "createdAt": "2026-10-11T23:34:59.023Z",
+    "updatedAt": "2026-10-11T23:34:59.023Z"
   }
 ]
