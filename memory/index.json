@@ -609,5 +609,15 @@
     "status": "active",
     "createdAt": "2026-10-11T23:56:53.939Z",
     "updatedAt": "2026-10-11T23:56:53.939Z"
+  },
+  {
+    "id": "8636c522-611e-4e88-abec-4b8af193fb77",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Counsel verification checklist completed by human attestation",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-copilot-counsel-verification-checklist-completed-by-human-attestation-8636c522.md",
+    "status": "active",
+    "createdAt": "2026-10-11T23:57:24.025Z",
+    "updatedAt": "2026-10-11T23:57:24.025Z"
   }
 ]
