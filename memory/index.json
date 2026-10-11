@@ -589,5 +589,15 @@
     "status": "active",
     "createdAt": "2026-10-11T23:52:27.906Z",
     "updatedAt": "2026-10-11T23:52:27.906Z"
+  },
+  {
+    "id": "a8953be1-238f-4a1f-88cb-ee0c1b245310",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Independent reporting recipient completed by human attestation",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-copilot-independent-reporting-recipient-completed-by-human-attestation-a8953be1.md",
+    "status": "active",
+    "createdAt": "2026-10-11T23:56:27.072Z",
+    "updatedAt": "2026-10-11T23:56:27.072Z"
   }
 ]
