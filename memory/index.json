@@ -462,11 +462,12 @@
   {
     "id": "af2c106f-a424-4220-83e5-5e1092a42197",
     "class": "DECISION",
-    "loadGuidance": "ALWAYS",
+    "loadGuidance": "ARCHIVE",
     "title": "Authorize proposed Phase 0 corrective packet",
     "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-copilot-authorize-proposed-phase-0-corrective-packet-af2c106f.md",
-    "status": "active",
+    "status": "deleted",
     "createdAt": "2026-10-11T17:48:52.371Z",
-    "updatedAt": "2026-10-11T17:48:52.371Z"
+    "updatedAt": "2026-10-11T17:49:16.119Z",
+    "deletedAt": "2026-10-11T17:49:16.119Z"
   }
 ]
