@@ -115,3 +115,4 @@
 {"timestamp":"2026-10-11T07:20:14.951Z","action":"search","reason":"Search returned 0 result(s)"}
 {"timestamp":"2026-10-11T07:20:16.533Z","action":"search","reason":"Search returned 0 result(s)"}
 {"timestamp":"2026-10-11T07:20:34.371Z","action":"search","reason":"Search returned 0 result(s)"}
+{"timestamp":"2026-10-11T07:34:07.544Z","action":"write","id":"72bf24ec-6c20-4141-999a-91d35c822d51","class":"DECISION","title":"Feedback research jurisdiction constraint","path":".squad\\decisions\\inbox\\cyrus-jamula-via-copilot-feedback-research-jurisdiction-constraint-72bf24ec.md","reason":"Content is allowed for governed local memory","actor":"Cyrus Jamula (via Copilot)","provider":"local"}
