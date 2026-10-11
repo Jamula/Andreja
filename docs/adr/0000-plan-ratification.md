@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `9ef275df708b154489627e71b2677497aee0b26d47791af9e58535d67c5efae8`
+- **Current proposed Plan SHA-256:** `e2044133f47deba7dcbbd4d931f2ec0e9a866432726d982182617716f7abfad2`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -600,3 +600,77 @@ not match the merged `docs/plan.md`.
   after its `NOT_PLANNED` closure and record the observed `true` setting without
   changing repository configuration. Do not change separate material-risk,
   legal, policy, counsel, ratification, spend, activation, or launch gates.
+
+### 2026-10-11 — proposed canonical threat, privacy, and impact reconciliation
+
+- **Tracking issue:** [#2](https://github.com/Jamula/Andreja/issues/2)
+- **Pull request:** [#202](https://github.com/Jamula/Andreja/pull/202) (draft)
+- **Plan SHA-256:** `ff82d1fc29a12fa1d5d69b5d87e2ff1504be8a270d03593e4564c6fd10b10fc6`
+- **Approver:** Cyrus Jamula; **pending**
+- **Approval status:** No Cyrus authorization or approval is claimed. Picard
+  corrected the proxy-picker attribution on issue #2; no human decision is
+  inferred from it.
+- **Classification:** Proposed documentation/status amendment; no
+  re-ratification or gate closure.
+- **Scope:** Refresh the current status-artifact hashes for the proposed
+  threat/privacy corrections, add the proposed integrated impact/classification
+  assessment to the tracked inventory, and clarify that BYOK operator
+  configuration does not evidence affected-user authorization. Specialist
+  challenge of this revision and Cyrus's separate decision remain pending. This
+  proposal does not approve policy, legal classification, residual risk,
+  runtime/data collection, external activation, spend, launch, or Phase 1A exit.
+
+### 2026-10-11 — proposed independent Phase 0 packet revision
+
+- **Tracking issue:** [#2](https://github.com/Jamula/Andreja/issues/2)
+- **Pull request:** [#202](https://github.com/Jamula/Andreja/pull/202) (draft)
+- **Plan SHA-256:** `f82c91114bb5d72c7610dbe46d1ba625e9b2187e0d91467beb6f690da4d0449a`
+- **Approver:** Cyrus Jamula; **pending**
+- **Revision owner:** Jett Reno, independently of locked-out Spock following
+  Tuvok's challenge at `dc569e201c1cd1af5b8dc408d9315b25337660b2`.
+- **Classification:** Proposed documentation/status-artifact hash refresh;
+  no re-ratification, risk acceptance, or gate closure.
+- **Scope:** Separate current task/device/operator coercive-control risk from
+  future sharing/connector amplification; revise telemetry's unsupported Rare
+  rating to source-grounded Possible and recompute both High tiers and stop
+  links. Map the integrated assessment's open findings to accountable leads,
+  indicators, minimum evidence, and existing pause/remediation conditions.
+  Preserve the BYOK privacy proposal, accepted plan hash, and earlier amendment
+  history. Exact-revision specialist challenge and Cyrus's separate assessment,
+  authorization-boundary, and residual-risk decisions remain pending. The
+  corrected proxy-picker provenance still grants no human authorization,
+  runtime/data collection, activation, spend, launch, or Phase 1A exit.
+
+### 2026-10-11 — proposed independent support/reviewer evidence correction
+
+- **Tracking issue:** [#2](https://github.com/Jamula/Andreja/issues/2)
+- **Pull request:** [#202](https://github.com/Jamula/Andreja/pull/202) (draft)
+- **Plan SHA-256:** `e2044133f47deba7dcbbd4d931f2ec0e9a866432726d982182617716f7abfad2`
+- **Approver:** Cyrus Jamula; **pending**
+- **Revision owner:** Data, Quality Engineering Lead, independently of
+  locked-out Spock and Jett Reno after Tuvok rejected published head
+  `b816653e849135a4ab36af1b23e0ab8449309fff`.
+- **Authorship provenance:** Coordinator-dispatched Data session
+  `2631cfb2-9d67-4500-92e7-103777b3e3bc`, runtime session
+  `6aee8eef-96aa-487d-95e9-c8a7c4b9e5b7`, created 2026-10-11T18:28:52.685Z;
+  this is a new independent revision owner, not shared-account attribution.
+  Neither locked-out author was consulted or contributed to this revision.
+- **Classification:** Proposed documentation/status-artifact hash refresh;
+  no re-ratification, risk acceptance, or gate closure.
+- **Scope:** Correct support/reviewer exposure from unsupported Rare/Low (4)
+  to Possible (3) x Major (4), High (12), for one mistaken attachment/paste
+  to an existing issue/PR. Written prohibitions and gated future intake do
+  not establish independent tested preventive barriers for that path.
+  Link the coupled impact, absent evidence, owners, and existing stops;
+  no leak or new runtime test is claimed. Preserve prior coercion High (15),
+  telemetry High (12), the unchanged BYOK privacy proposal, all ten impact
+  mappings, accepted plan hash, and earlier amendment records.
+- **Review status:** Prior privacy approval and Rai's YELLOW advisory
+  disposition of the ten mappings remain historical verdicts, not approval
+  of this exact revision. Fresh Tuvok challenge and any necessary privacy/AI
+  safety re-review remain pending. Cyrus's assessment, authorization-boundary,
+  and residual-risk decisions remain separate and pending. The October 16
+  deadline does not waive evidence or gates; the proxy-picker response
+  is not human authorization. No implementation, runtime/data collection,
+  spend, resources, activation, publication, launch, merge, or Phase 1A exit
+  is authorized.

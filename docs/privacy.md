@@ -5,12 +5,15 @@
   and explicitly gated future capabilities
 - **Owner:** Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek
 - **Required challenge:** Deanna Troi (privacy), Tuvok (security), and
-  Rai (AI safety); pending
+  Rai (AI safety); pending for this proposed revision; baseline challenge is
+  recorded on issue #2
 - **Residual-risk acceptance:** Cyrus; pending
 - **Classification/impact assessment:** Open; this inventory does not satisfy that
   gate without an explicitly approved assessment and cited evidence
 - **Tracking:** [Issue #116](https://github.com/Jamula/Andreja/issues/116)
-- **Last reviewed:** 2026-08-25
+- **Last reviewed (baseline):** 2026-10-11; read-only challenge of pinned `main`
+  `142f227e8457a573010a3c333e94e0eda0a8d6ac`; this proposed revision awaits
+  independent challenge
 
 This document is Andreja's canonical privacy inventory and handling baseline. It
 describes repository evidence; it does not authorize production use, public
@@ -30,6 +33,9 @@ and residual risk. Phase-specific overlays remain useful evidence inputs:
 [semantic-graph contract](semantic-graph.md) supplies the detailed provenance,
 non-user, sensitive-inference, and lifecycle rules summarized below; the
 [testing matrix](testing-matrix.md) owns the current test/evidence inventory.
+The proposed [integrated impact and classification assessment](impact-assessment.md)
+organizes the current evidence and open decisions but does not close the assessment
+gate.
 
 ## Status vocabulary
 
@@ -131,6 +137,20 @@ endpoint. The provider receives no task database, application export, passkey,
 recovery material, raw identity ID, or credential value in the JSON body. Andreja
 cannot verify or erase provider-side retention; the operator must disable the
 profile when terms, endpoint, model, purpose, or approved budget changes.
+
+Operator configuration is not evidence that each affected signed-in user has
+authorized a specific disclosure, and it cannot establish consent or authority for
+a non-user whose information appears in a request. A proposed pre-activation
+requirement is explicit, accessible, user-level opt-in scoped to the disclosed
+recipient, model, purpose, data ceiling, and current disclosure, with renewed
+authorization after material scope changes and a clear way to stop future calls.
+The current documents and local tests evidence operator configuration, disclosure,
+and credential revocation; they do not evidence this complete user-level
+authorization contract or non-user authorization. This proposal makes no claim
+that such enforcement currently exists. A user may not grant for a non-user merely
+by entering that person's information; sensitive and non-user content remains
+denied by default absent a separately reviewed and approved purpose and boundary.
+See the proposed [integrated impact and classification assessment](impact-assessment.md).
 
 Provider output, connector content, imported archives, peer payloads, and semantic
 extensions are untrusted data, never instructions or authority. Model access to

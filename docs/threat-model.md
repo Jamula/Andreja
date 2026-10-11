@@ -5,12 +5,15 @@
   and explicitly gated future capabilities
 - **Owner:** Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek
 - **Required challenge:** Tuvok (security), Deanna Troi (privacy), and
-  Rai (AI safety); pending
+  Rai (AI safety); pending for this proposed revision; baseline challenge is
+  recorded on issue #2
 - **Residual-risk acceptance:** Cyrus; pending
 - **Classification/impact assessment:** Open; this model does not satisfy that gate
   without an explicitly approved assessment and cited evidence
 - **Tracking:** [Issue #116](https://github.com/Jamula/Andreja/issues/116)
-- **Last reviewed:** 2026-08-25
+- **Last reviewed (baseline):** 2026-10-11; read-only challenge of pinned `main`
+  `142f227e8457a573010a3c333e94e0eda0a8d6ac`; this proposed revision awaits
+  independent challenge
 
 This is Andreja's canonical threat model. It reconciles the ratified
 [platform plan](plan.md), the
@@ -23,7 +26,9 @@ The proposed [company charter](charter.md#human-and-agent-authority) supplies th
 human/agent authority constraints used here but is not itself ratified. The
 [semantic-graph contract](semantic-graph.md) supplies detailed semantic/provenance
 threat rules, and the [testing matrix](testing-matrix.md) owns the current
-test/evidence inventory.
+test/evidence inventory. The proposed [integrated impact and classification
+assessment](impact-assessment.md) remains unapproved and does not close the open
+assessment gate.
 
 ## Status vocabulary and method
 
@@ -33,6 +38,37 @@ test/evidence inventory.
 | **Contract-only** | Versioned contracts and deterministic local conformance tests exist, with no live integration or durable future-state store. |
 | **Evidence-blocked** | A control is incomplete or lacks required independent/combined proof, so the associated exit remains blocked. |
 | **Future/gated** | No current activation is authorized; a decision, design, evidence, and residual-risk acceptance are required first. |
+
+### Proposed likelihood and severity method
+
+The following ordinal method and candidate ratings are proposed for specialist
+challenge; they are not an accepted risk policy or residual-risk decision.
+Likelihood describes the documented current profile, not an annual probability:
+
+| Level | Likelihood | Evidence guide |
+|---|---|---|
+| 1 | Rare | Multiple independent, tested barriers must fail; no current-profile event is evidenced. |
+| 2 | Unlikely | A credible targeted path exists, but access or multiple control failures are needed; no current-profile event is evidenced. |
+| 3 | Possible | A credible path is reachable through ordinary conditions or one realistic control failure. |
+| 4 | Likely | The path has low barriers, weak/untested controls, or recurring conditions. |
+| 5 | Almost certain | The event is observed or expected in ordinary operation of the documented profile. |
+
+| Level | Impact severity | Indicative consequence |
+|---|---|---|
+| 1 | Negligible | Transient inconvenience with no sensitive-data or authority impact. |
+| 2 | Minor | Limited, readily reversible disruption or exposure. |
+| 3 | Moderate | Material but bounded disruption, integrity loss, or personal-data impact. |
+| 4 | Major | Highly sensitive disclosure, consequential loss, or substantial impact to a person or non-user. |
+| 5 | Severe | Cross-tenant/reusable-authority compromise, irreversible high-impact loss, or credible serious harm to people. |
+
+Proposed score is likelihood × impact: 1–4 **Low**, 5–9 **Moderate**,
+10–16 **High**, and 17–25 **Critical**. An unknown input is **Unrated**, not
+zero or Low; it remains unresolved rather than being accepted by assumption.
+Whether a particular unrated threat independently blocks an exit remains for
+the required reviewers and Cyrus to decide. The existing High/Critical stop
+rule remains in force. Candidate values below are low-confidence ordinal
+judgments from repository evidence and require Tuvok's exact-revision challenge;
+they do not replace incident, production, or user-impact evidence.
 
 The model uses STRIDE (Spoofing, Tampering, Repudiation, Information disclosure,
 Denial of service, and Elevation of privilege) to examine security failures and
@@ -182,7 +218,7 @@ informed, voluntary, accessible, or uncoerced consent.
 | **Tampering — import/export** | Archive path traversal, checksum substitution, duplicate/conflicting import, or malicious semantic extension changes state | Authenticated encrypted archive, safe relative paths, SHA-256/length checks, schema/version/exclusion validation, clean-instance requirement, write-free dry run, serialized import ID, atomic commit, no remote context fetch or secrets | Archive key/distribution and exporter authenticity depend on operator custody. **Implemented/current portability. Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Platform Operations, Hosting and FinOps — Jett Reno, Quark.** |
 | **Spoofing/tampering — hosted release identity** | An actor, fork, unrelated workflow, branch, mutable tag, altered bundle/root, or transparency bypass is accepted as an Andreja release | Tag-only GitHub Actions job; commit-on-protected-main check; job-only `id-token: write`; exact issuer/repository/workflow identity/name/revision/trigger/ref matching; pinned Cosign; retained standardized bundle; independently authenticated/pre-positioned TUF root outside evidence must match the retained copy and is the only Cosign root; inclusion-promise/proof and SCT required; network-blocked verification; local operator mode cannot satisfy hosted release | GitHub repository/tag/workflow protection, Fulcio, CT, Rekor, and TUF compromise remain external trust risks. Public records permanently disclose approved repository/workflow/ref/digest metadata. **Implemented policy/workflow; first reviewed hosted signature evidence pending. Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek; Platform Operations — Jett Reno; Cyrus accepts residual risk.** |
 | **Repudiation** | Actor denies confirmation, recovery, deletion, sharing, or import | Content-minimized identity/task/proposal audit, version, actor, source, outcome, occurrence time, import ledger, idempotency evidence; share/semantic audit contracts | Audit is not non-repudiation, legal proof, or permission for indefinite retention; operator can alter DB. **Current plus contract-only. Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek.** |
-| **Information disclosure — BYOK** | Credential, prompt, task, error body, or provider endpoint details leak | Exact endpoint allowlist, non-loopback budget stop before credential resolution, file-only credential value, no redirects/decompression, bounded response, content-free errors/metrics, UI recipient/retention disclosure, rotate/revoke path | Provider receives the deliberately sent request/schema and may retain it; operator disclosure may be stale. No paid live evidence. **Current seam; gated external activation. Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Platform Operations, Hosting and FinOps — Jett Reno, Quark.** |
+| **Information disclosure — BYOK** | Credential, prompt, task, error body, or provider endpoint details leak | Exact endpoint allowlist, non-loopback budget stop before credential resolution, file-only credential value, no redirects/decompression, bounded response, content-free errors/metrics, UI recipient/retention disclosure, credential revoke path | Provider receives the deliberately sent request/schema and may retain it; operator disclosure may be stale. Operator enablement is not evidence of each affected user's authorization; user-level scope/change/revocation behavior is not evidenced. No paid live evidence. **Current seam; gated external activation. Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Platform Operations, Hosting and FinOps — Jett Reno, Quark.** |
 | **Information disclosure — telemetry** | Auto-instrumentation exports URL/user/task/prompt/secret content | Attribute allowlist processor, no formatted/scoped/state logging, prohibited-key counters, synthetic canaries, local collector evidence | Values under allowed route/method/status fields and new instruments require review; remote collector is unapproved. **Implemented/current local; future/gated remote. Platform Operations, Hosting and FinOps — Jett Reno, Quark.** |
 | **Information disclosure — backup/export** | Dump, archive, key history, or restore manifest leaks user data/secrets | Encryption, separate keys, declared exclusions, least-privilege destinations, checksum and clean-instance verification, no secret values in manifests | Combined encrypted recovery custody is unproven; operators may mishandle copies. **Application export current; recovery evidence-blocked. Platform Operations, Hosting and FinOps — Jett Reno, Quark.** |
 | **Information disclosure — public/support** | Private docs, product data, preview, issue, screenshot, or feedback payload becomes public | Product/public-site separation contract, loopback/private-review-only prototype, no analytics/intake, secret/content prohibition in repository artifacts | Historical Pages bytes/provider logs/caches may remain; future host logs IPs. **Contained history; future/gated site/support. Web, Public Site and User Experience — Jadzia Dax, Neelix, Guinan; Customer Success, Feedback and Support — Guinan.** |
@@ -203,11 +239,124 @@ informed, voluntary, accessible, or uncoerced consent.
 | **Unawareness** | User does not understand model recipient, retention, proposal consequence, inference, or sharing terms. UI discloses provider/model/recipient/retention and exact proposal; consent terms are versioned and purpose-bound. | Accessibility, coercion, provider-term drift, and comprehension need continuing evidence |
 | **Non-compliance with stated policy** | Implementation, operator, or provider behavior diverges from this baseline. Docs/hash/contract tests, telemetry canaries, negative tests, explicit gates, and stop conditions expose drift. | No legal compliance claim; qualified counsel and jurisdiction-specific analysis remain separate |
 
+## Proposed per-threat ratings
+
+These are candidate residual ratings for the documented Phase 1A profile, not
+accepted determinations. `Confidence` applies to the likelihood estimate; impact
+is a proposed consequence classification. Gated rows are not scored because
+activation is unauthorized, not because their risk is zero. Any rating may be
+revised by exact-revision challenge.
+
+| Threat row | Likelihood | Impact | Proposed tier | Confidence / evidence basis |
+|---|---:|---:|---|---|
+| Spoofing — bootstrap/recovery | 2 | 5 | High (10) | Low; protected one-time state and negative tests reduce likelihood, but host/recovery compromise remains. |
+| Spoofing — session/recent auth | 2 | 5 | High (10) | Low; cookie, antiforgery, recent-auth, and session invalidation tests exist; shared-device compromise remains. |
+| Spoofing — tenant/principal | 1 | 5 | Moderate (5) | Low; server-scoped context, composite constraints, and two-tenant tests are independent evidence; regressions remain possible. |
+| Tampering — proposal | 2 | 4 | Moderate (8) | Low; version/digest/policy checks are tested; deceptive confirmation and UI regression remain. |
+| Tampering — manifest/tool call | 2 | 4 | Moderate (8) | Low; strict typed-tool validation is tested for first-party code; third-party execution is gated. |
+| Tampering — database/migration | 2 | 5 | High (10) | Low; migrations are explicit and reviewed, but a trusted or malicious administrator can alter data and rollback proof is missing. |
+| Tampering — import/export | 2 | 4 | Moderate (8) | Low; safe-path, checksum, dry-run, and atomic-import controls have local evidence; operator custody remains. |
+| Spoofing/tampering — hosted release identity | 2 | 5 | High (10) | Low; exact-claim verification policy exists, but first reviewed hosted signature evidence remains blocked. |
+| Repudiation | 2 | 3 | Moderate (6) | Low; minimized audit and idempotency evidence exist; the operator can alter the database and retention is unresolved. |
+| Information disclosure — BYOK | Gated | 4 | Not scored | High confidence that live external activation is gated; likelihood and affected-user authorization evidence are absent. |
+| Information disclosure — telemetry | 3 | 4 | High (12) | Low; one trace-attribute allowlist preserves allowed values unchanged. A content-bearing allowed value or new instrumentation is one realistic failure; canaries verify suppression, not an independent preventive barrier. Remote collectors remain gated. |
+| Information disclosure — backup/export | 3 | 5 | High (15) | Low; export has local evidence, but combined encrypted recovery custody and restored sign-in remain blocked. |
+| Information disclosure — public/support | Gated | 4 | Not scored | High confidence that current public/support activation is gated; residual third-party copies/logs are not fully observable. |
+| Denial of service — identity/provider | 2 | 3 | Moderate (6) | Low; bounded input, timeout, cancellation, and retry controls have local tests; distributed production rates are unknown. |
+| Denial of service — database/offline | 3 | 4 | High (12) | Low; database-plus-key recovery and production availability objectives remain unproven. |
+| Elevation of privilege — direct mutation | 1 | 5 | Moderate (5) | Low; proposal-only provider tools, server authorization, and lifecycle tests are documented; process compromise remains. |
+| Elevation of privilege — grant/share | Contract-only | 4 | Not scored | High confidence that no live transport or persistent revocation path is active; contract fixtures do not establish live risk. |
+| LINDDUN — Linkability | 2 | 3 | Moderate (6) | Low; raw identity telemetry is prohibited, but operator/database correlation remains possible. |
+| LINDDUN — Identifiability | 3 | 4 | High (12) | Low; free-text task content may identify owners or non-users and cannot be perfectly classified. |
+| LINDDUN — Non-repudiation harm | 2 | 3 | Moderate (6) | Low; audits are minimized; numeric retention/deletion policy remains blocked. |
+| LINDDUN — Detectability | 2 | 3 | Moderate (6) | Low; generic failures and local search reduce exposure; traffic/operator visibility remains. |
+| LINDDUN — Disclosure | 2 | 4 | Moderate (8) | Low; local custody and recipient limits exist; external retention cannot be controlled after disclosure. |
+| LINDDUN — Unawareness | 3 | 4 | High (12) | Low; disclosure is documented, but comprehension, accessibility, coercion, and term drift lack human evidence. |
+| LINDDUN — Non-compliance with stated policy | 2 | 4 | Moderate (8) | Low; documentation and tests detect some drift; no legal-compliance claim or comprehensive runtime monitor exists. |
+| Abuse — Coercive control or stalking (current task/device/operator) | 3 | 5 | High (15) | Low; an authorized owner can record another person's sensitive details, an unlocked session can expose them, and operator/database custody can defeat app controls. Voluntary confirmation and operator-independent safeguards are not proved. No incident frequency is inferred. |
+| Abuse — Coercive control or stalking (future sharing/connector amplification) | Gated | 5 | Not scored | High confidence that live sharing/connectors are gated; this excludes only future amplification, not current task/device/operator abuse. |
+| Abuse — Child surveillance or unsafe child-directed use | Gated | 5 | Not scored | High confidence that no child workflow is approved; no age/guardian authority design exists. |
+| Abuse — Elder/dependent-adult financial or care exploitation | Gated | 5 | Not scored | High confidence that related workflows are future/gated; no authority or safeguarding evidence exists. |
+| Abuse — Health or finance overreach | 2 | 5 | High (10) | Low; autonomous consequential action is prohibited and task flow is proposal-only; sensitive content may still be entered. |
+| Abuse — Sensitive inference/shadow profile | Contract-only | 5 | Not scored | High confidence that semantic storage/inference is contract-only; no durable graph or embedding evidence exists. |
+| Abuse — Prompt/tool injection | 2 | 4 | Moderate (8) | Low; content is treated as data and typed tools are constrained; provider output remains untrusted. |
+| Abuse — Confirmation fatigue/deceptive proposal | 3 | 4 | High (12) | Low; exact proposal review is tested; informed, accessible, and uncoerced confirmation is not proved. |
+| Abuse — Destructive retry/race | 1 | 4 | Low (4) | Low; versioning, idempotency, locks, and concurrency tests exist; new mutation paths can regress. |
+| Abuse — Resource/cost exhaustion | 2 | 3 | Moderate (6) | Low; input/response bounds and zero external budget are documented; production rates are unknown. |
+| Abuse — Malicious publisher/update | 2 | 5 | High (10) | Low; pinned dependencies, scans, and trust policy exist; hosted signing and genuine rollback evidence remain blocked. |
+| Abuse — Backup/export coercion or theft | 2 | 5 | High (10) | Low; encryption and exclusion rules exist; operator-held copies and combined recovery evidence remain gaps. |
+| Abuse — Support/reviewer exposure | 3 | 4 | High (12) | Low; one mistaken attachment or paste to an existing issue/PR can disclose highly sensitive content. Written prohibitions and undeployed product intake are not independent tested preventive barriers for that path; no incident is claimed. |
+| Abuse — Malicious operator/host compromise | 3 | 5 | High (15) | Low; operator/root custody is an explicit trust boundary that application controls cannot mitigate. |
+
+### Basis and stops for the revised candidate ratings
+
+**Telemetry:** `ContentSuppressingActivityProcessor.OnEnd` in
+`src/Adapters/Andreja.Adapters/OpenTelemetry/OpenTelemetryAdapter.cs` removes
+non-allowlisted trace attributes, but does not inspect values under allowed keys
+such as `http.route`. `OpenLoopsVerticalSliceTests.TaskContentIsRemovedFromTelemetry`
+checks removal of synthetic task/proposal tags and preservation of a fixed route.
+The startup canary and `Test-TelemetryEvidence.ps1` observe the tested profile;
+neither prevents a content-bearing allowed value. Log filtering and disabled
+formatted/scoped/state logging constrain a different signal, not this trace-value
+path. No second independent tested preventive barrier for that path is evidenced.
+Possible (3) therefore replaces Rare (1), with Major impact (4) for highly sensitive
+content disclosure: **High (12)**, not Low. This does not claim a leak occurred.
+Jett Reno/Quark own the existing new-instrumentation stop: stop affected
+release/telemetry on prohibited content, contain, correct, and add negative
+evidence. The unresolved High candidate also invokes the existing release/Phase
+1A exit stop below; no risk acceptance is recorded.
+
+**Current coercive control:** `OpenLoopTask` in
+`src/Modules/Andreja.Modules/OpenLoops/OpenLoopTask.cs` accepts free-text title
+and details plus a due time; its length/identity checks do not establish consent
+of a person described in that text. Current access and custody assumptions above
+and [shared-device/non-user handling](privacy.md#identity-passkeys-recovery-and-shared-devices)
+already recognize unlocked sessions, coercion, and host/database inspection.
+Tenant checks, passkeys, and exact confirmation constrain unauthorized access and
+automation, but cannot prevent misuse by an authorized owner or a coercive operator.
+Minimization, sign-out, trusted-device use, and protected recovery custody are
+documented safeguards/duties, not evidence of uncoerced use or discreet revocation.
+Possible (3) reflects a reachable current path; Severe impact (5) reflects credible
+serious harm from stalking/coercion, not an observed incident: **High (15)**.
+Tuvok/Deanna Troi/Sarek and Jett Reno/Quark own the household/operator residual
+risk below. Credible current misuse requires pausing affected use and a safety
+review, not reliance on the future-feature prohibition. Dedicated survivor-safety,
+operator-independent access/revocation/export/recovery evidence remains absent;
+future amplification stays gated. The unresolved High candidate invokes the same
+release/Phase 1A exit stop, with Cyrus's separate decision still pending.
+
+**Support/reviewer exposure:** At rejected head
+`b816653e849135a4ab36af1b23e0ab8449309fff`, the support/reviewer rule below and
+[`docs/privacy.md`](privacy.md#telemetry-support-feedback-and-public-surfaces)
+prohibit sensitive review material. `.github/ISSUE_TEMPLATE/bug.yml` and
+`.github/ISSUE_TEMPLATE/feedback.yml` request sanitized text and a declarative
+privacy checkbox; `.github/pull_request_template.md` likewise asks authors to
+confirm exclusion of personal data. These are author duties, not demonstrated
+content inspection or attachment rejection before disclosure. One mistaken
+attachment or paste to an existing issue/PR bypasses those duties without
+requiring activation of the future product intake.
+The attachment-off and screening requirements in
+[`docs/frameworks/feedback-security-abuse-incident-routing.md`](frameworks/feedback-security-abuse-incident-routing.md)
+are proposed for that future service; they do not establish enforcement on
+existing GitHub issues/PRs. No path-specific evidence demonstrates multiple
+independent tested preventive barriers. Under the proposed rubric, Possible (3)
+and Major impact (4) therefore give **High (12)** rather than Rare/Low (4).
+Highly sensitive personal/non-user content is the consequence considered;
+reusable-secret exposure can be more severe and retains its existing stop.
+No leak, event frequency, or live upload test is claimed.
+Guinan with Tuvok/Deanna Troi owns the existing synthetic/content-free review
+boundary. Suspected exposure requires stopping affected artifact sharing,
+restricted containment/assessment without copying the content into public
+review, credential revocation/rotation where relevant, and content-free
+re-evidence before resumption. The unresolved High candidate invokes the
+existing release/Phase 1A exit stop; Cyrus's residual-risk decision remains
+separate and pending.
+
 ## Abuse and misuse cases
 
 | Abuse/misuse | Required response and boundary |
 |---|---|
-| **Coercive control or stalking** — an owner/operator uses tasks, schedule, contacts, household, or future location/connectors to monitor another person | Do not infer consent from relationship/household status; minimize non-user data; no live sharing/connectors; add survivor-safety, discreet revocation, delegated-access, and coercion review before household/federation features |
+| **Coercive control or stalking** — an owner/operator uses current task text/timing, an unlocked device, or database/backup custody to monitor another person; future sharing/location/connectors could amplify it | Do not infer consent from relationship/household status; minimize non-user data; pause affected current use on credible coercion/stalking and obtain safety review. Exact confirmation does not establish voluntary consent or protect against operator custody. No live sharing/connectors; survivor-safety, discreet revocation, delegated-access, and coercion evidence remain required before household/federation features |
 | **Child surveillance or unsafe child-directed use** | No current child account, guardian delegation, age assurance, or child-directed product. Do not market or activate until dedicated safety/privacy/legal/accessibility/abuse decisions and evidence exist |
 | **Elder or dependent-adult financial/care exploitation** — a caregiver/operator uses future finance, benefits, trading, health, or household capabilities to divert assets, isolate someone, or control care/medication | No autonomous execution or inferred authority from caregiver status. Do not activate until capacity, consent, supported decision-making, safeguarding, appeal/revocation, privacy, legal, and abuse reviews are approved |
 | **Health or finance overreach** — model produces diagnosis, medication change, trade, payment, benefit, or insurance action | Current tasks may record reminders only. No autonomous diagnosis, medication change, trade, money movement, filing, or regulated action; future workflows require qualified review and exact confirmation tiers |
@@ -357,6 +506,7 @@ inventory and exclusions; this table maps only threat-model controls.
 | Telemetry/offline | `Test-TelemetryEvidence.ps1`, `Test-OfflineEvidence.ps1`, operations tests and #44 evidence | **Implemented/current tested profile** |
 | OCI trust and update/rollback | Accepted ADR 0010, supply-chain scripts/policy/workflow, negative cases, and #44 matrix | **Keyless policy/workflow implemented; first hosted signature and genuine update/rollback evidence blocked** |
 | Combined encrypted recovery and restored sign-in | Backup/restore scripts, [recovery runbook](operations/identity-recovery.md), #44 matrix | **Evidence-blocked** |
+| Existing issue/PR support/reviewer content exclusion | Privacy support boundary, issue forms, PR template, and proposed feedback-security package at `b816653e849135a4ab36af1b23e0ab8449309fff` | **Documented duties; path-specific independent preventive-barrier evidence absent. No live upload test run** |
 
 Passing deterministic or local evidence does not replace the separately trusted OCI
 key, encrypted combined recovery/sign-in, second signed update/rollback revision,
@@ -373,9 +523,10 @@ acceptance.
 | No approved retention, SLO, RPO/RTO, spend, or high/critical residual-risk decision | Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek; Platform Operations, Hosting and FinOps — Jett Reno, Quark; Cyrus decides | No exit, external paid call, or public commitment |
 | Provider retains disclosed request or changes terms | Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Platform Operations, Hosting and FinOps — Jett Reno, Quark | Disable endpoint/profile until disclosure, purpose, terms, budget, and revocation are current |
 | New query/instrumentation leaks content or crosses tenants | Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Platform Operations, Hosting and FinOps — Jett Reno, Quark | Immediately stop release/telemetry, contain, rotate if needed, correct and add negative evidence |
+| Sensitive content is mistakenly attached or pasted to an existing issue/PR or shared with reviewers | Web, Public Site and User Experience — Guinan; Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek; Cyrus decides residual risk | Stop affected artifact sharing on suspected exposure; restrict/contain and assess without public content copies, revoke/rotate exposed authority where relevant, and re-evidence with synthetic/content-free material before resumption. Unresolved High (12) remains subject to the existing release/Phase 1A exit stop; future intake gates do not prevent this current path |
 | Confirmation becomes bypassable, deceptive, inaccessible, or replayable | Core Platform and Architecture — Spock, T'Pol, Seven of Nine; Web, Public Site and User Experience — Jadzia Dax, Neelix, Guinan; Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek | Stop consequential actions until exact review, binding, policy, idempotency, and accessibility pass |
 | Non-user/child/household harm or sensitive inference lacks lawful/ethical purpose and consent | Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek; Cyrus decides | Do not activate; dedicated decision and abuse evidence required |
-| Self-host operator is also a coercive or abusive household actor | Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek; Platform Operations, Hosting and FinOps — Jett Reno, Quark; Cyrus decides | App-layer controls are insufficient. No multi-person household feature until an operator-independent safety, access, revocation, export, and recovery design is approved and tested |
+| Self-host operator is also a coercive or abusive household actor | Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek; Platform Operations, Hosting and FinOps — Jett Reno, Quark; Cyrus decides | App-layer controls are insufficient for current task/device/custody misuse. Pause affected use on credible coercion/stalking; require safety review and evidence addressing access/custody gaps before resumption, without promising safe notification or revocation on an abuser-controlled host. No multi-person household feature until an operator-independent safety, access, revocation, export, and recovery design is approved and tested |
 | Connector, federation, public site, managed hosting, remote telemetry/support, or third-party skill activates without its gate | Channels and Connectors — Jett Reno, Seven of Nine, Tuvok; First-party Skills and Developer Ecosystem — Seven of Nine + domain leads; Web, Public Site and User Experience — Jadzia Dax, Neelix, Guinan; Platform Operations, Hosting and FinOps — Jett Reno, Quark; Cyrus decides | Disable/contain immediately; no grandfathering from contracts, roadmap, or prior exposure |
 
 Any unresolved high/critical threat, tenant-isolation failure, reusable-secret leak,
