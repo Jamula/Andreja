@@ -100,11 +100,12 @@ flowchart LR
   AQ --> AW[Authenticated worker]
   AW --> AT[Authorized tenant triage]
 
-  PT -->|approved, minimized send intent| PE[Outbound-only email adapter]
-  AT -->|approved, minimized send intent| PE
-  PE -->|opaque provider event reference| ER[Restricted delivery-event handler]
-  ER -->|minimal event class| PT
-  ER -->|minimal event class| AT
+  PT -->|approved, minimized send intent| PEA[Public outbound-only email adapter]
+  AT -->|approved, minimized send intent| AEA[Authenticated outbound-only email adapter]
+  PEA -->|opaque public event reference| PER[Public restricted delivery-event handler/store]
+  AEA -->|opaque authenticated event reference| AER[Authenticated restricted delivery-event handler/store]
+  PER -->|minimal public event class| PT
+  AER -->|minimal authenticated event class| AT
 
   PS --> PB[Public encrypted backup]
   AS --> AB[Authenticated encrypted backup]
@@ -118,6 +119,9 @@ Proposed invariants for specialist review:
    separate service identities, credentials, network rules, queues, workers,
    datastore privileges, access roles, and backup scopes. Do not share a
    worker, service identity, queue, or privileged operator path across them.
+   The outbound email adapter, provider credentials, event receiver, and
+   delivery-event store are also boundary-specific; neither provider callbacks
+   nor internal event state may cross between boundaries.
 2. Keep the public endpoint outside the Andreja tenant data plane. Derive an
    authenticated tenant only from a server-validated session; reject
    client-supplied tenant or principal fields.
@@ -127,7 +131,9 @@ Proposed invariants for specialist review:
    processing and a bounded failure path.
 4. Separate the case record from the contact destination and receipt verifier.
    Protect contact and verifier material with distinct access grants and
-   approved key boundaries. No contact destination is put on the queue.
+   approved key boundaries; preserve contact-vault key custody separately
+   from case and receipt/verifier custody. Exact key counts and implementation
+   remain subject to #156. No contact destination is put on the queue.
 5. Restrict triage, privacy/security review, operations, key administration,
    backup/restore, and aggregate reporting to separately authorized roles.
    Routine support does not browse a database or queue directly. Break-glass
@@ -366,7 +372,7 @@ thresholds; those remain with #156, Data and Cyrus.
 | Service/API and worker instances | 1 per role per boundary; no autoscaling |
 | Database instances | 1 per boundary; no read replicas, HA, or cross-region replica |
 | Queues | 1 per boundary, with no payload beyond `feedbackId` and safe correlation metadata |
-| Key boundaries | 1 separately scoped key per boundary and data-class inventory; exact KMS/HSM choice is gated |
+| Key boundaries | Per-boundary, per-data-class key inventory; keep contact-vault custody separate from case and receipt/verifier custody. Exact key counts, KMS/HSM mapping, and recovery method require #156 approval. |
 | Backup snapshots | At most 1 per database, encrypted, same approved region, auto-expiring at exercise end; a #155-approved deletion/tombstone schedule still governs |
 | Synthetic records | 25 per boundary (50 total), with generated data only |
 | Test email | 100 messages total, at most 2 verifier-controlled recipients, no attachments, no live-user addresses |
@@ -411,8 +417,10 @@ field with a specific value and include its source/owner:
 | API/worker | One immutable OCI digest, one API and one worker per authorized boundary | Release commit+digest, role/identity map, no autoscale, TTL tags/deny-after-expiry |
 | Data stores | Separate case/contact/receipt stores per boundary; no cross-boundary shared identity | Field/classification schema, encryption/key inventory, access log and deletion test |
 | Queue | One separate queue per boundary; identifiers only | Retention/TTL, max message/size, retry and dead-letter rules from approved #156; purge receipt |
+| Quarantine/dead-letter store | If queue-recovery testing is in scope: one isolated store per boundary, synthetic metadata only, no case body/contact/verifier; `[authorized maximum records and bytes]` | Name the boundary-specific, least-privilege incident role(s) in private authorization; record TTL, access log, purge receipt and any separately allowlisted backup scope. Otherwise exclude the scenario and keep its evidence blocked. |
+| Incident evidence store | If incident-response testing is in scope: one isolated, content-free store per boundary; `[authorized maximum records and bytes]`; no feedback content, contact destination, verifier or credentials | Name boundary-specific incident/security access roles in private authorization, with audited access; record retention/TTL and purge receipt. No backup by default; any backup requires an explicit allowlist, #155 scope and deletion/restore evidence. Otherwise exclude the scenario and keep its evidence blocked. |
 | Backup | One encrypted same-region snapshot per database, if needed for the authorized restore test | Approved duration under #155, automatic expiry, key recovery, tombstone replay and purge evidence |
-| Sender and DNS | Dedicated non-production child domain, exact SPF/DKIM/DMARC record set, one approved provider identity | Domain-owner approval, validation and alignment test, recipient restriction, removal plan; no production-domain root changes |
+| Sender and DNS | Dedicated non-production child domain(s), exact SPF/DKIM/DMARC record set, and a separate provider sender identity/credential set per boundary | Domain-owner approval, boundary-specific validation and alignment test, recipient restriction, removal plan; no production-domain root changes or shared sender credentials |
 | Recipients and messages | Maximum 2 verifier-controlled recipients and 100 generated test messages | Named recipient custody in the private #158 authorization only; safe templates, no personal/case content |
 | Observability | Content-free logs/metrics/alerts only; no raw destination, feedback body, verifier, token or provider error body | Canary tests, access control, retention/purge mapping, no third-party telemetry until separately approved |
 | Spend | `[numeric USD cap, provider quote, service/unit table, billing owner]` | Quark recommendation, pre-action reservation/hard stop test and Cyrus's explicit #158 cap |
@@ -434,7 +442,8 @@ records. A test result that cannot be exercised locally is `Blocked` or
 | Scenario | Local/paper setup | Required result/evidence |
 |---|---|---|
 | Provider outage | Stub queue, database, key provider, and mail adapter failures independently and in combination | Accepted records remain durable or receive a safe non-enumerating failure; retries are bounded and idempotent; no silent loss or message duplication; safe status remains available where its approved store is healthy; no unapproved response stub is persisted |
-| Queue recovery | Pause worker, fill the proposed test queue to its later authorized cap, restart worker, replay a message and deliver the same event twice | No cross-boundary read/write, duplicate lifecycle transition, raw content in queue, or unbounded backlog; quarantine/dead-letter result is owner-visible and purgeable |
+| Queue recovery | Pause worker, fill the proposed test queue to its later authorized cap, restart worker, replay a message and deliver the same event twice | No cross-boundary read/write, duplicate lifecycle transition, raw content in queue, or unbounded backlog; if the quarantined/dead-letter path is exercised, use only its separately allowlisted boundary store and roles; result is owner-visible and purgeable |
+| Quarantine and incident evidence | Keep the scenario `Blocked` until #155/#156 and #158 authorize the boundary-specific stores, access roles, record/byte/retention ceilings, and backup scope; then inject synthetic failures and exercise allow/deny, cap, TTL, purge, and (only if allowlisted) restore cases | No case content, contact, verifier, credentials, cross-boundary access or unbounded evidence; access is role-checked and audited; over-cap and unconfigured cases fail closed; deletion and any authorized restore produce scoped receipts |
 | Delivery reconciliation | Generate accepted, delayed, bounced, complained, suppressed and duplicate email events with fake provider IDs | Event handler authenticates provider events, deduplicates and maps only minimal status; suppression blocks further sends; provider `delivered` never becomes user `Verified`; web/status route remains usable |
 | Privacy and recipient control | Use only generated cases and verifier-owned test fixtures; attempt an unlisted-recipient send and include prohibited fields in a fake message/event | Deny before send; no case body, direct identifiers, tenant or secret in template, event, logs, traces, alerts or error body; record no personal destination in public evidence |
 | Cost stop | Fake metering just below, at and above the later numeric cap; run concurrent resource-create and send requests; inject unknown price/usage | Reserve before action; exact approved threshold stops all billable work; race cannot overspend; missing metering, price, or reconciliation is fail-closed; alerts alone do not count as a stop |
@@ -456,7 +465,7 @@ exercise.
 | Jett Reno | Platform topology, operational failure paths, portability and teardown | Draft recommendation only |
 | Quark | Region/SKU quote, fixed/variable units, hard stop, cancellation, and cost cap | Pending; no priced recommendation or numeric cap |
 | Spock | Architecture and boundary compatibility | Pending |
-| Tuvok | Security, abuse, key, queue and staging controls | Pending; #156 proposed supplement in progress |
+| Tuvok | Security, abuse, key, queue and staging controls | Pending; #156 remains proposed/unapproved; operational review identified #157 topology and restricted-store evidence gaps |
 | Deanna Troi | Privacy, transfer, retention, recipient and hold alignment | Pending; #155 amendment in progress |
 | Sarek | Legal/contract, role, transfer and jurisdiction review | Pending |
 | Guinan | Intake/status/email workflow and non-email fallback | Pending |
