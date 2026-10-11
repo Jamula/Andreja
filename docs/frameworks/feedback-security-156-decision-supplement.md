@@ -2,11 +2,14 @@
 
 ## Status, evidence, and authority
 
-- **Status:** Proposed; not approved, implemented, or independently reviewed.
+- **Status:** Proposed; not approved or implemented. Independent documentation
+  reviews are recorded in the PR; required final-policy reviews remain pending.
 - **Issue:** [#156](https://github.com/Jamula/Andreja/issues/156).
 - **Candidate version:** `feedback-security-v1.1`, comprising this supplement
   and the unchanged [v1 package](feedback-security-abuse-incident-routing.md).
-- **Owner:** Tuvok; operational co-lead Jett Reno.
+- **Owner:** Tuvok; operational co-lead Jett Reno. Original proposal prepared by
+  Tuvok; current independent revision prepared by Guinan, without participation
+  from locked-out prior revision authors.
 - **Required review:** Jett Reno, Deanna Troi, Guinan, Data, and Quark.
 - **Decision authority:** Cyrus Jamula, including residual-risk disposition.
 - **Evidence checked:** 2026-10-10; the v1 package arrived through merged
@@ -150,7 +153,9 @@ no approved lifecycle exists.
 
 Initial secrets are 32 CSPRNG bytes (256 bits), separate from a CSPRNG-generated,
 non-semantic display reference. Never reduce entropy by truncation, predictable
-seeding, UUID formatting, or encoding; reject malformed credential lengths before
+seeding, UUID formatting, or lossy encoding. Lossless base64url or hexadecimal
+serialization preserves the entropy of the 32 bytes; validate decoded credential
+lengths before
 cryptographic work. Enforce reference uniqueness within the source boundary;
 collision retries never overwrite or alias an existing receipt.
 
@@ -190,8 +195,10 @@ generates 32 bytes with its cryptographic RNG and holds the candidate in memory
 until definitive completion; no non-cryptographic fallback is allowed. The
 server checks the candidate format, but cannot infer RNG entropy from length.
 Client source and RNG-failure tests are evidence requirements. The server never
-persists or reconstructs the candidate and need not echo an already client-held
-candidate in the completion response.
+persists or reconstructs the candidate. Retain v1's completion-response contract:
+return the client-held candidate only after the proof-authorized transaction
+commits; return none on pre-commit failure. A lost-response retry acknowledges
+completion under the scoped marker without another swap or reconstruction.
 
 | Step | Required transaction or authorization rule |
 | --- | --- |
@@ -303,7 +310,7 @@ passes. Use synthetic canaries only; never keep raw receipt values in reports.
 | FS156-02 | Force identical references in public/A/B namespaces and insertion collisions | No alias/overwrite; verifier namespace binds record/boundary/generation; same display reference never grants cross-scope access. |
 | FS156-03 | Existing/missing/duplicate/quarantine/rejected/incident pre-proof cases, including guessed and stale credentials | Equal outward contract and measured timing tolerance; no classification/contact/duplicate hint, reflected canary or notification existence signal. Storage failure emits no receipt/acceptance claim. |
 | FS156-04 | Issuance and candidate RNG failure, malformed lengths, proxy/error capture, browser refresh and export/restore | At least 128 bits required; proposed generator uses 32 CSPRNG bytes with no fallback. Store only verifier; canary scan covers response capture, URLs/history/referrers, persistent browser storage, logs/traces/metrics/alerts/queues/provider metadata and backups. |
-| FS156-05 | Crash/fault at every rotation/recovery transaction boundary; lost response; simultaneous swaps/recovery vs revoke/delete | On rollback the previously valid credential is the only valid one (zero when none was valid before recovery, never a new one); exactly one committed candidate after every successful swap or recovery; zero after committed deletion/revocation; never more than one active verifier. Nonce/grant/event/marker commit or roll back together; stale sessions deny. Retry cannot create a second transition. |
+| FS156-05 | Crash/fault at every rotation/recovery transaction boundary; lost response; simultaneous swaps/recovery vs revoke/delete | On rollback the previously valid credential is the only valid one (zero when none was valid before recovery, never a new one); exactly one committed candidate after every successful swap or recovery; zero after committed deletion/revocation; never more than one active verifier. Return the client-held candidate only after committed success, never on pre-commit failure; a lost-response retry acknowledges without another swap or reconstructing the candidate. Nonce/grant/event/marker commit or roll back together; stale sessions deny. Retry cannot create a second transition. |
 | FS156-06 | Replay nonce, consumed proof grant, idempotency key alone; changed actor/key candidate/scope; missing/hostile origin or CSRF | Zero unauthorized transitions for verify/reopen/recovery/rotate/revoke/contact/consent and every mutation; legitimate lost-response retry authenticates with committed candidate, not spent proof. |
 | FS156-07 | False proof, lost receipt and no return channel; non-user/conflicting claim and scoped hold | No existence disclosure before approved proof; no operator shortcut or submitter preference; restrict disputed processing, preserve permitted partial result and accessible private appeal. Lost-receipt/no-return-channel appeal uses the disabled non-lookup route: identical processing response (status, body bucket, headers, timing, notification) for existing/missing/held/incident cases, no receipt/tenant/reference input, no access, status, recovery or release, no reply except to a #155-verified destination, no per-victim lockout. Once separately authorized for activation, identical discoverable keyboard/screen-reader-operable status/appeal entry points and common guidance let a person without receipt, account or return channel reach and submit the appeal; no prerequisite or copy requires the missing receipt. Evidence must also demonstrate the approved accessible non-web alternative with the same no-acceptance, no-access/recovery and non-enumeration guarantees and bounded abuse controls. No active route or availability claim before approval/activation evidence, including for the non-web alternative. Block execution until #155 proof/hold policy is valid. |
 | FS156-08 | Cap boundary/flood, slow input, challenge/screen/index/queue outages | Enforce every measured register cap, bounded cost/retry/storage, durable acceptance and protected incident route; accessible alternate never bypasses authorization or admits unbounded work. |
@@ -337,7 +344,7 @@ reconfirm unaffected reviews rather than silently carrying them forward.
 
 | Role | Current record | Blocking input |
 | --- | --- | --- |
-| Tuvok | Prepared proposed v1.1; owner verdict pending | Valid privacy outputs and required challenges; authorship is not independent review |
+| Tuvok | Original proposal author; owner verdict pending. Guinan prepared the independent current revision without locked-out authors' participation | Valid privacy outputs and required challenges; neither original nor revision authorship is independent review |
 | Jett Reno | Pending | Custody/restore and measured failure/capacity/cost record |
 | Deanna Troi | Pending | Valid #155 decision, transfer/hold/proof/stub mapping; no privacy-review substitution |
 | Guinan | Pending | Honest acknowledgment, accountless workflow and private accessible appeal |
