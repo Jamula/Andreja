@@ -438,5 +438,15 @@
     "status": "active",
     "createdAt": "2026-10-11T16:57:57.575Z",
     "updatedAt": "2026-10-11T16:57:57.575Z"
+  },
+  {
+    "id": "f4222d6f-cd18-4697-9388-162ee7743936",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Make human blockers decision-ready dialogues",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-copilot-make-human-blockers-decision-ready-dialogues-f4222d6f.md",
+    "status": "active",
+    "createdAt": "2026-10-11T17:16:57.508Z",
+    "updatedAt": "2026-10-11T17:16:57.508Z"
   }
 ]
