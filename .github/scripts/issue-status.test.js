@@ -23,6 +23,7 @@ const {
   pullRequestIssueNumbers,
   pullRequestNumbersFromTimeline,
   linkedPullRequestNumbers,
+  markLandedOnDefaultBranch,
   selectPullRequestsForIssue,
   targetIssueNumbers,
   updateBranchEvidence,
@@ -661,4 +662,34 @@ test('write workflow executes only trusted pinned automation with least privileg
   for (const [, reference] of actionReferences) {
     assert.match(reference, /^[0-9a-f]{40}$/);
   }
+});
+
+test('stacked PR merged into a non-default base counts only when its merge commit reached the default branch', async () => {
+  const statuses = { landed: 'ahead', same: 'identical', stray: 'diverged' };
+  const github = {
+    rest: { repos: { compareCommitsWithBasehead: async ({ basehead }) => {
+      const sha = basehead.split('...')[0];
+      if (sha === 'boom') throw new Error('lookup failed');
+      return { data: { status: statuses[sha] } };
+    } } },
+  };
+  const make = (number, sha, extra = {}) => ({
+    number, merged: true, baseRef: 'squad/stack', mergeCommitSha: sha, ...extra,
+  });
+  const result = await markLandedOnDefaultBranch({
+    github,
+    context: { repo: { owner: 'o', repo: 'r' } },
+    defaultBranch: 'main',
+    pullRequests: [
+      make(1, 'landed'), make(2, 'same'), make(3, 'stray'), make(4, 'boom'),
+      make(5, undefined), make(6, 'landed', { merged: false }),
+      make(7, 'landed', { baseRef: 'main' }),
+    ],
+  });
+
+  assert.deepEqual(result.map((pr) => pr.baseRef),
+    ['main', 'main', 'squad/stack', 'squad/stack', 'squad/stack', 'squad/stack', 'main']);
+  assert.equal(result[0].originalBaseRef, 'squad/stack');
+  assert.equal(deriveStatus({ pullRequests: [result[0]] }), STATUS.MERGED);
+  assert.equal(deriveStatus({ pullRequests: [result[2]] }), STATUS.BRANCH_ONLY);
 });

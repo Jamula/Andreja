@@ -296,7 +296,39 @@ function normalizePullRequest(pullRequest) {
     headRef: pullRequest.head?.ref,
     headRepository: pullRequest.head?.repo?.full_name,
     body: pullRequest.body,
+    mergeCommitSha: pullRequest.merge_commit_sha,
   };
+}
+
+// A stacked PR merged into a non-default base can still land on the default
+// branch through the stack. Only verified reachability of its merge commit
+// counts; any lookup failure leaves the PR as branch-only (fail closed).
+async function markLandedOnDefaultBranch({ github, context, pullRequests, defaultBranch }) {
+  const cache = new Map();
+  const landed = async (sha) => {
+    if (!cache.has(sha)) {
+      cache.set(sha, github.rest.repos.compareCommitsWithBasehead({
+        ...context.repo,
+        basehead: `${sha}...${defaultBranch}`,
+      }).then(
+        ({ data }) => data.status === 'ahead' || data.status === 'identical',
+        () => false));
+    }
+    return cache.get(sha);
+  };
+
+  return Promise.all(pullRequests.map(async (pullRequest) => {
+    if (!pullRequest.merged || !pullRequest.mergeCommitSha ||
+        pullRequest.baseRef === defaultBranch ||
+        !(await landed(pullRequest.mergeCommitSha))) {
+      return pullRequest;
+    }
+    return {
+      ...pullRequest,
+      baseRef: defaultBranch,
+      originalBaseRef: pullRequest.baseRef,
+    };
+  }));
 }
 
 async function loadRepositoryEvidence({ github, context }) {
@@ -316,7 +348,12 @@ async function loadRepositoryEvidence({ github, context }) {
 
   return {
     branchNamesByIssue: branchNamesByIssue(branches.map((branch) => branch.name)),
-    pullRequests: pullRequests.map(normalizePullRequest),
+    pullRequests: await markLandedOnDefaultBranch({
+      github,
+      context,
+      pullRequests: pullRequests.map(normalizePullRequest),
+      defaultBranch: context.payload.repository.default_branch,
+    }),
   };
 }
 
@@ -657,6 +694,7 @@ module.exports = {
   localGraphqlNumbers,
   latestIssueEventAt,
   linkedPullRequestNumbers,
+  markLandedOnDefaultBranch,
   normalizePullRequest,
   paginateGraphqlNumbers,
   pullRequestIssueNumbers,
