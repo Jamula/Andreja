@@ -25,6 +25,7 @@ const {
   pullRequestNumbersFromTimeline,
   linkedPullRequestNumbers,
   markLandedOnDefaultBranch,
+  markVerifiedPromotions,
   normalizePullRequest,
   run,
   selectPullRequestsForIssue,
@@ -493,6 +494,7 @@ test('stack promotion follows a merged base branch to the default branch', () =>
     baseRef: 'stack/integration',
     headRef: 'stack/layer',
     headRepository: 'Jamula/Andreja',
+    mergeCommitSha: 'layer',
   };
   const promotion = {
     number: 11,
@@ -502,6 +504,7 @@ test('stack promotion follows a merged base branch to the default branch', () =>
     baseRef: 'main',
     headRef: 'stack/integration',
     headRepository: 'Jamula/Andreja',
+    promotionSourceShas: new Set(['layer']),
   };
   const collision = {
     number: 11,
@@ -534,6 +537,7 @@ test('stack promotion rejects a default merge older than the issue layer', () =>
     baseRef: 'stack/integration',
     headRef: 'stack/layer',
     headRepository: 'Jamula/Andreja',
+    mergeCommitSha: 'layer',
   };
   const stalePromotion = {
     number: 11,
@@ -543,6 +547,7 @@ test('stack promotion rejects a default merge older than the issue layer', () =>
     baseRef: 'main',
     headRef: 'stack/integration',
     headRepository: 'Jamula/Andreja',
+    promotionSourceShas: new Set(['layer']),
   };
 
   assert.deepEqual(
@@ -562,6 +567,7 @@ test('reopening after a stack promotion returns the issue to backlog', () => {
     baseRef: 'stack/integration',
     headRef: 'stack/layer',
     headRepository: 'Jamula/Andreja',
+    mergeCommitSha: 'layer',
   };
   const promotion = {
     number: 11,
@@ -571,6 +577,7 @@ test('reopening after a stack promotion returns the issue to backlog', () => {
     baseRef: 'main',
     headRef: 'stack/integration',
     headRepository: 'Jamula/Andreja',
+    promotionSourceShas: new Set(['layer']),
   };
   const expanded = expandPullRequestPromotions(
     [layer],
@@ -755,6 +762,77 @@ test('merge commit comparisons bound deferred requests and deduplicate SHAs', as
   assert.deepEqual(result.map((pr) => pr.baseRef), shas.map(() => 'main'));
 });
 
+test('promotion ancestry requires a recorded head and accepts only ahead or identical', async () => {
+  const compared = [];
+  const layer = {
+    number: 1, merged: true, baseRef: 'stack/base', mergeCommitSha: 'layer',
+  };
+  const candidates = ['ahead', 'identical', 'behind', 'diverged', undefined]
+    .map((headSha, index) => ({
+      number: index + 2, state: 'open', headRef: 'stack/base', headSha,
+      headRepository: 'o/r',
+    }));
+  const result = await markVerifiedPromotions({
+    github: { rest: { repos: { compareCommitsWithBasehead: async ({ basehead }) => {
+      compared.push(basehead);
+      return { data: { status: basehead.split('...')[1] } };
+    } } } },
+    context: { repo: { owner: 'o', repo: 'r' } },
+    defaultBranch: 'main',
+    repositoryFullName: 'o/r',
+    pullRequests: [layer, ...candidates,
+      { ...layer, number: 9, mergeCommitSha: undefined },
+      { ...candidates[0], number: 10, headRepository: 'other/fork' }],
+  });
+  assert.deepEqual(compared,
+    ['layer...ahead', 'layer...identical', 'layer...behind', 'layer...diverged']);
+  assert.deepEqual(result.map((pr) => [...pr.promotionSourceShas]),
+    [[], ['layer'], ['layer'], [], [], [], [], []]);
+  const expanded = expandPullRequestPromotions([result[0]], result, 'main', 'o/r');
+  assert.deepEqual(expanded.map((pr) => pr.number), [1, 2, 3]);
+  assert.equal(deriveStatus({ pullRequests: expanded }), STATUS.READY);
+});
+
+test('promotion comparisons are sequential and deduplicate commit pairs', async () => {
+  const pending = [];
+  const compared = [];
+  let active = 0;
+  let peak = 0;
+  const operation = markVerifiedPromotions({
+    github: { rest: { repos: { compareCommitsWithBasehead: ({ basehead }) => {
+      compared.push(basehead);
+      active += 1;
+      peak = Math.max(peak, active);
+      return new Promise((resolve) => pending.push(() => {
+        active -= 1;
+        resolve({ data: { status: 'ahead' } });
+      }));
+    } } } },
+    context: { repo: { owner: 'o', repo: 'r' } },
+    defaultBranch: 'main',
+    repositoryFullName: 'o/r',
+    pullRequests: [
+      { number: 1, merged: true, baseRef: 'stack/base', mergeCommitSha: 'layer' },
+      ...['one', 'one', 'two'].map((headSha, index) => ({
+        number: index + 2, headRef: 'stack/base', headSha, headRepository: 'o/r',
+      })),
+    ],
+  });
+  for (const head of ['one', 'two']) {
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(active, 1);
+    assert.equal(pending.length, 1);
+    assert.equal(compared.at(-1), `layer...${head}`);
+    pending.shift()();
+  }
+  const result = await operation;
+  assert.equal(peak, 1);
+  assert.equal(active, 0);
+  assert.deepEqual(compared, ['layer...one', 'layer...two']);
+  assert.deepEqual(result.map((pr) => [...pr.promotionSourceShas]),
+    [[], ['layer'], ['layer'], ['layer']]);
+});
+
 for (const status of [401, 403, 404, 429, 500, 503, undefined]) {
   test(`merge commit comparison failure ${status ?? 'network'} aborts reconciliation`, async () => {
     const error = Object.assign(new Error('comparison unavailable'), { status });
@@ -775,10 +853,39 @@ for (const status of [401, 403, 404, 429, 500, 503, undefined]) {
     }), (actual) => actual === error);
     assert.equal(calls, 1);
   });
+  test(`promotion comparison failure ${status ?? 'network'} propagates`, async () => {
+    const error = Object.assign(new Error('comparison unavailable'), { status });
+    let calls = 0;
+    await assert.rejects(markVerifiedPromotions({
+      github: { rest: { repos: { compareCommitsWithBasehead: async () => {
+        calls += 1;
+        throw error;
+      } } } },
+      context: { repo: { owner: 'o', repo: 'r' } },
+      defaultBranch: 'main',
+      repositoryFullName: 'o/r',
+      pullRequests: [
+        { number: 1, merged: true, baseRef: 'stack/base', mergeCommitSha: 'layer' },
+        ...['one', 'two'].map((headSha, index) => ({
+          number: index + 2, headRef: 'stack/base', headSha, headRepository: 'o/r',
+        })),
+      ],
+    }), (actual) => actual === error);
+    assert.equal(calls, 1);
+  });
 }
 
-for (const comparisonFails of [false, true]) {
-  test(`production REST evidence loader ${comparisonFails ? 'aborts label writes on comparison errors' : 'maps merge_commit_sha before deriving labels'}`, async () => {
+for (const scenario of ['landed', 'error', 'reused', 'genuine', 'promotion-error']) {
+  const description = {
+    landed: 'maps merge_commit_sha before deriving labels',
+    error: 'aborts label writes on reachability errors',
+    reused: 'old landing plus unrelated post-reopen branch reuse remains backlog',
+    genuine: 'ancestry-proven post-reopen promotion remains merged',
+    'promotion-error': 'aborts label writes on promotion errors',
+  }[scenario];
+  test(`production REST evidence loader: ${description}`, async () => {
+    const comparisonFails = scenario === 'error' || scenario === 'promotion-error';
+    const hasPromotion = ['reused', 'genuine', 'promotion-error'].includes(scenario);
     const listBranches = Symbol('listBranches');
     const listPulls = Symbol('listPulls');
     const listIssues = Symbol('listIssues');
@@ -792,8 +899,13 @@ for (const comparisonFails of [false, true]) {
           listBranches,
           compareCommitsWithBasehead: async ({ basehead }) => {
             compared.push(basehead);
-            if (comparisonFails) throw error;
-            return { data: { status: 'ahead' } };
+            if (scenario === 'error' ||
+                scenario === 'promotion-error' && basehead.endsWith('...later-head')) {
+              throw error;
+            }
+            return { data: { status:
+              scenario === 'reused' && basehead.endsWith('...later-head')
+                ? 'diverged' : 'ahead' } };
           },
         },
         pulls: { list: listPulls },
@@ -819,7 +931,33 @@ for (const comparisonFails of [false, true]) {
           head: { ref: 'stack/layer', repo: { full_name: 'Jamula/Andreja' } },
           body: 'Closes #70',
           merge_commit_sha: 'raw-rest-merge',
-        }];
+        }, ...(hasPromotion ? [
+          {
+            number: 11,
+            state: 'closed',
+            merged_at: '2026-08-24T21:00:00Z',
+            base: { ref: 'main' },
+            head: {
+              ref: 'stack/integration', sha: 'old-head',
+              repo: { full_name: 'Jamula/Andreja' },
+            },
+            merge_commit_sha: 'old-landing',
+          },
+          {
+            number: 12,
+            state: 'closed',
+            merged_at: '2026-08-24T23:00:00Z',
+            base: { ref: 'main' },
+            head: {
+              ref: 'stack/integration', sha: 'later-head',
+              repo: { full_name: 'Jamula/Andreja' },
+            },
+            merge_commit_sha: 'later-landing',
+          },
+        ] : [])];
+        if (endpoint === listEvents && hasPromotion) {
+          return [{ event: 'reopened', created_at: '2026-08-24T22:00:00Z' }];
+        }
         if (endpoint === listBranches || endpoint === listEvents ||
             typeof endpoint === 'string' && endpoint.endsWith('/blocked_by')) {
           return [];
@@ -850,9 +988,13 @@ for (const comparisonFails of [false, true]) {
       await operation;
       assert.equal(writes.length, 1);
       assert.equal(writes[0].issue_number, 70);
-      assert.deepEqual(writes[0].labels, [STATUS.MERGED]);
+      assert.deepEqual(writes[0].labels,
+        [scenario === 'reused' ? STATUS.BACKLOG : STATUS.MERGED]);
     }
-    assert.deepEqual(compared, ['raw-rest-merge...main']);
+    assert.deepEqual(compared, [
+      'raw-rest-merge...main',
+      ...(hasPromotion ? ['raw-rest-merge...old-head', 'raw-rest-merge...later-head'] : []),
+    ]);
   });
 }
 
@@ -879,6 +1021,7 @@ for (const intermediary of [false, true]) {
         mergedAt: '2026-08-24T20:00:00Z',
         baseRef: 'stack/root',
         headRef: 'stack/integration',
+        headSha: 'middle-head',
         headRepository: 'Jamula/Andreja',
         mergeCommitSha: 'middle',
       };
@@ -889,16 +1032,25 @@ for (const intermediary of [false, true]) {
         mergedAt: parentMergedAt,
         baseRef: 'main',
         headRef: intermediary ? 'stack/root' : 'stack/integration',
+        headSha: 'parent-head',
         headRepository: 'Jamula/Andreja',
       };
-      const pullRequests = await markLandedOnDefaultBranch({
-        github: {
-          rest: { repos: { compareCommitsWithBasehead: async () =>
-            ({ data: { status: 'ahead' } }) } },
-        },
+      const github = {
+        rest: { repos: { compareCommitsWithBasehead: async () =>
+          ({ data: { status: 'ahead' } }) } },
+      };
+      const landedPullRequests = await markLandedOnDefaultBranch({
+        github,
         context: { repo: { owner: 'Jamula', repo: 'Andreja' } },
         defaultBranch: 'main',
         pullRequests: intermediary ? [layer, middle, parent] : [layer, parent],
+      });
+      const pullRequests = await markVerifiedPromotions({
+        github,
+        context: { repo: { owner: 'Jamula', repo: 'Andreja' } },
+        defaultBranch: 'main',
+        repositoryFullName: 'Jamula/Andreja',
+        pullRequests: landedPullRequests,
       });
       assert.equal(pullRequests[0].baseRef, 'main');
       assert.equal(pullRequests[0].originalBaseRef, 'stack/integration');

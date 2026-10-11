@@ -120,6 +120,7 @@ function expandPullRequestPromotions(
       branches.push({
         name: baseRef,
         after: pullRequest.mergedAt,
+        mergeCommitSha: pullRequest.mergeCommitSha,
       });
     }
   }
@@ -129,6 +130,7 @@ function expandPullRequestPromotions(
     for (const candidate of allPullRequests) {
       if (candidate.headRepository !== repositoryFullName ||
           candidate.headRef !== promotedBranch.name ||
+          !candidate.promotionSourceShas?.has(promotedBranch.mergeCommitSha) ||
           expanded.has(candidate.number)) {
         continue;
       }
@@ -148,6 +150,7 @@ function expandPullRequestPromotions(
         branches.push({
           name: baseRef,
           after: candidate.mergedAt,
+          mergeCommitSha: candidate.mergeCommitSha,
         });
       }
     }
@@ -297,6 +300,7 @@ function normalizePullRequest(pullRequest) {
     mergedAt: pullRequest.merged_at,
     baseRef: pullRequest.base?.ref,
     headRef: pullRequest.head?.ref,
+    headSha: pullRequest.head?.sha,
     headRepository: pullRequest.head?.repo?.full_name,
     body: pullRequest.body,
     mergeCommitSha: pullRequest.merge_commit_sha,
@@ -336,6 +340,43 @@ async function markLandedOnDefaultBranch({ github, context, pullRequests, defaul
   return result;
 }
 
+async function markVerifiedPromotions({
+  github, context, pullRequests, defaultBranch, repositoryFullName,
+}) {
+  const cache = new Map();
+  const result = [];
+  for (const candidate of pullRequests) {
+    const promotionSourceShas = new Set();
+    if (candidate.headRepository === repositoryFullName && candidate.headSha) {
+      for (const layer of pullRequests) {
+        const baseRef = layer.originalBaseRef || layer.baseRef;
+        if (!layer.merged || !layer.mergeCommitSha ||
+            baseRef === defaultBranch || baseRef !== candidate.headRef ||
+            layer.number === candidate.number ||
+            (candidate.merged && (!layer.mergedAt || !candidate.mergedAt ||
+              Date.parse(candidate.mergedAt) < Date.parse(layer.mergedAt)))) {
+          continue;
+        }
+        // The head proves what this PR carries; its merge commit can include
+        // unrelated implementation already present on the destination branch.
+        const basehead = `${layer.mergeCommitSha}...${candidate.headSha}`;
+        if (!cache.has(basehead)) {
+          const { data } = await github.rest.repos.compareCommitsWithBasehead({
+            ...context.repo,
+            basehead,
+          });
+          cache.set(basehead, data.status === 'ahead' || data.status === 'identical');
+        }
+        if (cache.get(basehead)) {
+          promotionSourceShas.add(layer.mergeCommitSha);
+        }
+      }
+    }
+    result.push({ ...candidate, promotionSourceShas });
+  }
+  return result;
+}
+
 async function loadRepositoryEvidence({ github, context }) {
   const [branches, pullRequests] = await Promise.all([
     github.paginate(github.rest.repos.listBranches, {
@@ -353,11 +394,17 @@ async function loadRepositoryEvidence({ github, context }) {
 
   return {
     branchNamesByIssue: branchNamesByIssue(branches.map((branch) => branch.name)),
-    pullRequests: await markLandedOnDefaultBranch({
+    pullRequests: await markVerifiedPromotions({
       github,
       context,
-      pullRequests: pullRequests.map(normalizePullRequest),
+      pullRequests: await markLandedOnDefaultBranch({
+        github,
+        context,
+        pullRequests: pullRequests.map(normalizePullRequest),
+        defaultBranch: context.payload.repository.default_branch,
+      }),
       defaultBranch: context.payload.repository.default_branch,
+      repositoryFullName: context.payload.repository.full_name,
     }),
   };
 }
@@ -700,6 +747,7 @@ module.exports = {
   latestIssueEventAt,
   linkedPullRequestNumbers,
   markLandedOnDefaultBranch,
+  markVerifiedPromotions,
   normalizePullRequest,
   paginateGraphqlNumbers,
   pullRequestIssueNumbers,
