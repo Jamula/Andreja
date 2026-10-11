@@ -469,5 +469,15 @@
     "createdAt": "2026-10-11T17:48:52.371Z",
     "updatedAt": "2026-10-11T17:49:16.119Z",
     "deletedAt": "2026-10-11T17:49:16.119Z"
+  },
+  {
+    "id": "4154d111-54f8-4560-99dc-e5b73e72349a",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Phase 0 proposal drafting provenance correction",
+    "path": ".squad\\decisions\\inbox\\squad-coordinator-phase-0-proposal-drafting-provenance-correction-4154d111.md",
+    "status": "active",
+    "createdAt": "2026-10-11T17:49:38.653Z",
+    "updatedAt": "2026-10-11T17:49:38.653Z"
   }
 ]
