@@ -45,7 +45,16 @@ GitHub Actions does not expose native issue-dependency changes as a workflow
 trigger. A trusted hourly full reconciliation repairs dependency labels, PR-body
 reference edits, deleted branches, and stack promotions. For a stacked change,
 the reconciler follows a merged layer's base branch into the PR whose head
-promotes that branch. Repeating the closing reference on the final PR remains
+promotes that branch, or verifies that the layer's merge commit is reachable
+from the default branch. Commit comparisons run sequentially, once per unique
+SHA. Any comparison error (including an unavailable commit's HTTP 404) aborts
+reconciliation rather than treating missing evidence as a negative reachability
+result and writing incorrect lifecycle labels.
+
+Reopening an issue supersedes merges at or before the reopen timestamp. The
+original stack edges remain available: a parent promotion merged after the
+reopen can still yield `status:merged`, but a stack that landed entirely before
+the reopen cannot. Repeating the closing reference on the final PR remains
 recommended because it gives GitHub and reviewers an explicit closure record.
 The workflow is idempotent and does not post comments.
 

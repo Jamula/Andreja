@@ -113,10 +113,12 @@ function expandPullRequestPromotions(
   const branches = [];
 
   for (const pullRequest of directPullRequests) {
-    if (pullRequest.merged && pullRequest.baseRef !== defaultBranch &&
-        !isSuperseded(pullRequest)) {
+    const baseRef = pullRequest.originalBaseRef || pullRequest.baseRef;
+    // Reopen supersedes a merge, not its stack edge: a later parent can
+    // still promote the issue's implementation after the reopen.
+    if (pullRequest.merged && baseRef !== defaultBranch) {
       branches.push({
-        name: pullRequest.baseRef,
+        name: baseRef,
         after: pullRequest.mergedAt,
       });
     }
@@ -141,9 +143,10 @@ function expandPullRequestPromotions(
         promotesIssue: true,
         supersededByReopen: isSuperseded(candidate),
       });
-      if (candidate.merged && candidate.baseRef !== defaultBranch) {
+      const baseRef = candidate.originalBaseRef || candidate.baseRef;
+      if (candidate.merged && baseRef !== defaultBranch) {
         branches.push({
-          name: candidate.baseRef,
+          name: baseRef,
           after: candidate.mergedAt,
         });
       }
@@ -302,33 +305,35 @@ function normalizePullRequest(pullRequest) {
 
 // A stacked PR merged into a non-default base can still land on the default
 // branch through the stack. Only verified reachability of its merge commit
-// counts; any lookup failure leaves the PR as branch-only (fail closed).
+// counts; lookup errors abort reconciliation rather than change lifecycle labels.
 async function markLandedOnDefaultBranch({ github, context, pullRequests, defaultBranch }) {
   const cache = new Map();
   const landed = async (sha) => {
     if (!cache.has(sha)) {
-      cache.set(sha, github.rest.repos.compareCommitsWithBasehead({
+      const { data } = await github.rest.repos.compareCommitsWithBasehead({
         ...context.repo,
         basehead: `${sha}...${defaultBranch}`,
-      }).then(
-        ({ data }) => data.status === 'ahead' || data.status === 'identical',
-        () => false));
+      });
+      cache.set(sha, data.status === 'ahead' || data.status === 'identical');
     }
     return cache.get(sha);
   };
 
-  return Promise.all(pullRequests.map(async (pullRequest) => {
+  const result = [];
+  for (const pullRequest of pullRequests) {
     if (!pullRequest.merged || !pullRequest.mergeCommitSha ||
         pullRequest.baseRef === defaultBranch ||
         !(await landed(pullRequest.mergeCommitSha))) {
-      return pullRequest;
+      result.push(pullRequest);
+      continue;
     }
-    return {
+    result.push({
       ...pullRequest,
       baseRef: defaultBranch,
       originalBaseRef: pullRequest.baseRef,
-    };
-  }));
+    });
+  }
+  return result;
 }
 
 async function loadRepositoryEvidence({ github, context }) {

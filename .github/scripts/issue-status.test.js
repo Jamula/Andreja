@@ -13,6 +13,7 @@ const {
   resolveEvent,
 } = require('./issue-status');
 const {
+  LABELS,
   branchNamesByIssue,
   closingIssueNumbers,
   expandPullRequestPromotions,
@@ -24,6 +25,8 @@ const {
   pullRequestNumbersFromTimeline,
   linkedPullRequestNumbers,
   markLandedOnDefaultBranch,
+  normalizePullRequest,
+  run,
   selectPullRequestsForIssue,
   targetIssueNumbers,
   updateBranchEvidence,
@@ -665,31 +668,260 @@ test('write workflow executes only trusted pinned automation with least privileg
 });
 
 test('stacked PR merged into a non-default base counts only when its merge commit reached the default branch', async () => {
-  const statuses = { landed: 'ahead', same: 'identical', stray: 'diverged' };
+  const statuses = { landed: 'ahead', same: 'identical', stray: 'diverged', behind: 'behind' };
+  const compared = [];
   const github = {
     rest: { repos: { compareCommitsWithBasehead: async ({ basehead }) => {
+      compared.push(basehead);
       const sha = basehead.split('...')[0];
-      if (sha === 'boom') throw new Error('lookup failed');
       return { data: { status: statuses[sha] } };
     } } },
   };
   const make = (number, sha, extra = {}) => ({
-    number, merged: true, baseRef: 'squad/stack', mergeCommitSha: sha, ...extra,
+    number,
+    state: 'closed',
+    draft: false,
+    merged_at: '2026-08-24T20:00:00Z',
+    base: { ref: 'squad/stack' },
+    head: { ref: `squad/layer-${number}`, repo: { full_name: 'o/r' } },
+    body: 'Closes #70',
+    merge_commit_sha: sha,
+    ...extra,
   });
+  const rawPullRequests = [
+    make(1, 'landed'), make(2, 'same'), make(3, 'stray'), make(4, 'behind'),
+    make(5, undefined), make(6, 'landed', { merged_at: null }),
+    make(7, 'landed', { base: { ref: 'main' } }),
+  ];
+  const pullRequests = rawPullRequests.map(normalizePullRequest);
+  assert.equal(pullRequests[0].mergeCommitSha, rawPullRequests[0].merge_commit_sha);
+  assert.equal(pullRequests[0].merged, true);
+  assert.equal(pullRequests[5].merged, false);
   const result = await markLandedOnDefaultBranch({
     github,
     context: { repo: { owner: 'o', repo: 'r' } },
     defaultBranch: 'main',
-    pullRequests: [
-      make(1, 'landed'), make(2, 'same'), make(3, 'stray'), make(4, 'boom'),
-      make(5, undefined), make(6, 'landed', { merged: false }),
-      make(7, 'landed', { baseRef: 'main' }),
-    ],
+    pullRequests,
   });
 
   assert.deepEqual(result.map((pr) => pr.baseRef),
     ['main', 'main', 'squad/stack', 'squad/stack', 'squad/stack', 'squad/stack', 'main']);
   assert.equal(result[0].originalBaseRef, 'squad/stack');
+  assert.deepEqual(compared, [
+    'landed...main', 'same...main', 'stray...main', 'behind...main',
+  ]);
   assert.equal(deriveStatus({ pullRequests: [result[0]] }), STATUS.MERGED);
   assert.equal(deriveStatus({ pullRequests: [result[2]] }), STATUS.BRANCH_ONLY);
 });
+
+test('merge commit comparisons bound deferred requests and deduplicate SHAs', async () => {
+  const pending = [];
+  const compared = [];
+  let active = 0;
+  let peak = 0;
+  const github = {
+    rest: { repos: { compareCommitsWithBasehead: ({ basehead }) => {
+      compared.push(basehead);
+      active += 1;
+      peak = Math.max(peak, active);
+      return new Promise((resolve) => pending.push(() => {
+        active -= 1;
+        resolve({ data: { status: 'ahead' } });
+      }));
+    } } },
+  };
+  const shas = ['one', 'one', 'two', 'three', 'two', 'four'];
+  const resultPromise = markLandedOnDefaultBranch({
+    github,
+    context: { repo: { owner: 'o', repo: 'r' } },
+    defaultBranch: 'main',
+    pullRequests: shas.map((sha, index) => ({
+      number: index + 1, merged: true, baseRef: 'stack/base', mergeCommitSha: sha,
+    })),
+  });
+
+  for (const sha of ['one', 'two', 'three', 'four']) {
+    // Allow continuations to run while the current compare remains deferred.
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(active, 1);
+    assert.equal(pending.length, 1);
+    assert.equal(compared.at(-1), `${sha}...main`);
+    pending.shift()();
+  }
+  const result = await resultPromise;
+  assert.equal(peak, 1);
+  assert.equal(active, 0);
+  assert.deepEqual(compared, ['one...main', 'two...main', 'three...main', 'four...main']);
+  assert.deepEqual(result.map((pr) => pr.baseRef), shas.map(() => 'main'));
+});
+
+for (const status of [401, 403, 404, 429, 500, 503, undefined]) {
+  test(`merge commit comparison failure ${status ?? 'network'} aborts reconciliation`, async () => {
+    const error = Object.assign(new Error('comparison unavailable'), { status });
+    let calls = 0;
+    const github = {
+      rest: { repos: { compareCommitsWithBasehead: async () => {
+        calls += 1;
+        throw error;
+      } } },
+    };
+    await assert.rejects(markLandedOnDefaultBranch({
+      github,
+      context: { repo: { owner: 'o', repo: 'r' } },
+      defaultBranch: 'main',
+      pullRequests: ['first', 'second'].map((sha, index) => ({
+        number: index + 1, merged: true, baseRef: 'stack/base', mergeCommitSha: sha,
+      })),
+    }), (actual) => actual === error);
+    assert.equal(calls, 1);
+  });
+}
+
+for (const comparisonFails of [false, true]) {
+  test(`production REST evidence loader ${comparisonFails ? 'aborts label writes on comparison errors' : 'maps merge_commit_sha before deriving labels'}`, async () => {
+    const listBranches = Symbol('listBranches');
+    const listPulls = Symbol('listPulls');
+    const listIssues = Symbol('listIssues');
+    const listEvents = Symbol('listEvents');
+    const writes = [];
+    const compared = [];
+    const error = Object.assign(new Error('rate limited'), { status: 403 });
+    const github = {
+      rest: {
+        repos: {
+          listBranches,
+          compareCommitsWithBasehead: async ({ basehead }) => {
+            compared.push(basehead);
+            if (comparisonFails) throw error;
+            return { data: { status: 'ahead' } };
+          },
+        },
+        pulls: { list: listPulls },
+        issues: {
+          listForRepo: listIssues,
+          listEventsForTimeline: listEvents,
+          getLabel: async ({ name }) => ({
+            data: { color: LABELS[name][0], description: LABELS[name][1] },
+          }),
+          get: async () => ({ data: { number: 70, state: 'open', labels: [] } }),
+          addLabels: async (parameters) => writes.push(parameters),
+          removeLabel: async (parameters) => writes.push(parameters),
+        },
+      },
+      paginate: async (endpoint) => {
+        if (endpoint === listIssues) return [{ number: 70 }];
+        if (endpoint === listPulls) return [{
+          number: 10,
+          state: 'closed',
+          draft: false,
+          merged_at: '2026-08-24T20:00:00Z',
+          base: { ref: 'stack/integration' },
+          head: { ref: 'stack/layer', repo: { full_name: 'Jamula/Andreja' } },
+          body: 'Closes #70',
+          merge_commit_sha: 'raw-rest-merge',
+        }];
+        if (endpoint === listBranches || endpoint === listEvents ||
+            typeof endpoint === 'string' && endpoint.endsWith('/blocked_by')) {
+          return [];
+        }
+        assert.fail(`Unexpected pagination endpoint: ${String(endpoint)}`);
+      },
+      graphql: async () => ({
+        repository: { issue: { closedByPullRequestsReferences: { nodes: [] } } },
+      }),
+    };
+    const operation = run({
+      github,
+      context: {
+        eventName: 'schedule',
+        repo: { owner: 'Jamula', repo: 'Andreja' },
+        payload: { repository: {
+          default_branch: 'main',
+          full_name: 'Jamula/Andreja',
+          url: 'https://api.github.com/repos/Jamula/Andreja',
+        } },
+      },
+      core: { info: () => {} },
+    });
+    if (comparisonFails) {
+      await assert.rejects(operation, (actual) => actual === error);
+      assert.deepEqual(writes, []);
+    } else {
+      await operation;
+      assert.equal(writes.length, 1);
+      assert.equal(writes[0].issue_number, 70);
+      assert.deepEqual(writes[0].labels, [STATUS.MERGED]);
+    }
+    assert.deepEqual(compared, ['raw-rest-merge...main']);
+  });
+}
+
+for (const intermediary of [false, true]) {
+  for (const parentMergedAt of [
+    '2026-08-24T21:00:00Z',
+    '2026-08-24T22:00:00Z',
+    '2026-08-24T23:00:00Z',
+  ]) {
+    test(`reachable ${intermediary ? 'intermediary' : 'direct'} stack parent at ${parentMergedAt} respects reopen`, async () => {
+      const layer = normalizePullRequest({
+        number: 10,
+        state: 'closed',
+        merged_at: '2026-08-24T19:00:00Z',
+        base: { ref: 'stack/integration' },
+        head: { ref: 'stack/layer', repo: { full_name: 'Jamula/Andreja' } },
+        body: 'Closes #70',
+        merge_commit_sha: 'layer',
+      });
+      const middle = {
+        number: 11,
+        state: 'closed',
+        merged: true,
+        mergedAt: '2026-08-24T20:00:00Z',
+        baseRef: 'stack/root',
+        headRef: 'stack/integration',
+        headRepository: 'Jamula/Andreja',
+        mergeCommitSha: 'middle',
+      };
+      const parent = {
+        number: 12,
+        state: 'closed',
+        merged: true,
+        mergedAt: parentMergedAt,
+        baseRef: 'main',
+        headRef: intermediary ? 'stack/root' : 'stack/integration',
+        headRepository: 'Jamula/Andreja',
+      };
+      const pullRequests = await markLandedOnDefaultBranch({
+        github: {
+          rest: { repos: { compareCommitsWithBasehead: async () =>
+            ({ data: { status: 'ahead' } }) } },
+        },
+        context: { repo: { owner: 'Jamula', repo: 'Andreja' } },
+        defaultBranch: 'main',
+        pullRequests: intermediary ? [layer, middle, parent] : [layer, parent],
+      });
+      assert.equal(pullRequests[0].baseRef, 'main');
+      assert.equal(pullRequests[0].originalBaseRef, 'stack/integration');
+      const expanded = selectPullRequestsForIssue({
+        pullRequests,
+        issueNumber: 70,
+        repository: { owner: 'Jamula', repo: 'Andreja' },
+        repositoryFullName: 'Jamula/Andreja',
+        defaultBranch: 'main',
+        latestReopenedAt: '2026-08-24T22:00:00Z',
+      });
+
+      assert.deepEqual(expanded.map((pr) => pr.number),
+        intermediary ? [10, 11, 12] : [10, 12]);
+      assert.equal(expanded[0].supersededByReopen, true);
+      if (intermediary) {
+        assert.equal(expanded[1].originalBaseRef, 'stack/root');
+        assert.equal(expanded[1].supersededByReopen, true);
+      }
+      assert.equal(expanded.at(-1).supersededByReopen,
+        parentMergedAt <= '2026-08-24T22:00:00Z');
+      assert.equal(deriveStatus({ pullRequests: expanded }),
+        parentMergedAt > '2026-08-24T22:00:00Z' ? STATUS.MERGED : STATUS.BACKLOG);
+    });
+  }
+}
