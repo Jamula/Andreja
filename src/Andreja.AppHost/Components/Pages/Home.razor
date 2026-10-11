@@ -211,9 +211,12 @@
     private readonly ProposalForm Request = new();
     private readonly List<TaskDto> Tasks = [];
     private ElementReference proposalHeading;
+    private bool focusProposalHeadingOnNextRender;
 
     private TaskProposalDto? Proposal { get; set; }
     private AssistantProviderDto? Provider { get; set; }
+    private Guid? ConfirmationKeyProposalId { get; set; }
+    private string? ConfirmationIdempotencyKey { get; set; }
     private Guid? DeleteCandidate { get; set; }
     private string? StatusMessage { get; set; }
     private string? ErrorMessage { get; set; }
@@ -227,24 +230,36 @@
         Loaded = true;
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!focusProposalHeadingOnNextRender)
+        {
+            return;
+        }
+
+        focusProposalHeadingOnNextRender = false;
+        await proposalHeading.FocusAsync();
+    }
+
     private async Task ProposeAsync()
     {
         await RunAsync(async () =>
         {
             var response = await Api.ProposeAsync(Request.Message);
             Proposal = response.Proposal;
+            ResetConfirmationKey();
             StatusMessage = response.Message ?? "Proposal ready for review.";
             if (Proposal is not null)
             {
-                await Task.Yield();
-                await proposalHeading.FocusAsync();
+                focusProposalHeadingOnNextRender = true;
             }
         });
     }
 
     private async Task ConfirmAsync()
     {
-        if (Proposal is null)
+        var proposal = Proposal;
+        if (proposal is null)
         {
             return;
         }
@@ -252,16 +267,18 @@
         await RunAsync(async () =>
         {
             var result = await Api.ConfirmAsync(
-                Proposal.Id,
-                Proposal.Version,
-                NewIdempotencyKey("confirm"));
+                proposal.Id,
+                proposal.Version,
+                GetConfirmationIdempotencyKey(proposal.Id));
             Proposal = null;
+            ResetConfirmationKey();
             Request.Message = string.Empty;
             StatusMessage = result.Outcome == "IdempotentReplay"
                 ? "That confirmation was already applied. No duplicate task was created."
                 : "Task saved.";
             await LoadAsync();
-        });
+        },
+        "The confirmation result is unknown. Retry this same confirmation safely.");
     }
 
     private async Task CompleteAsync(TaskDto task)
@@ -317,7 +334,10 @@
         Loaded = true;
     }
 
-    private async Task RunAsync(Func<Task> action)
+    private Task RunAsync(Func<Task> action) =>
+        RunAsync(action, null);
+
+    private async Task RunAsync(Func<Task> action, string? requestFailureMessage)
     {
         Busy = true;
         ErrorMessage = null;
@@ -333,11 +353,13 @@
         }
         catch (OperationCanceledException)
         {
-            ErrorMessage = "The request was cancelled. Nothing was changed.";
+            ErrorMessage = requestFailureMessage
+                ?? "The request was cancelled. Check the current task state before retrying.";
         }
         catch (HttpRequestException)
         {
-            ErrorMessage = "Andreja could not reach the task API. Nothing was changed.";
+            ErrorMessage = requestFailureMessage
+                ?? "Andreja could not reach the task API. Check your connection and try again.";
         }
         catch (InvalidOperationException)
         {
@@ -352,6 +374,7 @@
     private void DismissProposal()
     {
         Proposal = null;
+        ResetConfirmationKey();
         StatusMessage = "Proposal dismissed. Nothing was saved.";
     }
 
@@ -361,6 +384,26 @@
 
     private static string NewIdempotencyKey(string operation) =>
         $"{operation}-{Guid.CreateVersion7():N}";
+
+    private string GetConfirmationIdempotencyKey(Guid proposalId)
+    {
+        if (ConfirmationKeyProposalId == proposalId
+            && ConfirmationIdempotencyKey is { } existingKey)
+        {
+            return existingKey;
+        }
+
+        var key = NewIdempotencyKey("confirm");
+        ConfirmationKeyProposalId = proposalId;
+        ConfirmationIdempotencyKey = key;
+        return key;
+    }
+
+    private void ResetConfirmationKey()
+    {
+        ConfirmationKeyProposalId = null;
+        ConfirmationIdempotencyKey = null;
+    }
 
     private sealed class ProposalForm
     {
