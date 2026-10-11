@@ -408,5 +408,15 @@
     "status": "active",
     "createdAt": "2026-10-11T16:34:16.995Z",
     "updatedAt": "2026-10-11T16:34:16.995Z"
+  },
+  {
+    "id": "64daa9a8-0096-45fc-8eb2-690f7429c92e",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Close review completion gate as won't fix",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-copilot-close-review-completion-gate-as-won-t-fix-64daa9a8.md",
+    "status": "active",
+    "createdAt": "2026-10-11T16:36:15.777Z",
+    "updatedAt": "2026-10-11T16:36:15.777Z"
   }
 ]
