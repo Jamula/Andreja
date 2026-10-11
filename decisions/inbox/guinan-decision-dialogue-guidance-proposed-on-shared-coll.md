@@ -1,0 +1,5 @@
+### 2026-10-11T17-20-15: Decision dialogue guidance proposed on shared collaboration surface
+**By:** Guinan
+**What:** Decision dialogue guidance proposed on shared collaboration surface
+**References:** https://github.com/Jamula/Andreja/pull/201
+**Why:** 2026-10-11: Cyrus-directed communication guidance is proposed in draft PR https://github.com/Jamula/Andreja/pull/201 at fcda592a6a1968bde5a0c4e752e69c3880f311df. Selected existing tracked .github/skills/agent-collaboration/SKILL.md because its Cross-Agent Communication section already covers requesting help across the team. One-file addition: one decision, small genuine choices/tradeoffs, evidence-backed recommendation, exact authorization limits, ask_user dialogue, and complex PR/comment review. Proposal only; no unresolved decision or #194 artifact revisions, charter/authority changes, ratification, activation, spend, settings, or merge authorization. Independent exact-head review and coordinator merge slot remain required.
