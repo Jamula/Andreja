@@ -132,7 +132,7 @@ explicit confirmation, and zero external-unit default. No non-loopback provider
 call is authorized until Cyrus separately approves a numeric model-spend envelope,
 provider disclosure, and retention statement.
 
-### Copilot provider phase-scope proposal
+### Copilot provider phase-scope decision
 
 [Accepted ADR 0009](0009-copilot-provider-phase-scope.md) records the narrow
 resolution of issue #74. Phase 1A has no real Copilot provider. Its only Copilot

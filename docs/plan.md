@@ -24,16 +24,17 @@ provider-scope decision of record. Cyrus's
 [durable direction comment](https://github.com/Jamula/Andreja/issues/74#issuecomment-5427814163)
 requests the outcome “integrate Copilot SDK into the toolchain so I can use
 Copilot to interact with the tools.” That comment records the requested outcome;
-it does not select a phase, accept this mapping, or authorize provider activation,
-an account/model call, content disclosure, or spend. [Proposed ADR
-0009](adr/0009-copilot-provider-phase-scope.md) now recommends the explicit
-resolution: Phase 1A runtime remains deterministic fake plus optional
+it does not select a phase or authorize provider activation, an account/model
+call, content disclosure, or spend. [ADR 0009](adr/0009-copilot-provider-phase-scope.md)
+records Cyrus's separate 2026-10-10 acceptance of phase placement only: Phase
+1A runtime remains deterministic fake plus optional
 Andreja-native OpenAI-compatible BYOK; Phase 1A may perform only a non-shipping,
 credential-free Copilot SDK compile/conformance toolchain spike; a limited real
 Copilot provider begins no earlier than Phase 1B after every provider entry gate
-passes. ADR 0009 and this mapping still require Cyrus's explicit approval. They
-do not record his acceptance or authorize runtime activation, spend, an account,
-or content disclosure.
+passes. This plan reflects that accepted placement. The acceptance does not
+authorize runtime activation, spend, an account, or content disclosure; all
+provider entry gates and Cyrus's separate activation and residual-risk
+acceptance remain required.
 
 #### Current artifact and implementation status
 
@@ -153,13 +154,13 @@ unknown or unclassified changes must fail closed into the full relevant suite.
 Public launch, a real Copilot provider, managed cloud, federation, and production
 connectors remain deferred to their later phases and explicit gates.
 
-### Provider-scope proposal — 2026-08-26
+### Provider-scope decision — 2026-10-10
 
-Issue [#74](https://github.com/Jamula/Andreja/issues/74) is addressed at proposal
-level by [ADR 0009](adr/0009-copilot-provider-phase-scope.md). Cyrus's
+Issue [#74](https://github.com/Jamula/Andreja/issues/74) is resolved for phase
+placement only by [ADR 0009](adr/0009-copilot-provider-phase-scope.md). Cyrus's
 [direction comment](https://github.com/Jamula/Andreja/issues/74#issuecomment-5427814163)
-is the durable source for the requested SDK-toolchain outcome, not approval of
-the recommended phase placement or any activation:
+is the durable source for the requested SDK-toolchain outcome; it does not
+authorize provider activation:
 
 - Phase 1A runtime is deterministic fake plus optional Andreja-native
   OpenAI-compatible BYOK. It does not include a real Copilot provider.
@@ -172,13 +173,14 @@ the recommended phase placement or any activation:
   Copilot/GitHub credentials and stores, removes Copilot/GitHub executables,
   denies egress, prohibits runtime-start/session APIs, and proves the shipping
   graph/artifact remains Copilot-free.
-- The earliest real Copilot work is a limited Phase 1B canary after explicit ADR
-  acceptance and current evidence for SDK/support, entitlement/billing,
+- The earliest real Copilot work is a limited Phase 1B canary only after current
+  evidence for SDK/support, entitlement/billing,
   tenant/user/session/tool/filesystem isolation, prompt/tool/data exposure,
   retention/residency/training/abuse handling, authentication custody, hard
   budgets/reconciliation, fallback/offline behavior, consent/disclosure,
   audit/provenance, tests/canaries, legal/privacy/security approval,
-  operability/support, and rehearsed rollback.
+  operability/support, and rehearsed rollback, plus Cyrus's separate,
+  specific authorization for that canary.
 - A failed or unanswered gate defers Copilot beyond Phase 1B. It does not weaken
   offline startup, deterministic conformance, BYOK, provider neutrality,
   self-hosting, portability, or user-owned-data boundaries.

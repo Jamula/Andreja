@@ -150,7 +150,7 @@ The recommendation is:
   seam.
 - ADR 0004 is Accepted. It requires a deterministic default and independent BYOK
   path, keeps SDK types outside application contracts, and describes Copilot as
-  a future optional implementation. This proposed ADR narrows provider timing
+  a future optional implementation. This accepted ADR narrows provider timing
   only; it does not authorize provider activation.
 
 ### Current external evidence
