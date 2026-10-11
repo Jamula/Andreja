@@ -489,5 +489,15 @@
     "status": "active",
     "createdAt": "2026-10-11T23:33:27.235Z",
     "updatedAt": "2026-10-11T23:33:27.235Z"
+  },
+  {
+    "id": "c4a50ab0-b7d7-4020-bec2-c9530854ebbb",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Existing independent recipient candidate available for private verification",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-direct-ask-user-response-recorded-by-picard-existing-independent-recipient-candidate-available-for-private-v-c4a50ab0.md",
+    "status": "active",
+    "createdAt": "2026-10-11T23:34:27.738Z",
+    "updatedAt": "2026-10-11T23:34:27.738Z"
   }
 ]
