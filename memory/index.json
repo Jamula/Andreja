@@ -378,5 +378,15 @@
     "status": "active",
     "createdAt": "2026-10-11T06:27:58.206Z",
     "updatedAt": "2026-10-11T06:27:58.206Z"
+  },
+  {
+    "id": "72bf24ec-6c20-4141-999a-91d35c822d51",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Feedback research jurisdiction constraint",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-copilot-feedback-research-jurisdiction-constraint-72bf24ec.md",
+    "status": "active",
+    "createdAt": "2026-10-11T07:34:03.995Z",
+    "updatedAt": "2026-10-11T07:34:03.995Z"
   }
 ]
