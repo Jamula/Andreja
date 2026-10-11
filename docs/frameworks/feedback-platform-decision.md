@@ -61,9 +61,11 @@ boundaries; this package does not reopen them:
 - Keep Phase 0 research local or paper-only. Free tiers and trial accounts
   are not a workaround for the $0 cloud-infrastructure cap.
 
-The proposed #155 package and its retention table remain unapproved; the
-closed state of #155 and merged PR #172 are not approval. Cyrus directed
-Deanna Troi to amend and proceed on transfer and hold-policy gaps on
+The proposed #155 package and its retention table remain unapproved. Cyrus
+reopened #155 because the automatic closure on PR #172's merge did not meet
+the explicit human-decision criterion; neither historical issue closure nor
+that merge is approval. Cyrus directed Deanna Troi to amend and proceed on
+transfer and hold-policy gaps on
 2026-10-10. Deanna reports the successor draft as feedback-privacy-v1.1 /
 feedback-notice-v1.1 in draft PR #193, with the package SHA256
 `25b21c71590df22c48a3351a3a5af163c4130d63a93bb3b7dc08181ffe673649`.
