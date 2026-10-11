@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `6c0ca695251307e1a3918c14e7556063c892f1bb3ce560aab4f4c21a5e870a33`
+- **Current proposed Plan SHA-256:** `c3086adee0337bd3d6d92ea777bea873ae50aba1c3de8305768a49aebc32ddc3`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -565,3 +565,20 @@ not match the merged `docs/plan.md`.
   preactivation gate in #155, not delegated to agents or presumed from merge.
   Fresh exact-head Data review is required; Deanna and Sarek remain locked out
   of this revision. This amendment remains Proposed.
+
+### 2026-10-11 — proposed conflict-class feedback-routing correction
+
+- **Tracking issue:** [#3](https://github.com/Jamula/Andreja/issues/3)
+- **Pull request:** Pending
+- **Plan SHA-256:** `c3086adee0337bd3d6d92ea777bea873ae50aba1c3de8305768a49aebc32ddc3`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed prerequisite-only routing correction and
+  status-artifact hash refresh; no charter ratification, plan re-ratification,
+  framework approval, recipient appointment, reporting activation, or
+  publication is implied.
+- **Scope:** Scope the existing security and privacy incident routes and
+  ordinary intake RACI to non-conflict-class reports; state the direct,
+  Cyrus-independent route for conflict-class reports and keep it unavailable
+  until recipient appointment and direct-contact verification. Refresh the
+  feedback-support status-artifact hash. The accepted plan hash and unrelated
+  pending decisions remain unchanged.

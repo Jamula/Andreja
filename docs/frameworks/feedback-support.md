@@ -588,8 +588,9 @@ from notifications, caches, clones, or forks.
 | Public site, help, accessibility | Jadzia Dax, with Data for accessibility evidence |
 | Platform/channel operations | Jett Reno |
 | Assistant, skills, semantic graph, federation | Seven of Nine or the named capability owner |
-| Security vulnerability or technical incident | Tuvok through the private incident process |
-| Privacy/consent or suspected data incident | Deanna Troi, with Tuvok and Sarek as required, through the private process |
+| Non-conflict-class security vulnerability or technical incident | Tuvok through the private incident process |
+| Non-conflict-class privacy/consent or suspected data incident | Deanna Troi, with Tuvok and Sarek as required, through the private process |
+| Conflict-class report, including a security or privacy incident | Directly to appointed qualified external counsel or an appointed independent reviewer; no Cyrus-mediated intake or triage; specialist participation only as the appointed recipient determines. Unavailable until the recipient is appointed and a direct contact method is verified. |
 | Legal, IP, regulatory, or privilege-sensitive inquiry | Sarek for non-privileged research and counsel-ready questions; requests for legal advice or privileged handling route only to appointed qualified external counsel |
 | Cost, sponsorship, or sustainability | Quark; Neelix joins for approved public/community communication |
 | Quality, regression, or release evidence | Data |
@@ -599,11 +600,11 @@ from notifications, caches, clones, or forks.
 
 | Activity | Responsible | Accountable | Consulted | Informed |
 | --- | --- | --- | --- | --- |
-| Intake operation, acknowledgment, privacy screen, dedupe, tracking, and closure | Guinan | Guinan | Deanna Troi, Tuvok, Jadzia Dax, Jett Reno as applicable | Submitter |
+| Ordinary intake operation, acknowledgment, privacy screen, dedupe, tracking, and closure for non-conflict-class reports | Guinan | Guinan | Deanna Troi, Tuvok, Jadzia Dax, Jett Reno as applicable | Submitter |
 | Feature investigation and remediation | Assigned delivery team | Feature/domain owner | Guinan, Data, applicable specialists | Submitter |
 | Non-conflict-class security vulnerability/incident handling | Approved incident responders | Tuvok | Deanna Troi, Sarek, Jett Reno, Data | Guinan and Cyrus on a need-to-know basis |
 | Non-conflict-class privacy/consent/data-incident handling | Approved privacy/incident responders | Deanna Troi | Tuvok, Sarek, Jett Reno, Data | Guinan and Cyrus on a need-to-know basis |
-| Conflict-class report handling | Appointed qualified external counsel or appointed independent reviewer | The appointed recipient | Qualified specialists only as the appointed recipient determines | Reporter and other parties only as the appointed recipient or law authorizes; Cyrus is excluded |
+| Conflict-class report handling (unavailable until recipient appointment and direct-contact verification) | Appointed qualified external counsel or appointed independent reviewer | The appointed recipient | Qualified specialists only as the appointed recipient determines | Reporter and other parties only as the appointed recipient or law authorizes; Cyrus is excluded |
 | Acceptance and regression evidence | Delivery team and Data | Data | Domain owner, Guinan, submitter where safe | Cyrus |
 | Help, known-issue, and release-content update | Domain owner and Jadzia Dax | Domain owner | Guinan, Data, Neelix when public claims apply | Submitters following the item |
 | Feedback metric definitions and quality | Guinan and Data | Guinan | Deanna Troi, Tuvok, Quark, Picard | Cyrus |
@@ -615,11 +616,12 @@ A report that names Cyrus or creates an actual, potential, or perceived conflict
 for him routes directly to appointed qualified external counsel or an appointed
 independent reviewer, without Cyrus-mediated intake or triage. Cyrus has no
 access to its contents, investigation, findings, remediation, or retaliation
-decisions. Until that recipient and a direct contact method are appointed,
-Andreja must not represent a conflict-of-interest reporting path or privileged
-channel as available. Sarek may prepare non-privileged research and
-counsel-ready questions but is not counsel, does not create privilege, and does
-not operate a privileged channel.
+decisions. Until that recipient is appointed and a direct contact method is
+verified, the conflict-class reporting capability remains unavailable: do not
+represent it as available or accept or process conflict-class reports through
+ordinary intake. Sarek may prepare non-privileged research and counsel-ready
+questions but is not counsel, does not create privilege, and does not operate a
+privileged channel.
 
 ## Phase 1B minimal transactional email
 
