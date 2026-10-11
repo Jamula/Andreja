@@ -1,24 +1,39 @@
 # ADR 0009: Qualify the Copilot SDK before a limited Phase 1B provider
 
-- **Status:** Proposed
-- **Date:** 2026-08-26
+- **Status:** Accepted (phase placement only)
+- **Date proposed:** 2026-08-26
+- **Date accepted:** 2026-10-10
 - **Issue:** [#74](https://github.com/Jamula/Andreja/issues/74)
+- **Approver:** Cyrus Jamula
+- **Approved version:** Git blob
+  `326edb516a21cd1e7e2f62213b0b28a2d452dec0`
 - **Requested outcome:** Cyrus's
   [durable direction comment](https://github.com/Jamula/Andreja/issues/74#issuecomment-5427814163)
 - **Governing:** [Platform plan](../plan.md#assistant-and-ai-architecture),
   [ADR 0000](0000-plan-ratification.md), and
   [ADR 0004](0004-phase-1a-assistant-skill-channel-contracts.md)
 - **Decision owner:** Cyrus
-- **Approvals required:** Cyrus after named architecture, privacy, security,
-  FinOps/operations, quality/evidence, public-claims, and qualified legal
-  review
+- **Provider activation approvals required:** named architecture, privacy,
+  security/abuse, FinOps/operations, quality/evidence, public-claims, and
+  qualified legal verdicts, plus Cyrus's separate activation and residual-risk
+  acceptance
 
 ## Status and decision
 
-This ADR is the explicit **recommended resolution** of #74, not an accepted
-decision and not evidence of Cyrus approval. Merge records reviewed proposal
-text only. Activation remains prohibited until Cyrus accepts this ADR and every
-applicable entry gate below has current evidence.
+This ADR is the accepted resolution of #74 for **phase placement only**.
+On 2026-10-10, Cyrus explicitly approved this exact version and phase placement
+through the coordinator's `ask_user` prompt: "Approve this exact version and
+phase placement." The coordinator prompt identified this blob and specified
+Phase 1A as the Andreja-native OpenAI-compatible BYOK adapter plus deterministic
+fake, with real Copilot no earlier than Phase 1B subject to every documented
+gate. This is the authoritative human decision record; it is not inferred from
+GitHub author attribution, an issue event, or a merge.
+
+The acceptance authorizes neither a Copilot account, subscription, trial, SDK
+runtime, authentication, network/model call, content exposure, spend, canary,
+deployment, publication, merge, nor launch. Activation remains prohibited until
+every applicable entry gate below has current evidence and Cyrus separately
+authorizes the specific synthetic canary or provider activation.
 
 The durable direction from Cyrus requests the outcome “integrate Copilot SDK
 into the toolchain so I can use Copilot to interact with the tools.” The linked
@@ -29,10 +44,9 @@ of the recommendation or activation.
 
 ## Decision-ready recommendation summary for Cyrus
 
-This section restates issue #74's decision question, options, and required
-gates in one place so Cyrus can accept or reject without reading the full ADR.
-It records no new fact and authorizes nothing; it is a navigation aid over the
-evidence below.
+This section records the question, options, and required gates that Cyrus
+accepted for phase placement. It remains a navigation aid over the evidence
+below and authorizes no provider activation.
 
 **Decision question:** should the ratified plan state unambiguously that Phase
 1A ships the Andreja-native OpenAI-compatible BYOK provider and deterministic
@@ -43,9 +57,8 @@ entitlement/isolation/cost review?
 
 1. **BYOK + deterministic fake in 1A; real Copilot in 1B (recommended).**
    Matches the current roadmap, the implemented provider seam, and every risk
-   gate below. Accepting this ADR settles the phase-placement recommendation
-   only; the ratified-plan conflict remains pending until the matching ADR 0000
-   amendment is separately accepted.
+   gate below. This accepted ADR settles phase placement only; it does not
+   authorize provider activation or re-ratify the pending platform plan.
 2. **Add real Copilot to 1A.** Rejected (see "Alternatives considered"): it
    would require entitlement, isolation, retention, credential, runtime, cost,
    and operational evidence that does not yet exist, before Phase 1A's
@@ -74,12 +87,10 @@ falsifiable, not that a live verdict has been recorded):
 | Public claims | Documented | No user-facing or marketing claim of Copilot support is authorized before a completed Phase 1B synthetic canary and this ADR's acceptance; Phase 0's public-website boundary (ADR 0008) and the plan's "honest availability status" requirement govern any future claim |
 
 Every "Documented" row above is a design/requirement, not a completed live
-verdict, and none of it is a Cyrus decision. If and when Cyrus accepts this
-ADR, that acceptance would decide **phase placement only** — it would not
+verdict. Cyrus's acceptance decides **phase placement only**; it does not
 supply the named architecture, privacy, security/abuse, FinOps/operations,
-quality/evidence, public-claims, or qualified-legal **verdicts** the "Approver
-record required for acceptance" section still requires before any synthetic
-canary, account, or spend.
+quality/evidence, public-claims, or qualified-legal **verdicts** required
+before any synthetic canary, account, or spend.
 
 The recommendation is:
 
@@ -139,7 +150,7 @@ The recommendation is:
   seam.
 - ADR 0004 is Accepted. It requires a deterministic default and independent BYOK
   path, keeps SDK types outside application contracts, and describes Copilot as
-  a future optional implementation. This proposed ADR narrows provider timing
+  a future optional implementation. This accepted ADR narrows provider timing
   only; it does not authorize provider activation.
 
 ### Current external evidence
@@ -261,11 +272,13 @@ region, and review date.
    evidence is at least as strong as the approved isolation target. Otherwise
    retain per-user runtime isolation or defer.
 
-## Approver record required for acceptance
+## Provider activation record required
 
-Acceptance requires a dated record containing:
+A dated provider-activation record is required before a synthetic canary,
+account, or spend. It must contain:
 
-- Cyrus's explicit decision and residual-risk acceptance;
+- Cyrus's separate explicit synthetic-canary/provider-activation decision and
+  residual-risk acceptance;
 - architecture verdict on provider-neutral contracts and topology;
 - privacy verdict on purpose, recipients, retention/residency/training,
   consent/disclosure, deletion, and the classification/impact assessment;
@@ -277,16 +290,16 @@ Acceptance requires a dated record containing:
   conformance, and canary tests in "Tests and canaries" and the "Qualification
   sequence";
 - public-claims verdict that no user-facing or marketing claim of Copilot
-  support is made before a completed Phase 1B synthetic canary and this ADR's
-  acceptance, consistent with ADR 0008's public-website boundary and the plan's
-  honest-availability-status requirement;
+  support is made before a completed Phase 1B synthetic canary, consistent with
+  ADR 0008's public-website boundary and the plan's honest-availability-status
+  requirement;
 - qualified legal verdict on the then-current applicable agreements and intended
   personal, invite-cohort, funded, and customer-facing uses; and
 - exact evidence links, versions, expiry/re-review triggers, accepted exceptions,
   and owners.
 
 Silence, issue closure, PR merge, package availability, a successful spike, or
-current personal Copilot access is not acceptance.
+current personal Copilot access is not provider-activation authorization.
 
 ## Consequences
 
