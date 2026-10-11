@@ -127,16 +127,20 @@ account, or return-channel prerequisite; its instructions state that submission
 does not establish ownership or grant case access or recovery. Evidence must
 show these entry points are discoverable and keyboard/screen-reader operable.
 Until then, show no active route or claim that appeal is available.
-Appeals use the common abuse limits, never a per-victim or
-per-reference lockout, and an accessible non-web alternative remains available
-under the existing accessible-alternative rule.
+In the proposed design, appeals must use the common abuse limits, never a
+per-victim or per-reference lockout. Before activation, an accessible non-web
+alternative must be approved and evidenced under the existing
+accessible-alternative rule; its availability is unverified here, and it must
+not be displayed or described as available before approval and activation evidence.
 
 An appeal is reviewed only as a restricted, minimized workflow item. It never
 grants status, record access, credential recovery or release of a held, rejected
 or incident case; operators have no shortcut and a submitter preference does
 not bypass proof. Any reply is sent only to a destination already verified under
 the approved #155 mechanism; otherwise the person receives only the common
-processing response and may retry or use an approved accessible alternative.
+processing response. The proposed workflow permits retry or use of an accessible
+alternative only after the applicable approval and activation evidence; neither
+route is represented as available here.
 Incident-classified material routes only to Tuvok/Deanna incident handling.
 Until #155 approves proof, hold and stub policy, this route stays disabled and
 no approved lifecycle exists.
@@ -299,7 +303,7 @@ passes. Use synthetic canaries only; never keep raw receipt values in reports.
 | FS156-04 | Issuance and candidate RNG failure, malformed lengths, proxy/error capture, browser refresh and export/restore | At least 128 bits required; proposed generator uses 32 CSPRNG bytes with no fallback. Store only verifier; canary scan covers response capture, URLs/history/referrers, persistent browser storage, logs/traces/metrics/alerts/queues/provider metadata and backups. |
 | FS156-05 | Crash/fault at every rotation/recovery transaction boundary; lost response; simultaneous swaps/recovery vs revoke/delete | On rollback the previously valid credential is the only valid one (zero when none was valid before recovery, never a new one); exactly one committed candidate after every successful swap or recovery; zero after committed deletion/revocation; never more than one active verifier. Nonce/grant/event/marker commit or roll back together; stale sessions deny. Retry cannot create a second transition. |
 | FS156-06 | Replay nonce, consumed proof grant, idempotency key alone; changed actor/key candidate/scope; missing/hostile origin or CSRF | Zero unauthorized transitions for verify/reopen/recovery/rotate/revoke/contact/consent and every mutation; legitimate lost-response retry authenticates with committed candidate, not spent proof. |
-| FS156-07 | False proof, lost receipt and no return channel; non-user/conflicting claim and scoped hold | No existence disclosure before approved proof; no operator shortcut or submitter preference; restrict disputed processing, preserve permitted partial result and accessible private appeal. Lost-receipt/no-return-channel appeal uses the disabled non-lookup route: identical processing response (status, body bucket, headers, timing, notification) for existing/missing/held/incident cases, no receipt/tenant/reference input, no access, status, recovery or release, no reply except to a #155-verified destination, no per-victim lockout. Once separately authorized for activation, identical discoverable keyboard/screen-reader-operable status/appeal entry points and common guidance let a person without receipt, account or return channel reach and submit the appeal; no prerequisite or copy requires the missing receipt. No active route or availability claim before approval/activation. Block execution until #155 proof/hold policy is valid. |
+| FS156-07 | False proof, lost receipt and no return channel; non-user/conflicting claim and scoped hold | No existence disclosure before approved proof; no operator shortcut or submitter preference; restrict disputed processing, preserve permitted partial result and accessible private appeal. Lost-receipt/no-return-channel appeal uses the disabled non-lookup route: identical processing response (status, body bucket, headers, timing, notification) for existing/missing/held/incident cases, no receipt/tenant/reference input, no access, status, recovery or release, no reply except to a #155-verified destination, no per-victim lockout. Once separately authorized for activation, identical discoverable keyboard/screen-reader-operable status/appeal entry points and common guidance let a person without receipt, account or return channel reach and submit the appeal; no prerequisite or copy requires the missing receipt. Evidence must also demonstrate the approved accessible non-web alternative with the same no-acceptance, no-access/recovery and non-enumeration guarantees and bounded abuse controls. No active route or availability claim before approval/activation evidence, including for the non-web alternative. Block execution until #155 proof/hold policy is valid. |
 | FS156-08 | Cap boundary/flood, slow input, challenge/screen/index/queue outages | Enforce every measured register cap, bounded cost/retry/storage, durable acceptance and protected incident route; accessible alternate never bypasses authorization or admits unbounded work. |
 | FS156-09 | Ordinary triage/sender/publisher/admin tries incident/contact/key/backup access; consent withdrawal during publish | Deny unauthorized reads/writes; no secret/incident GitHub publication; consent digest/version and restriction rechecked at publication commit. No split-check race. |
 | FS156-10 | Multipart, undeclared fields, encoded file uploads, remote URLs and malicious markup in text | Attachments rejected without durable bytes; no URL fetching/scanner/provider action or markup execution. Text remains untrusted; secret/high-risk screen runs before dedupe/triage. |
