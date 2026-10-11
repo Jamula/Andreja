@@ -519,5 +519,15 @@
     "status": "active",
     "createdAt": "2026-10-11T23:35:11.077Z",
     "updatedAt": "2026-10-11T23:35:11.077Z"
+  },
+  {
+    "id": "e826395e-3b5b-4d9e-b2bf-02fc5f08d904",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Counsel status reference restricted to private verification",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-direct-ask-user-response-recorded-by-picard-counsel-status-reference-restricted-to-private-verification-e826395e.md",
+    "status": "active",
+    "createdAt": "2026-10-11T23:36:55.439Z",
+    "updatedAt": "2026-10-11T23:36:55.439Z"
   }
 ]
