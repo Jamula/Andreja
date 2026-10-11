@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Open decisions</title>
+    <link rel="stylesheet" href="/style.css">
+    <script type="module" src="/client.mjs"></script>
+</head>
+<body>
+    <header>
+        <h1>Open decisions</h1>
+        <p>Jamula/Andreja · GitHub is the authoritative discussion. This canvas never submits or approves decisions.</p>
+        <p>Phase 0 target: October 16, 2026, 10:19 Pacific. A target is not a gate waiver.</p>
+        <button id="refresh" type="button">Refresh GitHub</button>
+        <p id="freshness" role="status" aria-live="polite">Loading GitHub source…</p>
+        <p id="error" role="alert" hidden></p>
+    </header>
+    <div class="controls">
+        <label>Search decisions <input id="search" type="search" placeholder="Question, issue number or source text"></label>
+        <label>Group <select id="group"><option>All</option><option>Phase 0</option><option>Later / gated</option><option>Evidence / work updates</option></select></label>
+        <span id="count" role="status"></span>
+    </div>
+    <main>
+        <nav aria-label="Decision questions"><ul id="cards"></ul></nav>
+        <section id="detail" aria-label="Focused decision"><p>Select a question to read its exact source and prepare an optional private draft.</p></section>
+    </main>
+</body>
+</html>
