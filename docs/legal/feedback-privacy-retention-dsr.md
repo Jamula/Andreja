@@ -18,7 +18,8 @@ approval.” This authorizes only this amendment, not policy approval, activatio
 or counsel signoff. The superseded `feedback-privacy-v1` / `feedback-notice-v1`
 package has LF-normalized SHA-256
 `60b331d01c7412ddec29914299d8dab8437729565bb581999b844f7a02bf452d`.
-Issue #155 closed through the merge of PR #172 without a human approval record.
+Issue #155 closed through the merge of PR #172 without a human approval record
+and has been reopened for the exact policy decision.
 The revised package's exact hash is recorded in the plan status inventory and
 ADR 0000; merging either revision does not satisfy the decision gate.
 
@@ -49,7 +50,11 @@ of these gates:
 4. The notice is completed with operator contact details and is tested against
    the deployed fields, routes, recipients, and schedules.
 5. Tuvok, Guinan, and Data accept the implementation evidence required below.
-6. Cyrus separately approves activation after the provider, architecture,
+6. Before the affected route can activate, Cyrus and qualified,
+   jurisdiction-appropriate counsel resolve and authorize the scope-specific
+   post-deadline disposition described in the hold expiry procedure below.
+   The seven-day proposal cannot be used without that executable decision.
+7. Cyrus separately approves activation after the provider, architecture,
    security, cost, support-capacity, and launch packages are complete.
 
 If a gate is unresolved, the affected route or field stays disabled. An
@@ -270,7 +275,13 @@ input. Bracketed values are release-blocking configuration, not optional text.
 > at least every 90 days; other fields are still deleted on schedule. Separate
 > minimized hold-decision metadata is kept for three years after final release
 > or deletion resolution, whichever is later, unless a reviewed, authorized
-> legal exception requires longer. We will explain the permitted partial
+> legal exception requires longer. Unconfirmed preservation questions do not
+> renew a hold: the proposed interim interval is one nonrenewable seven-calendar-
+> day interval from the original expiry or metadata purge trigger. Continued
+> preservation requires documented scope-specific counsel authority and
+> duration. Binding preservation duties remain protected; the operator must
+> resolve lawful post-deadline disposition before activating this route.
+> We will explain the permitted partial
 > result and appeal route without exposing other people or protected evidence.
 >
 > **Your choices and rights.** You may submit without optional diagnostics,
@@ -454,37 +465,67 @@ cannot renew or widen it. A documented mandatory duration still requires
 90-day reviews; the review timer is not authority to destroy required evidence.
 
 At expiry without renewal, stop all discretionary held-content processing and
-escalate privately to the authorized owner and counsel. Release a discretionary
-hold and execute overdue source deletion within seven days, with propagation
-receipts and backup tombstones. If an identified legal preservation duty
-continues, or release would risk destroying legally required data, retain only
-the disputed scope in restricted preservation pending urgent counsel decision
-(interim preservation) and prohibit ordinary reuse. Interim preservation is
-bounded and is not presumed renewal or permission to activate a route:
+escalate immediately and privately to the accountable owner, Cyrus Jamula, and
+qualified counsel. Release a discretionary hold and execute overdue source
+deletion within seven days where the approved disposition authorizes it, with
+propagation receipts and backup tombstones. Apply the same decision gate to
+hold metadata at its three-year purge trigger; metadata is not a loophole for
+keeping held content.
 
-- **Record at once:** overdue date, disputed scope, custodians, and a hard
-  decision-due date of 14 days after expiry. Add no new data or derived copies.
-  Keep content-free access logs and require two named custodians for any access.
-- **Day 7 checkpoint:** confirm scope has not widened and counsel has the
-  question. A checkpoint is not a renewal.
-- **Day 14 deadline:** an authorized, reviewed counsel decision must exist. A
-  third seven-day review is not allowed. If none exists, escalate privately to
-  Cyrus Jamula as decision authority and the accountable owner, who must record
-  either a counsel decision or a human-chosen disposition (preserve or destroy)
-  with named authority. This policy and agents must not supply that legal
-  conclusion.
-- **If still undecided:** keep the frozen minimum (never auto-destroyed, because
-  it may be mandatory evidence), mark it a blocking overdue incident reported at
-  least weekly to the decision authority, and treat any further retention as
-  unauthorized until the decision is recorded. Reports are visibility only and
-  never renew the interim period.
-- **Release gate:** no collection, publication, or route activation while any
-  interim preservation is past day 14 without a recorded decision.
+Distinguish a **documented binding preservation duty** from a speculative or
+unconfirmed risk. Counsel must identify the duty, covered fields/classes and
+systems, authority, required duration/end condition, and next review/expiry.
+Preserve that scope for the documented binding duration; a seven-day timer is
+not authority to destroy mandatory evidence. Unaffected fields and stores
+continue their normal deletion schedules. A suspected duty, open case,
+requester preference, or unresolved counsel question is not that documentation.
 
-Any continuation, including a hold-metadata retention exception at its purge
-trigger, requires an authorized, reviewed counsel decision with scope,
-duration/end condition, next review, and expiry; it never arises from silence,
-repeated checkpoints, or escalation reports.
+For unconfirmed risk, the proposed operational interval is **one nonrenewable
+seven-calendar-day interval from the ORIGINAL hold expiry or metadata purge
+trigger**, not from detection, escalation, assignment, review, or reopening.
+Record the original trigger timestamp and time zone and the resulting deadline
+at once. Late discovery does not restart the clock; if the deadline has passed,
+no interim interval remains. This proposal is not itself lawful-basis or
+retention authority.
+
+- **Preactivation disposition gate:** Cyrus and qualified counsel must approve
+  an executable, scope-specific disposition covering the deadline, including
+  the no-fresh-decision case, before the affected route or this interval may
+  operate. Record authority, basis, exact scope, duration/end condition, owner,
+  decision reference, execution deadline, and propagation/backup obligations.
+  They must resolve whether the covered scope can lawfully be deleted or must
+  be preserved under documented authority. Agents may not select either
+  outcome. This decision is unresolved in #155; no interim storage is enabled
+  by AMEND or documentation merge.
+- **During an authorized interval:** isolate only the approved disputed scope;
+  add no new data or derived copies and prohibit ordinary reuse. Record
+  content-free access logs and require two named custodians for any access.
+  Escalate immediately, not at the end of the interval, with the original
+  deadline and the specific unresolved question.
+- **By the seven-day deadline:** execute the preauthorized disposition or a
+  recorded scope-specific counsel-authorized preservation decision with its
+  binding authority or confirmed basis, duration/end condition, next review,
+  and expiry. Any continued preservation must have that documented authority;
+  it is not a renewal of the interim interval.
+- **Absent, invalid, expired, or differently scoped decision:** block route
+  activation/release, collection, publication, and discretionary processing;
+  escalate again at the deadline to Cyrus, the accountable owner, and qualified
+  counsel as a blocking incident. No second interval, clock reset, weekly
+  reporting fallback, or agent-managed frozen-content store is authorized.
+  Missed decisions block release; they do not renew retention or authorize
+  automatic destruction. A binding duty already documented remains protected.
+  If an existing incident has no applicable authorized disposition, it is a
+  genuine human/counsel decision blocker, not an executable agent retention
+  policy. Resolve that disposition through the authorized incident process
+  before resuming the affected route; do not claim lawful deletion, lawful
+  continued storage, or completion from this proposal.
+
+The specific outstanding decision is the lawful, executable disposition at the
+original trigger plus seven calendar days for scope with no documented binding
+duty and no fresh counsel decision. Neither silent preservation nor timer-based
+destruction is selected here. Until Cyrus and qualified counsel resolve it and
+the implementation proves enforcement, this procedure remains Proposed and
+the affected route remains disabled.
 
 Partial deletion proceeds for all unaffected fields and stores. Release records
 must evidence held-scope purge/disassociation, derived-copy reconciliation, and
@@ -596,8 +637,18 @@ Activation requires tests and a controlled exercise proving:
     discretionary holds purge overdue content; an identified preservation duty
     cannot be destroyed by timer expiry. Metadata purges at its three-year
     trigger unless an authorized, reviewed counsel exception applies; silence
-    never renews either record. Overdue preservation, partial deletion,
-    propagation, and safe rights/appeal responses have negative evidence.
+    never renews either record. Prove the single seven-calendar-day deadline
+    from the original expiry/purge trigger, including late discovery,
+    metadata expiry, reopening, and time-zone boundaries; none resets the
+    clock. Missing, expired, or differently scoped disposition authority
+    prevents activation and interval use. Exercise immediate and deadline
+    escalation, execution of the preauthorized no-fresh-decision disposition,
+    and counsel-authorized binding preservation with exact scope/duration.
+    A missed decision blocks release, not autorenewal; neither an indefinite
+    frozen store nor destruction of mandatory evidence is a passing fallback.
+    These are required future exercises, not evidence already produced.
+    Overdue preservation, partial deletion, propagation, and safe rights/appeal
+    responses have negative evidence.
     Metrics suppress a bucket below the approved threshold after deletion.
 12. Processor failure, deletion failure, provider-term drift, missing
     subprocessor information, or unknown residency blocks the affected route
@@ -633,10 +684,19 @@ its implementation gates passed. Preserve them as historical context only.
 - **Cyrus Jamula:** explicit human **AMEND**, 2026-10-10, authorizes revision
   only. Approval of this exact revised package remains **pending**.
 - **Deanna Troi:** scoped amendment prepared; no fresh approval verdict implied.
+- **Rejected revisions:** Data rejected original head `49f07d8` and second
+  author Sarek's head `7b2be3342f90b57334d23172d323dfa75fad5bff` because recurring
+  reviews and the fourteen-day/weekly frozen-content fallback still allowed
+  indefinite retention. Deanna and Sarek are locked out of this revision.
+- **Independent third author:** Picard drafted this governance/evidence gate
+  without locked-author advice or contribution. Fresh exact-head Data review
+  is required; prior verdicts do not accept this revision.
+- **Post-deadline disposition:** unresolved human/qualified-counsel
+  preactivation decision in open #155; no legal conclusion supplied here.
 - **Sarek/counsel, Tuvok, Guinan, and Data:** review of v1.1, its notice, and
   thirteen implementation/negative-evidence scenarios remains **pending**.
 - Record a new explicit approve/amend/reject disposition bound to v1.1 and its
-  exact hash in the linked decision record; #155's closed state is historical,
+  exact hash in the linked decision record; #155's earlier closed state is historical,
   not an approval. Counsel confirmation and separate activation remain required.
 
 Issue closure, label changes, PR merge, or specialist approval do not approve

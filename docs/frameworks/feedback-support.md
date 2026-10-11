@@ -13,8 +13,12 @@
 
 The privacy package is now `feedback-privacy-v1.1` / `feedback-notice-v1.1`.
 Cyrus's 2026-10-10 **AMEND and proceed** direction authorizes revision of transfer
-and hold-record policy only; it is not approval or activation. Issue #155 closed
-through PR #172, but the policy gate remains unapproved. Prior specialist
+and hold-record policy only; it is not approval or activation. Issue #155 was closed
+through PR #172 and is now reopened; the policy gate remains unapproved. The
+proposed nonrenewable seven-calendar-day interval starts at the original hold
+expiry or metadata purge trigger. An executable scope-specific human/counsel
+post-deadline disposition is a preactivation gate, not an indefinite retention
+fallback; documented binding duties remain protected. Prior specialist
 verdicts are historical; exact-revision review and a human approval are pending.
 
 Cyrus directed that issue #10 close as the completed Phase 0 framework decision
@@ -856,7 +860,7 @@ blocked.
 
 | Gate package | Tracking issue | Accountable owner | Dependencies | Status and authority |
 | --- | --- | --- | --- | --- |
-| Privacy, legal, retention, and DSR | [#155](https://github.com/Jamula/Andreja/issues/155) | Deanna Troi, with Sarek | Framework #10; descriptive baselines #116/PR #117 | **AMEND / Blocked.** Issue #155 is closed by merge #172, not approved. Cyrus authorized the v1.1 transfer-register and separate hold-record amendment on 2026-10-10; exact-revision approval and counsel confirmation remain pending for roles, basis/consent, notice, retention, rights/conflicts/propagation, transfers, holds, and public-artifact remediation. No activation is authorized. |
+| Privacy, legal, retention, and DSR | [#155](https://github.com/Jamula/Andreja/issues/155) | Deanna Troi, with qualified counsel; Picard independently revises the rejected retention gate | Framework #10; descriptive baselines #116/PR #117 | **AMEND / Blocked.** Issue #155 is reopened after merge #172 without approval. Cyrus authorized the v1.1 amendment, not policy acceptance. The single seven-calendar-day interval cannot operate until human/qualified-counsel post-deadline disposition is authorized; silence cannot renew retention and binding duties remain protected. Exact-revision approval and counsel confirmation remain pending for roles, basis/consent, notice, retention, rights/conflicts/propagation, transfers, holds, and public-artifact remediation. No activation is authorized. |
 | Security, abuse, tracking, and incident routing | [#156](https://github.com/Jamula/Andreja/issues/156) | Tuvok, with Jett Reno | Framework #10; intake-specific privacy outputs from #155 | **Open / Blocked.** Cyrus accepts or rejects the consolidated control set and residual security risk. |
 | Platform, vendor, residency, transactional email, and cost | [#157](https://github.com/Jamula/Andreja/issues/157) | Jett Reno, with Quark | Approved requirements from #155 and #156; Phase 0 $0/no-cloud rule | **Open / Blocked.** Cyrus approves architecture/provider/cost choices and any separately bounded budget; the issue itself authorizes no account or spend. |
 | Operational readiness, commitments, evidence, and launch | [#158](https://github.com/Jamula/Andreja/issues/158) | Guinan, with Data | Approved outputs from #155-#157; a separate Cyrus-approved bounded Evidence Authorization; canonical help may be delivered through [#93](https://github.com/Jamula/Andreja/issues/93); exact-release evidence for all 14 scenarios | **Open / Blocked.** Cyrus separately authorizes the temporary staging exercise, then alone records proceed, extend-learning, de-scope, or stop and any residual-risk/launch approval. Neither decision implies the other. |
