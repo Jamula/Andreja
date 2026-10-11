@@ -529,5 +529,15 @@
     "status": "active",
     "createdAt": "2026-10-11T23:36:55.439Z",
     "updatedAt": "2026-10-11T23:36:55.439Z"
+  },
+  {
+    "id": "0318349c-8ee2-471b-8607-0da053c01237",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Exact BYOK authorization boundary approved as requirements only",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-direct-ask-user-response-recorded-by-picard-exact-byok-authorization-boundary-approved-as-requirements-only-0318349c.md",
+    "status": "active",
+    "createdAt": "2026-10-11T23:39:35.907Z",
+    "updatedAt": "2026-10-11T23:39:35.907Z"
   }
 ]
