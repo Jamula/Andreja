@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `2adf7fc7b6fb2da57b13c3b3fd02f14041bff04f468dd0edfa302ca5b9f3bb3f`
-- **Current proposed Plan SHA-256:** `cd72108391336cd4cc7dcc0957b6f69cd750fa5be679b3d63c9123a2ba019746`
+- **Current proposed Plan SHA-256:** `1f7c2b1efbbf1d6a3c5bd32b6183052869ff0530092263236f74694ed25e2c2d`
 - **Accepted plan content:** [PR #117](https://github.com/Jamula/Andreja/pull/117)
   at merge commit
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda)
@@ -503,3 +503,21 @@ not match the merged `docs/plan.md`.
   records. Neither issue's decision is approved, and no collection,
   publication, provider, spend, provisioning, deployment, intake activation,
   or support commitment is authorized.
+
+### 2026-10-10 — proposed ADR 0009 acceptance-status reconciliation
+
+- **Tracking issue:** [#74](https://github.com/Jamula/Andreja/issues/74)
+- **Pull request:** Pending
+- **Plan SHA-256:** `1f7c2b1efbbf1d6a3c5bd32b6183052869ff0530092263236f74694ed25e2c2d`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed mechanical/status amendment. It does not
+  re-ratify the platform plan.
+- **Scope:** Reconcile plan references with Cyrus's separately recorded
+  acceptance of ADR 0009 version
+  `326edb516a21cd1e7e2f62213b0b28a2d452dec0` for phase placement only:
+  Phase 1A remains Andreja-native OpenAI-compatible BYOK plus deterministic
+  fake; real Copilot remains no earlier than Phase 1B after every provider gate.
+  The ADR 0009 acceptance does not authorize an account, runtime,
+  authentication, network/model call, content exposure, spend, canary,
+  deployment, publication, merge, or launch. The plan remains pending
+  re-ratification under this ADR's two-hash policy.

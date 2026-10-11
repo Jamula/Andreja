@@ -53,19 +53,32 @@ Acceptance includes these amendments:
 
 ## Content hashes
 
-These SHA-256 hashes bind the five accepted ADR files at decision time:
+These SHA-256 hashes bind the five accepted ADR files as amended below:
 
 | ADR | SHA-256 |
 | --- | --- |
 | 0001 | `a111cfebb677369e10526c6d21015d4c396a909dfb39e500fc9ba635d185f8c3` |
 | 0002 | `140c23189ec82ff6174841e39565ca6307d166258bde3174288c7d8c83e837c5` |
 | 0003 | `045290a05a354a52eac4377216babde164c68466f75b09f402355182dcd54411` |
-| 0004 | `1e863f73c250be427e8f23caa79876167cafeeff70cc5b67157d541d3d109c92` |
+| 0004 | `d2102d8dae10f883fd7ebdcc3c19e1615c7cb94ed36e71e353b774e4b813aad0` |
 | 0005 | `f68fabb69f47ee2cbf2b2fb8dd9d076ec02009d0fa477d57d4dde6512be71d6e` |
 
 Any material change to an accepted ADR requires a new amendment record and new
 hash. Formatting-only changes still update the hash but may be classified as a
 logged non-material amendment.
+
+### 2026-10-10 — logged non-material ADR 0004 cross-reference correction
+
+**Source:** Cyrus's explicit approval of ADR 0009 version
+`326edb516a21cd1e7e2f62213b0b28a2d452dec0` for phase placement only, through
+the coordinator's `ask_user` prompt.
+
+**Scope:** Update ADR 0004's cross-reference from Proposed to Accepted ADR
+0009 and preserve its explicit statement that this phase-placement acceptance
+does not authorize provider activation. This does not modify the accepted Phase
+1A assistant contract, authorize any account, runtime, authentication,
+network/model call, content exposure, spend, canary, deployment, publication,
+merge, or launch.
 
 ## Specialist challenge record
 
