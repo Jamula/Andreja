@@ -181,7 +181,7 @@ not match the merged `docs/plan.md`.
 ### 2026-08-29 — proposed keyless signing status-artifact hash refresh
 
 - **Tracking issue:** [#127](https://github.com/Jamula/Andreja/issues/127)
-- **Pull request:** pending
+- **Pull request:** [#200](https://github.com/Jamula/Andreja/pull/200) (draft)
 - **Plan SHA-256:** `1827878653b67b3560334ae1c6dce8b58f52575971b8efdce14d1af33580eb1a`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed mechanical/status amendment; no re-ratification,
