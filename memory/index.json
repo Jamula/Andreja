@@ -599,5 +599,15 @@
     "status": "active",
     "createdAt": "2026-10-11T23:56:27.072Z",
     "updatedAt": "2026-10-11T23:56:27.072Z"
+  },
+  {
+    "id": "1e9c1f81-9b4c-49c3-be44-50584b450430",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Recipient verification and appointment complete by human attestation",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-direct-coordinator-response-relayed-to-picard-recipient-verification-and-appointment-complete-by-human-attesta-1e9c1f81.md",
+    "status": "active",
+    "createdAt": "2026-10-11T23:56:53.939Z",
+    "updatedAt": "2026-10-11T23:56:53.939Z"
   }
 ]
