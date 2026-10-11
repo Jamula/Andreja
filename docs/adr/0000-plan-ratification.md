@@ -604,7 +604,7 @@ not match the merged `docs/plan.md`.
 ### 2026-10-11 — proposed canonical threat, privacy, and impact reconciliation
 
 - **Tracking issue:** [#2](https://github.com/Jamula/Andreja/issues/2)
-- **Pull request:** pending draft
+- **Pull request:** [#202](https://github.com/Jamula/Andreja/pull/202) (draft)
 - **Plan SHA-256:** `ff82d1fc29a12fa1d5d69b5d87e2ff1504be8a270d03593e4564c6fd10b10fc6`
 - **Approver:** Cyrus Jamula; **pending**
 - **Approval status:** No Cyrus authorization or approval is claimed. Picard
