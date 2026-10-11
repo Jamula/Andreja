@@ -619,5 +619,15 @@
     "status": "active",
     "createdAt": "2026-10-11T23:57:24.025Z",
     "updatedAt": "2026-10-11T23:57:24.025Z"
+  },
+  {
+    "id": "3c5fbcf4-6e8e-41c6-b00c-746937c4732b",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Private counsel verification and scoped outcome complete by attestation",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-direct-coordinator-response-relayed-to-picard-private-counsel-verification-and-scoped-outcome-complete-by-atte-3c5fbcf4.md",
+    "status": "active",
+    "createdAt": "2026-10-11T23:57:48.897Z",
+    "updatedAt": "2026-10-11T23:57:48.897Z"
   }
 ]
