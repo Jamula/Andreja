@@ -398,5 +398,15 @@
     "status": "active",
     "createdAt": "2026-10-11T07:35:05.330Z",
     "updatedAt": "2026-10-11T07:35:05.330Z"
+  },
+  {
+    "id": "aba641e6-3eb4-44bc-af9e-73906be6894d",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Keep repository auto-merge enabled",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-copilot-keep-repository-auto-merge-enabled-aba641e6.md",
+    "status": "active",
+    "createdAt": "2026-10-11T16:34:16.995Z",
+    "updatedAt": "2026-10-11T16:34:16.995Z"
   }
 ]
