@@ -31,13 +31,14 @@ its subsequent amendments, or activation. Deanna is rechecking transfer and
 hold gaps; no retention duration, proof ladder, exception, or hold is inherited
 as approved.
 
-Deanna's unmerged [#193](https://github.com/Jamula/Andreja/pull/193) proposes
-`feedback-privacy-v1.1` / `feedback-notice-v1.1` at commit
-`49f07d8be9400fb544b073de8311781bf3460811`; reported LF-normalized privacy
-artifact SHA-256:
-`25b21c71590df22c48a3351a3a5af163c4130d63a93bb3b7dc08181ffe673649`.
-That is a proposed dependency revision for transfer evidence and distinct scoped
-hold-record inventory, not an approved output or locally merged source.
+[#193](https://github.com/Jamula/Andreja/pull/193) proposes
+`feedback-privacy-v1.1` / `feedback-notice-v1.1` for transfer evidence and
+distinct scoped hold-record inventory. Its initial revision
+`49f07d8be9400fb544b073de8311781bf3460811` was rejected and superseded;
+it is historical evidence only, not the current dependency snapshot.
+No current dependency commit or content hash is pinned here until its final
+version is reconciled. Neither the proposal nor a documentation merge is an
+approved privacy output.
 Cyrus's direction to Deanna to **AMEND and proceed** authorizes that amendment,
 not acceptance, a new proof policy, or activation. Recheck the final privacy
 revision before recording #156 reviews; do not bind them to obsolete v1 text.
@@ -168,7 +169,8 @@ recoverable secret enters storage, queues, backups, exports, browser persistent
 storage, URLs (path/query/fragment), history, referrers, logs, traces, metrics,
 alerts, support screenshots, or provider metadata. Accept proof/candidates only
 in protected POST bodies; disable request/response capture at proxy, application,
-error handler, and provider boundaries. Return issuance once over HTTPS in a
+error handler, and provider boundaries. Return the initially issued receipt secret
+exactly once over HTTPS in a
 non-cacheable response; use `Cache-Control: no-store`, a no-referrer policy,
 no third-party scripts, and a restrictive CSP. Keep the secret in browser memory
 only; user-directed offline custody is separate from service persistence.
@@ -320,14 +322,15 @@ passes. Use synthetic canaries only; never keep raw receipt values in reports.
 | Entropy, one-way verifier, no raw-secret leakage | Receipt namespace/custody and FS156-02/04 | Cryptographic/RNG and full capture/egress evidence |
 | Recovery and atomic rotation | Transaction table and FS156-05/07 | Approved proof and concurrent/crash/response-loss execution |
 | CSRF/replay/idempotency on every mutation | Operation binding and FS156-06 | Endpoint inventory and all-path negative results |
-| Record/tenant/tenant-less isolation | Unchanged separate v1 deployments; FS156-01/02/09 | Application, database, worker and service-identity/network denials |
+| Record/tenant/tenant-less isolation | Unchanged proposed separate v1 deployment boundaries; FS156-01/02/09 | Application, database, worker and service-identity/network denials |
 | Private incident routing and no ordinary/public fallback | Incident containment and FS156-09/12 | Owned private routes, reviewer handoff and failure exercise |
 | `security.txt` and tested private reporting before activation | Pre-activation route specification | Accurate deployed file and synthetic route evidence after separate authorization |
 | Attachments disabled | Zero accepted types/bytes and FS156-10 | Parser, transient-upload and persistent-store negative tests |
 | Owner/reviewers/Cyrus verdict and residual risk | Version-bound ledger below | All entries pending; issue remains open |
 
 For each actual review retain reviewer, role, approve/amend/reject, timestamp,
-exact artifact paths and Git-blob SHA-256 hashes, release/evidence revision,
+exact artifact paths, Git blob object IDs and separate LF-normalized content
+SHA-256 hashes, release/evidence revision,
 conditions, unresolved risks and resolution pointer. A review of v1 or #155 is
 not a review of v1.1. Any material change invalidates affected reviews; explicitly
 reconfirm unaffected reviews rather than silently carrying them forward.
