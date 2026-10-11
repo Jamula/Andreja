@@ -539,5 +539,15 @@
     "status": "active",
     "createdAt": "2026-10-11T23:39:35.907Z",
     "updatedAt": "2026-10-11T23:39:35.907Z"
+  },
+  {
+    "id": "0f43a59f-9f18-4c28-8c10-1b6fe0628188",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Cyrus ratifies current operating model with later separation amendment",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-direct-response-facilitated-by-spock-cyrus-ratifies-current-operating-model-with-later-separation-ame-0f43a59f.md",
+    "status": "active",
+    "createdAt": "2026-10-11T23:43:56.015Z",
+    "updatedAt": "2026-10-11T23:43:56.015Z"
   }
 ]
