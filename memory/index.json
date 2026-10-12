@@ -639,5 +639,15 @@
     "status": "active",
     "createdAt": "2026-10-12T00:08:17.428Z",
     "updatedAt": "2026-10-12T00:08:17.428Z"
+  },
+  {
+    "id": "637b47ec-7c04-47d3-91c1-1a5b3dcf5d6f",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Synthetic-only engineering and no other-human access requirement",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-direct-user-message-synthetic-only-engineering-and-no-other-human-access-requirement-637b47ec.md",
+    "status": "active",
+    "createdAt": "2026-10-12T00:11:16.450Z",
+    "updatedAt": "2026-10-12T00:11:16.450Z"
   }
 ]
