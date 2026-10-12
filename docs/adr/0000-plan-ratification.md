@@ -723,7 +723,7 @@ not match the merged `docs/plan.md`.
 ### 2026-10-11 — proposed owner-device content-encryption amendment
 
 - **Tracking issue:** [#2](https://github.com/Jamula/Andreja/issues/2)
-- **Pull request:** Draft PR to be created from this proposal branch
+- **Pull request:** [#206](https://github.com/Jamula/Andreja/pull/206) (draft)
 - **Plan SHA-256:** `795e66fe0428618a44cb722ba4b93fc378006b93378a92225e11874b3a8e8bc2`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed trust-boundary and data-ownership amendment
