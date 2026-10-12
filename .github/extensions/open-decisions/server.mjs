@@ -2,6 +2,8 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 
+// JSON can escape each draft byte and identity character as six ASCII bytes.
+const maxDraftRequestBytes = 6 * (16000 + 160) + Buffer.byteLength(JSON.stringify({ id: "", text: "" }));
 const assets = new Map([
     ["/", ["index.html", "text/html; charset=utf-8"]],
     ["/client.mjs", ["client.mjs", "text/javascript; charset=utf-8"]],
@@ -41,9 +43,10 @@ export async function startServer(store, drafts) {
                 || req.headers["content-type"] !== "application/json") return reply(403, { error: "Same-origin JSON request required" });
             const chunks = [];
             let size = 0;
+            const limit = url.pathname === "/draft" ? maxDraftRequestBytes : 20000;
             for await (const chunk of req) {
                 size += chunk.length;
-                if (size > 20000) { reply(413, { error: "Request too large" }); req.resume(); return; }
+                if (size > limit) { reply(413, { error: "Request too large" }); req.resume(); return; }
                 chunks.push(chunk);
             }
             const data = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
@@ -52,7 +55,12 @@ export async function startServer(store, drafts) {
                 return reply(store.error ? 502 : 200, store.snapshot());
             }
             if (!store.cards.some(card => card.id === data.id)) return reply(404, { error: "Unknown decision" });
-            return reply(200, await drafts.save(data.id, data.text));
+            try {
+                return reply(200, await drafts.save(data.id, data.text));
+            } catch (error) {
+                if (error.message === "Draft must be at most 16 KB") return reply(413, { error: error.message });
+                throw error;
+            }
         } catch { reply(500, { error: "Request failed. No GitHub write was performed; retry or check local artifact access." }); }
     });
     server.requestTimeout = 30000;

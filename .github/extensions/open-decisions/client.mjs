@@ -57,7 +57,10 @@ async function focusCard(card, force = false) {
     detail.append(heading, node("p", card.status, "meta"),
         node("p", `${card.kind} · ${card.group} · source ${card.sourceId} · updated ${card.updatedAt}`, "meta"),
         link("Read / discuss on GitHub (no approval here)", card.sourceUrl || card.issueUrl));
-    if (card.question) detail.append(node("h3", "Question and available alternatives — exact source"), node("p", card.options, "source"));
+    if (card.question) {
+        detail.append(node("h3", "Question and available alternatives — exact source"), node("p", card.question, "source"));
+        if (card.options) detail.append(node("p", card.options, "source"));
+    }
     if (card.recommendation) detail.append(node("h3", "Source recommendation — not your decision"), node("p", card.recommendation, "source"));
     detail.append(node("h3", "Context, tradeoffs and boundaries — source text"), node("div", card.body, "source"));
     const dialogue = node("details"); dialogue.append(node("summary", "Latest discussion (may supersede the question)"));

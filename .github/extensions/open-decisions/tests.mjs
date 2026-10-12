@@ -271,7 +271,7 @@ test("HTTP routes are loopback, CSRF protected, bounded, read-only toward GitHub
         assert.equal((await post("draft", { id, text: "private" }, { "X-Canvas-CSRF": "wrong" })).status, 403);
         assert.equal((await post("draft", { id, text: "private" })).status, 200);
         assert.equal((await (await fetch(`${url}draft?id=${encodeURIComponent(id)}`)).json()).text, "private");
-        assert.equal((await post("draft", { id, text: "x".repeat(21000) })).status, 413);
+        assert.equal((await post("draft", { id, text: "x".repeat(100000) })).status, 413);
         assert.equal((await post("approve", { id })).status, 404);
         assert.equal((await post("refresh", {})).status, 200);
         assert.equal((await fetch(`${url}state`, { headers: { Origin: "https://evil.example" } })).status, 403);

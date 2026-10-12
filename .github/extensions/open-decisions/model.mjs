@@ -19,8 +19,9 @@ export function safeLink(value) {
     } catch { return null; }
 }
 function digest(value) { return createHash("sha256").update(value).digest("hex"); }
-export function decisionIdentity(number, heading) {
-    return `${REPO}:${number}:${digest(heading.trim().toLowerCase()).slice(0, 24)}`;
+export function decisionIdentity(number, heading, occurrence = 1) {
+    const identity = `${REPO}:${number}:${digest(heading.trim().toLowerCase()).slice(0, 24)}`;
+    return occurrence === 1 ? identity : `${identity}:${occurrence}`;
 }
 export function extractDecisions(issue, comments = []) {
     if (issue.state.toLowerCase() !== "open") return [];
@@ -31,20 +32,26 @@ export function extractDecisions(issue, comments = []) {
         const headings = [...body.matchAll(/^#{1,6}\s+([^\n]+)$/gm)];
         const questions = headings.filter((match, i) => /\bquestion\b/i.test(match[1])
             && /\?|please help me decide/i.test(body.slice(match.index, headings[i + 1]?.index ?? body.length)));
+        const occurrences = new Map();
         for (let i = 0; i < questions.length; i++) {
             const heading = questions[i][1].trim();
             const section = body.slice(questions[i].index, questions[i + 1]?.index ?? body.length).trim();
-            const id = decisionIdentity(issue.number, heading);
+            const normalizedHeading = heading.toLowerCase();
+            // Match repeated headings by occurrence within each source, including later updates.
+            const occurrence = (occurrences.get(normalizedHeading) || 0) + 1;
+            occurrences.set(normalizedHeading, occurrence);
+            const id = decisionIdentity(issue.number, heading, occurrence);
             const question = section.match(/\*\*(Please help me decide[\s\S]*?)\*\*/i)?.[1]
                 || section.split("\n").find(line => line.includes("?")) || heading;
             found.set(id, makeCard(issue, source, id, heading, section, question));
         }
     }
     if (!found.size) {
-        const latest = comments.at(-1) || sources[0];
-        found.set(decisionIdentity(issue.number, "source-overview"), makeCard(issue, latest,
+        const latest = comments.at(-1);
+        const overview = issue.body || "No issue text supplied.";
+        found.set(decisionIdentity(issue.number, "source-overview"), makeCard(issue, latest || sources[0],
             decisionIdentity(issue.number, "source-overview"), issue.title,
-            `${issue.body || "No issue text supplied."}\n\nLatest discussion:\n${latest.body || "No discussion supplied."}`, null));
+            latest ? `${overview}\n\nLatest discussion:\n${latest.body || "No discussion supplied."}` : overview, null));
     }
     return [...found.values()].map(card => ({
         ...card,

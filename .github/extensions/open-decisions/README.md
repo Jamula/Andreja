@@ -18,8 +18,12 @@ the complete source snapshot.
 
 Question cards quote source question headings, alternatives, recommendations and
 context. Multiple question headings in one issue remain separate. A later comment
-with the same heading replaces that heading's earlier text; other questions are
-not silently treated as resolved. Context headings (options/tradeoffs, evidence,
+with the same normalized heading replaces that heading's earlier text; repeated
+headings match by extracted-question occurrence within each source (first to first,
+second to second). A single-heading follow-up updates only the first occurrence.
+Use distinct headings when repeated questions need independent updates or reordering;
+occurrence matching cannot infer which question an isolated generic heading refers to.
+Other questions are not silently treated as resolved. Context headings (options/tradeoffs, evidence,
 gates and boundaries) stay
 with their question until the next distinct question. Explicit option sections
 are quoted as alternatives; inline alternatives omit the question prompt rather
@@ -34,7 +38,9 @@ Drafts require an explicit **Save local draft** action. Copy does not submit the
 Unsaved changes have an undo affordance and navigation warning. Drafts live in
 `$COPILOT_HOME/extensions/open-decisions/artifacts/` (default
 `~/.copilot/extensions/open-decisions/artifacts/`), keyed by repository, issue and
-question heading—not panel ID. They survive new panels/provider reloads and are
+normalized question heading and occurrence—not panel ID. First occurrences retain
+their original identity; subsequent occurrences have distinct draft keys. They
+survive new panels/provider reloads and are
 not committed, shared, governed decisions or GitHub comments. Changing a question
 heading creates a distinct identity; old draft files remain inspectable. Concurrent
 editors of the same private draft use last explicitly saved text. Avoid confidential
@@ -49,7 +55,7 @@ prompt injection, hooks or session messages are implemented.
 Validation (from repository root):
 
 ```powershell
-node --test .github\extensions\open-decisions\tests.mjs
+node --test .github\extensions\open-decisions\tests.mjs .github\extensions\open-decisions\model-review.test.mjs .github\extensions\open-decisions\client-review.test.mjs .github\extensions\open-decisions\server-review.test.mjs
 Get-ChildItem .github\extensions\open-decisions\*.mjs | ForEach-Object { node --check $_.FullName }
 ```
 
