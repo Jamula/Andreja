@@ -1,0 +1,26 @@
+body { margin: 0; padding: 1.2rem; background: var(--background-color-default, #fff); color: var(--text-color-default, #1f2328); font-family: var(--font-sans, system-ui); font-size: var(--text-body-medium, 14px); line-height: var(--leading-body-medium, 1.5); }
+h1 { font-size: var(--text-title-large, 26px); line-height: var(--leading-title-large, 32px); }
+h2 { font-size: 1.2rem; }
+p { max-width: 90ch; }
+button, input, select, textarea { font: inherit; color: inherit; background: var(--background-color-default, #fff); border: 1px solid var(--border-color-default, #818b98); border-radius: 6px; padding: .6rem; }
+button { cursor: pointer; }
+button:disabled { cursor: wait; opacity: .7; }
+:focus-visible { outline: 3px solid var(--color-focus-outline, #0969da); outline-offset: 3px; }
+a { color: var(--true-color-blue, #0969da); }
+.controls { display: flex; flex-wrap: wrap; gap: 1rem; align-items: end; padding: 1rem 0; }
+label { display: grid; gap: .4rem; }
+main { display: grid; grid-template-columns: minmax(230px, 32%) minmax(0, 1fr); gap: 1.2rem; }
+nav { max-height: 72vh; overflow-y: auto; padding: 4px; }
+ul { list-style: none; padding: 0; margin: 0; }
+li { margin-bottom: .7rem; }
+.card { display: grid; gap: .5rem; width: 100%; text-align: left; }
+.card[aria-current="true"] { border: 2px solid var(--color-focus-outline, #0969da); }
+.meta { color: var(--text-color-muted, #59636e); font-size: .9em; }
+.source { white-space: pre-wrap; overflow-wrap: anywhere; font-family: inherit; }
+#detail { border: 1px solid var(--border-color-default, #d1d9e0); border-radius: 8px; padding: 1rem; min-width: 0; }
+#error { border: 1px solid var(--true-color-red, #cf222e); border-radius: 6px; padding: .7rem; }
+textarea { width: 100%; box-sizing: border-box; min-height: 10rem; resize: vertical; }
+.actions { display: flex; flex-wrap: wrap; gap: .7rem; margin-top: .7rem; }
+details { border-top: 1px solid var(--border-color-default, #d1d9e0); padding: 1rem 0; }
+summary { cursor: pointer; }
+@media (max-width: 700px) { main { grid-template-columns: 1fr; } nav { max-height: 35vh; } body { padding: .8rem; } }
