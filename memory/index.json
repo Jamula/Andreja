@@ -659,5 +659,15 @@
     "status": "active",
     "createdAt": "2026-10-12T00:12:19.554Z",
     "updatedAt": "2026-10-12T00:12:19.554Z"
+  },
+  {
+    "id": "9c4c5e04-87ee-4d68-8844-95bd8fcd64c1",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Exact threat documented/open-evidence baseline accepted",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-deanna-troi-exact-threat-documented-open-evidence-baseline-accepted-9c4c5e04.md",
+    "status": "active",
+    "createdAt": "2026-10-12T00:13:01.494Z",
+    "updatedAt": "2026-10-12T00:13:01.494Z"
   }
 ]
