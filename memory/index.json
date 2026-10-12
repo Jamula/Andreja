@@ -649,5 +649,15 @@
     "status": "active",
     "createdAt": "2026-10-12T00:11:16.450Z",
     "updatedAt": "2026-10-12T00:11:16.450Z"
+  },
+  {
+    "id": "b9a50d53-b927-4eb0-893e-1762619f1b0d",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Owner-only decryption and no operator plaintext recovery requirement",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-direct-ask-user-response-recorded-by-picard-owner-only-decryption-and-no-operator-plaintext-recovery-require-b9a50d53.md",
+    "status": "active",
+    "createdAt": "2026-10-12T00:12:19.554Z",
+    "updatedAt": "2026-10-12T00:12:19.554Z"
   }
 ]
