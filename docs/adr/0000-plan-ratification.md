@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `e2044133f47deba7dcbbd4d931f2ec0e9a866432726d982182617716f7abfad2`
-- **Current proposed Plan SHA-256:** `a530ff3a7ee2b55fc5e1bc3ccf59b309ba554590baa19404c886cce5b1387886`
+- **Current proposed Plan SHA-256:** `795e66fe0428618a44cb722ba4b93fc378006b93378a92225e11874b3a8e8bc2`
 - **Accepted plan content:** [PR #202](https://github.com/Jamula/Andreja/pull/202)
   at merge commit
   [`861bff7c6d74be5a497e7a0f706a3a92bdae9ddc`](https://github.com/Jamula/Andreja/commit/861bff7c6d74be5a497e7a0f706a3a92bdae9ddc)
@@ -719,3 +719,30 @@ not match the merged `docs/plan.md`.
   artifacts, not acceptance prerequisites. This new plan hash is not accepted
   by the earlier exact-hash decision; it represents this review-only status
   proposal. No unrelated gate, approval, or authority is changed.
+
+### 2026-10-11 — proposed owner-device content-encryption amendment
+
+- **Tracking issue:** [#2](https://github.com/Jamula/Andreja/issues/2)
+- **Pull request:** Draft PR to be created from this proposal branch
+- **Plan SHA-256:** `795e66fe0428618a44cb722ba4b93fc378006b93378a92225e11874b3a8e8bc2`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed trust-boundary and data-ownership amendment
+  requiring explicit plan re-ratification; not accepted.
+- **Decision:** This is a design proposal only. It does not accept the new
+  content custody boundary, authorize implementation or real-data use, accept
+  residual risk, close an evidence gate, authorize provider calls or sharing,
+  or declare Phase 0/Phase 1A exit.
+- **Scope:** Propose an independently verifiable owner-device client for
+  content encryption/decryption, content processing/search, assistant
+  preparation/review, and plaintext export/import; opaque server persistence;
+  owner-held recovery with permanent loss after total key/recovery loss; no
+  plaintext external AI calls, live other-human sharing, or operator-assisted
+  content recovery. Only conflicting content-custody portions of accepted
+  ADRs 0002–0005 would be superseded if this exact plan amendment is later
+  re-ratified. The accepted plan hash `e2044133f47deba7dcbbd4d931f2ec0e9a866432726d982182617716f7abfad2`,
+  historical plan hash, exact accepted ADRs, and original privacy/threat/
+  impact evidence-baseline hashes remain preserved as historical provenance.
+  The separate pending source-status proposal remains unresolved. Independent
+  exact-head review, synthetic-only evidence, and Cyrus's explicit decision
+  remain required; no current records, exports, backups, logs, or prior
+  provider copies are retroactively encrypted.

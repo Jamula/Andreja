@@ -30,3 +30,21 @@ continuity. Never place keys or recovery codes in the restore manifest.
 If every passkey and recovery code is lost, stop. Phase 1A has no password, email,
 header, development, or operator break-glass bypass. Restore a verified recovery set
 or wait for a separately approved custody design; do not edit credential tables.
+
+## Proposed content-key recovery amendment (not ratified)
+
+[ADR 0012](../adr/0012-owner-device-content-encryption.md) proposes a separate
+owner-device content-key lifecycle. This paragraph is not an operating
+instruction and does not change the current identity recovery procedure.
+Identity passkeys, recovery codes, and Data Protection history would not recover
+content keys. Only owner-controlled device keys or the owner-held recovery
+package plus its separate high-entropy secret could restore content access;
+operators and support would have no plaintext recovery path. Loss of all
+usable owner keys and recovery materials would be permanent data loss.
+
+Before any ratified implementation, synthetic-only drills must prove owner
+recovery after ciphertext restore, denial of operator/identity-based content
+recovery, device enrollment/revocation limits, failed recovery on incomplete
+materials, and clear permanent-loss behavior. These tests are not currently
+claimed. Existing encrypted database/Data Protection recovery and restored
+passkey sign-in remain separate requirements.

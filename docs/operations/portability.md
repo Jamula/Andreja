@@ -144,3 +144,21 @@ is a separate operator decision.
 Application exports contain user data and audit history. Protect them as sensitive
 data, never attach them to issues or telemetry, and test with synthetic fixtures
 only.
+
+## Proposed owner-device portability amendment (not ratified)
+
+[ADR 0012](../adr/0012-owner-device-content-encryption.md) proposes that the
+owner client perform content decryption, validation, export, and import. A
+content-bearing export would be encrypted for owner-controlled custody without
+plaintext staging; the server and operator CLI would not receive plaintext or
+content keys. The current environment-key CLI and server-side content path are
+not conforming to that proposal and remain current behavior unless a later,
+explicitly ratified migration replaces them. This is not a claim that existing
+archives or backups are owner-only encrypted.
+
+Future synthetic-only evidence must cover local export/import, ciphertext
+integrity and tamper rejection, owner-held key handling, absence of plaintext
+and keys in server APIs/logs/telemetry/support artifacts, recovery and clean
+restore using owner-held materials, and disposition of legacy plaintext
+archives/backups. No code, test, migration, or retention policy is authorized or
+claimed here.

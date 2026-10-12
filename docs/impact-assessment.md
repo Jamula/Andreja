@@ -145,3 +145,29 @@ high/critical residual threat remains unresolved; if evidence contradicts a
 claim; or if a required reviewer or human decision is missing. This proposed
 assessment does not waive any existing plan, ADR, legal, cost, evidence, or
 release gate.
+
+## Proposed owner-device content encryption amendment (not ratified)
+
+ADR 0012 proposes an owner-device client that encrypts/decrypts content and
+performs all content processing, search, assistant preparation/review, and
+plaintext export/import locally. Server/operator access would be limited to
+ciphertext plus explicitly inventoried service metadata. This is a proposal to
+change data ownership and trust boundaries, not evidence that current task rows,
+provider requests, operator archives, backups, or logs are protected.
+
+| Dimension | Proposed effect and limit | Required future evidence |
+|---|---|---|
+| Owner control and confidentiality | Reduces server-side plaintext custody if the owner client and keys are trustworthy; shifts availability, key custody, local-device exposure, and recovery responsibility to the owner. It does not establish informed consent, accessibility, or freedom from coercion. | Independent exact-revision review of the client/key/recovery design; synthetic owner-only access, lost-device, recovery, revocation, and accessibility scenarios. |
+| Operator and metadata exposure | Operator access to stored content would be reduced, but operators retain availability/control of the service and may observe identifiers, sizes, counts, access times, traffic/network metadata, and failure patterns. | Synthetic DB/dump/backup/API/log/exception/telemetry/support negative tests; precise metadata inventory and leakage review. |
+| Client/release compromise | A hostile same-origin server-delivered client could exfiltrate keys; signed but compromised client code, release keys, browser/OS/extensions, unlocked devices, or coercion remain risks. ADR 0010's OCI trust does not verify this client. | Independently authenticated release root; exact artifact verification before key access; tamper, downgrade, unsigned, and verification-failure negatives. |
+| External recipients and non-users | The proposal prohibits plaintext external AI calls and live sharing with another human. It supplies no basis to process or share non-user content elsewhere. | Synthetic request/transport negatives proving no plaintext egress and no active sharing path; any future exception requires a separate proposal and decision. |
+| Recovery and irreversible loss | Identity and operator recovery cannot recreate content keys. Loss of all owner-held key/recovery material makes content unrecoverable; ciphertext restoration alone is not a content recovery. | Synthetic separate identity/content recovery, owner-held recovery, combined ciphertext restore/decrypt, total-key-loss and backup-disposition evidence. No operator/support decryption path. |
+| Transition from current system | Existing plaintext rows, exports, backups, logs, and prior provider copies are not retroactively encrypted. Migration and legacy-copy retention/deletion remain undecided. | Owner-client migration proof, no plaintext fallback, rollback constraints, record-level legacy inventory, approved retention/disposition, and restore tests. |
+
+This proposal does not resolve the existing High (15) coercion/custody or High
+(12) telemetry/support/reviewer findings, does not close any gate, and does not
+claim tests have been run. Use synthetic fixtures only. Independent security,
+privacy, architecture, operations, and accessibility review of the exact
+revision plus Cyrus's explicit re-ratification of the proposed plan hash remain
+prerequisites; no implementation, real-content use, risk acceptance, or
+activation is authorized.
