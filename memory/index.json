@@ -669,5 +669,15 @@
     "status": "active",
     "createdAt": "2026-10-12T00:13:01.494Z",
     "updatedAt": "2026-10-12T00:13:01.494Z"
+  },
+  {
+    "id": "37eea812-bc45-4c40-afe6-7a3768313ae6",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Draft owner-device encryption amendment",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-coordinator-draft-owner-device-encryption-amendment-37eea812.md",
+    "status": "active",
+    "createdAt": "2026-10-12T00:18:21.175Z",
+    "updatedAt": "2026-10-12T00:18:21.175Z"
   }
 ]
