@@ -629,5 +629,15 @@
     "status": "active",
     "createdAt": "2026-10-11T23:57:48.897Z",
     "updatedAt": "2026-10-11T23:57:48.897Z"
+  },
+  {
+    "id": "6994f01e-7e63-4772-8e36-b5447c9c609f",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Exact privacy documented/open-evidence baseline accepted",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-deanna-troi-exact-privacy-documented-open-evidence-baseline-accepted-6994f01e.md",
+    "status": "active",
+    "createdAt": "2026-10-12T00:08:17.428Z",
+    "updatedAt": "2026-10-12T00:08:17.428Z"
   }
 ]
