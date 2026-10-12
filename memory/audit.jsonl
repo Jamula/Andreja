@@ -153,3 +153,4 @@
 {"timestamp":"2026-10-12T00:14:08.634Z","action":"search","reason":"Search returned 0 result(s)"}
 {"timestamp":"2026-10-12T00:14:22.903Z","action":"search","reason":"Search returned 0 result(s)"}
 {"timestamp":"2026-10-12T00:14:27.496Z","action":"search","reason":"Search returned 0 result(s)"}
+{"timestamp":"2026-10-12T00:18:24.691Z","action":"write","id":"37eea812-bc45-4c40-afe6-7a3768313ae6","class":"DECISION","title":"Draft owner-device encryption amendment","path":".squad\\decisions\\inbox\\cyrus-jamula-via-coordinator-draft-owner-device-encryption-amendment-37eea812.md","reason":"Content is allowed for governed local memory","actor":"Cyrus Jamula (via Coordinator)","provider":"local"}
