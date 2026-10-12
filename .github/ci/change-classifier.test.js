@@ -2997,6 +2997,25 @@ test('captured PR 103 Markdown inline code now fails closed', () => {
   );
 });
 
+const canvasWorkflowForbiddenConditions = /(?:^\s+(?:if|needs):|pull_request_target|shadow_sampled)/m;
+
+test('canvas workflow rejects conditional gates, dependencies, unsafe triggers, and sampling', () => {
+  for (const condition of [
+    'jobs:\n  canvas:\n    if: false',
+    'steps:\n  - run: node --test\n    if: false',
+    'jobs:\n  canvas:\n    needs: classify',
+    'on:\n  pull_request_target:',
+    'description: disallow pull_request_target',
+    'run: echo shadow_sampled',
+  ]) {
+    assert.match(condition, canvasWorkflowForbiddenConditions, condition);
+  }
+  assert.doesNotMatch(
+    'description: if: and needs: are not YAML keys here',
+    canvasWorkflowForbiddenConditions,
+  );
+});
+
 test('canvas workflow runs all four suites for extension-only changes without shadow sampling', () => {
   const workflow = fs.readFileSync(
     path.join(root, '.github/workflows/open-decisions-tests.yml'),
@@ -3010,7 +3029,7 @@ test('canvas workflow runs all four suites for extension-only changes without sh
     assert.match(block[1], /- '\.github\/workflows\/open-decisions-tests\.yml'/);
   }
   assert.match(workflow, /^  merge_group:\r?\n    types: \[checks_requested\]/m);
-  assert.doesNotMatch(workflow, /^\s+if:|pull_request_target|needs:|shadow_sampled/m);
+  assert.doesNotMatch(workflow, canvasWorkflowForbiddenConditions);
   assert.match(workflow, /node-version: '22\.18\.0'/);
   const command = workflow.match(/run: >-\r?\n([\s\S]*?)$/);
   assert.ok(command, 'canvas suites must have a directly testable command');

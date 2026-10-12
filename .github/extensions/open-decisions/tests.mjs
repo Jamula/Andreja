@@ -9,6 +9,12 @@ import { startServer } from "./server.mjs";
 import { createDecisionCanvas } from "./lifecycle.mjs";
 import { request as httpRequest } from "node:http";
 
+function panelRequest(url, path, options = {}) {
+    const capability = new URLSearchParams(new URL(url).hash.slice(1)).get("capability");
+    return fetch(new URL(path, url), { ...options,
+        headers: { Authorization: `Bearer ${capability}`, ...options.headers } });
+}
+
 const issue = { number: 73, state: "open", title: "[Decision]: governance", body: "Original packet",
     html_url: "https://github.com/Jamula/Andreja/issues/73", updated_at: "2026-10-11T00:00:00Z" };
 const comment = (id, body) => ({ id, body, html_url: `${issue.html_url}#issuecomment-${id}`, updated_at: "2026-10-11T01:00:00Z" });
@@ -138,7 +144,7 @@ test("production canvas reopen refreshes source, preserves stale snapshot on fai
         const reopened = await canvas.open(ctx);
         assert.equal(reopened.url, initial.url);
         assert.equal(calls, 2);
-        const current = await (await fetch(`${reopened.url}state`)).json();
+        const current = await (await panelRequest(reopened.url, "state")).json();
         assert.equal(current.cards[0].issueTitle, "Revision 2");
         assert.equal(current.cards[0].body, structured73);
         assert.equal(current.lastRefresh, "refresh-2");
@@ -146,18 +152,23 @@ test("production canvas reopen refreshes source, preserves stale snapshot on fai
         const failed = await canvas.open(ctx);
         assert.equal(calls, 3);
         assert.equal(failed.status, "Source fetch failed");
-        const stale = await (await fetch(`${failed.url}state`)).json();
+        const stale = await (await panelRequest(failed.url, "state")).json();
         assert.deepEqual(stale.cards, current.cards);
         assert.equal(stale.lastRefresh, current.lastRefresh);
         assert.equal(stale.attemptedAt, "refresh-2");
         assert.equal(stale.stale, true);
         assert.match(stale.error, /reopen offline/);
         await canvas.onClose(ctx);
-        await assert.rejects(fetch(`${failed.url}state`));
+        await assert.rejects(panelRequest(failed.url, "state"));
         fail = false;
         const recreated = await canvas.open(ctx);
+        assert.notEqual(new URL(recreated.url).hash, new URL(initial.url).hash);
+        const oldCapability = new URLSearchParams(new URL(initial.url).hash.slice(1)).get("capability");
+        assert.equal((await panelRequest(recreated.url, "state", {
+            headers: { Authorization: `Bearer ${oldCapability}` },
+        })).status, 403);
         assert.equal(calls, 4);
-        const recovered = await (await fetch(`${recreated.url}state`)).json();
+        const recovered = await (await panelRequest(recreated.url, "state")).json();
         assert.equal(recovered.cards[0].issueTitle, "Revision 4");
         assert.equal(recovered.lastRefresh, "refresh-4");
         assert.equal(recovered.stale, false);
@@ -181,7 +192,7 @@ test("concurrent canvas opens and agent refresh coalesce; compact agent results 
         const b = canvas.open(ctx);
         const refresh = canvas.actions[0].handler();
         try {
-            const pending = await (await fetch(`${initial.url}state`)).json();
+            const pending = await (await panelRequest(initial.url, "state")).json();
             assert.equal(pending.refreshing, true);
             assert.equal(calls, 2);
         } finally { gate.resolve(); }
@@ -195,7 +206,7 @@ test("concurrent canvas opens and agent refresh coalesce; compact agent results 
         assert.equal(summary.refreshing, false);
         assert.equal("cards" in summary, false);
         assert.ok(JSON.stringify(summary).length < 1000);
-        const full = await (await fetch(`${initial.url}state`)).json();
+        const full = await (await panelRequest(initial.url, "state")).json();
         assert.equal(full.cards.length, summary.count);
         assert.equal(full.cards[0].body, structured73);
         assert.equal(full.cards[0].options, structuredOptions);
@@ -206,7 +217,7 @@ test("concurrent canvas opens and agent refresh coalesce; compact agent results 
         assert.equal(failed.stale, true);
         assert.match(failed.error, /action offline/);
         assert.equal("cards" in failed, false);
-        const stale = await (await fetch(`${initial.url}state`)).json();
+        const stale = await (await panelRequest(initial.url, "state")).json();
         assert.deepEqual(stale.cards, full.cards);
         assert.equal(stale.error, failed.error);
     } finally { gate?.resolve(); await canvas.onClose(ctx); }
@@ -263,26 +274,26 @@ test("HTTP routes are loopback, CSRF protected, bounded, read-only toward GitHub
         const source = await fetch(url); assert.equal(source.status, 200);
         assert.match(await source.text(), /NOT submitted|never submits/);
         assert.match(source.headers.get("content-security-policy"), /script-src 'self'/);
-        const state = await (await fetch(`${url}state`)).json();
+        const state = await (await panelRequest(url, "state")).json();
         const id = state.cards[0].id;
-        const post = (path, data, headers = {}) => fetch(`${url}${path}`, { method: "POST",
-            headers: { "Content-Type": "application/json", Origin: url.slice(0, -1), "X-Canvas-CSRF": state.csrf, ...headers }, body: JSON.stringify(data) });
+        const post = (path, data, headers = {}) => panelRequest(url, path, { method: "POST",
+            headers: { "Content-Type": "application/json", Origin: new URL(url).origin, "X-Canvas-CSRF": state.csrf, ...headers }, body: JSON.stringify(data) });
         assert.equal((await post("draft", { id, text: "private" }, { Origin: "https://evil.example" })).status, 403);
         assert.equal((await post("draft", { id, text: "private" }, { "X-Canvas-CSRF": "wrong" })).status, 403);
         assert.equal((await post("draft", { id, text: "private" })).status, 200);
-        assert.equal((await (await fetch(`${url}draft?id=${encodeURIComponent(id)}`)).json()).text, "private");
+        assert.equal((await (await panelRequest(url, `draft?id=${encodeURIComponent(id)}`)).json()).text, "private");
         assert.equal((await post("draft", { id, text: "x".repeat(100000) })).status, 413);
         assert.equal((await post("approve", { id })).status, 404);
         assert.equal((await post("refresh", {})).status, 200);
-        assert.equal((await fetch(`${url}state`, { headers: { Origin: "https://evil.example" } })).status, 403);
+        assert.equal((await panelRequest(url, "state", { headers: { Origin: "https://evil.example" } })).status, 403);
         const hostStatus = await new Promise((resolve, reject) => {
-            const req = httpRequest(`${url}state`, { headers: { Host: "evil.example" } }, response => {
+            const req = httpRequest(new URL("state", url), { headers: { Host: "evil.example" } }, response => {
                 response.resume(); resolve(response.statusCode);
             });
             req.on("error", reject); req.end();
         });
         assert.equal(hostStatus, 403);
-        assert.equal((await fetch(`${url}client.mjs`)).headers.get("content-type"), "text/javascript; charset=utf-8");
+        assert.equal((await fetch(new URL("client.mjs", url))).headers.get("content-type"), "text/javascript; charset=utf-8");
     } finally { await new Promise(resolve => server.close(resolve)); }
     assert.equal(server.listening, false);
 });

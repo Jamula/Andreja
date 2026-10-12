@@ -1,11 +1,13 @@
 import { filterDecisions, safeLink } from "/model.mjs";
 
 const $ = id => document.getElementById(id);
+const capability = new URLSearchParams(window.location.hash.slice(1)).get("capability");
 let state = { cards: [] };
 let selected = null;
 let csrf;
 let dirty = false;
 let draftGeneration = 0;
+let detailRefreshPending = false;
 function node(tag, text, className) {
     const element = document.createElement(tag);
     if (text != null) element.textContent = text;
@@ -19,9 +21,14 @@ function link(text, url) {
     return element;
 }
 async function request(path, data) {
-    const response = await fetch(path, data === undefined ? {} : {
-        method: "POST", headers: { "Content-Type": "application/json", "X-Canvas-CSRF": csrf },
-        body: JSON.stringify(data),
+    if (!/^[a-f0-9]{64}$/.test(capability || "")) throw new Error("Missing panel capability; reopen this canvas from Copilot");
+    if (!/^\/(?:state|refresh|draft)(?:\?|$)/.test(path)) throw new Error("Invalid local API path");
+    const response = await fetch(path, {
+        headers: { Authorization: `Bearer ${capability}`, ...(data === undefined ? {} : {
+            "Content-Type": "application/json", "X-Canvas-CSRF": csrf,
+        }) },
+        redirect: "error", referrerPolicy: "no-referrer",
+        ...(data === undefined ? {} : { method: "POST", body: JSON.stringify(data) }),
     });
     const result = await response.json();
     if (!response.ok) {
@@ -48,9 +55,9 @@ function render() {
     }
     if (!cards.length) $("cards").append(node("li", state.error ? "No verified source available. Retry refresh." : "No matching open decisions."));
 }
-async function focusCard(card, force = false) {
+async function focusCard(card, { force = false, moveFocus = true } = {}) {
     if (dirty && !force && !window.confirm("Discard unsaved local draft changes? Save the draft first to keep it.")) return;
-    selected = card.id; dirty = false; render();
+    selected = card.id; dirty = false; detailRefreshPending = false; render();
     const generation = ++draftGeneration;
     const detail = $("detail"); detail.replaceChildren();
     const heading = node("h2", card.heading); heading.tabIndex = -1;
@@ -94,7 +101,7 @@ async function focusCard(card, force = false) {
         catch { status.textContent = "Copy unavailable. Select the draft text and copy manually."; textarea.select(); }
     };
     undo.onclick = () => { textarea.value = saved; dirty = false; status.textContent = "Restored last saved local draft."; };
-    heading.focus();
+    if (moveFocus) heading.focus();
     try {
         const data = await request(`/draft?id=${encodeURIComponent(card.id)}`);
         if (generation !== draftGeneration) return;
@@ -103,6 +110,18 @@ async function focusCard(card, force = false) {
         status.textContent = data.updatedAt ? `Local draft saved ${data.updatedAt}. NOT submitted / approved.` : "No saved draft. Stored under your Copilot user artifacts, never in the repository.";
     } catch (e) { status.textContent = `Saved draft unavailable: ${e.message}. Editing disabled to avoid overwriting unread data.`; }
 }
+async function refreshSelectedDetail() {
+    if (!selected) return;
+    detailRefreshPending = true;
+    // Retain active controls (and their caret) until focus leaves the detail.
+    if (dirty || $("detail").contains(document.activeElement)) return;
+    const card = state.cards.find(item => item.id === selected);
+    if (card) await focusCard(card, { force: true, moveFocus: false });
+    else {
+        selected = null; detailRefreshPending = false;
+        $("detail").replaceChildren(node("p", "This question is no longer in the open source set."));
+    }
+}
 $("search").oninput = render;
 $("group").onchange = render;
 $("refresh").onclick = async () => {
@@ -110,9 +129,7 @@ $("refresh").onclick = async () => {
     $("freshness").textContent = "Refreshing authoritative GitHub source…";
     try {
         state = await request("/refresh", {}); render();
-        const card = state.cards.find(item => item.id === selected);
-        if (!dirty && card) await focusCard(card, true);
-        else if (!dirty && selected && !card) { selected = null; $("detail").replaceChildren(node("p", "This question is no longer in the open source set.")); }
+        await refreshSelectedDetail();
     } catch (e) { error(e.message); }
     finally { $("refresh").disabled = false; }
 };
@@ -122,11 +139,7 @@ async function sync() {
         const next = await request("/state"); csrf = next.csrf;
         const changed = next.lastRefresh !== state.lastRefresh || next.error !== state.error;
         state = next; render();
-        if (changed && selected && !dirty) {
-            const card = state.cards.find(item => item.id === selected);
-            if (card) await focusCard(card, true);
-            else { selected = null; $("detail").replaceChildren(node("p", "This question is no longer in the open source set.")); }
-        }
+        if (changed || detailRefreshPending) await refreshSelectedDetail();
     } catch (e) { error(`Local provider unavailable: ${e.message}. Displayed data may be stale.`); }
 }
 await sync();

@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { randomBytes } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 
 // JSON can escape each draft byte and identity character as six ASCII bytes.
 const maxDraftRequestBytes = 6 * (16000 + 160) + Buffer.byteLength(JSON.stringify({ id: "", text: "" }));
@@ -11,6 +11,8 @@ const assets = new Map([
     ["/model.mjs", ["browser-model.mjs", "text/javascript; charset=utf-8"]],
 ]);
 export async function startServer(store, drafts) {
+    const capability = randomBytes(32).toString("hex");
+    const credential = Buffer.from(`Bearer ${capability}`);
     const csrf = randomBytes(32).toString("hex");
     let origin;
     const server = createServer(async (req, res) => {
@@ -20,6 +22,7 @@ export async function startServer(store, drafts) {
         };
         res.setHeader("Cache-Control", "no-store");
         res.setHeader("X-Content-Type-Options", "nosniff");
+        res.setHeader("Referrer-Policy", "no-referrer");
         res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'");
         try {
             if (req.headers.host !== new URL(origin).host) return reply(403, { error: "Invalid host" });
@@ -32,6 +35,9 @@ export async function startServer(store, drafts) {
                 res.end(await readFile(new URL(file, import.meta.url)));
                 return;
             }
+            const authorization = Buffer.from(req.headers.authorization || "");
+            if (authorization.length !== credential.length || !timingSafeEqual(authorization, credential))
+                return reply(403, { error: "Panel authorization required" });
             if (req.method === "GET" && url.pathname === "/state") return reply(200, { ...store.snapshot(), csrf });
             if (req.method === "GET" && url.pathname === "/draft") {
                 const id = url.searchParams.get("id");
@@ -70,5 +76,5 @@ export async function startServer(store, drafts) {
         server.listen(0, "127.0.0.1", resolve);
     });
     origin = `http://127.0.0.1:${server.address().port}`;
-    return { server, url: `${origin}/` };
+    return { server, url: `${origin}/#capability=${capability}` };
 }

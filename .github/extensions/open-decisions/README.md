@@ -46,11 +46,37 @@ heading creates a distinct identity; old draft files remain inspectable. Concurr
 editors of the same private draft use last explicitly saved text. Avoid confidential
 counsel details in drafts or the public GitHub discussion.
 
-Each panel has a loopback-only server closed on panel close. Mutation routes
-require exact same-origin JSON plus an unpredictable CSRF header; bodies and CLI
-requests are bounded. Source text is rendered with `textContent`, and only HTTPS
+Each panel has a loopback-only server closed on panel close. Its URL carries a
+random 256-bit per-panel capability in the fragment, which is not sent in HTTP
+request URLs or referrers. The client retains it for reloads and sends it only in
+an Authorization bearer header to the local state, draft and refresh APIs; API
+redirects are rejected. Every API request requires this capability before any
+source, draft or CSRF data is returned or any mutation occurs. Reopening an
+existing panel preserves its capability URL; closing/recreating it generates a
+new capability. No capability is written to draft files, returned in API data,
+embedded in assets, or sent to GitHub/external links.
+
+Static HTML, JavaScript and CSS are public, generic assets: loading them without
+the fragment reveals no source, drafts or credential and cannot bootstrap API
+access. Responses use no-store and no-referrer policies. Mutation routes additionally
+require exact same-origin JSON plus an unpredictable CSRF header; Host and Origin
+checks remain defense in depth, not credentials. Bodies and CLI requests are bounded.
+The capability blocks another local process/account that knows the port or forges
+Host/Origin headers but lacks the capability, independently of draft-file permissions.
+It does not protect against a compromised owner account/device, access to the
+panel URL or browser/host memory, or an attacker able to inspect loopback traffic.
+Treat the panel URL as a secret; do not share or log it. Persistent draft-file
+permissions remain a separate boundary and are platform-dependent.
+
+Source text is rendered with `textContent`, and only HTTPS
 links on `github.com` are clickable. No GitHub write, approval, risk acceptance,
 prompt injection, hooks or session messages are implemented.
+
+This is a separately requested developer/team tool hosted by Copilot, not
+Andreja's assistant-provider implementation or the credential-free ADR 0009
+compile/conformance spike. It uses the developer's authenticated GitHub CLI for
+read-only issue dialogue; it does not activate an Andreja Copilot provider,
+authorize product-data use, or satisfy that provider's activation gates.
 
 Validation (from repository root):
 
