@@ -2997,6 +2997,32 @@ test('captured PR 103 Markdown inline code now fails closed', () => {
   );
 });
 
+test('canvas workflow runs all four suites for extension-only changes without shadow sampling', () => {
+  const workflow = fs.readFileSync(
+    path.join(root, '.github/workflows/open-decisions-tests.yml'),
+    'utf8',
+  );
+  for (const event of ['push', 'pull_request']) {
+    const block = workflow.match(new RegExp(`^  ${event}:\\r?\\n([\\s\\S]*?)(?=^  \\w+:|^\\S)`, 'm'));
+    assert.ok(block, `${event} trigger must exist`);
+    assert.match(block[1], /branches: \[main\]/);
+    assert.match(block[1], /- '\.github\/extensions\/open-decisions\/\*\*'/);
+    assert.match(block[1], /- '\.github\/workflows\/open-decisions-tests\.yml'/);
+  }
+  assert.match(workflow, /^  merge_group:\r?\n    types: \[checks_requested\]/m);
+  assert.doesNotMatch(workflow, /^\s+if:|pull_request_target|needs:|shadow_sampled/m);
+  assert.match(workflow, /node-version: '22\.18\.0'/);
+  const command = workflow.match(/run: >-\r?\n([\s\S]*?)$/);
+  assert.ok(command, 'canvas suites must have a directly testable command');
+  assert.deepEqual(command[1].trim().split(/\s+/), [
+    'node', '--test',
+    '.github/extensions/open-decisions/tests.mjs',
+    '.github/extensions/open-decisions/model-review.test.mjs',
+    '.github/extensions/open-decisions/client-review.test.mjs',
+    '.github/extensions/open-decisions/server-review.test.mjs',
+  ]);
+});
+
 test('workflow isolates authorized samples from cancelable topology runs', () => {
   const workflow = fs.readFileSync(
     path.join(root, '.github/workflows/selective-ci-shadow.yml'),

@@ -54,6 +54,11 @@ prompt injection, hooks or session messages are implemented.
 
 Validation (from repository root):
 
+Requires Node.js 22 or newer. The dedicated `Open decisions canvas tests` workflow
+runs all four suites and module syntax checks for pull requests targeting `main`
+and pushes to `main` that change this extension or its test workflow, and for merge
+groups. Extension-only changes are covered without a selective-CI sample label.
+
 ```powershell
 node --test .github\extensions\open-decisions\tests.mjs .github\extensions\open-decisions\model-review.test.mjs .github\extensions\open-decisions\client-review.test.mjs .github\extensions\open-decisions\server-review.test.mjs
 Get-ChildItem .github\extensions\open-decisions\*.mjs | ForEach-Object { node --check $_.FullName }

@@ -1,0 +1,42 @@
+name: Open decisions canvas tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/extensions/open-decisions/**'
+      - '.github/workflows/open-decisions-tests.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/extensions/open-decisions/**'
+      - '.github/workflows/open-decisions-tests.yml'
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Open decisions canvas fixtures
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.18.0'
+      - name: Check canvas JavaScript syntax
+        run: |
+          for file in .github/extensions/open-decisions/*.mjs; do node --check "$file"; done
+      - name: Run all canvas suites
+        run: >-
+          node --test
+          .github/extensions/open-decisions/tests.mjs
+          .github/extensions/open-decisions/model-review.test.mjs
+          .github/extensions/open-decisions/client-review.test.mjs
+          .github/extensions/open-decisions/server-review.test.mjs
