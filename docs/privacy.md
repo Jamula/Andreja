@@ -370,3 +370,38 @@ data-ownership changes may require plan re-ratification under
 [ADR 0000](adr/0000-plan-ratification.md). Ordinary updates use a reviewed issue and
 pull request, named architecture/privacy/security/abuse/accessibility/operations
 reviewers, evidence links, residual-risk owner, and explicit stop conditions.
+
+## Proposed owner-device content encryption amendment (not ratified)
+
+ADR 0012 proposes that a separately distributed, independently verifiable owner
+client encrypt and decrypt content before server submission and perform all
+content-derived processing, search, assistant preparation/review, and plaintext
+export/import locally. The server would retain authenticated ciphertext and
+minimum service metadata only. This is a proposed change to data ownership and
+the operator trust boundary, not a statement about the current plaintext
+PostgreSQL task rows, assistant path, or operator-key portability CLI.
+
+Under this proposal, user content is never sent in plaintext to an external AI
+provider or another human. Existing sharing and peer contracts would remain
+non-activating; identity recovery and host Data Protection keys would not recover
+content. Recovery would depend only on owner-controlled device keys and separate
+owner-held recovery materials. Loss of every usable owner key and recovery
+artifact is permanent content loss; no operator or support recovery exists.
+
+The trust claim is limited. Independently verifiable distribution is required
+because code served by the same host that stores ciphertext could otherwise
+exfiltrate unlocked keys. A compromised client/device, browser/OS, extension,
+release-signing chain, unlocked session, coercion, or denial of service remains
+outside the protection. Identifiers, sizes, counts, access times, network
+metadata, and availability patterns may still leak. Existing records, backups,
+logs, archives, and provider copies are not retroactively encrypted.
+
+Before implementation is proposed, independent exact-revision security,
+privacy, architecture, operations, and accessibility review and synthetic-only
+negative evidence must cover server stores/dumps/backups/APIs/logs/telemetry,
+verified-client tamper and downgrade rejection, owner-only enrollment/revocation/
+recovery, export/import, local search/processing, metadata leakage, legacy-copy
+disposition, and permanent key-loss behavior. The full evidence gate is in
+[ADR 0012](adr/0012-owner-device-content-encryption.md). No such tests or
+implementation are claimed here. High (15) coercion/custody and High (12)
+telemetry/support/reviewer findings remain separately open and unaccepted.

@@ -550,3 +550,37 @@ accessibility/documentation, and operability review; named residual-risk owners;
 stop conditions. Changes to ratified trust boundaries, data ownership, legal posture,
 or non-negotiable architecture follow the plan-hash and re-ratification rules in
 [ADR 0000](adr/0000-plan-ratification.md).
+
+## Proposed owner-device content encryption amendment (not ratified)
+
+[ADR 0012](adr/0012-owner-device-content-encryption.md) proposes a new
+owner-device trust boundary: a separately distributed, independently verifiable
+client holds keys and performs all plaintext processing, search, assistant
+preparation/review, and export/import. The server stores ciphertext and limited
+service metadata. This does not change the current threat model's assessment
+that task rows, current provider requests, portability processing, and operator
+backups are within server/operator custody; it does not claim existing content
+is encrypted.
+
+The proposal adds threats that require evidence before implementation: malicious
+or compromised client delivery can steal unlocked keys; a compromised owner
+device, OS/browser, extension, keylogger, coercive access, or captured recovery
+material can expose content; key loss can permanently destroy access; operators
+can deny, corrupt, replay, or delete ciphertext; and object identifiers, sizes,
+counts, access timing, IP/network metadata, and availability can enable
+inference. Device revocation cannot recall copied plaintext, ciphertext, or
+keys. Client signing and independent verification do not prove benign behavior.
+ADR 0010's OCI signature policy is not evidence for owner-client trust.
+
+Future synthetic-only evidence must verify database/dump/backup/API/log/
+exception/telemetry/support content exclusion and key exclusion; owner-only
+decryption and recovery; tampered, unsigned, downgraded, and unverifiable client
+failure before key access; no external plaintext calls or live human sharing;
+device revocation limits; encrypted export/import; metadata leakage; and
+legacy plaintext backup disposition. Test actual allowed telemetry values and
+exception paths rather than relying on written allowlists or canaries alone.
+No tests, code, real-content exercise, or risk acceptance are supplied by this
+proposal. Existing High (15) coercion/custody and High (12) telemetry/support/
+reviewer risks remain open and unaccepted. Independent exact-revision security,
+privacy, architecture, and operations review plus Cyrus's separate plan
+re-ratification are required before implementation or activation.
