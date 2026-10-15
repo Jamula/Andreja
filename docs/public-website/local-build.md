@@ -185,3 +185,46 @@ are byte-identical across every emitted file. This is not external release
 provenance, whole-product testing or launch approval. Manual assistive-technology
 and WCAG 2.2 AA review, non-Edge coverage, approved deployment/security-contact
 evidence and the broader #93 gates were not performed.
+
+### CI registration correction — 2026-10-15
+
+The service-free `Andreja.PublicSiteTests` project is explicitly executed in
+both `.NET Validation` configurations, emits its own TRX, and is checked by the
+same current-inventory discovery/execution/skip parity gate as the other
+service-free suites. The project references the already centrally pinned
+`Microsoft.Testing.Extensions.TrxReport` so the isolated test assembly can emit
+the expected TRX; no package version or global runner setting changed.
+The report requires explicit outcomes for each build-test operation and lists
+the project, command, and runtime result in the JSON evidence and step summary.
+The regression script verifies missing and invalid outcomes, failed outcomes, an
+unclassified project, and missing public-site TRX. PostgreSQL remains compiled
+and discovered separately, with runtime unavailable unless a disposable
+database is provided. The immutable historical baseline was not changed.
+
+Local commands run from the repository root with SDK `10.0.301` on Windows
+ARM64:
+
+| Exact command | Result |
+|---|---|
+| `dotnet restore Andreja.slnx --nologo` | Passed |
+| `dotnet restore tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --nologo` | Passed |
+| `dotnet build Andreja.slnx --configuration Debug --no-restore --nologo` | Passed; zero warnings/errors |
+| `dotnet build tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --configuration Debug --no-restore --nologo` | Passed; zero warnings/errors |
+| `dotnet build Andreja.slnx --configuration Release --no-restore --nologo` | Passed; zero warnings/errors |
+| `dotnet build tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --configuration Release --no-restore --nologo` | Passed; zero warnings/errors |
+| `dotnet test --test-modules tests\Andreja.PublicSiteTests\bin\Debug\net10.0\Andreja.PublicSiteTests.dll --no-build --report-trx --report-trx-filename Andreja.PublicSiteTests-Debug.trx --results-directory artifacts\Debug\test-results\Andreja.PublicSiteTests` | Passed; 28/28, 0 skipped |
+| `dotnet test --test-modules tests\Andreja.PublicSiteTests\bin\Release\net10.0\Andreja.PublicSiteTests.dll --no-build --report-trx --report-trx-filename Andreja.PublicSiteTests-Release.trx --results-directory artifacts\Release\test-results\Andreja.PublicSiteTests` | Passed; 28/28, 0 skipped |
+| `dotnet test --project tests\Andreja.PublicSiteTests\Andreja.PublicSiteTests.csproj --configuration Debug --no-build --list-tests` | Passed; discovery count 28 |
+| `dotnet test --project tests\Andreja.PublicSiteTests\Andreja.PublicSiteTests.csproj --configuration Release --no-build --list-tests` | Passed; discovery count 28 |
+| `dotnet format tests\Andreja.PublicSiteTests\Andreja.PublicSiteTests.csproj --verify-no-changes --no-restore` | Passed |
+| `./.github/scripts/test-dotnet-test-parity.ps1 -Configuration Debug -ResultsRoot artifacts/Debug/test-results -InventoryPath docs/research/test-suite-current-inventory-112.json -OutputPath artifacts/Debug/test-inventory-parity.json` | Passed; all current project discovery/TRX counts matched |
+| `./.github/scripts/test-dotnet-test-parity.ps1 -Configuration Release -ResultsRoot artifacts/Release/test-results -InventoryPath docs/research/test-suite-current-inventory-112.json -OutputPath artifacts/Release/test-inventory-parity.json` | Passed; all current project discovery/TRX counts matched |
+| `./.github/scripts/test-dotnet-validation-report.ps1 -Configuration Debug` | Passed; valid inclusion, missing/invalid outcome, failed outcome, unclassified project, and missing-TRX cases |
+| `./.github/scripts/test-dotnet-validation-report.ps1 -Configuration Release` | Passed; valid inclusion, missing/invalid outcome, failed outcome, unclassified project, and missing-TRX cases |
+| `python .github\scripts\check_docs_consistency.py` | Passed |
+| `git diff --check` | Passed |
+
+The local evidence validates the CI wiring and report/parity contracts, but it
+does not establish that the hosted workflow has passed. The cited hosted run
+`38789823031` predates this correction and failed on the previously
+unclassified project inventory.
