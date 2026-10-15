@@ -1,0 +1,13 @@
+<Project Sdk="MSTest.Sdk/4.5.1">
+  <PropertyGroup>
+    <MSTestAnalysisMode>Default</MSTestAnalysisMode>
+    <TestingExtensionsProfile>None</TestingExtensionsProfile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Testing.Extensions.TrxReport">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+    <ProjectReference Include="..\..\src\Andreja.PublicSite\Andreja.PublicSite.csproj" />
+  </ItemGroup>
+</Project>

@@ -4,6 +4,7 @@
     <Project Path="src/Andreja.AppHost/Andreja.AppHost.csproj" />
     <Project Path="src/Andreja.Platform.Contracts/Andreja.Platform.Contracts.csproj" />
     <Project Path="src/Andreja.Portability.Cli/Andreja.Portability.Cli.csproj" />
+    <Project Path="src/Andreja.PublicSite/Andreja.PublicSite.csproj" />
   </Folder>
   <Folder Name="/src/Adapters/">
     <Project Path="src/Adapters/Andreja.Adapters/Andreja.Adapters.csproj" />
@@ -14,5 +15,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/Andreja.ArchitectureTests/Andreja.ArchitectureTests.csproj" />
     <Project Path="tests/Andreja.UnitTests/Andreja.UnitTests.csproj" />
+    <Project Path="tests/Andreja.PublicSiteTests/Andreja.PublicSiteTests.csproj" />
   </Folder>
 </Solution>

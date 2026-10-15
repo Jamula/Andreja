@@ -35,13 +35,21 @@ a task. An expired proposal must be prepared again.
 - **Delete** first shows a second, explicit **Yes, delete** control. **Cancel**
   leaves the task unchanged.
 
-Retries use idempotency receipts, so the same confirmed action does not create a
-duplicate effect. A conflict means the item changed; refresh and review the latest
-state.
+Confirmation retries reuse one idempotency key for the same retained proposal, so
+retrying that confirmation replays the committed result rather than creating a
+duplicate task. A new proposal is a new intent with a new key. A conflict means
+the item changed; refresh and review the latest state.
 
 ## Errors and privacy
 
-Provider and server details are never displayed. A cancellation changes nothing.
+Provider and server details are never displayed. **Not now** before confirmation
+dismisses an unconfirmed proposal without saving it, and **Cancel** on the delete
+prompt leaves the task unchanged. A cancelled or lost response after submitting a
+mutation is different: the server may already have committed it. During
+confirmation, the page retains the proposal and says the result is unknown;
+retry that **same confirmation** safely. If you have left the page and lost the
+proposal, inspect current tasks before preparing a new one. Completion and
+deletion failures also require checking current state, not assuming rollback.
 If a provider is temporarily unavailable, retry later. Authentication,
 tenant/principal authorization, validation, proposal policy, and antiforgery checks
 are enforced by the server even when the browser has already validated the form.
@@ -49,8 +57,10 @@ are enforced by the server even when the browser has already validated the form.
 Provider output is untrusted. Andreja rejects unknown tools, missing or incorrectly
 typed tool arguments, malformed JSON, redirects, oversized responses, and usage above
 the configured limits. Timeout, cancellation, revocation, exhausted budget, and
-provider rejection all leave tasks unchanged. Rotating the file-backed credential
-affects the next call. An empty secured file revokes use; a missing, inaccessible,
+provider rejection during proposal preparation do not confirm or save a task.
+This is not a rollback guarantee for a confirmation already sent to the server.
+Rotating the file-backed credential affects the next call. An empty secured file
+revokes use; a missing, inaccessible,
 writable, oversized, or invalid-UTF-8 file reports only `credential-unavailable`.
 Neither condition places the value, path, or store exception in the response.
 
@@ -65,11 +75,16 @@ The canonical [privacy baseline](../privacy.md) and
 [threat model](../threat-model.md) describe model exposure, task sensitivity,
 confirmation abuse, retention/export limits, evidence gaps, and stop conditions.
 
-## Current production sign-in limitation
+## Local passkey implementation and readiness
 
-Production passkey bootstrap, sign-in, and recovery remain
-[P0 issue #55](https://github.com/Jamula/Andreja/issues/55).
-The production login route exists so browser challenges have a safe destination, but
-it intentionally offers no bypass and states that production sign-in is unavailable.
-Do not treat the self-host task flow as production-usable until that blocker's
-passkey, recovery, PostgreSQL, restart, and browser evidence is complete.
+Local passkey bootstrap, sign-in, passkey management and recovery are implemented.
+Use **Sign in with a passkey** at the operator-configured exact HTTPS origin; see
+[local identity](local-identity.md) for configuration and recovery instructions.
+The earlier statement that the production login page intentionally offers no
+sign-in is obsolete.
+
+Implemented routes do not establish production or public availability. Do not
+treat the self-host task flow as production-ready until version-scoped passkey,
+recovery, PostgreSQL, restore/restart and browser evidence passes the applicable
+Phase 1A gates. The Debug/Development workspace remains a separate test identity,
+not a production bypass or evidence that those gates passed.
