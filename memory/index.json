@@ -679,5 +679,15 @@
     "status": "active",
     "createdAt": "2026-10-12T00:18:21.175Z",
     "updatedAt": "2026-10-12T00:18:21.175Z"
+  },
+  {
+    "id": "f3411999-612b-41b2-8fcb-5b1d69be6fa8",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Parallel delivery with runtime-deferred reversible choices",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-copilot-parallel-delivery-with-runtime-deferred-reversible-choices-f3411999.md",
+    "status": "active",
+    "createdAt": "2026-10-15T18:22:24.492Z",
+    "updatedAt": "2026-10-15T18:22:24.492Z"
   }
 ]
