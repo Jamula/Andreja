@@ -17,6 +17,31 @@ data, reusable credential, cookie, recovery code, private key, database dump, or
 private OCI layer is committed or attached. Ignored runtime artifacts were
 destroyed after recording the bounded results below.
 
+## Current identity acceptance evidence (#41)
+
+Data reran the service-free identity/architecture coverage and PostgreSQL
+integration-project compile/discovery on 2026-10-15 PDT. These results are bound
+to commit `d9d7d89c9d52d6d6fc2a7240d14a522476a2f2c2` and source tree
+`dcadd3712a8974ca1df489514468cd6c65753bcb`, the clean branch tip and fetched
+`origin/main` at admission. The SDK was .NET `10.0.301` on `arm64`.
+
+| Gate | Exact command or check | Current result and boundary |
+| --- | --- | --- |
+| Service-free Debug solution tests | `dotnet test --solution Andreja.slnx --configuration Debug` | **PASS:** 276 passed; zero failed or skipped. Includes the solution's unit and architecture test assemblies. |
+| Service-free Release solution tests | `dotnet test --solution Andreja.slnx --configuration Release` | **PASS:** 272 passed; zero failed or skipped. Includes the solution's unit and architecture test assemblies. |
+| PostgreSQL integration project, Debug | `dotnet build tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --configuration Debug` | **PASS (compile only):** zero warnings and errors; no database runtime result. |
+| PostgreSQL integration project, Release | `dotnet build tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --configuration Release` | **PASS (compile only):** zero warnings and errors; no database runtime result. |
+| PostgreSQL MTP discovery | `dotnet test --project tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --list-tests` | **PASS (discovery only):** 22 tests discovered, including empty-database/two-tenant constraints, issuer/subject uniqueness, bootstrap/recovery, passkey limits, cross-tenant task denial, and recent-auth replay protection. |
+| PostgreSQL runtime availability | `docker info --format '{{.ServerVersion}}'` | **UNAVAILABLE:** Docker server did not respond. This was the single bounded availability check; no service/container was started and no database was contacted. |
+| PostgreSQL integration runtime | `dotnet test --project tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj` | **NOT RUN:** no already-proven approved disposable `andreja_test_*` database was supplied. The test README and fixture confirm this suite drops its target database before and after execution; compilation/discovery are not represented as migration or database acceptance evidence. |
+
+This rerun provides current service-free test and PostgreSQL-project compile/
+discovery evidence only. Issue #41 remains open. Runtime two-tenant database
+constraints, migrations from an empty database, persisted passkey bootstrap and
+recovery, and related PostgreSQL-backed identity acceptance remain unproven at
+this revision. No managed identity/CIAM/cloud dependency, application external
+provider, shared database, provisioning, or spend was used.
+
 ## Current cumulative rerun
 
 Data reran every gate available on the issue #44 worktree on 2026-09-07 PDT.
