@@ -3,6 +3,12 @@
 Andreja self-host uses local ASP.NET Core Identity passkeys. It does not require an
 Andreja, GitHub, email, password, or other cloud account.
 
+This describes the landed implementation, not a supported release or production
+readiness claim. Operators must configure and verify the exact version's
+passkey, recovery, PostgreSQL, restore/restart and browser paths against the
+Phase 1A evidence gates before relying on them. The public/help artifact never
+signs in or reuses application cookies.
+
 ## First administrator
 
 1. Apply the reviewed `ProductionPasskeyIdentity` and
