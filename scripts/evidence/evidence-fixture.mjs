@@ -30,6 +30,94 @@ function localUrl(value, protocol, pathname) {
     return url;
 }
 
+function inspectJson(command, args) {
+    const output = execFileSync(command, args,
+        { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+    return output ? output.split(/\r?\n/).map(line => JSON.parse(line)) : [];
+}
+
+function verifyRuntimeFixture(config, compose, model) {
+    const reportedIds = execFileSync("docker", [...compose, "ps", "--all", "--quiet"],
+        { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })
+        .split(/\r?\n/).map(value => value.trim()).filter(Boolean);
+    requireThat(reportedIds.length === services.length && new Set(reportedIds).size === services.length,
+        "running fixture must contain exactly one container for every approved service");
+
+    const inspected = inspectJson("docker", ["--context", config.dockerContext, "inspect",
+        ...reportedIds, "--format", "{{json .}}"]);
+    requireThat(inspected.length === reportedIds.length, "Docker inspect did not return every project container");
+    const byService = new Map();
+    for (const container of inspected) {
+        const labels = container.Config?.Labels ?? {};
+        const project = labels["com.docker.compose.project"];
+        const service = labels["com.docker.compose.service"];
+        requireThat(project === config.projectName && services.includes(service),
+            "runtime container has the wrong Compose project/service labels");
+        requireThat(!byService.has(service), `runtime project has multiple ${service} containers`);
+        requireThat(container.State?.Running === true && container.State?.Status === "running",
+            `runtime ${service} container is not running`);
+        requireThat(container.Config?.Image === config.approvedImages[service],
+            `runtime ${service} image differs from its exact approved immutable reference`);
+        byService.set(service, container);
+    }
+    requireThat(services.every(service => byService.has(service)),
+        "runtime project is missing an approved service container");
+
+    for (const service of services) {
+        const container = byService.get(service);
+        const image = inspectJson("docker", ["--context", config.dockerContext, "image", "inspect",
+            config.approvedImages[service], "--format", "{{json .}}"])[0];
+        requireThat(typeof image?.Id === "string" && image.Id.length > 0
+            && container.Image === image.Id,
+        `runtime ${service} image identity differs from the approved image`);
+    }
+
+    const appEnvironment = byService.get("app").Config.Env ?? [];
+    const environmentValue = name => {
+        const entries = appEnvironment.filter(entry => entry.slice(0, entry.indexOf("=")) === name);
+        requireThat(entries.length === 1, `runtime application must define ${name} exactly once`);
+        return entries[0].slice(entries[0].indexOf("=") + 1);
+    };
+    requireThat(environmentValue("Andreja__OpenLoops__AssistantProvider") === "deterministic",
+        "runtime application provider is not deterministic");
+    requireThat(environmentValue("Andreja__Identity__AllowedOrigins__0") === new URL(config.baseUrl).origin,
+        "runtime application WebAuthn origin differs from the explicit browser endpoint");
+
+    const publishedPorts = [
+        ["tls-proxy", 8443, config.baseUrl], ["app", 8080, config.healthUrl],
+        ["otel-collector", 8888, config.collectorMetricsUrl], ["prometheus", 9090, config.prometheusUrl],
+    ];
+    for (const [service, target, endpoint] of publishedPorts) {
+        const container = byService.get(service);
+        const published = String(new URL(endpoint).port);
+        const mappings = container.NetworkSettings?.Ports ?? {};
+        const bindings = Object.values(mappings).flatMap(value => value ?? []);
+        const targetBindings = mappings[`${target}/tcp`] ?? [];
+        requireThat(targetBindings.length === 1 && targetBindings[0].HostIp === "127.0.0.1"
+            && String(targetBindings[0].HostPort) === published && bindings.length === 1,
+        `runtime ${service} published binding differs from its explicit loopback endpoint`);
+
+        const owners = execFileSync("docker", ["--context", config.dockerContext, "ps", "--all", "--quiet",
+            "--filter", `publish=${published}`],
+        { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })
+            .split(/\r?\n/).map(value => value.trim()).filter(Boolean);
+        const foreignOwners = owners.filter(id => !reportedIds.includes(id));
+        if (foreignOwners.length) {
+            const foreign = inspectJson("docker", ["--context", config.dockerContext, "inspect",
+                ...foreignOwners, "--format", "{{json .}}"]);
+            requireThat(foreign.every(owner =>
+                owner.Config?.Labels?.["com.docker.compose.project"] === config.projectName
+                && services.includes(owner.Config?.Labels?.["com.docker.compose.service"])),
+            `configured ${service} host port is owned by a container outside the authorized project`);
+            requireThat(false, `configured ${service} host port has an additional runtime owner`);
+        }
+    }
+
+    const postgresBindings = Object.values(byService.get("postgres").NetworkSettings?.Ports ?? {})
+        .flatMap(value => value ?? []);
+    requireThat(postgresBindings.length === 0, "runtime PostgreSQL container must not publish host ports");
+}
+
 export function loadFixture(configPath) {
     requireThat(typeof configPath === "string" && configPath.length > 0, "--config / -FixtureConfig is required");
     const config = JSON.parse(readFileSync(path.resolve(configPath), "utf8"));
@@ -150,6 +238,8 @@ export function prepareFixture(configPath, mode) {
     if (mode === "offline") {
         requireThat(model.networks.edge.internal === true && model.networks.backend.internal === true,
             "offline networks must be internal");
+    } else {
+        verifyRuntimeFixture(config, compose, model);
     }
     return { ...config, compose };
 }

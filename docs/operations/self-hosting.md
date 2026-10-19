@@ -610,6 +610,20 @@ paths must match Compose. A digest allowlist records the operator's approval; it
 does not replace `Test-OciEvidence.ps1` signature/provenance checks. Keep the
 configuration, context, files and project exclusively controlled during the run.
 
+Before browser or telemetry runners contact any endpoint, read-only runtime
+inspection must find exactly one running container for each approved service
+under the authorized Compose project, with matching service labels, exact
+immutable image references and image identities. The application provider and
+WebAuthn origin must still match the fixture; proxy, app, collector and
+Prometheus bindings must match their explicit loopback endpoints, with no
+additional container owning those host ports. PostgreSQL must have no published
+host port. Missing containers, stopped services, runtime drift, or a
+wrong-project port owner fail before HTTP requests, certificate/bootstrap reads,
+browser-profile changes, or Docker mutations. Static Compose validation remains
+separate: offline evidence validates configuration only and may start an absent
+authorized project. A Compose restart does not apply changed configuration;
+runtime drift is a stop condition, not something to repair by restarting.
+
 After authorization and fixture preparation, run from this checkout:
 
 ```powershell

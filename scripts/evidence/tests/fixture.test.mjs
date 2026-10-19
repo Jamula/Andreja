@@ -44,13 +44,55 @@ for (const [service, target, published] of [
 ]) model.services[service].ports = [{ host_ip: "127.0.0.1", target, published }];
 const preload = pathToFileURL(path.join(root, "scripts", "evidence", "tests", "mock-docker.mjs")).href;
 const env = { ...process.env, NODE_OPTIONS: `--import=${preload}`,
-    EVIDENCE_TEST_MODEL: file("model.json"), EVIDENCE_TEST_LOG: file("commands.jsonl") };
+    EVIDENCE_TEST_MODEL: file("model.json"), EVIDENCE_TEST_RUNTIME: file("runtime.json"),
+    EVIDENCE_TEST_LOG: file("commands.jsonl"), EVIDENCE_TEST_CERT: file("certificate.pem"),
+    EVIDENCE_TEST_TOKEN: file("bootstrap_token"), EVIDENCE_TEST_PROFILE: file("browser") };
 for (const key of Object.keys(env)) {
     if (/^(ANDREJA_|COMPOSE_|POSTGRES_|PROMETHEUS_|OTEL_|DOCKER_)/.test(key)) delete env[key];
 }
-function run(caller, changed = config, resolved = model, extraEnv = {}, fromFixtureDirectory = false) {
+function makeRuntime(changed = config, resolved = model) {
+    const images = {};
+    const containers = Object.entries(changed.approvedImages).map(([service, image], index) => {
+        const imageId = `sha256:${String(index + 1).repeat(64)}`;
+        images[image] = { Id: imageId, RepoDigests: [image] };
+        const source = resolved.services[service];
+        const ports = Object.fromEntries((source.ports ?? []).map(binding => [
+            `${binding.target}/tcp`, [{ HostIp: binding.host_ip, HostPort: String(binding.published) }],
+        ]));
+        const envEntries = Object.entries(source.environment ?? {}).map(([key, value]) => `${key}=${value}`);
+        return {
+            Id: `synthetic-${service}`,
+            Image: imageId,
+            Config: {
+                Image: source.image,
+                Env: envEntries,
+                Labels: {
+                    "com.docker.compose.project": changed.projectName,
+                    "com.docker.compose.service": service,
+                },
+            },
+            State: { Running: true, Status: "running" },
+            NetworkSettings: { Ports: ports },
+        };
+    });
+    const portOwners = {};
+    for (const container of containers) {
+        for (const bindings of Object.values(container.NetworkSettings.Ports)) {
+            for (const binding of bindings ?? []) {
+                (portOwners[binding.HostPort] ??= []).push(container.Id);
+            }
+        }
+    }
+    return {
+        projectContainerIds: containers.map(container => container.Id),
+        containers, images, portOwners,
+    };
+}
+function run(caller, changed = config, resolved = model, extraEnv = {}, fromFixtureDirectory = false,
+    runtime = makeRuntime(changed ?? config, resolved ?? model)) {
     writeFileSync(file("config.json"), JSON.stringify(changed));
     writeFileSync(file("model.json"), JSON.stringify(resolved));
+    writeFileSync(file("runtime.json"), JSON.stringify(runtime));
     writeFileSync(file("commands.jsonl"), "");
     const configArgument = fromFixtureDirectory ? "config.json" : file("config.json");
     const args = caller === "browser"
@@ -141,6 +183,117 @@ for (const caller of ["browser", "offline", "telemetry"]) {
         assert.equal(result.commands.length, 1);
     });
 }
+function assertRuntimeFailureIsReadOnly(result) {
+    assert.notEqual(result.status, 0, result.output);
+    assert.deepEqual(result.commands.filter(command =>
+        ["http", "browser", "credential-read", "profile-mutation"].includes(command.command)), []);
+    for (const command of result.commands.filter(command => command.command === "docker")) {
+        assert.ok(!["up", "down", "restart", "run"].some(mutation => command.args.includes(mutation)),
+            `unexpected Docker mutation: ${JSON.stringify(command.args)}`);
+    }
+}
+const runtimeDrift = [
+    ["absent target", runtime => {
+        runtime.projectContainerIds.pop();
+        runtime.containers.pop();
+    }],
+    ["stopped target", runtime => {
+        runtime.containers.find(container => container.Config.Labels["com.docker.compose.service"] === "app")
+            .State = { Running: false, Status: "exited" };
+    }],
+    ["wrong project label", runtime => {
+        runtime.containers[0].Config.Labels["com.docker.compose.project"] = "other-project";
+    }],
+    ["wrong service label", runtime => {
+        runtime.containers[0].Config.Labels["com.docker.compose.service"] = "postgres";
+    }],
+    ["mutable unapproved runtime image", runtime => {
+        runtime.containers[0].Config.Image = "app:latest";
+    }],
+    ["runtime image identity mismatch", runtime => {
+        runtime.containers[0].Image = `sha256:${"f".repeat(64)}`;
+    }],
+    ["live provider drift", runtime => {
+        runtime.containers[0].Config.Env[0] = "Andreja__OpenLoops__AssistantProvider=byok";
+    }],
+    ["WebAuthn origin drift", runtime => {
+        runtime.containers[0].Config.Env[1] = "Andreja__Identity__AllowedOrigins__0=https://other.local";
+    }],
+    ["wrong host port binding", runtime => {
+        runtime.containers[0].NetworkSettings.Ports["8080/tcp"][0].HostPort = "18080";
+    }],
+    ["non-loopback host binding", runtime => {
+        runtime.containers[0].NetworkSettings.Ports["8080/tcp"][0].HostIp = "0.0.0.0";
+    }],
+    ["missing host binding", runtime => {
+        runtime.containers[0].NetworkSettings.Ports["8080/tcp"] = [];
+    }],
+    ["published PostgreSQL", runtime => {
+        runtime.containers.find(container =>
+            container.Config.Labels["com.docker.compose.service"] === "postgres")
+            .NetworkSettings.Ports["5432/tcp"] = [{ HostIp: "127.0.0.1", HostPort: "25432" }];
+    }],
+    ["wrong-project container owns configured port", runtime => {
+        const foreignId = "synthetic-foreign";
+        runtime.containers.push({
+            Id: foreignId,
+            Config: { Labels: { "com.docker.compose.project": "other-project",
+                "com.docker.compose.service": "app" } },
+        });
+        runtime.portOwners["28080"].push(foreignId);
+    }],
+];
+for (const caller of ["browser", "telemetry"]) {
+    for (const [name, mutate] of runtimeDrift) {
+        test(`${caller} rejects runtime ${name} before requests, credentials, profile or mutation`, () => {
+            const runtime = makeRuntime();
+            mutate(runtime);
+            const result = run(caller, config, model, {}, false, runtime);
+            assertRuntimeFailureIsReadOnly(result);
+            const projectList = result.commands.find(command => command.command === "docker"
+                && command.args.includes("compose") && command.args.includes("ps")
+                && command.args.includes("--all") && command.args.includes("--quiet"));
+            assert.ok(projectList, "runtime preflight must enumerate the authorized Compose project");
+            if (name === "wrong-project container owns configured port") {
+                assert.match(result.output, /outside the authorized project/);
+            }
+            if (name !== "absent target") {
+                assert.ok(result.commands.some(command => command.command === "docker"
+                    && command.args[0] === "--context" && command.args[2] === "inspect"),
+                "runtime drift must be rejected from scoped read-only container inspection");
+            }
+        });
+    }
+}
+test("offline static preflight permits startup when the authorized project is absent", () => {
+    const absent = makeRuntime();
+    absent.projectContainerIds = [];
+    absent.containers = [];
+    const result = run("offline", config, model, {}, false, absent);
+    assert.equal(result.status, 0, result.output);
+    assert.ok(result.commands.some(command => command.command === "docker"
+        && command.args.includes("up")), "offline caller must be able to create the absent fixture");
+    assert.ok(!result.commands.some(command => command.command === "docker"
+        && command.args.includes("ps") && command.args.includes("--all")
+        && command.args.includes("--quiet")), "offline static preflight must not require pre-existing containers");
+});
+test("runtime inspect uses the explicit context and only project-reported containers", () => {
+    const result = run("browser");
+    assert.match(result.output, /PEM|certificate|decoder/i);
+    const ps = result.commands.find(command => command.command === "docker"
+        && command.args.includes("ps") && command.args.includes("--quiet")
+        && !command.args.includes("--filter"));
+    assert.ok(ps);
+    assertScope(ps.args);
+    const runtimeInspect = result.commands.find(command => command.command === "docker"
+        && command.args[0] === "--context" && command.args[2] === "inspect");
+    assert.deepEqual(runtimeInspect.args.slice(0, 2), ["--context", config.dockerContext]);
+    assert.deepEqual(runtimeInspect.args.slice(3, -2), makeRuntime().projectContainerIds);
+    for (const command of result.commands.filter(command => command.command === "docker"
+        && command.args.includes("image") && command.args.includes("inspect"))) {
+        assert.deepEqual(command.args.slice(0, 2), ["--context", config.dockerContext]);
+    }
+});
 function assertScope(args, offline = false) {
     assert.deepEqual(args.slice(0, 2), ["--context", config.dockerContext]);
     assert.equal(args[args.indexOf("--project-name") + 1], projectName);
@@ -206,7 +359,12 @@ test("telemetry production caller forwards the same config and uses only its end
     assert.deepEqual(browser.args.slice(-2), ["--config", file("config.json")]);
     const urls = result.commands.filter(command => command.command === "http").map(command => command.args[0]);
     assert.equal(urls.filter(url => url === config.collectorMetricsUrl).length, 6);
-    assert.equal(urls.filter(url => url.startsWith(`${config.prometheusUrl}/api/v1/query?`)).length, 3);
+    assert.equal(urls    .filter(url => url.startsWith(`${config.prometheusUrl}/api/v1/query?`)).length, 3);
+    const runtimeInspect = result.commands.findIndex(command => command.command === "docker"
+    && command.args[0] === "--context" && command.args[2] === "inspect");
+    const firstRequest = result.commands.findIndex(command => command.command === "http");
+    assert.ok(runtimeInspect >= 0 && runtimeInspect < firstRequest,
+    "telemetry must inspect authorized containers before its first endpoint request");
 });
 test("telemetry forwards an absolute config from a different working directory and accepts a trailing URL slash", () => {
     const result = run("telemetry", { ...config, prometheusUrl: `${config.prometheusUrl}/` }, model, {}, true);
@@ -222,7 +380,11 @@ test("browser production caller validates before certificate/profile access; bro
     assert.notEqual(result.status, 0);
     assert.match(result.output, /PEM|certificate|decoder/i);
     assertScope(result.commands[1].args);
-    assert.equal(result.commands.length, 2);
+    const certificateRead = result.commands.findIndex(command => command.command === "credential-read"
+        && command.args[0] === file("certificate.pem"));
+    assert.ok(certificateRead > 0, "synthetic certificate is read only after runtime preflight");
+    assert.ok(result.commands.slice(2, certificateRead).some(command =>
+        command.command === "docker" && command.args[0] === "--context" && command.args[2] === "inspect"));
     // Export only a short-lived synthetic public certificate; no private key is written.
     const certificate = spawnSync("pwsh", ["-NoProfile", "-Command",
         `$rsa = [Security.Cryptography.RSA]::Create(2048);
@@ -236,7 +398,7 @@ test("browser production caller validates before certificate/profile access; bro
     assert.equal(certificate.status, 0, certificate.stderr);
     const validBrowser = run("browser");
     assert.match(validBrowser.output, /SYNTHETIC_SCOPED_SPAWN/);
-    const launch = validBrowser.commands.at(-1);
+    const launch = validBrowser.commands.find(command => command.command === config.browserExecutable);
     assert.equal(launch.command, config.browserExecutable);
     assert.ok(launch.args.includes(`--user-data-dir=${file("browser")}`));
     assert.ok(launch.args.some(arg => arg.startsWith("--ignore-certificate-errors-spki-list=")));
@@ -252,6 +414,9 @@ test("browser production caller validates before certificate/profile access; bro
 });
 test("runbook documents every fixture field and the checked-in helper digests", () => {
     const docs = readFileSync(path.join(root, "docs", "operations", "self-hosting.md"), "utf8");
+    assert.match(docs, /read-only runtime\s+inspection must find exactly one running container/);
+    assert.match(docs, /offline evidence validates configuration only and may start an absent/);
+    assert.match(docs, /A Compose restart does not apply changed configuration/);
     for (const field of Object.keys(config)) {
         assert.match(docs, new RegExp(`\\b${field}\\b`), `undocumented fixture field ${field}`);
     }
