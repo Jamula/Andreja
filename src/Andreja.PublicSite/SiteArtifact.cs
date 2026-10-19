@@ -52,7 +52,7 @@ public static partial class SiteArtifact
         ArgumentNullException.ThrowIfNull(source);
         var config = Read<SiteConfig>(configFile);
         ValidateConfig(config);
-        var contentPath = Path.Combine(source, "site.json");
+        var contentPath = Path.Join(source, "site.json");
         var content = Read<SiteContent>(contentPath);
         ValidateContent(content, repository, asOf);
         if (Directory.Exists(output) && Directory.EnumerateFileSystemEntries(output).Any())
@@ -68,7 +68,7 @@ public static partial class SiteArtifact
         var files = new SortedDictionary<string, byte[]>(StringComparer.Ordinal);
         foreach (var asset in new[] { "site.css", "search.js" })
         {
-            var bytes = File.ReadAllBytes(Path.Combine(source, asset));
+            var bytes = File.ReadAllBytes(Path.Join(source, asset));
             ValidateAsset(asset, Encoding.UTF8.GetString(bytes));
             inputs[$"content/{asset}"] = Hash(bytes);
             files[asset] = bytes;
@@ -94,15 +94,15 @@ public static partial class SiteArtifact
         files["site-metadata.json"] = Utf8(JsonSerializer.Serialize(content, JsonOptions) + "\n");
         files["UNPUBLISHED.txt"] = Utf8("Local review only. Do not publish or bind beyond loopback. No launch approval is represented.\nsecurity.txt is intentionally absent: no approved monitored contact or domain. No RFC 9116 compliance is claimed.\n");
 
-        var generatorRoot = Path.GetFullPath(Path.Combine(repository, "src", "Andreja.PublicSite"));
+        var generatorRoot = Path.GetFullPath(Path.Join(repository, "src", "Andreja.PublicSite"));
         foreach (var name in new[] { "Andreja.PublicSite.csproj", "Program.cs", "SiteArtifact.cs" })
         {
-            inputs[$"src/Andreja.PublicSite/{name}"] = Hash(File.ReadAllBytes(Path.Combine(generatorRoot, name)));
+            inputs[$"src/Andreja.PublicSite/{name}"] = Hash(File.ReadAllBytes(Path.Join(generatorRoot, name)));
         }
 
         foreach (var name in new[] { "global.json", "Directory.Build.props", "Directory.Packages.props" })
         {
-            inputs[name] = Hash(File.ReadAllBytes(Path.Combine(repository, name)));
+            inputs[name] = Hash(File.ReadAllBytes(Path.Join(repository, name)));
         }
 
         var manifest = new SiteManifest(
@@ -115,7 +115,7 @@ public static partial class SiteArtifact
         Directory.CreateDirectory(output);
         foreach (var (name, bytes) in files)
         {
-            File.WriteAllBytes(Path.Combine(output, name), bytes);
+            File.WriteAllBytes(Path.Join(output, name), bytes);
         }
 
         Verify(output, asOf);
@@ -141,7 +141,7 @@ public static partial class SiteArtifact
 
     public static void Verify(string output, DateOnly? asOf = null)
     {
-        var manifest = Read<SiteManifest>(Path.Combine(output, "manifest.json"));
+        var manifest = Read<SiteManifest>(Path.Join(output, "manifest.json"));
         if (manifest.Format != "andreja.local-site.v1" || manifest.SecurityTxt != "disabled-no-approved-contact")
         {
             throw new InvalidDataException("manifest format/security.txt boundary is invalid.");
@@ -159,13 +159,13 @@ public static partial class SiteArtifact
 
         foreach (var (name, hash) in manifest.Files)
         {
-            if (!SafeArtifactName().IsMatch(name) || Hash(File.ReadAllBytes(Path.Combine(output, name))) != hash)
+            if (!SafeArtifactName().IsMatch(name) || Hash(File.ReadAllBytes(Path.Join(output, name))) != hash)
             {
                 throw new InvalidDataException($"Artifact hash/path mismatch: {name}");
             }
         }
 
-        var content = Read<SiteContent>(Path.Combine(output, "site-metadata.json"));
+        var content = Read<SiteContent>(Path.Join(output, "site-metadata.json"));
         ValidateContent(content, null, asOf ?? DateOnly.FromDateTime(DateTime.UtcNow));
         if (manifest.Version != content.Version || manifest.Locale != content.Locale)
         {
@@ -180,28 +180,27 @@ public static partial class SiteArtifact
             throw new InvalidDataException("Artifact boundary contains unapproved routes or files.");
         }
 
-        var headers = Read<SortedDictionary<string, string>>(Path.Combine(output, "headers.json"));
+        var headers = Read<SortedDictionary<string, string>>(Path.Join(output, "headers.json"));
         if (JsonSerializer.Serialize(headers, JsonOptions) != JsonSerializer.Serialize(SecurityHeaders, JsonOptions))
         {
             throw new InvalidDataException("headers.json differs from strict security header profile.");
         }
 
-        if (File.ReadAllText(Path.Combine(output, "robots.txt")) != "User-agent: *\nDisallow: /\n")
+        if (File.ReadAllText(Path.Join(output, "robots.txt")) != "User-agent: *\nDisallow: /\n")
         {
             throw new InvalidDataException("robots.txt must disallow indexing of the unpublished artifact.");
         }
 
         foreach (var page in content.Pages)
         {
-            var html = File.ReadAllText(Path.Combine(output, $"{page.Slug}.html"));
+            var html = File.ReadAllText(Path.Join(output, $"{page.Slug}.html"));
             if (html != Render(content, page))
             {
                 throw new InvalidDataException($"Generated page differs from metadata/boundary: {page.Slug}");
             }
 
-            foreach (Match match in LocalLink().Matches(html))
+            foreach (var target in LocalLink().Matches(html).Select(match => match.Groups[1].Value))
             {
-                var target = match.Groups[1].Value;
                 if (target.StartsWith('#'))
                 {
                     if (!html.Contains($"id=\"{target[1..]}\"", StringComparison.Ordinal))
@@ -218,7 +217,7 @@ public static partial class SiteArtifact
 
         var expectedIndex = content.Pages.Select(page => new SearchEntry($"{page.Slug}.html", page.Title,
             string.Join(" ", page.Sections.Select(section => $"{section.Heading} {string.Join(" ", section.Paragraphs)}")))).ToArray();
-        if (File.ReadAllText(Path.Combine(output, "search-index.js"))
+        if (File.ReadAllText(Path.Join(output, "search-index.js"))
             != $"window.siteIndex = {JsonSerializer.Serialize(expectedIndex, JsonOptions)};\n")
         {
             throw new InvalidDataException("Search index differs from versioned page content.");
@@ -226,7 +225,7 @@ public static partial class SiteArtifact
 
         foreach (var asset in new[] { "site.css", "search.js" })
         {
-            ValidateAsset(asset, File.ReadAllText(Path.Combine(output, asset)));
+            ValidateAsset(asset, File.ReadAllText(Path.Join(output, asset)));
         }
     }
 
@@ -289,7 +288,7 @@ public static partial class SiteArtifact
             throw new InvalidDataException($"Unapproved evidence path: {evidence}");
         }
 
-        return Path.Combine(repository, evidence.Replace('/', Path.DirectorySeparatorChar));
+        return Path.Join(repository, evidence.Replace('/', Path.DirectorySeparatorChar));
     }
 
     private static void ValidateAsset(string asset, string text)

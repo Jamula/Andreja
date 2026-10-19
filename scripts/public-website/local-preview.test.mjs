@@ -13,12 +13,16 @@ test("loopback adapter fails closed and stays responsive after rejected requests
   await mkdir(directory, { recursive: true });
   try {
     const build = spawnSync("dotnet", [
-      "run", "--project", "src\\Andreja.PublicSite", "--configuration", "Release", "--no-build",
-      "--", "build", "src\\Andreja.PublicSite\\Content",
-      "src\\Andreja.PublicSite\\Content\\local.config.json", root,
+      "run", "--project", path.join("src", "Andreja.PublicSite"), "--configuration", "Release", "--no-build",
+      "--", "build", path.join("src", "Andreja.PublicSite", "Content"),
+      path.join("src", "Andreja.PublicSite", "Content", "local.config.json"), root,
     ], { encoding: "utf8", windowsHide: true });
     assert.equal(build.status, 0, `Fixture build failed: ${build.stderr || build.error}`);
-    const site = await startLocalSite(root);
+    const metadata = JSON.parse(await readFile(path.join(root, "site-metadata.json"), "utf8"));
+    const earliestExpiry = metadata.pages.map(page => page.expires).sort()[0];
+    const clock = { value: new Date(`${earliestExpiry}T00:00:00.000Z`) };
+    clock.value.setUTCDate(clock.value.getUTCDate() - 1);
+    const site = await startLocalSite(root, () => clock.value);
     server = site.server;
     const base = new URL(site.baseUrl);
     const original = await readFile(path.join(root, "index.html"));
@@ -83,6 +87,21 @@ test("loopback adapter fails closed and stays responsive after rejected requests
         assert.equal(response.bytes.length, 0);
       } finally {
         await writeFile(path.join(root, "index.html"), original);
+      }
+    });
+    await t.test("requests stop being served on the earliest expiry date", async () => {
+      const beforeExpiry = new Date(`${earliestExpiry}T00:00:00.000Z`);
+      beforeExpiry.setUTCDate(beforeExpiry.getUTCDate() - 1);
+      clock.value = beforeExpiry;
+      assert.equal((await get()).status, 200);
+      try {
+        clock.value = new Date(`${earliestExpiry}T00:00:00.000Z`);
+        const expiredResponse = await get();
+        assert.equal(expiredResponse.status, 410);
+        assert.equal(expiredResponse.bytes.length, 0);
+        assert.equal((await get("/identity.html")).status, 410);
+      } finally {
+        clock.value = beforeExpiry;
       }
     });
     await t.test("non-directory artifact root returns 404", async () => {

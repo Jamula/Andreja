@@ -21,8 +21,10 @@ Visit `http://127.0.0.1:4173/`; stop the preview with Ctrl+C. The optional final
 build argument is the UTC review/build date (`yyyy-MM-dd`); omitting it uses
 today's UTC date. Rebuilds with identical sources, config and date have identical
 bytes. An historical build date is for reproducing local artifacts, not extending
-evidence: `verify` and the preview always recheck expiry against today's UTC date.
-Expired artifacts cannot be previewed without re-reviewing the content.
+evidence: `verify` rejects expired content at startup, and the preview rechecks the
+earliest chapter expiry on every request against the current UTC date. It returns
+HTTP 410 with no content once that day begins, even if the server was already
+running. Expired artifacts cannot be previewed without re-reviewing the content.
 
 Use a **new or empty dedicated output directory** for each build. The generator
 never deletes or overwrites existing output. Do not serve the repository root,
@@ -36,9 +38,12 @@ adapter rejects malformed request targets with 400, missing files with 404 and
 changed bytes with 409. Unexpected artifact-read failures return 500 and emit
 only a fixed diagnostic, never filesystem paths, request data or exception text.
 Rejected requests do not terminate the preview. The fixed local port fails if
-occupied; change the reviewed config to another
-unprivileged port and build a new artifact. Microsoft Edge is used only by the
-optional browser validator, not by the generator or preview.
+occupied; change the reviewed config to another unprivileged port and build a new
+artifact. The browser validator intentionally targets the committed
+`http://127.0.0.1:4173` origin; if changing the port, update its explicit
+`previewUrl` and keep that browser-navigation destination loopback-only. Microsoft
+Edge is used only by the optional browser validator, not by the generator or
+preview.
 
 The generated artifact does not enforce host security by itself. A generic file
 server may ignore `headers.json`; use the supplied adapter for header evidence.
@@ -153,8 +158,10 @@ manual screen-reader review, cross-browser coverage or WCAG 2.2 AA conformance.
 The Node built-in adapter tests build their own real artifact under ignored
 `artifacts` and clean it up. Raw HTTP requests cover malformed targets and server
 liveness, wrong Host, POST, traversal/unlisted paths, hash mismatch, missing
-files, a non-directory artifact root and an unexpected directory-read error.
-The latter checks an empty 500 response and the exact safe diagnostic.
+files, expiry at the earliest page date, a non-directory artifact root and an
+unexpected directory-read error.
+The latter checks an empty 500 response and the exact safe diagnostic. Expiry
+tests inject a clock and verify serving stops at the earliest page expiry boundary.
 Run the adapter and browser validators sequentially: both use the reviewed port.
 
 ### Local execution evidence — 2026-10-15
@@ -168,7 +175,7 @@ service was started. Commands run from the repository root:
 | `dotnet test --project tests\Andreja.PublicSiteTests\Andreja.PublicSiteTests.csproj --configuration Release --no-build` | Passed; 28/28, including real-source and emitted-artifact mutations |
 | `dotnet run --project src\Andreja.PublicSite --configuration Release --no-build -- build src\Andreja.PublicSite\Content src\Andreja.PublicSite\Content\local.config.json artifacts\public-site-adapter-verified 2026-10-15` | Passed; 12 chapters emitted; integrity verification passed |
 | `dotnet run --project src\Andreja.PublicSite --configuration Release --no-build -- verify artifacts\public-site-adapter-verified` | Passed; local-only boundary retained |
-| `node --test scripts\public-website\local-preview.test.mjs` | Passed; 7 focused adapter cases (8/8 tests including parent), including malformed-target liveness and safe unexpected-read failure |
+| `node --test scripts\public-website\local-preview.test.mjs` | Passed; 8 focused adapter cases (9/9 tests including parent), including malformed-target liveness, expiry boundary and safe unexpected-read failure |
 | `node scripts\public-website\validate-local-site.mjs artifacts\public-site-adapter-verified` | Passed; all 12 pages at 320/768/1280 px, keyboard skip/search/Tab/Enter/Escape, live/no-results, header and network/storage checks |
 | `dotnet format src\Andreja.PublicSite\Andreja.PublicSite.csproj --verify-no-changes --no-restore` | Passed |
 | `dotnet format tests\Andreja.PublicSiteTests\Andreja.PublicSiteTests.csproj --verify-no-changes --no-restore` | Passed |
@@ -185,6 +192,34 @@ are byte-identical across every emitted file. This is not external release
 provenance, whole-product testing or launch approval. Manual assistive-technology
 and WCAG 2.2 AA review, non-Edge coverage, approved deployment/security-contact
 evidence and the broader #93 gates were not performed.
+
+### PR feedback corrections — 2026-10-18
+
+The preview subprocess arguments now use platform-native path joins. The browser
+validator uses an explicit loopback-only origin and checked-in slug inventory;
+it verifies file-backed page titles locally rather than sending them through the
+browser debugging socket. Update the explicit origin/slug list with any reviewed
+local config or chapter inventory change. Chapter expiry is rechecked per HTTP
+request; from the earliest expiry date onward the running adapter returns an
+empty `410 Gone`.
+
+| Exact command | Result |
+|---|---|
+| `node --check scripts\public-website\local-preview.mjs` | Passed |
+| `node --check scripts\public-website\local-preview.test.mjs` | Passed |
+| `node --check scripts\public-website\validate-local-site.mjs` | Passed |
+| `node --test scripts\public-website\local-preview.test.mjs` | Passed; 9/9, including UTC expiry boundary |
+| `dotnet build tests\Andreja.PublicSiteTests\Andreja.PublicSiteTests.csproj --configuration Release --no-restore --nologo` | Passed; zero warnings/errors |
+| `dotnet test --project tests\Andreja.PublicSiteTests\Andreja.PublicSiteTests.csproj --configuration Release --no-build` | Passed; 28/28 |
+| `dotnet run --project src\Andreja.PublicSite --configuration Release --no-build -- build src\Andreja.PublicSite\Content src\Andreja.PublicSite\Content\local.config.json artifacts\public-site-review-verified 2026-10-18` | Passed |
+| `dotnet run --project src\Andreja.PublicSite --configuration Release --no-build -- verify artifacts\public-site-review-verified` | Passed |
+| `node scripts\public-website\validate-local-site.mjs artifacts\public-site-review-verified` | Passed; 12 pages, responsive/keyboard checks and local-only network boundary |
+| `dotnet format src\Andreja.PublicSite\Andreja.PublicSite.csproj --verify-no-changes --no-restore` | Passed |
+| `python .github\scripts\check_docs_consistency.py` | Passed |
+| `git diff --check` | Passed |
+
+Hosted CodeQL/DevSkim review for these corrections has not yet run. Manual
+screen-reader/WCAG conformance remains unverified.
 
 ### CI registration correction — 2026-10-15
 

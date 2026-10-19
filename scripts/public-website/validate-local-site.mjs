@@ -5,23 +5,33 @@ import path from "node:path";
 import { startLocalSite } from "./local-preview.mjs";
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const directory = process.argv[2] ?? "artifacts\\public-site";
+const directory = process.argv[2] ?? path.join("artifacts", "public-site");
 const profile = path.resolve("artifacts", `site-browser-${process.pid}`);
+const previewUrl = "http://127.0.0.1:4173";
+const pageSlugs = [
+  "index", "availability", "getting-started", "identity", "data", "assistants",
+  "connectors-sharing", "troubleshooting", "security-privacy", "release-notes", "status", "developer-local-v1"
+];
 let browser;
 let socket;
 let server;
 try {
   const site = await startLocalSite(directory);
   server = site.server;
-  const response = await fetch(site.baseUrl);
+  assert.equal(site.baseUrl, previewUrl, "Update the browser validator URL with the local preview config");
+  const response = await fetch(previewUrl);
   assert.equal(response.status, 200, "loopback preview must be responsive");
   assert.match(response.headers.get("content-security-policy"), /connect-src 'none'/);
   assert.equal(response.headers.get("x-robots-tag"), "noindex, nofollow, noarchive");
-  assert.equal((await fetch(`${site.baseUrl}/Account/Login`)).status, 404);
-  assert.equal((await fetch(`${site.baseUrl}/.well-known/security.txt`)).status, 404);
-  assert.equal((await fetch(site.baseUrl, { method: "POST" })).status, 403);
+  assert.equal((await fetch(`${previewUrl}/Account/Login`)).status, 404);
+  assert.equal((await fetch(`${previewUrl}/.well-known/security.txt`)).status, 404);
+  assert.equal((await fetch(previewUrl, { method: "POST" })).status, 403);
   await mkdir(profile, { recursive: true });
-  browser = spawn(process.env.EDGE_PATH ?? "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+  const edgePath = process.env.EDGE_PATH
+    ?? (process.platform === "win32"
+      ? "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
+      : "microsoft-edge");
+  browser = spawn(edgePath,
     ["--headless=new", "--disable-gpu", "--no-first-run", "--disable-background-networking",
       "--remote-debugging-port=0", `--user-data-dir=${profile}`, "about:blank"],
     { stdio: "ignore", windowsHide: true });
@@ -81,11 +91,17 @@ try {
   await send("Runtime.enable");
   await send("Network.enable");
   const metadata = JSON.parse(await readFile(path.join(directory, "site-metadata.json"), "utf8"));
+  assert.deepEqual(metadata.pages.map(page => page.slug), pageSlugs,
+    "Keep the browser check's known pages synchronized with the generated site");
   for (const width of [320, 768, 1280]) {
     await send("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: false });
-    for (const page of metadata.pages) {
-      await send("Page.navigate", { url: `${site.baseUrl}/${page.slug}.html` });
-      await until(`document.readyState === "complete" && document.querySelector("h1")?.textContent === ${JSON.stringify(page.title)}`);
+    for (const slug of pageSlugs) {
+      await send("Page.navigate", { url: `${previewUrl}/${slug}.html` });
+      await until(`document.readyState === "complete" && !!document.querySelector("h1")?.textContent`);
+      const page = metadata.pages.find(candidate => candidate.slug === slug);
+      assert.ok(page, `Missing page metadata for ${slug}`);
+      assert.equal(await evaluate('document.querySelector("h1").textContent'), page.title,
+        `${slug} page title differs from local metadata`);
       const state = await evaluate(`({
         overflow: document.documentElement.scrollWidth > innerWidth,
         h1: document.querySelectorAll("h1").length,
@@ -94,10 +110,10 @@ try {
         unnamed: [...document.querySelectorAll("a, button, input")].filter(element =>
           !(element.textContent.trim() || element.getAttribute("aria-label") || element.labels?.length)).length
       })`);
-      assert.deepEqual(state, { overflow: false, h1: 1, main: true, language: "en", unnamed: 0 }, `${page.slug} at ${width}px`);
+      assert.deepEqual(state, { overflow: false, h1: 1, main: true, language: "en", unnamed: 0 }, `${slug} at ${width}px`);
     }
   }
-  await send("Page.navigate", { url: `${site.baseUrl}/index.html` });
+  await send("Page.navigate", { url: `${previewUrl}/index.html` });
   await until(`document.readyState === "complete" && !!window.siteIndex`);
   await key("Tab", "Tab", 9);
   assert.equal(await evaluate("document.activeElement.textContent"), "Skip to content");
@@ -129,9 +145,9 @@ try {
   }
   assert.deepEqual(errors, []);
   await send("Emulation.setScriptExecutionDisabled", { value: true });
-  await send("Page.navigate", { url: `${site.baseUrl}/identity.html` });
+  await send("Page.navigate", { url: `${previewUrl}/identity.html` });
   await sleep(500);
-  assert.match(await (await fetch(`${site.baseUrl}/identity.html`)).text(), /<noscript>Search needs JavaScript/);
+  assert.match(await (await fetch(`${previewUrl}/identity.html`)).text(), /<noscript>Search needs JavaScript/);
   console.log(`PASS: ${metadata.pages.length} pages at 320/768/1280px; keyboard skip/search/result activation/Escape; live/no-result states; CSP headers; no app routes, remote requests, cookies or persistence. Manual screen-reader/WCAG conformance unverified.`);
 } finally {
   socket?.close();
