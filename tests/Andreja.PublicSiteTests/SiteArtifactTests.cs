@@ -18,19 +18,19 @@ public sealed class SiteArtifactTests
     public void Initialize()
     {
         root = Directory.GetCurrentDirectory();
-        while (!File.Exists(Path.Combine(root, "Andreja.slnx")))
+        while (!File.Exists(Path.Join(root, "Andreja.slnx")))
         {
             root = Directory.GetParent(root)?.FullName ?? throw new InvalidOperationException("Repository not found.");
         }
 
-        scratch = Path.Combine(root, "artifacts", "public-site-tests", Guid.NewGuid().ToString("N"));
-        source = Path.Combine(scratch, "content");
-        config = Path.Combine(source, "local.config.json");
-        output = Path.Combine(scratch, "site");
+        scratch = Path.Join(root, "artifacts", "public-site-tests", Guid.NewGuid().ToString("N"));
+        source = Path.Join(scratch, "content");
+        config = Path.Join(source, "local.config.json");
+        output = Path.Join(scratch, "site");
         Directory.CreateDirectory(source);
-        foreach (var file in Directory.GetFiles(Path.Combine(root, "src", "Andreja.PublicSite", "Content")))
+        foreach (var file in Directory.GetFiles(Path.Join(root, "src", "Andreja.PublicSite", "Content")))
         {
-            File.Copy(file, Path.Combine(source, Path.GetFileName(file)));
+            File.Copy(file, Path.Join(source, Path.GetFileName(file)));
         }
     }
 
@@ -41,27 +41,27 @@ public sealed class SiteArtifactTests
     public void BuildsUsefulVersionedLocalArtifactReproducibly()
     {
         Build();
-        var second = Path.Combine(scratch, "second");
+        var second = Path.Join(scratch, "second");
         SiteArtifact.Build(source, config, second, root, ReviewDate);
         foreach (var file in Directory.GetFiles(output))
         {
-            CollectionAssert.AreEqual(File.ReadAllBytes(file), File.ReadAllBytes(Path.Combine(second, Path.GetFileName(file))), file);
+            CollectionAssert.AreEqual(File.ReadAllBytes(file), File.ReadAllBytes(Path.Join(second, Path.GetFileName(file))), file);
         }
 
-        var html = File.ReadAllText(Path.Combine(output, "identity.html"));
+        var html = File.ReadAllText(Path.Join(output, "identity.html"));
         StringAssert.Contains(html, "Sign in with a passkey");
         StringAssert.Contains(html, "local-v1");
         StringAssert.Contains(html, "Revalidate before: 2026-11-14");
         StringAssert.Contains(html, "aria-live=\"polite\"");
         StringAssert.Contains(html, "noindex, nofollow, noarchive");
-        var search = File.ReadAllText(Path.Combine(output, "search-index.js"));
+        var search = File.ReadAllText(Path.Join(output, "search-index.js"));
         StringAssert.Contains(search, "recovery");
         StringAssert.Contains(search, "developer-local-v1.html");
-        Assert.IsFalse(File.Exists(Path.Combine(output, ".well-known", "security.txt")));
-        var headers = File.ReadAllText(Path.Combine(output, "headers.json"));
+        Assert.IsFalse(File.Exists(Path.Join(output, ".well-known", "security.txt")));
+        var headers = File.ReadAllText(Path.Join(output, "headers.json"));
         StringAssert.Contains(headers, "Content-Security-Policy");
         StringAssert.Contains(headers, "connect-src");
-        var manifest = JsonNode.Parse(File.ReadAllText(Path.Combine(output, "manifest.json")))!;
+        var manifest = JsonNode.Parse(File.ReadAllText(Path.Join(output, "manifest.json")))!;
         Assert.IsNotNull(manifest["inputs"]!["docs/help/local-identity.md"]);
         Assert.IsNotNull(manifest["inputs"]!["src/Andreja.PublicSite/SiteArtifact.cs"]);
         SiteArtifact.Verify(output, ReviewDate);
@@ -107,7 +107,7 @@ public sealed class SiteArtifactTests
     {
         MutateContent(json => json["publishApproved"] = true);
         Assert.ThrowsExactly<JsonException>(Build);
-        File.Copy(Path.Combine(root, "src", "Andreja.PublicSite", "Content", "site.json"), Path.Combine(source, "site.json"), true);
+        File.Copy(Path.Join(root, "src", "Andreja.PublicSite", "Content", "site.json"), Path.Join(source, "site.json"), true);
         MutateContent(json => json["version"] = "production-v1");
         StringAssert.Contains(Assert.ThrowsExactly<InvalidDataException>(Build).Message, "version/locale");
         MutateContent(json =>
@@ -139,7 +139,7 @@ public sealed class SiteArtifactTests
     [DataRow("results.innerHTML = input.value")]
     public void RejectsActualAssetBoundaryMutations(string mutation)
     {
-        File.AppendAllText(Path.Combine(source, "search.js"), mutation);
+        File.AppendAllText(Path.Join(source, "search.js"), mutation);
         StringAssert.Contains(Assert.ThrowsExactly<InvalidDataException>(Build).Message, "search.js");
     }
 
@@ -148,7 +148,7 @@ public sealed class SiteArtifactTests
     {
         MutateContent(json => json["pages"]![0]!["sections"]![0]!["paragraphs"]![0] = "<script src=\"https://example.org\"></script>");
         Build();
-        var html = File.ReadAllText(Path.Combine(output, "index.html"));
+        var html = File.ReadAllText(Path.Join(output, "index.html"));
         StringAssert.Contains(html, "&lt;script");
         Assert.IsFalse(html.Contains("<script src=\"https:", StringComparison.Ordinal));
     }
@@ -157,17 +157,17 @@ public sealed class SiteArtifactTests
     public void RejectsTamperingExtraRoutesStaleVersionsAndRehashedBrokenSearch()
     {
         Build();
-        var file = Path.Combine(output, "identity.html");
+        var file = Path.Join(output, "identity.html");
         var original = File.ReadAllText(file);
         File.AppendAllText(file, "<a href=\"/Account/Login\">Sign in</a>");
         StringAssert.Contains(Assert.ThrowsExactly<InvalidDataException>(() => SiteArtifact.Verify(output, ReviewDate)).Message, "identity.html");
         File.WriteAllText(file, original);
-        File.WriteAllText(Path.Combine(output, "account.html"), "unexpected");
+        File.WriteAllText(Path.Join(output, "account.html"), "unexpected");
         StringAssert.Contains(Assert.ThrowsExactly<InvalidDataException>(() => SiteArtifact.Verify(output, ReviewDate)).Message, "inventory");
-        File.Delete(Path.Combine(output, "account.html"));
+        File.Delete(Path.Join(output, "account.html"));
         StringAssert.Contains(Assert.ThrowsExactly<InvalidDataException>(() => SiteArtifact.Verify(output, new DateOnly(2026, 11, 14))).Message, "expired");
 
-        var indexPath = Path.Combine(output, "search-index.js");
+        var indexPath = Path.Join(output, "search-index.js");
         File.WriteAllText(indexPath, "window.siteIndex = [];\n");
         Rehash("search-index.js");
         StringAssert.Contains(Assert.ThrowsExactly<InvalidDataException>(() => SiteArtifact.Verify(output, ReviewDate)).Message, "Search index");
@@ -177,18 +177,18 @@ public sealed class SiteArtifactTests
     public void RejectsRehashedLinkHeaderAndVersionMutations()
     {
         Build();
-        var page = Path.Combine(output, "index.html");
+        var page = Path.Join(output, "index.html");
         File.WriteAllText(page, File.ReadAllText(page).Replace("identity.html", "missing.html", StringComparison.Ordinal));
         Rehash("index.html");
         StringAssert.Contains(Assert.ThrowsExactly<InvalidDataException>(() => SiteArtifact.Verify(output, ReviewDate)).Message, "Generated page");
         Directory.Delete(output, true);
         Build();
-        File.WriteAllText(Path.Combine(output, "headers.json"), "{}");
+        File.WriteAllText(Path.Join(output, "headers.json"), "{}");
         Rehash("headers.json");
         StringAssert.Contains(Assert.ThrowsExactly<InvalidDataException>(() => SiteArtifact.Verify(output, ReviewDate)).Message, "headers.json");
         Directory.Delete(output, true);
         Build();
-        var manifestPath = Path.Combine(output, "manifest.json");
+        var manifestPath = Path.Join(output, "manifest.json");
         var manifest = JsonNode.Parse(File.ReadAllText(manifestPath))!;
         manifest["version"] = "local-v2";
         File.WriteAllText(manifestPath, manifest.ToJsonString());
@@ -199,7 +199,7 @@ public sealed class SiteArtifactTests
     public void RejectsRehashedPublicationRobotsMutation()
     {
         Build();
-        File.WriteAllText(Path.Combine(output, "robots.txt"), "User-agent: *\nAllow: /\n");
+        File.WriteAllText(Path.Join(output, "robots.txt"), "User-agent: *\nAllow: /\n");
         Rehash("robots.txt");
         StringAssert.Contains(Assert.ThrowsExactly<InvalidDataException>(() => SiteArtifact.Verify(output, ReviewDate)).Message, "robots.txt");
     }
@@ -215,11 +215,11 @@ public sealed class SiteArtifactTests
     public void GeneratorAndTestsRemainIndependentOfAppAndDataPlanes()
     {
         var generator = System.Xml.Linq.XDocument.Load(
-            Path.Combine(root, "src", "Andreja.PublicSite", "Andreja.PublicSite.csproj"));
+            Path.Join(root, "src", "Andreja.PublicSite", "Andreja.PublicSite.csproj"));
         Assert.IsFalse(generator.Descendants("ProjectReference").Any(), "Static generator must not reference the application.");
         Assert.IsFalse(generator.Descendants("PackageReference").Any(), "Generator must remain framework-only.");
         var tests = System.Xml.Linq.XDocument.Load(
-            Path.Combine(root, "tests", "Andreja.PublicSiteTests", "Andreja.PublicSiteTests.csproj"));
+            Path.Join(root, "tests", "Andreja.PublicSiteTests", "Andreja.PublicSiteTests.csproj"));
         var references = tests.Descendants("ProjectReference").Select(reference => reference.Attribute("Include")!.Value).ToArray();
         Assert.HasCount(1, references);
         Assert.AreEqual(@"..\..\src\Andreja.PublicSite\Andreja.PublicSite.csproj", references[0]);
@@ -238,7 +238,7 @@ public sealed class SiteArtifactTests
 
     private void MutateContent(Action<JsonNode> mutation)
     {
-        var path = Path.Combine(source, "site.json");
+        var path = Path.Join(source, "site.json");
         var json = JsonNode.Parse(File.ReadAllText(path))!;
         mutation(json);
         File.WriteAllText(path, json.ToJsonString());
@@ -246,10 +246,10 @@ public sealed class SiteArtifactTests
 
     private void Rehash(string name)
     {
-        var path = Path.Combine(output, "manifest.json");
+        var path = Path.Join(output, "manifest.json");
         var manifest = JsonNode.Parse(File.ReadAllText(path))!;
         manifest["files"]![name] = Convert.ToHexStringLower(
-            System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(Path.Combine(output, name))));
+            System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(Path.Join(output, name))));
         File.WriteAllText(path, manifest.ToJsonString());
     }
 }
