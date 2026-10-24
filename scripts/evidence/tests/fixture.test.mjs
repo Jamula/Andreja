@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from "node
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { root } from "../evidence-fixture.mjs";
+import { root, sameMountSource } from "../evidence-fixture.mjs";
 
 const projectName = `andreja-evidence-test-${process.pid}`;
 const directory = path.join(root, ".andreja", "evidence", projectName);
@@ -108,7 +108,11 @@ function makeRuntime(changed = config, resolved = model) {
     const images = {};
     const containers = Object.entries(changed.approvedImages).map(([service, image], index) => {
         const imageId = `sha256:${String(index + 1).repeat(64)}`;
-        images[image] = { Id: imageId, RepoDigests: [image] };
+        const imageConfig = {
+            Entrypoint: service === "app" ? ["dotnet", "Andreja.AppHost.dll"] : null,
+            Cmd: null,
+        };
+        images[image] = { Id: imageId, RepoDigests: [image], Config: imageConfig };
         const source = resolved.services[service];
         const ports = Object.fromEntries((source.ports ?? []).map(binding => [
             `${binding.target}/tcp`, [{ HostIp: binding.host_ip, HostPort: String(binding.published) }],
@@ -141,6 +145,8 @@ function makeRuntime(changed = config, resolved = model) {
             Config: {
                 Image: source.image,
                 Env: envEntries,
+                Entrypoint: source.entrypoint ?? imageConfig.Entrypoint,
+                Cmd: source.command ?? imageConfig.Cmd,
                 Labels: {
                     "com.docker.compose.project": changed.projectName,
                     "com.docker.compose.service": service,
@@ -339,6 +345,16 @@ const runtimeDrift = [
         app.Config.Env[app.Config.Env.findIndex(entry => entry.startsWith(setting))] =
             `${setting}host.docker.internal`;
     }],
+    ["runtime app command overrides database host", runtime => {
+        const app = runtime.containers.find(container =>
+            container.Config.Labels["com.docker.compose.service"] === "app");
+        app.Config.Cmd = ["--Andreja:Operations:Database:Host=host.docker.internal"];
+    }],
+    ["runtime app entrypoint drift", runtime => {
+        const app = runtime.containers.find(container =>
+            container.Config.Labels["com.docker.compose.service"] === "app");
+        app.Config.Entrypoint = ["/unapproved/entrypoint"];
+    }],
     ["database volume identity drift", runtime => {
         const postgres = runtime.containers.find(container =>
             container.Config.Labels["com.docker.compose.service"] === "postgres");
@@ -449,6 +465,15 @@ for (const caller of ["browser", "telemetry"]) {
         });
     }
 }
+test("Docker Desktop inspection paths map drive-based config and secret binds to host paths", () => {
+    const inspection = { Mounts: [
+        { Type: "bind", Source: "/run/desktop/mnt/host/c/Andreja/deploy/Caddyfile.evidence" },
+        { Type: "bind", Source: "/run/desktop/mnt/host/c/Andreja/secrets/tls_certificate.pem" },
+    ] };
+    assert.equal(sameMountSource("C:\\Andreja\\deploy\\Caddyfile.evidence", inspection.Mounts[0].Source), true);
+    assert.equal(sameMountSource("C:\\Andreja\\secrets\\tls_certificate.pem", inspection.Mounts[1].Source), true);
+    assert.equal(sameMountSource("C:\\Andreja\\secrets\\other.pem", inspection.Mounts[1].Source), false);
+});
 test("offline static preflight permits startup when the authorized project is absent", () => {
     const absent = makeRuntime();
     absent.projectContainerIds = [];

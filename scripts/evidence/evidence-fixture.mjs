@@ -16,6 +16,41 @@ function requireThat(condition, message) {
     if (!condition) throw new Error(`Evidence fixture: ${message}`);
 }
 
+function isWindowsAbsolutePath(value) {
+    return typeof value === "string" && /^[a-z]:[\\/]/i.test(value);
+}
+
+function normalizedWindowsPath(value) {
+    return path.win32.normalize(value).replace(/[\\/]+$/, "").toLowerCase();
+}
+
+function existingRealPath(value) {
+    try {
+        return realpathSync(value);
+    } catch {
+        return null;
+    }
+}
+
+export function sameMountSource(expected, observed) {
+    if (typeof expected !== "string" || typeof observed !== "string") return false;
+    if (isWindowsAbsolutePath(expected)) {
+        const expectedRealPath = existingRealPath(expected) ?? expected;
+        if (isWindowsAbsolutePath(observed)) {
+            return normalizedWindowsPath(expectedRealPath)
+                === normalizedWindowsPath(existingRealPath(observed) ?? observed);
+        }
+        const desktopPath = /^\/run\/desktop\/mnt\/host\/([a-z])(?:\/(.*))?$/i.exec(observed);
+        if (!desktopPath) return false;
+        const mappedPath = `${desktopPath[1]}:\\${(desktopPath[2] ?? "").replaceAll("/", "\\")}`;
+        return normalizedWindowsPath(expectedRealPath) === normalizedWindowsPath(mappedPath);
+    }
+    if (isWindowsAbsolutePath(observed)) return false;
+    const expectedRealPath = existingRealPath(expected);
+    const observedRealPath = existingRealPath(observed);
+    return expectedRealPath !== null && expectedRealPath === observedRealPath;
+}
+
 function inside(parent, child) {
     const relative = path.relative(parent, child);
     return relative !== "" && !relative.startsWith(`..${path.sep}`)
@@ -148,11 +183,10 @@ function verifyRuntimeFixture(config, compose, model) {
         requireThat(runtimeBinds.length === expectedBinds.length,
             `runtime ${service} bind mounts differ from the validated Compose model`);
         for (const expected of expectedBinds) {
-            const expectedSource = realpathSync(expected.source);
             const matching = runtimeBinds.filter(mount => mount.Destination === expected.target);
             requireThat(matching.length === 1 && matching[0].RW === (expected.read_only !== true)
                 && typeof matching[0].Source === "string"
-                && realpathSync(matching[0].Source) === expectedSource,
+                && sameMountSource(expected.source, matching[0].Source),
             `runtime ${service} bind source, destination, or access mode differs from the validated Compose model`);
         }
         for (const expected of expectedSecrets) {
@@ -160,7 +194,7 @@ function verifyRuntimeFixture(config, compose, model) {
             requireThat(typeof expected.source === "string" && matching.length === 1
                 && ["bind", "tmpfs"].includes(matching[0].Type) && matching[0].RW === false
                 && (matching[0].Type !== "bind" || (typeof matching[0].Source === "string"
-                    && realpathSync(matching[0].Source) === realpathSync(expected.source))),
+                    && sameMountSource(expected.source, matching[0].Source))),
             `runtime ${service} secret mount differs from the validated Compose model`);
         }
         const image = inspectJson("docker", ["--context", config.dockerContext, "image", "inspect",
@@ -168,6 +202,18 @@ function verifyRuntimeFixture(config, compose, model) {
         requireThat(typeof image?.Id === "string" && image.Id.length > 0
             && container.Image === image.Id,
         `runtime ${service} image identity differs from the approved image`);
+        if (service === "app") {
+            requireThat(image.Config && typeof image.Config === "object",
+                "approved application image is missing its runtime defaults");
+            const normalizeArguments = value => value === null || value === undefined
+                ? [] : Array.isArray(value) ? value : [value];
+            for (const [property, composeProperty] of [["Entrypoint", "entrypoint"], ["Cmd", "command"]]) {
+                const expected = serviceModel[composeProperty] ?? image.Config[property];
+                requireThat(JSON.stringify(normalizeArguments(container.Config?.[property]))
+                    === JSON.stringify(normalizeArguments(expected)),
+                `runtime application ${property === "Cmd" ? "command" : "entrypoint"} differs from the validated Compose model and approved image`);
+            }
+        }
     }
 
     const appEnvironment = byService.get("app").Config.Env ?? [];
