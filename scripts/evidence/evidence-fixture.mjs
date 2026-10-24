@@ -107,7 +107,10 @@ function verifyRuntimeFixture(config, compose, model) {
                 `validated Compose model references an unknown network for ${service}`);
             expectedNetworkMembers.get(name).add(byService.get(service).Id);
         }
-        const runtimeNetworks = byService.get(service).NetworkSettings?.Networks ?? {};
+        const container = byService.get(service);
+        requireThat(!container.HostConfig?.ExtraHosts?.length,
+            `runtime ${service} must not override service hostname resolution`);
+        const runtimeNetworks = container.NetworkSettings?.Networks ?? {};
         const expectedNames = Object.keys(serviceNetworks).map(name => model.networks[name].name).sort();
         requireThat(JSON.stringify(Object.keys(runtimeNetworks).sort()) === JSON.stringify(expectedNames),
             `runtime ${service} network membership differs from the validated Compose model`);
@@ -202,17 +205,15 @@ function verifyRuntimeFixture(config, compose, model) {
         requireThat(typeof image?.Id === "string" && image.Id.length > 0
             && container.Image === image.Id,
         `runtime ${service} image identity differs from the approved image`);
-        if (service === "app") {
-            requireThat(image.Config && typeof image.Config === "object",
-                "approved application image is missing its runtime defaults");
-            const normalizeArguments = value => value === null || value === undefined
-                ? [] : Array.isArray(value) ? value : [value];
-            for (const [property, composeProperty] of [["Entrypoint", "entrypoint"], ["Cmd", "command"]]) {
-                const expected = serviceModel[composeProperty] ?? image.Config[property];
-                requireThat(JSON.stringify(normalizeArguments(container.Config?.[property]))
-                    === JSON.stringify(normalizeArguments(expected)),
-                `runtime application ${property === "Cmd" ? "command" : "entrypoint"} differs from the validated Compose model and approved image`);
-            }
+        requireThat(image.Config && typeof image.Config === "object",
+            `approved ${service} image is missing its runtime defaults`);
+        const normalizeArguments = value => value === null || value === undefined
+            ? [] : Array.isArray(value) ? value : [value];
+        for (const [property, composeProperty] of [["Entrypoint", "entrypoint"], ["Cmd", "command"]]) {
+            const expected = serviceModel[composeProperty] ?? image.Config[property];
+            requireThat(JSON.stringify(normalizeArguments(container.Config?.[property]))
+                === JSON.stringify(normalizeArguments(expected)),
+            `runtime ${service} ${property === "Cmd" ? "command" : "entrypoint"} differs from the validated Compose model and approved image`);
         }
     }
 
