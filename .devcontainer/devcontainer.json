@@ -1,0 +1,13 @@
+{
+  "name": "Andreja",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/dotnet:2": {
+      "version": "10.0.402"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "26.12.1"
+    }
+  },
+  "postCreateCommand": "sudo npm install --global npm@12.2.1 && sudo npm install --global --allow-scripts=@bradygaster/squad-cli,node-pty,koffi,protobufjs @bradygaster/squad-cli@1.1.0 && node --version && npm --version && squad --version && dotnet --version"
+}

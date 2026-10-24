@@ -296,7 +296,7 @@ test('rejects a mismatched bridge package version', (t) => {
       },
     },
   });
-  assert.match(validateRepository(root).join('\n'), /squad-cli@1\.0\.0/);
+  assert.match(validateRepository(root).join('\n'), /squad-cli@1\.1\.0/);
 });
 
 test('rejects a wildcard MCP tool grant', (t) => {
@@ -420,7 +420,7 @@ test('rejects a required prohibition moved outside its bounded list', (t) => {
   );
   assert.match(
     validateRepository(root).join('\n'),
-    /prohibition list must exactly match the v1\.0\.0 contract/,
+    /prohibition list must exactly match the v1\.1\.0 contract/,
   );
 });
 
@@ -569,7 +569,7 @@ test('rejects a conflicting reported Squad version', (t) => {
       `Report \`Squad v${SQUAD_VERSION}\`, then report \`Squad v0.12.0\`.`,
     ),
   );
-  assert.match(validateRepository(root).join('\n'), /must report only Squad v1\.0\.0/);
+  assert.match(validateRepository(root).join('\n'), /must report only Squad v1\.1\.0/);
 });
 
 test('rejects prefixed conflicting numeric Squad versions', (t) => {
@@ -582,7 +582,7 @@ test('rejects prefixed conflicting numeric Squad versions', (t) => {
       `Report \`Squad v${SQUAD_VERSION}\`, \`_Squad v0.12.0\`, and \`xSquad v0.12.0\`.`,
     ),
   );
-  assert.match(validateRepository(root).join('\n'), /must report only Squad v1\.0\.0/);
+  assert.match(validateRepository(root).join('\n'), /must report only Squad v1\.1\.0/);
 });
 
 test('rejects canonical plus malformed reported Squad version tokens', (t) => {
@@ -604,7 +604,7 @@ test('rejects canonical plus malformed reported Squad version tokens', (t) => {
     );
     assert.match(
       validateRepository(root).join('\n'),
-      /must report only Squad v1\.0\.0/,
+      /must report only Squad v1\.1\.0/,
       `should reject Squad v${malformedVersion}`,
     );
   }

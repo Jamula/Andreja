@@ -18,7 +18,7 @@ The check fails closed unless all of these remain true:
 
 - `.squad/config.json` selects `two-layer`.
 - `.mcp.json` declares only `squad_state`, backed by
-  `@bradygaster/squad-cli@1.0.0 state-mcp`, with the exact governed tool
+  `@bradygaster/squad-cli@1.1.0 state-mcp`, with the exact governed tool
   allowlist (wildcard grants are rejected).
 - the checked-in coordinator has its ordered HEAD/EOF canaries and matching
   version stamp;
@@ -51,7 +51,7 @@ the app version and child-session ID, then require this evidence:
    only protected path identities and `lstat` metadata, never file contents. It
    refuses an in-repository or existing baseline and fails closed on unreadable,
    symbolic-link/reparse-point, or non-regular protected paths.
-2. The loaded coordinator payload reports `Squad v1.0.0` and observes both
+2. The loaded coordinator payload reports `Squad v1.1.0` and observes both
    canaries.
 3. `squad_state_health` returns `StateBackendStorageAdapter`.
 4. Static `team.md`, `routing.md`, and the assigned charter are read from disk.

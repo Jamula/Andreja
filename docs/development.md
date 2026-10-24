@@ -2,7 +2,14 @@
 
 ## Prerequisites
 
-- .NET SDK 10.0.301, pinned by `global.json`
+- .NET SDK 10.0.402, pinned by `global.json`
+
+## GitHub Codespaces
+
+The checked-in `.devcontainer/devcontainer.json` configures Codespaces with
+Node.js 26.12.1, npm 12.2.1, Squad CLI 1.1.0, and the pinned .NET SDK 10.0.402.
+Rebuild the container after changing these versions. Codespaces use Linux, so
+Windows Package Manager (`winget`) is not available there.
 
 The foundation does not require cloud accounts, provider credentials, containers,
 or external services.
