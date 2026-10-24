@@ -621,9 +621,8 @@ public sealed class OpenAiCompatibleTransport : IOpenAiCompatibleTransport
             && callsElement.ValueKind != JsonValueKind.Null)
         {
             var calls = RequireArray(callsElement);
-            foreach (var callElement in calls.EnumerateArray())
+            foreach (var call in calls.EnumerateArray().Select(RequireObject))
             {
-                var call = RequireObject(callElement);
                 if (!call.TryGetProperty("type", out var type)
                     || type.ValueKind != JsonValueKind.String
                     || !string.Equals(type.GetString(), "function", StringComparison.Ordinal))

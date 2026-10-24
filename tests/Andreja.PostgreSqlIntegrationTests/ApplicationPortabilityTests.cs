@@ -58,7 +58,7 @@ public sealed class ApplicationPortabilityTests
             {
                 await DisposeAsync();
             }
-            catch (Exception cleanupException)
+            catch (AggregateException cleanupException)
             {
                 throw new AggregateException(
                     "PostgreSQL portability test initialization and cleanup both failed.",
@@ -78,7 +78,8 @@ public sealed class ApplicationPortabilityTests
         {
             NpgsqlConnection.ClearAllPools();
         }
-        catch (Exception exception)
+        catch (Exception exception) when (
+            exception is NpgsqlException or InvalidOperationException or TimeoutException)
         {
             cleanupFailures.Add(exception);
         }
@@ -90,7 +91,8 @@ public sealed class ApplicationPortabilityTests
                 await DropDatabaseAsync(sourceDatabase);
                 sourceDatabase = string.Empty;
             }
-            catch (Exception exception)
+            catch (Exception exception) when (
+                exception is NpgsqlException or InvalidOperationException or TimeoutException)
             {
                 cleanupFailures.Add(new InvalidOperationException(
                     $"Failed to drop disposable PostgreSQL database '{sourceDatabase}'.",
@@ -105,7 +107,8 @@ public sealed class ApplicationPortabilityTests
                 await DropDatabaseAsync(targetDatabase);
                 targetDatabase = string.Empty;
             }
-            catch (Exception exception)
+            catch (Exception exception) when (
+                exception is NpgsqlException or InvalidOperationException or TimeoutException)
             {
                 cleanupFailures.Add(new InvalidOperationException(
                     $"Failed to drop disposable PostgreSQL database '{targetDatabase}'.",

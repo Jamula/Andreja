@@ -652,13 +652,13 @@ public sealed class OpenLoopsApiIntegrationTests
     public void DevelopmentPublicOriginMatchesCommittedHttpsLaunchProfile()
     {
         var repositoryRoot = Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
-        var developmentSettings = JsonDocument.Parse(File.ReadAllText(Path.Combine(
+            Path.Join(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+        using var developmentSettings = JsonDocument.Parse(File.ReadAllText(Path.Join(
             repositoryRoot,
             "src",
             "Andreja.AppHost",
             "appsettings.Development.json")));
-        var launchSettings = JsonDocument.Parse(File.ReadAllText(Path.Combine(
+        using var launchSettings = JsonDocument.Parse(File.ReadAllText(Path.Join(
             repositoryRoot,
             "src",
             "Andreja.AppHost",
@@ -701,13 +701,15 @@ public sealed class OpenLoopsApiIntegrationTests
                 System.Security.Cryptography.X509Certificates.X509Chain?, SslPolicyErrors, bool>>(
                 developmentHandler.ServerCertificateCustomValidationCallback);
 
+        using var loopbackRequest = new HttpRequestMessage(HttpMethod.Get, "https://localhost:5001");
+        using var remoteRequest = new HttpRequestMessage(HttpMethod.Get, "https://example.test");
         Assert.IsTrue(callback(
-            new(HttpMethod.Get, "https://localhost:5001"),
+            loopbackRequest,
             null,
             null,
             SslPolicyErrors.RemoteCertificateChainErrors));
         Assert.IsFalse(callback(
-            new(HttpMethod.Get, "https://example.test"),
+            remoteRequest,
             null,
             null,
             SslPolicyErrors.RemoteCertificateChainErrors));

@@ -44,7 +44,7 @@ public sealed class PostgreSqlIdentityTests
             var tokenBytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
             bootstrapToken = Convert.ToBase64String(tokenBytes);
             System.Security.Cryptography.CryptographicOperations.ZeroMemory(tokenBytes);
-            tokenPath = Path.Combine(AppContext.BaseDirectory, $"{Guid.NewGuid():N}.bootstrap");
+            tokenPath = Path.Join(AppContext.BaseDirectory, $"{Guid.NewGuid():N}.bootstrap");
             await File.WriteAllTextAsync(tokenPath, bootstrapToken);
             MakeReadOnly(tokenPath);
 
@@ -88,7 +88,7 @@ public sealed class PostgreSqlIdentityTests
             {
                 await DisposeAsync();
             }
-            catch (Exception cleanupException)
+            catch (AggregateException cleanupException)
             {
                 throw new AggregateException(
                     "PostgreSQL identity test initialization and cleanup both failed.",
@@ -113,7 +113,8 @@ public sealed class PostgreSqlIdentityTests
                 var database = scope.ServiceProvider.GetRequiredService<AndrejaIdentityDbContext>();
                 await database.Database.EnsureDeletedAsync();
             }
-            catch (Exception exception)
+            catch (Exception exception) when (
+                exception is Npgsql.NpgsqlException or InvalidOperationException or TimeoutException)
             {
                 cleanupFailures.Add(exception);
             }
@@ -123,7 +124,9 @@ public sealed class PostgreSqlIdentityTests
                 {
                     await currentServices.DisposeAsync();
                 }
-                catch (Exception exception)
+                catch (Exception exception) when (
+                    exception is Npgsql.NpgsqlException or InvalidOperationException
+                        or IOException or AggregateException)
                 {
                     cleanupFailures.Add(exception);
                 }
@@ -141,7 +144,8 @@ public sealed class PostgreSqlIdentityTests
                 DeleteReadOnlyFile(tokenPath);
             }
         }
-        catch (Exception exception)
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException)
         {
             cleanupFailures.Add(exception);
         }
