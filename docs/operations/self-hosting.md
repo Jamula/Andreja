@@ -451,6 +451,9 @@ approval manifest, and starts the same pinned app image only as:
 The command rehashes both read-only mounted artifacts, requires the configured
 database and actual pending migrations to match the approval exactly, applies EF
 migrations, and fails if any remain. Failure or cancellation returns nonzero.
+Expected database, artifact I/O, approval JSON, and configuration failures produce
+sanitized operational errors. Unexpected programming errors propagate instead of
+being converted into routine migration failures; caller cancellation remains distinct.
 After success, start the normal app and require `/health/ready` before restoring
 traffic. Preserve the approval manifest, SQL hash, backup inventory, output, and
 result as the migration evidence set.

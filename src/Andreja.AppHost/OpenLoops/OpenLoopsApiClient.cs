@@ -209,6 +209,9 @@ public sealed class OpenLoopsApiClient(
         }
         catch (System.Text.Json.JsonException)
         {
+            throw new OpenLoopsApiException(
+                $"http-{(int)response.StatusCode}",
+                "The request could not be completed.");
         }
 
         throw new OpenLoopsApiException(

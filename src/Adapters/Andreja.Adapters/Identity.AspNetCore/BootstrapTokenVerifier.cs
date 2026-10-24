@@ -42,11 +42,12 @@ public sealed class BootstrapTokenVerifier(IOptions<LocalIdentityOptions> option
             expected.Span,
             supplied.Span);
 
+        // Both decoders and the fixed-time comparison run before validation is combined.
         return expectedValid
-            & suppliedValid
-            & (expectedWritten == configured.BootstrapTokenBytes)
-            & (suppliedWritten == configured.BootstrapTokenBytes)
-            & tokensMatch;
+            && suppliedValid
+            && expectedWritten == configured.BootstrapTokenBytes
+            && suppliedWritten == configured.BootstrapTokenBytes
+            && tokensMatch;
     }
 
     private static void EnsureTokenFileIsReadOnly(string path)

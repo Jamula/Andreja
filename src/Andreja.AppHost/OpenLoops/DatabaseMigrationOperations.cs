@@ -50,7 +50,9 @@ public sealed class DatabaseMigrationReadinessHealthCheck(IServiceScopeFactory s
         {
             throw;
         }
-        catch (Exception)
+        catch (Exception exception) when (
+            exception is System.Data.Common.DbException or InvalidOperationException
+                or TimeoutException)
         {
             return HealthCheckResult.Unhealthy(
                 "Database migration state could not be verified.");
@@ -185,7 +187,10 @@ public static class DatabaseMigrationCommand
             await output.WriteLineAsync($"Database migration usage error: {exception.Message}");
             return UsageError;
         }
-        catch (Exception)
+        catch (Exception exception) when (
+            exception is IOException or InvalidDataException or UnauthorizedAccessException
+                or JsonException or OptionsValidationException or System.Data.Common.DbException
+                or InvalidOperationException or TimeoutException)
         {
             await output.WriteLineAsync("Database migration failed without changing readiness.");
             return 1;

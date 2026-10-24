@@ -14,8 +14,8 @@ the proposed [ADR 0006 ratification instrument](docs/adr/0006-charter-ratificati
 - `dotnet-ef` 10.0.11 for migration inspection and script generation.
 - Python 3, available as `python`, for documentation consistency checks.
 - PowerShell 7 for repository validation scripts.
-- Node.js 22 and Microsoft Edge for browser, passkey, viewport, and telemetry
-  evidence.
+- Node.js 26.12.1 and Microsoft Edge for browser, passkey, viewport, and
+  telemetry evidence.
 - Docker with Buildx and Compose for live PostgreSQL, OCI, and self-host
   evidence.
 
