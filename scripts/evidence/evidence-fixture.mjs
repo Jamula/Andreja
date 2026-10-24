@@ -65,9 +65,10 @@ function verifyRuntimeFixture(config, compose, model) {
 
     for (const service of services) {
         const container = byService.get(service);
-        const expectedVolumes = (model.services[service].volumes ?? [])
-            .filter(mount => mount.type === "volume");
-        const runtimeVolumes = (container.Mounts ?? []).filter(mount => mount.Type === "volume");
+        const serviceModel = model.services[service];
+        const runtimeMounts = container.Mounts ?? [];
+        const expectedVolumes = (serviceModel.volumes ?? []).filter(mount => mount.type === "volume");
+        const runtimeVolumes = runtimeMounts.filter(mount => mount.Type === "volume");
         requireThat(runtimeVolumes.length === expectedVolumes.length,
             `runtime ${service} volume mounts differ from the validated Compose model`);
         for (const expected of expectedVolumes) {
@@ -77,6 +78,37 @@ function verifyRuntimeFixture(config, compose, model) {
                 && matching[0].Name === expectedName
                 && matching[0].RW === (expected.read_only !== true),
             `runtime ${service} volume identity or destination differs from the validated Compose model`);
+        }
+        const expectedBinds = (serviceModel.volumes ?? []).filter(mount => mount.type === "bind");
+        const expectedSecrets = (serviceModel.secrets ?? []).map(secret => {
+            const source = typeof secret === "string" ? secret : secret.source;
+            const target = typeof secret === "string" ? secret : secret.target ?? source;
+            requireThat(typeof source === "string" && typeof target === "string" && target.length > 0
+                && typeof model.secrets[source]?.file === "string",
+            `validated Compose model has an invalid ${service} secret mount`);
+            return { source: model.secrets[source]?.file, target: target.startsWith("/")
+                ? target : `/run/secrets/${target}` };
+        });
+        const secretTargets = new Set(expectedSecrets.map(secret => secret.target));
+        const runtimeBinds = runtimeMounts.filter(mount => mount.Type === "bind"
+            && !secretTargets.has(mount.Destination));
+        requireThat(runtimeBinds.length === expectedBinds.length,
+            `runtime ${service} bind mounts differ from the validated Compose model`);
+        for (const expected of expectedBinds) {
+            const expectedSource = realpathSync(expected.source);
+            const matching = runtimeBinds.filter(mount => mount.Destination === expected.target);
+            requireThat(matching.length === 1 && matching[0].RW === (expected.read_only !== true)
+                && typeof matching[0].Source === "string"
+                && realpathSync(matching[0].Source) === expectedSource,
+            `runtime ${service} bind source, destination, or access mode differs from the validated Compose model`);
+        }
+        for (const expected of expectedSecrets) {
+            const matching = runtimeMounts.filter(mount => mount.Destination === expected.target);
+            requireThat(typeof expected.source === "string" && matching.length === 1
+                && ["bind", "tmpfs"].includes(matching[0].Type) && matching[0].RW === false
+                && (matching[0].Type !== "bind" || (typeof matching[0].Source === "string"
+                    && realpathSync(matching[0].Source) === realpathSync(expected.source))),
+            `runtime ${service} secret mount differs from the validated Compose model`);
         }
         const image = inspectJson("docker", ["--context", config.dockerContext, "image", "inspect",
             config.approvedImages[service], "--format", "{{json .}}"])[0];

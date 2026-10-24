@@ -38,7 +38,8 @@ const model = {
         "prometheus-data": { name: `${projectName}_prometheus-data` },
     },
     secrets: { tls_certificate: { file: config.certificateFile },
-        bootstrap_token: { file: config.bootstrapTokenFile }, postgres_password: { file: file("password") } },
+        tls_private_key: { file: file("key.pem") }, bootstrap_token: { file: config.bootstrapTokenFile },
+        postgres_password: { file: file("password") } },
 };
 model.services.app.environment = {
     Andreja__OpenLoops__AssistantProvider: "deterministic",
@@ -65,6 +66,27 @@ model.services.postgres.volumes = [
 model.services.prometheus.volumes = [
     { type: "volume", source: "prometheus-data", target: "/prometheus" },
 ];
+model.services.app.secrets = [
+    { source: "postgres_password" },
+    { source: "bootstrap_token", target: "/run/evidence-bootstrap/bootstrap_token" },
+];
+model.services.postgres.secrets = [{ source: "postgres_password" }];
+model.services["tls-proxy"].volumes = [
+    { type: "bind", source: path.join(root, "deploy", "Caddyfile.evidence"),
+        target: "/etc/caddy/Caddyfile", read_only: true },
+];
+model.services["tls-proxy"].secrets = [
+    { source: "tls_certificate" },
+    { source: "tls_private_key" },
+];
+model.services["otel-collector"].volumes = [
+    { type: "bind", source: path.join(root, "deploy", "otel-collector.yaml"),
+        target: "/etc/otelcol-contrib/config.yaml", read_only: true },
+];
+model.services.prometheus.volumes.push(
+    { type: "bind", source: path.join(root, "deploy", "prometheus.yaml"),
+        target: "/etc/prometheus/prometheus.yml", read_only: true },
+);
 for (const [service, target, published] of [
     ["app", 8080, "28080"], ["tls-proxy", 8443, "28443"],
     ["otel-collector", 8888, "28888"], ["prometheus", 9090, "29090"],
@@ -90,14 +112,27 @@ function makeRuntime(changed = config, resolved = model) {
         return {
             Id: String(index + 1).repeat(64),
             Image: imageId,
-            Mounts: (source.volumes ?? []).map(mount => ({
-                Type: mount.type,
-                Name: mount.type === "volume" ? resolved.volumes[mount.source].name : undefined,
-                Source: mount.type === "volume" ? `/synthetic/volumes/${resolved.volumes[mount.source].name}`
-                    : mount.source,
-                Destination: mount.target,
-                RW: mount.read_only !== true,
-            })),
+            Mounts: [
+                ...(source.volumes ?? []).map(mount => ({
+                    Type: mount.type,
+                    Name: mount.type === "volume" ? resolved.volumes[mount.source].name : undefined,
+                    Source: mount.type === "volume" ? `/synthetic/volumes/${resolved.volumes[mount.source].name}`
+                        : mount.source,
+                    Destination: mount.target,
+                    RW: mount.read_only !== true,
+                })),
+                ...(source.secrets ?? []).map(secret => {
+                    const reference = typeof secret === "string" ? { source: secret } : secret;
+                    const name = reference.target ?? reference.source;
+                    const destination = name.startsWith("/") ? name : `/run/secrets/${name}`;
+                    return {
+                        Type: "bind",
+                        Source: resolved.secrets[reference.source].file,
+                        Destination: destination,
+                        RW: false,
+                    };
+                }),
+            ],
             Config: {
                 Image: source.image,
                 Env: envEntries,
@@ -291,6 +326,28 @@ const runtimeDrift = [
             container.Config.Labels["com.docker.compose.service"] === "postgres");
         postgres.Mounts[0].Type = "bind";
     }],
+    ["proxy configuration bind source drift", runtime => {
+        const proxy = runtime.containers.find(container =>
+            container.Config.Labels["com.docker.compose.service"] === "tls-proxy");
+        proxy.Mounts.find(mount => mount.Destination === "/etc/caddy/Caddyfile").Source =
+            path.join(root, "deploy", "prometheus.yaml");
+    }],
+    ["proxy configuration bind destination drift", runtime => {
+        const proxy = runtime.containers.find(container =>
+            container.Config.Labels["com.docker.compose.service"] === "tls-proxy");
+        proxy.Mounts.find(mount => mount.Destination === "/etc/caddy/Caddyfile").Destination =
+            "/etc/caddy/other.Caddyfile";
+    }],
+    ["proxy configuration bind writable", runtime => {
+        const proxy = runtime.containers.find(container =>
+            container.Config.Labels["com.docker.compose.service"] === "tls-proxy");
+        proxy.Mounts.find(mount => mount.Destination === "/etc/caddy/Caddyfile").RW = true;
+    }],
+    ["proxy secret mount drift", runtime => {
+        const proxy = runtime.containers.find(container =>
+            container.Config.Labels["com.docker.compose.service"] === "tls-proxy");
+        proxy.Mounts.find(mount => mount.Destination === "/run/secrets/tls_certificate").RW = true;
+    }],
     ["wrong host port binding", runtime => {
         runtime.containers[0].NetworkSettings.Ports["8080/tcp"][0].HostPort = "18080";
     }],
@@ -364,6 +421,12 @@ test("browser static preparation returns scoped Compose args for a fresh fixture
 test("runtime inspect uses the explicit context and only project-reported containers", () => {
     const result = run("browser");
     assert.match(result.output, /PEM|certificate|decoder/i);
+    const runtime = makeRuntime();
+    const proxyMounts = runtime.containers.find(container =>
+        container.Config.Labels["com.docker.compose.service"] === "tls-proxy").Mounts;
+    assert.ok(proxyMounts.some(mount => mount.Destination === "/run/secrets/tls_certificate"
+        && mount.Type === "bind" && mount.RW === false),
+    "legitimate read-only secret mounts are validated separately from configuration binds");
     const ps = result.commands.find(command => command.command === "docker"
         && command.args.includes("ps") && command.args.includes("--quiet")
         && !command.args.includes("--filter"));
