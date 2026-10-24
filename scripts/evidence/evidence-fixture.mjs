@@ -63,6 +63,59 @@ function verifyRuntimeFixture(config, compose, model) {
     requireThat(services.every(service => byService.has(service)),
         "runtime project is missing an approved service container");
 
+    const expectedNetworkMembers = new Map(Object.keys(model.networks ?? {}).map(name => [name, new Set()]));
+    const networkInfo = new Map();
+    for (const service of services) {
+        const serviceNetworks = model.services[service].networks ?? {};
+        for (const name of Object.keys(serviceNetworks)) {
+            requireThat(expectedNetworkMembers.has(name),
+                `validated Compose model references an unknown network for ${service}`);
+            expectedNetworkMembers.get(name).add(byService.get(service).Id);
+        }
+        const runtimeNetworks = byService.get(service).NetworkSettings?.Networks ?? {};
+        const expectedNames = Object.keys(serviceNetworks).map(name => model.networks[name].name).sort();
+        requireThat(JSON.stringify(Object.keys(runtimeNetworks).sort()) === JSON.stringify(expectedNames),
+            `runtime ${service} network membership differs from the validated Compose model`);
+        for (const name of Object.keys(serviceNetworks)) {
+            const networkName = model.networks[name].name;
+            const network = runtimeNetworks[networkName];
+            requireThat(typeof network?.NetworkID === "string" && network.NetworkID.length > 0,
+                `runtime ${service} is missing its ${name} network identity`);
+            if (name === "backend") {
+                const aliases = network.Aliases ?? [];
+                requireThat(aliases.includes("postgres") === (service === "postgres"),
+                    "the PostgreSQL service alias must belong only to the authorized PostgreSQL container");
+            } else {
+                requireThat(!(network.Aliases ?? []).includes("postgres"),
+                    "the PostgreSQL service alias is present outside the authorized backend");
+            }
+        }
+    }
+    for (const [name, members] of expectedNetworkMembers) {
+        requireThat(members.size > 0, `validated Compose network ${name} has no approved service members`);
+        const expectedName = model.networks[name].name;
+        const network = inspectJson("docker", ["--context", config.dockerContext, "network", "inspect",
+            expectedName, "--format", "{{json .}}"])[0];
+        requireThat(typeof network?.Id === "string" && network.Id.length > 0
+            && network.Name === expectedName
+            && network.Labels?.["com.docker.compose.project"] === config.projectName
+            && network.Labels?.["com.docker.compose.network"] === name,
+        `runtime network ${name} identity or Compose ownership differs from the validated model`);
+        const containers = network.Containers ?? {};
+        requireThat(JSON.stringify(Object.keys(containers).sort()) === JSON.stringify([...members].sort()),
+            `runtime network ${name} has unexpected or missing service members`);
+        networkInfo.set(name, network);
+    }
+    for (const service of services) {
+        const container = byService.get(service);
+        const serviceNetworks = model.services[service].networks ?? {};
+        for (const name of Object.keys(serviceNetworks)) {
+            const runtimeNetwork = container.NetworkSettings.Networks[model.networks[name].name];
+            requireThat(runtimeNetwork.NetworkID === networkInfo.get(name).Id,
+                `runtime ${service} is attached to an unapproved ${name} network`);
+        }
+    }
+
     for (const service of services) {
         const container = byService.get(service);
         const serviceModel = model.services[service];

@@ -20,6 +20,10 @@ childProcess.execFileSync = (command, args) => {
         return readFileSync(process.env.EVIDENCE_TEST_MODEL, "utf8");
     }
     const fixture = runtime();
+    if (args.includes("network") && args.includes("inspect")) {
+        const name = args[args.indexOf("inspect") + 1];
+        return JSON.stringify(Object.values(fixture.networks).find(network => network.Name === name) ?? {});
+    }
     if (args.includes("ps") && args.includes("--quiet")) {
         if (args.includes("--filter")) {
             const port = args[args.indexOf("--filter") + 1].replace("publish=", "");

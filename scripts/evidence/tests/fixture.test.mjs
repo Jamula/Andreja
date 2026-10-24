@@ -87,6 +87,11 @@ model.services.prometheus.volumes.push(
     { type: "bind", source: path.join(root, "deploy", "prometheus.yaml"),
         target: "/etc/prometheus/prometheus.yml", read_only: true },
 );
+model.services.app.networks = { edge: {}, backend: {} };
+model.services.postgres.networks = { backend: {} };
+model.services["otel-collector"].networks = { backend: {}, edge: {} };
+model.services.prometheus.networks = { backend: {}, edge: {} };
+model.services["tls-proxy"].networks = { edge: {} };
 for (const [service, target, published] of [
     ["app", 8080, "28080"], ["tls-proxy", 8443, "28443"],
     ["otel-collector", 8888, "28888"], ["prometheus", 9090, "29090"],
@@ -142,9 +147,32 @@ function makeRuntime(changed = config, resolved = model) {
                 },
             },
             State: { Running: true, Status: "running" },
-            NetworkSettings: { Ports: ports },
+            NetworkSettings: { Ports: ports, Networks: {} },
         };
     });
+    const networks = Object.fromEntries(Object.entries(resolved.networks).map(([name, network]) => [
+        name,
+        {
+            Id: `synthetic-network-${name}`,
+            Name: network.name,
+            Labels: {
+                "com.docker.compose.project": changed.projectName,
+                "com.docker.compose.network": name,
+            },
+            Containers: {},
+        },
+    ]));
+    for (const container of containers) {
+        const service = container.Config.Labels["com.docker.compose.service"];
+        for (const name of Object.keys(resolved.services[service].networks ?? {})) {
+            const network = networks[name];
+            network.Containers[container.Id] = { Name: `${changed.projectName}-${service}-1` };
+            container.NetworkSettings.Networks[network.Name] = {
+                NetworkID: network.Id,
+                Aliases: [service, `${changed.projectName}-${service}-1`],
+            };
+        }
+    }
     const portOwners = {};
     for (const container of containers) {
         for (const bindings of Object.values(container.NetworkSettings.Ports)) {
@@ -155,7 +183,7 @@ function makeRuntime(changed = config, resolved = model) {
     }
     return {
         projectContainerIds: containers.map(container => container.Id),
-        containers, images, portOwners,
+        containers, images, portOwners, networks,
     };
 }
 function run(caller, changed = config, resolved = model, extraEnv = {}, fromFixtureDirectory = false,
@@ -347,6 +375,33 @@ const runtimeDrift = [
         const proxy = runtime.containers.find(container =>
             container.Config.Labels["com.docker.compose.service"] === "tls-proxy");
         proxy.Mounts.find(mount => mount.Destination === "/run/secrets/tls_certificate").RW = true;
+    }],
+    ["app attached to wrong network set", runtime => {
+        const app = runtime.containers.find(container =>
+            container.Config.Labels["com.docker.compose.service"] === "app");
+        delete app.NetworkSettings.Networks[`${projectName}_backend`];
+    }],
+    ["app attached to wrong network identity", runtime => {
+        const app = runtime.containers.find(container =>
+            container.Config.Labels["com.docker.compose.service"] === "app");
+        app.NetworkSettings.Networks[`${projectName}_backend`].NetworkID = "ordinary-backend-id";
+    }],
+    ["ordinary container joined fixture backend", runtime => {
+        runtime.networks.backend.Containers["f".repeat(64)] = { Name: "ordinary-postgres" };
+    }],
+    ["PostgreSQL alias claimed by app", runtime => {
+        const app = runtime.containers.find(container =>
+            container.Config.Labels["com.docker.compose.service"] === "app");
+        app.NetworkSettings.Networks[`${projectName}_backend`].Aliases.push("postgres");
+    }],
+    ["PostgreSQL alias missing from fixture database", runtime => {
+        const postgres = runtime.containers.find(container =>
+            container.Config.Labels["com.docker.compose.service"] === "postgres");
+        postgres.NetworkSettings.Networks[`${projectName}_backend`].Aliases =
+            postgres.NetworkSettings.Networks[`${projectName}_backend`].Aliases.filter(alias => alias !== "postgres");
+    }],
+    ["runtime backend has wrong Compose owner", runtime => {
+        runtime.networks.backend.Labels["com.docker.compose.project"] = "andreja";
     }],
     ["wrong host port binding", runtime => {
         runtime.containers[0].NetworkSettings.Ports["8080/tcp"][0].HostPort = "18080";
