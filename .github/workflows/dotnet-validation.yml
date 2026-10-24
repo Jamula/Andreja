@@ -79,6 +79,16 @@ jobs:
           --report-trx-filename Andreja.ArchitectureTests-${{ matrix.configuration }}.trx
           --results-directory artifacts/${{ matrix.configuration }}/test-results/Andreja.ArchitectureTests
 
+      - id: test_public_site
+        if: ${{ always() && steps.build_solution.outcome == 'success' && !cancelled() }}
+        name: Test public-site assembly
+        run: >-
+          dotnet test --test-modules tests/Andreja.PublicSiteTests/bin/${{ matrix.configuration }}/net10.0/Andreja.PublicSiteTests.dll
+          --no-build
+          --report-trx
+          --report-trx-filename Andreja.PublicSiteTests-${{ matrix.configuration }}.trx
+          --results-directory artifacts/${{ matrix.configuration }}/test-results/Andreja.PublicSiteTests
+
       - id: parity
         if: always()
         name: Verify test inventory parity
@@ -89,6 +99,14 @@ jobs:
           -ResultsRoot 'artifacts/${{ matrix.configuration }}/test-results'
           -InventoryPath 'docs/research/test-suite-current-inventory-112.json'
           -OutputPath 'artifacts/${{ matrix.configuration }}/test-inventory-parity.json'
+
+      - id: evidence_contract
+        if: ${{ always() && steps.build_solution.outcome == 'success' && !cancelled() }}
+        name: Test validation evidence failure cases
+        shell: pwsh
+        run: >-
+          ./.github/scripts/test-dotnet-validation-report.ps1
+          -Configuration '${{ matrix.configuration }}'
 
       - id: report
         if: always()
@@ -102,6 +120,8 @@ jobs:
             "build_postgresql":"${{ steps.build_postgresql.outcome }}",
             "test_unit":"${{ steps.test_unit.outcome }}",
             "test_architecture":"${{ steps.test_architecture.outcome }}",
+            "test_public_site":"${{ steps.test_public_site.outcome }}",
+            "evidence_contract":"${{ steps.evidence_contract.outcome }}",
             "parity":"${{ steps.parity.outcome }}"}
         run: >-
           ./.github/scripts/write-dotnet-validation-report.ps1

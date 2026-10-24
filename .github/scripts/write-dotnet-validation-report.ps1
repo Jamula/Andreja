@@ -20,6 +20,7 @@ $ErrorActionPreference = 'Stop'
 $expectedTestProjects = @(
     'tests/Andreja.ArchitectureTests/Andreja.ArchitectureTests.csproj'
     'tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj'
+    'tests/Andreja.PublicSiteTests/Andreja.PublicSiteTests.csproj'
     'tests/Andreja.UnitTests/Andreja.UnitTests.csproj'
 )
 
@@ -41,6 +42,25 @@ if ($inventoryDifference.Count -gt 0) {
 }
 
 $results = $ResultsJson | ConvertFrom-Json -AsHashtable
+if ($Kind -eq 'build-test') {
+    $requiredResults = @(
+        'restore_solution'
+        'restore_postgresql'
+        'build_solution'
+        'build_postgresql'
+        'test_unit'
+        'test_architecture'
+        'test_public_site'
+        'evidence_contract'
+        'parity'
+    )
+    foreach ($name in $requiredResults) {
+        if (-not $results.ContainsKey($name) -or
+            $results[$name] -notin @('success', 'failure', 'cancelled', 'skipped')) {
+            throw "Build-test evidence is missing a valid GitHub outcome for '$name'."
+        }
+    }
+}
 $sdkVersion = (Get-Content (Join-Path $RepositoryRoot 'global.json') -Raw | ConvertFrom-Json).sdk.version
 $postgresProject = 'tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj'
 
@@ -53,6 +73,7 @@ $commands = switch ($Kind) {
             "dotnet build $postgresProject --configuration $Configuration --no-restore"
             "dotnet test --test-modules tests/Andreja.UnitTests/bin/$Configuration/net10.0/Andreja.UnitTests.dll --no-build --report-trx --report-trx-filename Andreja.UnitTests-$Configuration.trx --results-directory artifacts/$Configuration/test-results/Andreja.UnitTests"
             "dotnet test --test-modules tests/Andreja.ArchitectureTests/bin/$Configuration/net10.0/Andreja.ArchitectureTests.dll --no-build --report-trx --report-trx-filename Andreja.ArchitectureTests-$Configuration.trx --results-directory artifacts/$Configuration/test-results/Andreja.ArchitectureTests"
+            "dotnet test --test-modules tests/Andreja.PublicSiteTests/bin/$Configuration/net10.0/Andreja.PublicSiteTests.dll --no-build --report-trx --report-trx-filename Andreja.PublicSiteTests-$Configuration.trx --results-directory artifacts/$Configuration/test-results/Andreja.PublicSiteTests"
             "pwsh -NoProfile -File .github/scripts/test-dotnet-test-parity.ps1 -Configuration $Configuration -ResultsRoot artifacts/$Configuration/test-results -InventoryPath docs/research/test-suite-current-inventory-112.json -OutputPath artifacts/$Configuration/test-inventory-parity.json"
         )
     }
@@ -101,6 +122,11 @@ $report = [ordered]@{
                 path = 'tests/Andreja.ArchitectureTests/Andreja.ArchitectureTests.csproj'
                 classification = 'service-free runtime test'
                 runtime_result = if ($Kind -eq 'build-test') { $results.test_architecture } else { 'not-run-in-this-job' }
+            }
+            [ordered]@{
+                path = 'tests/Andreja.PublicSiteTests/Andreja.PublicSiteTests.csproj'
+                classification = 'service-free runtime test'
+                runtime_result = if ($Kind -eq 'build-test') { $results.test_public_site } else { 'not-run-in-this-job' }
             }
             [ordered]@{
                 path = 'tests/Andreja.UnitTests/Andreja.UnitTests.csproj'
@@ -160,6 +186,7 @@ $($operationRows -join "`n")
 | Classification | Project | Runtime evidence |
 | --- | --- | --- |
 | Included | tests/Andreja.ArchitectureTests/Andreja.ArchitectureTests.csproj | $(if ($Kind -eq 'build-test') { $results.test_architecture } else { 'not run in this job' }) |
+| Included | tests/Andreja.PublicSiteTests/Andreja.PublicSiteTests.csproj | $(if ($Kind -eq 'build-test') { $results.test_public_site } else { 'not run in this job' }) |
 | Included | tests/Andreja.UnitTests/Andreja.UnitTests.csproj | $(if ($Kind -eq 'build-test') { $results.test_unit } else { 'not run in this job' }) |
 | Excluded from solution runtime | $postgresProject | compiled and discovered separately in Debug and Release |
 | Unavailable runtime | $postgresProject | no disposable hosted PostgreSQL; discovery is reported, runtime is never reported as passed or skipped |

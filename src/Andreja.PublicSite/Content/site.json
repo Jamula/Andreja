@@ -1,0 +1,322 @@
+{
+  "version": "local-v1",
+  "locale": "en",
+  "pages": [
+    {
+      "slug": "index",
+      "title": "Vision and boundaries",
+      "owner": "Jadzia Dax",
+      "reviewed": "2026-10-15",
+      "expires": "2026-11-14",
+      "evidence": ["docs/plan.md", "docs/public-website/claims-inventory.md"],
+      "claims": [],
+      "sections": [
+        {
+          "heading": "A field guide, not a launch",
+          "paragraphs": [
+            "The plan describes a user-owned personal assistant and skill platform: understand a proposed change, choose whether to approve it, and keep control of the resulting records. This is direction, not an assurance that every planned control or capability is ready.",
+            "This private local guide describes repository work and its limits. Andreja is a working name. No supported product release, managed service, pricing, trademark clearance or public availability is represented."
+          ]
+        },
+        {
+          "heading": "Start with one bounded task",
+          "paragraphs": [
+            "The Open Loops walking skeleton prepares a task proposal, lets the signed-in user inspect it, and saves it only after confirmation. Export, completion and deletion are separate controls. This is not a general autonomous agent or permission to send messages, make purchases or share data.",
+            "Use the chapters to find local operator and developer guidance. Roadmap skills, federation, connectors and managed operation remain separately gated. An implemented code path is not clean-install, production or public-launch evidence."
+          ]
+        }
+      ],
+      "related": ["availability", "getting-started", "assistants", "status"]
+    },
+    {
+      "slug": "availability",
+      "title": "Self-host or managed?",
+      "owner": "Jadzia Dax",
+      "reviewed": "2026-10-15",
+      "expires": "2026-11-14",
+      "evidence": ["docs/plan.md", "docs/operations/self-hosting.md"],
+      "claims": [],
+      "sections": [
+        {
+          "heading": "Self-host: repository evaluation only",
+          "paragraphs": [
+            "Self-hosting is the Phase 1A reference direction. An operator supplies the local runtime, PostgreSQL, HTTPS, passkey configuration, protected credentials and Data Protection key storage. Follow the version-matched repository runbook, not a copied command from another release.",
+            "This guide does not declare the reference distribution supported or generally available. Clean installation, PostgreSQL restore/restart, passkey browser and broader exit evidence remain separate gates under issues #40, #41, #44 and #62."
+          ]
+        },
+        {
+          "heading": "Managed: unavailable through this artifact",
+          "paragraphs": [
+            "No managed signup, invitation, billing or production status service is provided here. Managed operation, pricing and response commitments require explicit authority and evidence. Do not supply account details to an unverified service using the working name.",
+            "The roadmap is a planning sequence, not a delivery date or a promise that every skill, connector, device or provider will be supported."
+          ]
+        }
+      ],
+      "related": ["getting-started", "status", "release-notes"]
+    },
+    {
+      "slug": "getting-started",
+      "title": "Start a local evaluation",
+      "owner": "Jadzia Dax",
+      "reviewed": "2026-10-15",
+      "expires": "2026-11-14",
+      "evidence": ["docs/operations/self-hosting.md", "docs/help/local-identity.md", "docs/help/open-loops.md"],
+      "claims": [],
+      "sections": [
+        {
+          "heading": "Before using any real records",
+          "paragraphs": [
+            "Read the repository README and docs/operations/self-hosting.md at the exact checkout you are evaluating. Review prerequisites, explicit migrations, HTTPS origin, relying-party domain, proxy configuration and protected local secret files before starting the app. The website builds without any of those services.",
+            "Start with synthetic task text. Do not put bootstrap tokens, recovery codes, database secrets, cookies, personal records or connector content into this guide, screenshots, search queries or public issues."
+          ]
+        },
+        {
+          "heading": "Identity and the first task",
+          "paragraphs": [
+            "The application has local passkey bootstrap, sign-in and recovery implementation. The operator must configure and verify it; implementation is not a readiness certificate. Save recovery codes offline and confirm storage before continuing.",
+            "After signing in to your configured application, prepare an Open Loops proposal, inspect its exact change and expiry, then explicitly confirm or dismiss it. The clearly marked fixed Development workspace is Debug/Development-only and is not production passkey evidence."
+          ]
+        }
+      ],
+      "related": ["identity", "data", "assistants", "troubleshooting"]
+    },
+    {
+      "slug": "identity",
+      "title": "Passkeys and recovery",
+      "owner": "Jadzia Dax",
+      "reviewed": "2026-10-15",
+      "expires": "2026-11-14",
+      "evidence": ["docs/help/local-identity.md", "src/Andreja.AppHost/Components/Pages/Login.razor", "docs/operations/identity-recovery.md"],
+      "claims": [],
+      "sections": [
+        {
+          "heading": "Use the operator's exact HTTPS origin",
+          "paragraphs": [
+            "In the application, use Sign in with a passkey. Account and security opens passkey management; adding or removing a passkey requires a recent passkey sign-in. This site has no login links, identity cookies or connection to that application.",
+            "For first administration, the operator applies the reviewed migrations and mounts the one-time bootstrap token file. Bootstrap is unavailable after successful initialization. Remove the host token copy after setup. Consult docs/help/local-identity.md rather than improvising an origin or recovery bypass."
+          ]
+        },
+        {
+          "heading": "Keep recovery offline",
+          "paragraphs": [
+            "The application recovery flow uses an unused code and a newly enrolled passkey. Successful recovery replaces prior passkeys and recovery codes and invalidates older sessions. Record the new recovery set when shown.",
+            "Never send a recovery code, token, passkey response, Data Protection key or session cookie to support. If all recovery paths are lost, consult the operator recovery runbook; this guide cannot recover the account and promises no bypass. Runtime, restore and real-browser readiness still need version-scoped evidence."
+          ]
+        }
+      ],
+      "related": ["data", "troubleshooting", "security-privacy"]
+    },
+    {
+      "slug": "data",
+      "title": "Backup, export and deletion",
+      "owner": "Jadzia Dax",
+      "reviewed": "2026-10-15",
+      "expires": "2026-11-14",
+      "evidence": ["docs/help/open-loops.md", "docs/help/local-identity.md", "docs/operations/self-hosting.md"],
+      "claims": [],
+      "sections": [
+        {
+          "heading": "Task export is not an instance backup",
+          "paragraphs": [
+            "In Open Loops, Export JSON prepares your visible tasks and source state in the andreja.open-loops.tasks.v1 format. It excludes passkeys, recovery secrets, provider credentials, Data Protection keys and caches. Treat the downloaded task file as potentially sensitive.",
+            "Operators must separately back up PostgreSQL and the persisted Data Protection key ring using the reviewed runbook. A database-only restore is incomplete. Verify restore and restart in an isolated local environment before relying on a backup; this website supplies no restore tooling or restore success claim."
+          ]
+        },
+        {
+          "heading": "Inspect consequential changes",
+          "paragraphs": [
+            "Mark complete changes task state. Delete first asks for Yes, delete; Cancel on that prompt leaves the task unchanged. Export before deletion when you need a copy. This guide does not promise an undo after a committed deletion.",
+            "If a confirmation response is lost or cancelled in transit, its outcome can be unknown even though the server committed it. Keep the same proposal and retry that same confirmation; the application retains its idempotency key. Do not prepare a fresh proposal merely to retry an unknown result."
+          ]
+        }
+      ],
+      "related": ["identity", "assistants", "troubleshooting"]
+    },
+    {
+      "slug": "assistants",
+      "title": "Assistants, skills and consent",
+      "owner": "Jadzia Dax",
+      "reviewed": "2026-10-15",
+      "expires": "2026-11-14",
+      "evidence": ["docs/help/open-loops.md", "src/Andreja.AppHost/Components/Pages/Home.razor"],
+      "claims": [],
+      "sections": [
+        {
+          "heading": "Review before saving",
+          "paragraphs": [
+            "Ask the assistant takes one task request and prepares a proposal. Inspect the operation, source, expiry, before/after JSON, purpose, capability and confirmation policy. Preparing alone does not save a task. Not now dismisses an unconfirmed proposal without saving it; expired proposals need a fresh review.",
+            "Confirm and save task is explicit consent for that exact proposal, not a blanket grant. For an ambiguous network or cancellation failure during confirmation, the page states that the result is unknown. Retry the still-visible same confirmation safely. An already applied receipt does not create a duplicate task."
+          ]
+        },
+        {
+          "heading": "Understand the provider",
+          "paragraphs": [
+            "The application shows the operator-selected provider/model, readiness, recipient and recorded retention disclosure. The deterministic provider is local and offline. A configured openai-compatible profile sends the current request and typed tool schema to the operator's allowlisted endpoint. Do not infer another provider's retention policy from the local default.",
+            "The walking skeleton exposes the versioned open-loops.propose-task tool, not arbitrary tools or access to other skills. Server policy, authorization and antiforgery checks remain controlling even if browser controls look available."
+          ]
+        }
+      ],
+      "related": ["connectors-sharing", "data", "troubleshooting"]
+    },
+    {
+      "slug": "connectors-sharing",
+      "title": "Connectors and sharing limits",
+      "owner": "Jadzia Dax",
+      "reviewed": "2026-10-15",
+      "expires": "2026-11-14",
+      "evidence": ["docs/plan.md", "docs/help/open-loops.md"],
+      "claims": [],
+      "sections": [
+        {
+          "heading": "No connector activation in this guide",
+          "paragraphs": [
+            "The plan includes purpose-scoped connectors, skills and sharing. This local website provides no installation, authorization, invitation, sync or federation control. It does not establish that any named provider integration is released.",
+            "For future connectors, review the exact provider, requested scopes, data recipients, retention, revocation and consequential-action confirmation before granting access. A task export does not grant a connector permission and should not be posted publicly."
+          ]
+        },
+        {
+          "heading": "Sharing is a separate decision",
+          "paragraphs": [
+            "Do not assume a task is shared because an assistant prepared it. The local Open Loops guidance covers the signed-in user's visible tasks only. Cross-user or cross-instance sharing needs its own versioned contract, recipient preview and authorization evidence.",
+            "Developer extension design is planning context until the exact capability is released and its conformance, privacy and permission-negative tests are reviewed."
+          ]
+        }
+      ],
+      "related": ["assistants", "developer-local-v1", "security-privacy"]
+    },
+    {
+      "slug": "troubleshooting",
+      "title": "Troubleshoot without oversharing",
+      "owner": "Jadzia Dax",
+      "reviewed": "2026-10-15",
+      "expires": "2026-11-14",
+      "evidence": ["docs/help/open-loops.md", "docs/help/local-identity.md"],
+      "claims": [],
+      "sections": [
+        {
+          "heading": "Sign-in or provider unavailable",
+          "paragraphs": [
+            "For passkey errors, check the configured exact HTTPS origin, relying-party domain, migration state, persisted key ring and documented same-host proxy settings. Do not disable origin validation, use a Development identity in Production, or remove authorization checks.",
+            "For an unavailable provider, inspect the bounded readiness result and operator configuration; never paste the credential file or its path into a report. An empty secured credential file revokes use. Invalid, inaccessible or oversized files produce credential-unavailable without revealing their contents."
+          ]
+        },
+        {
+          "heading": "Distinguish dismissal from uncertain delivery",
+          "paragraphs": [
+            "Not now before confirmation dismisses the proposal without saving a task. Cancel on the delete prompt cancels that local prompt. Neither statement guarantees rollback of a request already sent.",
+            "When the confirmation result is unknown, retry the same retained proposal; its idempotency key is reused. If you navigated away and lost that proposal, inspect current tasks before preparing anything new. For a conflict, refresh and review current state. Never assume a timeout or disconnected browser means nothing changed.",
+            "Provider preparation failures do not confirm a proposal. Do not generalize that behavior to confirmation, completion or deletion after a request may have reached the server."
+          ]
+        }
+      ],
+      "related": ["assistants", "identity", "status"]
+    },
+    {
+      "slug": "security-privacy",
+      "title": "Security and privacy boundaries",
+      "owner": "Jadzia Dax",
+      "reviewed": "2026-10-15",
+      "expires": "2026-11-14",
+      "evidence": ["docs/privacy.md", "docs/threat-model.md", "docs/public-website/claims-inventory.md"],
+      "claims": [],
+      "sections": [
+        {
+          "heading": "Scope: the local generated guide",
+          "paragraphs": [
+            "The generated artifact contains reviewed guide text, styles and browser-only search. Search uses the bundled version index in memory. There are no remote resources, analytics, feedback submission, app routes, cookies, browser persistence or product data connections in this implementation.",
+            "This is not an unqualified secure, private, no-tracking or regulatory-compliance claim. A future host may receive IP addresses and request metadata. Hosting logs, retention, access controls and privacy notices need separate review before any deployment."
+          ]
+        },
+        {
+          "heading": "Reporting remains gated",
+          "paragraphs": [
+            "Do not put vulnerabilities, suspected personal-data incidents, credentials or private task content in a public issue. No private intake endpoint or monitored security contact is activated by this artifact. Use only a private route separately verified by your operator.",
+            "security.txt is intentionally absent: no contact or domain is invented, and no RFC 9116 compliance is claimed. A verified monitored contact, expiry, incident handoff and publication approval must precede adding that file.",
+            "The repository threat model and privacy baseline are evidence references, not certification. Manual screen-reader and WCAG 2.2 AA review are still unverified; automated checks cannot establish conformance."
+          ]
+        }
+      ],
+      "related": ["status", "troubleshooting"]
+    },
+    {
+      "slug": "release-notes",
+      "title": "Release notes and known issues",
+      "owner": "Jadzia Dax",
+      "reviewed": "2026-10-15",
+      "expires": "2026-11-14",
+      "evidence": ["docs/help/local-identity.md", "docs/help/open-loops.md", "docs/public-website/README.md"],
+      "claims": [],
+      "sections": [
+        {
+          "heading": "local-v1 — 2026-10-15 — unpublished guide",
+          "paragraphs": [
+            "This is a documentation artifact version, not an Andreja product release or support window. It introduces independently generated local chapters, owned expiry metadata, browser-only search, a strict local configuration and a hash manifest. No product migration is performed by building the guide.",
+            "Identity help now distinguishes landed local passkey implementation from unverified runtime readiness. Open Loops help distinguishes definite pre-submit dismissal from an ambiguous confirmation response; the same retained proposal can be retried with its existing idempotency key."
+          ]
+        },
+        {
+          "heading": "Known limitations",
+          "paragraphs": [
+            "Public launch, hosting, a monitored security contact, managed availability, legal/brand clearance, support capacity and approved public claims remain gated under issue #93 and the associated decision issues. ADR 0008 remains Proposed.",
+            "English-only local content; no localization or screen-reader conformance claim. No real-time outage feed, supported-product version selector, remote search, feedback submission or published security.txt. Local automated browser checks cover representative viewports, not all devices or assistive technologies.",
+            "Rollback for this guide means retaining and verifying a previous complete artifact in a different private output directory. Never overwrite files in place or promote this local artifact to a public host."
+          ]
+        }
+      ],
+      "related": ["status", "developer-local-v1", "security-privacy"]
+    },
+    {
+      "slug": "status",
+      "title": "Status and support routes",
+      "owner": "Jadzia Dax",
+      "reviewed": "2026-10-15",
+      "expires": "2026-11-14",
+      "evidence": ["docs/public-website/README.md", "docs/help/open-loops.md"],
+      "claims": [],
+      "sections": [
+        {
+          "heading": "Not a live service status",
+          "paragraphs": [
+            "This static local chapter cannot observe your instance or any managed service. Its review and expiry dates show documentation freshness, not current uptime. Ask your self-host operator to inspect local health and bounded diagnostics using the version-matched runbook.",
+            "No support response time, availability SLO, monitored mailbox or tenant-less feedback form is promised here. Feedback activation and operational readiness remain separately governed, including issue #158."
+          ]
+        },
+        {
+          "heading": "Prepare a safe question",
+          "paragraphs": [
+            "Record the app/doc version, the control used, expected versus observed behavior, and a minimal synthetic reproduction. Review every attachment before choosing a separately verified support route. Exclude tasks, prompts, provider responses, identities, connector payloads and credentials.",
+            "General documentation defects may be discussed through the repository's established issue process after sanitization. Security and privacy incidents must not go to public issues. There is no submission action in this guide, and reading it creates no support ticket."
+          ]
+        }
+      ],
+      "related": ["troubleshooting", "security-privacy", "release-notes"]
+    },
+    {
+      "slug": "developer-local-v1",
+      "title": "Developer guide · local-v1",
+      "owner": "Jadzia Dax",
+      "reviewed": "2026-10-15",
+      "expires": "2026-11-14",
+      "evidence": ["docs/plan.md", "docs/adr/0008-public-website-artifact-boundary.md", "docs/help/open-loops.md"],
+      "claims": [],
+      "sections": [
+        {
+          "heading": "Version scope and extension boundaries",
+          "paragraphs": [
+            "local-v1 versions this English guide and its generated search index. It is not an API compatibility promise or a released SDK. Use contracts and tests at the exact repository checkout when evaluating assistant tools, skill manifests or federation profiles.",
+            "The walking-skeleton tool is open-loops.propose-task; it proposes rather than writes. Do not add ambient database, secret-store or service-provider access to a skill. Server execution authorization, purpose/capability checks and confirmation policy remain authoritative.",
+            "Federation and connector development require versioned schemas, conformance fixtures, permission-negative tests and recipient/data-flow review before activation. A roadmap contract does not imply that peer discovery or cross-instance transfer is enabled."
+          ]
+        },
+        {
+          "heading": "Build and inspect the documentation artifact",
+          "paragraphs": [
+            "Build the standalone Andreja.PublicSite project with .NET 10 from the repository root. The commands and authoring contract are documented in docs/public-website/local-build.md. No AppHost, database, account, cloud resource or authenticated API is required.",
+            "Author plain text sections and local chapter references in site.json. The generator HTML-encodes text, rejects stale or unowned pages and public claim IDs, and records source/evidence hashes. Review changes to content, search code and metadata together; hashes detect accidental changes but are not signed provenance or approval."
+          ]
+        }
+      ],
+      "related": ["connectors-sharing", "release-notes", "security-privacy"]
+    }
+  ]
+}

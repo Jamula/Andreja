@@ -17,6 +17,8 @@ sponsorship, or any connection to the authenticated application.
 - [Claims inventory](claims-inventory.md)
 - [Proposed ADR 0008](../adr/0008-public-website-artifact-boundary.md)
 - [Local prototype](prototype/README.md)
+- [Unpublished local build and authoring guide](local-build.md) — issue #93
+  implementation slice; not publication authority or ADR acceptance
 
 ## Recommendation in one sentence
 
@@ -49,11 +51,17 @@ without ambiguity.
 
 ## Phase boundary
 
-The only executable artifact is a local prototype. It has no remote
+The original Phase 0 executable artifact is a local prototype. It has no remote
 dependencies, form submission, authentication, cookies, storage, telemetry, or
 product-data path. Open it locally as described in the prototype README. Do not
 publish it: its wording is deliberately labeled as planning content and its
 routes, contacts, legal text, and claims are incomplete.
+
+Issue #93 now also supplies an independently buildable local static field guide
+in `src\Andreja.PublicSite`, with isolated artifact tests. Its configuration
+rejects every publication mode. See the [local build guide](local-build.md) for
+the narrower implementation boundary and remaining acceptance gates. This
+addition does not ratify the Proposed ADR or activate the future public site.
 
 Phase 0 review is loopback-only or private and access-controlled. Public Pages,
 public previews, CDN delivery, and DNS publication must be disabled; a future
