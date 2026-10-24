@@ -111,14 +111,18 @@ validation fails closed on divergence.
 
 The repository evidence profile supplies a pinned Caddy reverse proxy, a fixed
 evidence-only network, loopback-only TLS port `8443`, and exact source address
-`172.30.44.10`:
+`172.30.44.10`. First prepare and authorize `$configPath` under
+[repeatable disposable evidence runners](#repeatable-disposable-evidence-runners-40);
+never start this fixture in the ordinary default project:
 
 ```powershell
-docker compose -f compose.yaml -f deploy\compose.evidence.yaml config --quiet
-docker compose --profile evidence -f compose.yaml `
-  -f deploy\compose.evidence.yaml up --detach
-curl.exe --fail --cacert .andreja\localhost.pem `
-  https://localhost:8443/health/ready
+$fixtureJson = node scripts\evidence\evidence-fixture.mjs --config $configPath browser-static
+if ($LASTEXITCODE -ne 0) { throw 'Fixture validation failed' }
+$evidenceFixture = $fixtureJson | ConvertFrom-Json
+$evidenceCompose = @($evidenceFixture.compose)
+docker @evidenceCompose up --detach --pull never
+curl.exe --fail --cacert $evidenceFixture.certificateFile `
+  "$($evidenceFixture.baseUrl.TrimEnd('/'))/health/ready"
 ```
 
 Generate the short-lived certificate and private key outside Git. The browser
@@ -126,7 +130,7 @@ evidence script pins the exact public-key hash rather than disabling certificate
 validation. `deploy/compose.evidence.yaml` is a local evidence fixture, not a
 production certificate, hostname, address-pool, or trust-policy recommendation.
 On Docker Desktop, place the bootstrap value in an ignored source file, copy it
-into the `andreja_evidence-bootstrap` volume, and set owner/mode to
+into the explicitly selected project's `<project>_evidence-bootstrap` volume, and set owner/mode to
 `1654:1654/0400`; the application check is not relaxed for NTFS.
 
 Before bootstrap, send a request through the proxy and confirm the application
@@ -488,12 +492,10 @@ framework route templates and content-free Andreja instruments. Prompt, response
 task, token, recovery, connector content, and raw user identifiers are forbidden.
 
 The collector applies a second deletion layer and sends traces to `nop`; it has no
-payload-logging exporter. Metrics are exposed only on the internal network. Enable
-the opt-in, loopback-only evidence backend with:
-
-```powershell
-docker compose --profile evidence up --detach
-```
+payload-logging exporter. Metrics are exposed only on the internal network. The
+opt-in, loopback-only backend uses the `evidence` profile. For fixture drills,
+enable it only through the validated, explicitly scoped Compose arguments above;
+the runners below include that profile and never fall back to the default project.
 
 Query `andreja_telemetry_policy_checks_total` first; zero means insufficient
 evidence. Then require `andreja_telemetry_policy_violation_total` to remain zero
@@ -508,3 +510,163 @@ time window, query version, build digest, config checksum, owner, and exclusions
 
 The optional backend is local convenience, not a cloud dependency, SLA, or managed
 observability choice.
+
+### Repeatable disposable evidence runners (#40)
+
+`browser-e2e.mjs`, `Test-TelemetryEvidence.ps1`, and `Test-OfflineEvidence.ps1`
+are **mutating fixture drills**, not read-only checks of an existing installation.
+The browser bootstraps an administrator, rotates recovery credentials, creates and
+deletes synthetic tasks, restarts the app, and removes its browser profile.
+Telemetry invokes that same browser runner. Loopback, an empty database, or a
+passing restore clean-table query is **not authorization** to touch an installation.
+
+All three runners now require the **same explicit fixture JSON**, with no project,
+endpoint, browser, certificate, bootstrap-file, Docker-context, or profile fallback.
+Missing/unknown fields, the ordinary `andreja` project, a missing disposal
+confirmation or cleanup allowlist, and mutable/unapproved images fail closed before
+resource mutation. An operator must authorize a fresh synthetic-only project and
+its cleanup first; do not point these scripts at production or an ordinary local
+development installation.
+
+Prepare the fixture outside the scripts, only on an authorized same-host runtime.
+The checked-in Compose evidence override still fixes the TLS listener inside the
+proxy at `8443`, the proxy IP/subnet at `172.30.44.10`/`172.30.44.0/24`, and the
+WebAuthn origin at `https://localhost:8443`. The runners do not select a free subnet,
+relax trust, create certificates, initialize/migrate PostgreSQL, stage tokens, or
+approve an image. Resolve address/port collisions before the drill; other origins
+or network layouts need a separately reviewed fixture override, not a CLI bypass.
+Host-published HTTP, collector and Prometheus ports remain installation inputs.
+
+Use `.andreja\evidence\<project>` within this checkout for **all** fixture secrets,
+the synthetic bootstrap source, certificate and private key, and a non-secret
+`fixture.env` interpolation file. Never copy a real installation's credentials or
+data. Stage the bootstrap volume with the matching synthetic source and
+`1654:1654/0400` ownership/mode, and initialize the synthetic schema through the
+existing reviewed migration procedure before browser/telemetry runs.
+
+The following is a configuration template, **not** provisioning or drill
+authorization. Replace the project/context and audited app digest after independent
+image verification. All named paths/files must already exist (the browser
+directory need not exist):
+
+```powershell
+$project = 'andreja-evidence-ops40'
+$fixture = Join-Path (Get-Location) ".andreja\evidence\$project"
+$configPath = Join-Path $fixture 'fixture.json'
+@{
+  projectName = $project
+  dockerContext = '<explicit-authorized-local-context>'
+  disposable = $true
+  cleanupProjects = @($project)
+  cleanupProfiles = @((Join-Path $fixture 'browser'))
+  fixtureDirectory = $fixture
+  environmentFile = Join-Path $fixture 'fixture.env'
+  browserExecutable = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+  certificateFile = Join-Path $fixture 'localhost.pem'
+  bootstrapTokenFile = Join-Path $fixture 'bootstrap_token'
+  baseUrl = 'https://localhost:8443'
+  healthUrl = 'http://127.0.0.1:18080/health/ready'
+  collectorMetricsUrl = 'http://127.0.0.1:18888/metrics'
+  prometheusUrl = 'http://127.0.0.1:19090'
+  approvedImages = @{
+    app = '<independently-verified-app>@sha256:<64-lowercase-hex>'
+    postgres = 'postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3'
+    'otel-collector' = 'otel/opentelemetry-collector-contrib:0.135.0@sha256:89107a3a8f4636a396927edf7025bb9614b8da2d92f4cc3f43109e8d115736e2'
+    prometheus = 'prom/prometheus:v3.6.0@sha256:76947e7ef22f8a698fc638f706685909be425dbe09bd7a2cd7aca849f79b5f64'
+    'tls-proxy' = 'caddy@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d'
+  }
+} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $configPath
+```
+
+`fixture.env` supplies explicit interpolation values, with absolute paths to the
+synthetic files, not secret contents:
+
+```text
+ANDREJA_IMAGE=<exact approvedImages.app reference>
+ANDREJA_TRUSTED_PROXY_IP=172.30.44.10
+ANDREJA_HOSTNAME=localhost
+ANDREJA_ASSISTANT_PROVIDER=deterministic
+ANDREJA_BIND_ADDRESS=127.0.0.1
+ANDREJA_HTTP_PORT=18080
+ANDREJA_HTTPS_PORT=8443
+OTEL_INTERNAL_METRICS_PORT=18888
+PROMETHEUS_BIND_ADDRESS=127.0.0.1
+PROMETHEUS_PORT=19090
+POSTGRES_PASSWORD_FILE=<absolute fixture path>/postgres_password
+ANDREJA_BOOTSTRAP_TOKEN_FILE=<absolute fixture path>/bootstrap_token
+ANDREJA_TLS_CERTIFICATE_FILE=<absolute fixture path>/localhost.pem
+ANDREJA_TLS_PRIVATE_KEY_FILE=<absolute fixture path>/localhost-key.pem
+```
+
+Use paths appropriate to the runtime host; quote paths with spaces using Compose
+env-file syntax. The runners pass `--env-file` explicitly and reject ambient
+Compose interpolation variables, `COMPOSE_*`, and `DOCKER_*` rather than silently
+overriding fixture inputs. Run in a clean process environment. They inspect the
+explicit Docker context and reject remote TCP/SSH endpoints; only same-host Unix
+sockets/named pipes are accepted.
+
+Read-only Compose expansion must resolve exactly the five approved immutable
+service images, project-prefixed non-external volumes/networks, fixture-contained
+secret sources, the repository's read-only configuration binds, the deterministic
+provider, and the declared origin/loopback ports. Browser certificate/bootstrap
+paths must match Compose. Database settings must target the fixture's `postgres`
+service on port `5432`, use its resolved database/user, and read the configured
+password secret. The `browser-static` mode performs only this read-only
+configuration preparation so a new fixture can be started; browser and telemetry
+still run full runtime verification before requests or credentials are accessed.
+A digest allowlist records the operator's approval; it does not replace
+`Test-OciEvidence.ps1` signature/provenance checks. Keep the configuration,
+context, files and project exclusively controlled during the run.
+
+Before browser or telemetry runners contact any endpoint, read-only runtime
+inspection must find exactly one running container for each approved service
+under the authorized Compose project, with matching service labels, exact
+immutable image references and image identities. The application provider and
+WebAuthn origin must still match the fixture; proxy, app, collector and
+Prometheus bindings must match their explicit loopback endpoints, with no
+additional container owning those host ports. PostgreSQL must have no published
+host port. The running app's database settings must exactly match the validated
+Compose model and point to the fixture PostgreSQL service; a host database or
+other drift is rejected. Missing containers, stopped services, runtime drift, or
+a wrong-project port owner fail before HTTP requests, certificate/bootstrap
+reads, browser-profile changes, or Docker mutations. Static Compose validation
+remains separate: `browser-static` prepares startup arguments, while offline
+evidence validates configuration only; either may start an absent authorized
+project. A Compose restart does not apply changed configuration; runtime drift
+is a stop condition, not something to repair by restarting.
+
+After authorization and fixture preparation, run from this checkout:
+
+```powershell
+node scripts\evidence\browser-e2e.mjs --config $configPath
+pwsh -NoProfile -File scripts\evidence\Test-TelemetryEvidence.ps1 -FixtureConfig $configPath
+pwsh -NoProfile -File scripts\evidence\Test-OfflineEvidence.ps1 -FixtureConfig $configPath
+# Optional, only if the allowlisted project's synthetic volumes may also be removed:
+pwsh -NoProfile -File scripts\evidence\Test-OfflineEvidence.ps1 `
+  -FixtureConfig $configPath -DestroySyntheticVolumes
+```
+
+Browser and telemetry are alternative destructive bootstrap runs: reset/reprepare
+the synthetic fixture between them. Offline starts with `--pull never`, after
+checking every approved image is preloaded. It no longer tears down a prior stack
+before startup. Its final `down --remove-orphans` applies only to the allowlisted
+project after startup was attempted; `--volumes` remains opt-in. Preflight/image
+inspection failures do not run cleanup, and cleanup failures now fail the drill.
+Browser profile deletion is confined to the one explicitly allowlisted fixture
+browser directory; linked fixture directories are rejected.
+
+The focused, dependency-free synthetic suite invokes the production PowerShell
+and browser entry points with mocked commands. It never starts Docker, reads live
+secrets, or launches a browser:
+
+```powershell
+node --test --test-reporter=spec scripts\evidence\tests\fixture.test.mjs
+```
+
+Passing synthetic tests is tooling evidence only. Without an authorized,
+prepared disposable fixture, record browser/telemetry/offline runtime drills as
+**NOT RUN**. This change does not reopen the already landed #40 bundle, select a
+production host, authorize signing/publication, or satisfy the remaining #41/#44
+recovery/runtime evidence gates. Ordinary backup, restore, and migration operator
+commands elsewhere in this runbook retain their explicit operator workflow; these
+evidence scripts do not invoke or authorize them.

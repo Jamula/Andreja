@@ -1,8 +1,6 @@
 [CmdletBinding()]
 param(
-    [string] $CollectorMetricsUrl = "http://127.0.0.1:18888/metrics",
-
-    [string] $PrometheusUrl = "http://127.0.0.1:19090",
+    [string] $FixtureConfig,
 
     [ValidateRange(2, 10000)]
     [int] $MinimumRequestSpanDelta = 10
@@ -11,6 +9,17 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "../.."))
+if ([string]::IsNullOrWhiteSpace($FixtureConfig)) {
+    throw "Explicit -FixtureConfig is required for a disposable evidence fixture."
+}
+$FixtureConfig = (Resolve-Path -LiteralPath $FixtureConfig -ErrorAction Stop).ProviderPath
+$fixtureOutput = & node (Join-Path $PSScriptRoot "evidence-fixture.mjs") --config "$FixtureConfig" browser
+if ($LASTEXITCODE -ne 0) {
+    throw "Disposable telemetry fixture validation failed; no requests or mutation authorized."
+}
+$fixture = $fixtureOutput | ConvertFrom-Json
+$CollectorMetricsUrl = $fixture.collectorMetricsUrl
+$PrometheusUrl = $fixture.prometheusUrl
 
 function Get-CollectorCounter {
     param(
@@ -62,7 +71,7 @@ foreach ($entry in $counterNames.GetEnumerator()) {
 
 Push-Location $root
 try {
-    $browserOutput = & node scripts/evidence/browser-e2e.mjs
+    $browserOutput = & node (Join-Path $PSScriptRoot "browser-e2e.mjs") --config $FixtureConfig
     if ($LASTEXITCODE -ne 0) {
         throw "Browser evidence failed with exit code $LASTEXITCODE."
     }
@@ -107,6 +116,8 @@ if ($policyChecks -le 0 -or $suppressed -le 0 -or $violations -ne 0) {
 
 [ordered]@{
     status = "passed"
+    projectName = $fixture.projectName
+    dockerContext = $fixture.dockerContext
     collectedAfterBrowserAndRestart = $true
     acceptedBefore = $before
     acceptedAfter = $after

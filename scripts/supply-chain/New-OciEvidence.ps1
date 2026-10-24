@@ -341,15 +341,27 @@ Invoke-CheckedCommand -FilePath 'docker' -Arguments @(
 ) -FailureMessage 'Pinned Trivy container/IaC scan failed.'
 
 $forbiddenSeverities = @($policy.forbiddenSeverities | ForEach-Object { $_.ToUpperInvariant() })
-$dependencyFindings = Get-GrypeForbiddenCount -Path (Join-Path $outputRoot 'scan.dependencies.json') `
-    -ForbiddenSeverities $forbiddenSeverities
-$imageFindings = Get-GrypeForbiddenCount -Path (Join-Path $outputRoot 'scan.image.json') `
-    -ForbiddenSeverities $forbiddenSeverities
+$dependencyMatches = @(Get-GrypeForbiddenMatches -Path (Join-Path $outputRoot 'scan.dependencies.json') `
+    -ForbiddenSeverities $forbiddenSeverities)
+$imageMatches = @(Get-GrypeForbiddenMatches -Path (Join-Path $outputRoot 'scan.image.json') `
+    -ForbiddenSeverities $forbiddenSeverities)
+$dependencyFindings = $dependencyMatches.Count
+$imageFindings = $imageMatches.Count
 $iacFindings = Get-TrivyForbiddenCount -Path (Join-Path $outputRoot 'scan.iac.json') `
     -ForbiddenSeverities $forbiddenSeverities
 
-Assert-NoForbiddenFinding -Count $dependencyFindings -Scope 'Dependency'
-Assert-NoForbiddenFinding -Count $imageFindings -Scope 'Final image'
+Assert-NoForbiddenFinding -Count $dependencyFindings -Scope 'Dependency' -FindingDetails @(
+    $dependencyMatches | ForEach-Object {
+        '{0} {1}@{2} ({3})' -f $_.vulnerability.id, $_.artifact.name, $_.artifact.version,
+            $_.vulnerability.severity
+    }
+)
+Assert-NoForbiddenFinding -Count $imageFindings -Scope 'Final image' -FindingDetails @(
+    $imageMatches | ForEach-Object {
+        '{0} {1}@{2} ({3})' -f $_.vulnerability.id, $_.artifact.name, $_.artifact.version,
+            $_.vulnerability.severity
+    }
+)
 Assert-NoForbiddenFinding -Count $iacFindings -Scope 'Container/IaC'
 
 Remove-Item -LiteralPath $cacheRoot -Recurse -Force

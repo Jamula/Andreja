@@ -32,6 +32,15 @@ foreach ($baseImage in $policy.baseImages.PSObject.Properties.Value) {
     }
 }
 
+$sdkVersion = (Get-Content -LiteralPath (Join-Path $RepositoryRoot 'global.json') -Raw |
+    ConvertFrom-Json).sdk.version
+$sdkImageMatch = [regex]::Match(
+    [string] $policy.baseImages.sdk,
+    '^mcr\.microsoft\.com/dotnet/sdk:(?<version>[0-9]+\.[0-9]+\.[0-9]+)-noble@sha256:[0-9a-f]{64}$')
+if (-not $sdkImageMatch.Success -or $sdkImageMatch.Groups['version'].Value -ne $sdkVersion) {
+    throw 'The pinned .NET SDK version must match the SDK base-image tag.'
+}
+
 $workflowRoot = Join-Path $RepositoryRoot '.github\workflows'
 $workflowFiles = @(Get-ChildItem -LiteralPath $workflowRoot -File |
     Where-Object { $_.Extension -in @('.yml', '.yaml') })

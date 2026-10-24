@@ -312,7 +312,7 @@ function Assert-SbomDocument {
     }
 }
 
-function Get-GrypeForbiddenCount {
+function Get-GrypeForbiddenMatches {
     param(
         [Parameter(Mandatory)][string] $Path,
         [Parameter(Mandatory)][string[]] $ForbiddenSeverities
@@ -325,7 +325,16 @@ function Get-GrypeForbiddenCount {
 
     @($report.matches | Where-Object {
         $_.vulnerability.severity.ToUpperInvariant() -in $ForbiddenSeverities
-    }).Count
+    })
+}
+
+function Get-GrypeForbiddenCount {
+    param(
+        [Parameter(Mandatory)][string] $Path,
+        [Parameter(Mandatory)][string[]] $ForbiddenSeverities
+    )
+
+    @(Get-GrypeForbiddenMatches -Path $Path -ForbiddenSeverities $ForbiddenSeverities).Count
 }
 
 function Get-TrivyForbiddenCount {
@@ -356,11 +365,17 @@ function Get-TrivyForbiddenCount {
 function Assert-NoForbiddenFinding {
     param(
         [Parameter(Mandatory)][int] $Count,
-        [Parameter(Mandatory)][string] $Scope
+        [Parameter(Mandatory)][string] $Scope,
+        [string[]] $FindingDetails = @()
     )
 
     if ($Count -gt 0) {
-        throw "$Scope scan contains $Count forbidden finding(s)."
+        $details = if ($FindingDetails.Count -gt 0) {
+            " Findings: $($FindingDetails -join '; ')."
+        } else {
+            ''
+        }
+        throw "$Scope scan contains $Count forbidden finding(s).$details"
     }
 }
 
@@ -637,6 +652,7 @@ Export-ModuleMember -Function @(
     'Get-ChecksummedFile',
     'Get-FileSha256',
     'Get-GrypeForbiddenCount',
+    'Get-GrypeForbiddenMatches',
     'Get-TrivyForbiddenCount',
     'Invoke-CheckedCommand',
     'Read-SupplyChainPolicy'

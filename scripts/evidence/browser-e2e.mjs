@@ -2,19 +2,16 @@ import { X509Certificate, createHash } from "node:crypto";
 import { once } from "node:events";
 import { readFile, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
-import path from "node:path";
+import { prepareFixture, restartApplication as restartFixtureApplication } from "./evidence-fixture.mjs";
 
-const root = process.cwd();
-const baseUrl = process.env.ANDREJA_EVIDENCE_URL ?? "https://localhost:8443";
-const healthUrl = process.env.ANDREJA_EVIDENCE_HEALTH_URL
-    ?? "http://127.0.0.1:18080/health/ready";
-const edgePath = process.env.EDGE_PATH
-    ?? "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-const certificatePath = process.env.ANDREJA_TLS_CERTIFICATE_FILE
-    ?? path.join(root, ".andreja", "localhost.pem");
-const bootstrapTokenPath = process.env.ANDREJA_BOOTSTRAP_TOKEN_FILE
-    ?? path.join(root, "deploy", "secrets", "bootstrap_token");
-const userDataPath = path.join(root, ".andreja", "edge-evidence-44");
+if (process.argv.length !== 4 || process.argv[2] !== "--config") {
+    throw new Error("Usage: browser-e2e.mjs --config <explicit disposable fixture JSON>");
+}
+const fixture = prepareFixture(process.argv[3], "browser");
+const {
+    baseUrl, healthUrl, browserExecutable: edgePath, certificateFile: certificatePath,
+    bootstrapTokenFile: bootstrapTokenPath, userDataPath,
+} = fixture;
 const debuggingPort = 43000 + Math.floor(Math.random() * 1000);
 
 class Cdp {
@@ -151,15 +148,7 @@ async function waitForHealth() {
 }
 
 async function restartApplication() {
-    const child = spawn(
-        "docker",
-        [
-            "compose",
-            "--file", "compose.yaml",
-            "--file", "deploy\\compose.evidence.yaml",
-            "restart", "app",
-        ],
-        { cwd: root, windowsHide: true, stdio: "ignore" });
+    const child = restartFixtureApplication(fixture);
 
     let reconnectObserved = false;
     while (child.exitCode === null) {
@@ -412,6 +401,8 @@ try {
 
     console.log(JSON.stringify({
         status: "passed",
+        projectName: fixture.projectName,
+        dockerContext: fixture.dockerContext,
         bootstrap: true,
         signIn: true,
         recovery: true,
