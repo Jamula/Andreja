@@ -11,6 +11,7 @@ on:
       - '.github/pull_request_template.md'
       - 'README.md'
       - 'tests/test_check_docs_consistency.py'
+      - 'tests/test_feedback_readiness_docs.py'
       - '.github/workflows/docs-consistency.yml'
       - 'scripts/docs/**'
   pull_request:
@@ -22,6 +23,7 @@ on:
       - '.github/pull_request_template.md'
       - 'README.md'
       - 'tests/test_check_docs_consistency.py'
+      - 'tests/test_feedback_readiness_docs.py'
       - '.github/workflows/docs-consistency.yml'
       - 'scripts/docs/**'
 
@@ -40,6 +42,9 @@ jobs:
 
       - name: Test documentation consistency checks
         run: python3 -m unittest tests/test_check_docs_consistency.py
+
+      - name: Test feedback readiness documentation contracts
+        run: python3 -m unittest discover -s tests -p test_feedback_readiness_docs.py
 
       - name: Test plan/hash/catalog consistency checks
         run: python3 .github/scripts/check_docs_consistency.test.py
