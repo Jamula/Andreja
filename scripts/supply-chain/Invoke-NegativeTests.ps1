@@ -63,7 +63,42 @@ try {
     })
 
     Assert-Throw 'scanner unavailable' { Assert-RequiredCommand -Name 'andreja-missing-scanner-command' }
-    Assert-Throw 'forbidden severity' { Assert-NoForbiddenFinding -Count 1 -Scope 'fixture' }
+    $grypeReportPath = Join-Path $testRoot 'grype-report.json'
+    [pscustomobject]@{
+        descriptor = [pscustomobject]@{ name = 'grype' }
+        source = [pscustomobject]@{ type = 'directory' }
+        matches = @(
+            [pscustomobject]@{
+                vulnerability = [pscustomobject]@{ id = 'CVE-2026-1234'; severity = 'CRITICAL' }
+                artifact = [pscustomobject]@{ name = 'fixture-package'; version = '1.2.3' }
+            },
+            [pscustomobject]@{
+                vulnerability = [pscustomobject]@{ id = 'CVE-2026-5678'; severity = 'LOW' }
+                artifact = [pscustomobject]@{ name = 'safe-package'; version = '4.5.6' }
+            }
+        )
+    } | ConvertTo-Json -Depth 100 |
+        Set-Content -LiteralPath $grypeReportPath -Encoding utf8NoBOM
+    $grypeMatches = @(Get-GrypeForbiddenMatches -Path $grypeReportPath `
+        -ForbiddenSeverities @('HIGH', 'CRITICAL'))
+    if ($grypeMatches.Count -ne 1 -or $grypeMatches[0].vulnerability.id -ne 'CVE-2026-1234') {
+        throw 'Grype diagnostics must select only forbidden-severity findings.'
+    }
+    $findingDetails = @($grypeMatches | ForEach-Object {
+        '{0} {1}@{2} ({3})' -f $_.vulnerability.id, $_.artifact.name, $_.artifact.version,
+            $_.vulnerability.severity
+    })
+    $findingError = $null
+    try {
+        Assert-NoForbiddenFinding -Count 1 -Scope 'fixture' -FindingDetails $findingDetails
+    } catch {
+        $findingError = $_
+    }
+    if ($null -eq $findingError -or -not $findingError.Exception.Message.Contains($findingDetails[0])) {
+        throw 'Forbidden scan findings must include package and advisory details.'
+    }
+    $passed++
+    Write-Output 'PASS (reported): forbidden finding details'
     Assert-Throw 'unsigned provenance' {
         Assert-SigningStatus -Signing ([pscustomobject]@{
             mode = 'hosted-unsigned-validation'
