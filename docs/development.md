@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- .NET SDK 10.0.301, pinned by `global.json`
+- .NET SDK 10.0.401, pinned by `global.json`
 
 The foundation does not require cloud accounts, provider credentials, containers,
 or external services.
