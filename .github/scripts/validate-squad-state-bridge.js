@@ -202,8 +202,10 @@ function validateRepository(root) {
               JSON.stringify(server.args) !== JSON.stringify(expectedArgs)) {
             errors.push(`squad_state must run npx ${expectedArgs.join(' ')}`);
           }
-          if (!isPlainObject(server.env) || Object.keys(server.env).length !== 0) {
-            errors.push('squad_state must not inject environment values');
+          if (!isPlainObject(server.env) ||
+              Object.keys(server.env).length !== 1 ||
+              server.env.NPM_CONFIG_REGISTRY !== 'https://registry.npmjs.org') {
+            errors.push('squad_state env must contain only NPM_CONFIG_REGISTRY=https://registry.npmjs.org');
           }
           if (!hasExactValues(server.tools, REQUIRED_MCP_TOOLS)) {
             errors.push(`squad_state tools must exactly match the v${SQUAD_VERSION} governed surface: ${REQUIRED_MCP_TOOLS.join(', ')}`);
