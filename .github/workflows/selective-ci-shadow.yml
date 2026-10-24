@@ -240,7 +240,7 @@ jobs:
 
       - if: always()
         name: Upload bounded classification evidence
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: selective-ci-classification-${{ github.run_attempt }}
           path: artifacts/selective-ci/classification.json
@@ -315,7 +315,7 @@ jobs:
           ./.github/scripts/invoke-nuget-vulnerability-scan.ps1 -SkipPostgreSql -OutputPath artifacts/vulnerability/solution.json
       - if: always()
         name: Upload bounded solution vulnerability evidence
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: selective-ci-nuget-solution-${{ github.run_attempt }}
           path: artifacts/vulnerability/solution.json
@@ -380,7 +380,7 @@ jobs:
           dotnet test --project tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj --configuration Release --no-build
       - if: always()
         name: Upload bounded PostgreSQL vulnerability evidence
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: selective-ci-nuget-postgresql-${{ github.run_attempt }}
           path: artifacts/vulnerability/postgresql.json
@@ -706,7 +706,7 @@ jobs:
           NODE
       - if: always()
         name: Upload bounded aggregate evidence
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: selective-ci-aggregate-${{ github.run_attempt }}
           path: artifacts/selective-ci/aggregate.json
