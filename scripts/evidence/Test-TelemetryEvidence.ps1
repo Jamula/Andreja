@@ -12,7 +12,7 @@ $root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "../.."))
 if ([string]::IsNullOrWhiteSpace($FixtureConfig)) {
     throw "Explicit -FixtureConfig is required for a disposable evidence fixture."
 }
-$FixtureConfig = [System.IO.Path]::GetFullPath($FixtureConfig)
+$FixtureConfig = (Resolve-Path -LiteralPath $FixtureConfig).ProviderPath
 $fixtureOutput = & node (Join-Path $PSScriptRoot "evidence-fixture.mjs") --config "$FixtureConfig" browser
 if ($LASTEXITCODE -ne 0) {
     throw "Disposable telemetry fixture validation failed; no requests or mutation authorized."
