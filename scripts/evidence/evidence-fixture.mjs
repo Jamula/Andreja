@@ -236,10 +236,11 @@ function verifyRuntimeFixture(config, compose, model) {
         "runtime application WebAuthn origin differs from the explicit browser endpoint");
     const databaseSettings = [
         "Enabled", "Host", "Port", "Name", "Username", "PasswordFile",
-    ].map(setting => `Andreja__Operations__Database__${setting}`);
+    ];
     for (const setting of databaseSettings) {
-        requireThat(environmentValue(setting) === model.services.app.environment[setting],
-            `runtime application ${setting} differs from the validated Compose model`);
+        const environmentName = `Andreja__Operations__Database__${setting}`;
+        requireThat(environmentValue(environmentName) === model.services.app.environment[environmentName],
+            `runtime application ${environmentName} differs from the validated Compose model`);
     }
 
     const publishedPorts = [
