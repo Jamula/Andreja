@@ -43,7 +43,7 @@ public sealed class OperationsContractTests
         var result = await ApplicationExportVerifier.ValidateAsync(
             manifest,
             new CleanInstanceProbe(isClean: true),
-            (path, _) => ValueTask.FromResult<Stream>(new MemoryStream(files[path])));
+            (path, _) => ValueTask.FromResult<Stream>(OpenArtifact(files, path)));
 
         Assert.IsTrue(result.IsValid);
         Assert.IsTrue(result.TargetIsClean);
@@ -60,7 +60,7 @@ public sealed class OperationsContractTests
         var result = await ApplicationExportVerifier.ValidateAsync(
             manifest,
             new CleanInstanceProbe(isClean: false),
-            (path, _) => ValueTask.FromResult<Stream>(new MemoryStream(files[path])));
+            (path, _) => ValueTask.FromResult<Stream>(OpenArtifact(files, path)));
 
         Assert.IsFalse(result.IsValid);
         Assert.Contains("target-not-clean", result.Errors);
@@ -85,7 +85,7 @@ public sealed class OperationsContractTests
         var result = await ApplicationExportVerifier.ValidateAsync(
             manifest,
             new CleanInstanceProbe(isClean: true),
-            (path, _) => ValueTask.FromResult<Stream>(new MemoryStream(files[path])));
+            (path, _) => ValueTask.FromResult<Stream>(OpenArtifact(files, path)));
 
         Assert.IsFalse(result.IsValid);
         Assert.Contains("checksum-mismatch:records.ndjson", result.Errors);
@@ -110,7 +110,7 @@ public sealed class OperationsContractTests
         var result = await ApplicationExportVerifier.ValidateAsync(
             manifest,
             new CleanInstanceProbe(isClean: true),
-            (path, _) => ValueTask.FromResult<Stream>(new MemoryStream(files[path])));
+            (path, _) => ValueTask.FromResult<Stream>(OpenArtifact(files, path)));
 
         Assert.IsFalse(result.IsValid);
         Assert.Contains(
@@ -136,7 +136,7 @@ public sealed class OperationsContractTests
         var result = await ApplicationExportVerifier.ValidateAsync(
             manifest,
             new CleanInstanceProbe(isClean: true),
-            (path, _) => ValueTask.FromResult<Stream>(new MemoryStream(files[path])));
+            (path, _) => ValueTask.FromResult<Stream>(OpenArtifact(files, path)));
 
         Assert.IsFalse(result.IsValid);
         Assert.Contains("duplicate-data-area", result.Errors);
@@ -257,7 +257,7 @@ public sealed class OperationsContractTests
     [TestMethod]
     public async Task ReadinessRequiresWritableKeyState()
     {
-        var path = Path.Combine(Path.GetTempPath(), $"andreja-{Guid.NewGuid():N}");
+        var path = Path.Join(Path.GetTempPath(), $"andreja-{Guid.NewGuid():N}");
         try
         {
             var options = Options.Create(new AndrejaOperationsOptions
@@ -286,17 +286,17 @@ public sealed class OperationsContractTests
     public void DeploymentContractsArePinnedAndContentSafe()
     {
         var root = FindRepositoryRoot();
-        var compose = File.ReadAllText(Path.Combine(root, "compose.yaml"));
-        var dockerfile = File.ReadAllText(Path.Combine(root, "Dockerfile"));
-        var collector = File.ReadAllText(Path.Combine(root, "deploy", "otel-collector.yaml"));
+        var compose = File.ReadAllText(Path.Join(root, "compose.yaml"));
+        var dockerfile = File.ReadAllText(Path.Join(root, "Dockerfile"));
+        var collector = File.ReadAllText(Path.Join(root, "deploy", "otel-collector.yaml"));
         var maintenance = File.ReadAllText(
-            Path.Combine(root, "deploy", "compose.maintenance.yaml"));
+            Path.Join(root, "deploy", "compose.maintenance.yaml"));
         var migration = File.ReadAllText(
-            Path.Combine(root, "deploy", "compose.migration.yaml"));
+            Path.Join(root, "deploy", "compose.migration.yaml"));
         var schema = File.ReadAllText(
-            Path.Combine(root, "docs", "operations", "application-export-v1.schema.json"));
+            Path.Join(root, "docs", "operations", "application-export-v1.schema.json"));
         var portabilityCli = File.ReadAllText(
-            Path.Combine(root, "src", "Andreja.Portability.Cli", "Program.cs"));
+            Path.Join(root, "src", "Andreja.Portability.Cli", "Program.cs"));
 
         Assert.Contains("image: ${ANDREJA_IMAGE:?", compose, StringComparison.Ordinal);
         Assert.Contains(
@@ -324,7 +324,7 @@ public sealed class OperationsContractTests
         Assert.Contains("migration.sql:ro", migration, StringComparison.Ordinal);
 
         var legalGate = File.ReadAllText(
-            Path.Combine(root, "docs", "legal", "license-evaluation.md"));
+            Path.Join(root, "docs", "legal", "license-evaluation.md"));
         Assert.Contains(
             "Do not publish releases, packages, containers",
             legalGate,
@@ -374,6 +374,9 @@ public sealed class OperationsContractTests
             ApplicationExportContract.RequiredContractVersions[PortableDataArea.Provenance]);
     }
 
+    private static MemoryStream OpenArtifact(Dictionary<string, byte[]> files, string path) =>
+        new MemoryStream(files[path]);
+
     private static Dictionary<string, byte[]> CreateArtifacts() =>
         Enum.GetValues<PortableDataArea>().ToDictionary(
             area => $"{area.ToString().ToLowerInvariant()}.ndjson",
@@ -422,7 +425,7 @@ public sealed class OperationsContractTests
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "compose.yaml")))
+        while (directory is not null && !File.Exists(Path.Join(directory.FullName, "compose.yaml")))
         {
             directory = directory.Parent;
         }

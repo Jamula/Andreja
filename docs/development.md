@@ -86,6 +86,27 @@ for the backup/review-gated migration command.
 The architecture test project enforces inward dependency direction. The unit test
 project verifies composition-root registration and startup-options validation.
 
+### Reproducing Code Quality findings
+
+GitHub Code Quality findings are separate from code-scanning security alerts. If
+the findings API is unavailable, reproduce the Code Quality workflow locally using
+the CodeQL CLI version recorded in its analysis log and the bundled
+`csharp-code-quality.qls`, `javascript-code-quality.qls`, and
+`python-code-quality.qls` suites. Use a clean checkout containing no runtime or
+credential files, then create databases and analyze each language, for example:
+
+```powershell
+codeql database create .andreja/quality-db --db-cluster `
+  --language=csharp,javascript,python --build-mode=none --source-root=.
+codeql database analyze .andreja/quality-db/csharp `
+  codeql/csharp-queries:codeql-suites/csharp-code-quality.qls `
+  --format=sarif-latest --output=.andreja/csharp-quality.sarif
+```
+
+Repeat analysis for JavaScript and Python with their matching suites. Keep databases,
+SARIF, and tool downloads outside Git, and recreate databases after source changes.
+Do not suppress rules or treat a clean security scan as a clean Code Quality scan.
+
 ### OpenAI-compatible transport conformance
 
 `OpenAiCompatibleConformanceTests` hosts an OpenAI-shaped `/v1/chat/completions`

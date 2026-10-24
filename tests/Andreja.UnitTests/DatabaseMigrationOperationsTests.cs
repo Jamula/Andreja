@@ -27,8 +27,8 @@ public sealed class DatabaseMigrationOperationsTests
     {
         var root = FindRepositoryRoot();
         var program = File.ReadAllText(
-            Path.Combine(root, "src", "Andreja.AppHost", "Program.cs"));
-        var registration = File.ReadAllText(Path.Combine(
+            Path.Join(root, "src", "Andreja.AppHost", "Program.cs"));
+        var registration = File.ReadAllText(Path.Join(
             root,
             "src",
             "Andreja.AppHost",
@@ -67,6 +67,38 @@ public sealed class DatabaseMigrationOperationsTests
             () => DatabaseMigrationStartupVerifier.VerifyAsync(provider));
 
         Assert.Contains("explicit operator migration", exception.Message, StringComparison.Ordinal);
+        Assert.AreEqual(0, executor.MigrateCalls);
+    }
+
+    [TestMethod]
+    public async Task ReadinessHandlesDatabaseFailuresButPropagatesUnexpectedErrorsAndCancellation()
+    {
+        var executor = new FakeMigrationExecutor([]);
+        await using var provider = CreateProvider(executor);
+        var check = new DatabaseMigrationReadinessHealthCheck(
+            provider.GetRequiredService<IServiceScopeFactory>());
+        foreach (var failure in new Exception[]
+        {
+            new Npgsql.NpgsqlException("synthetic-database-detail"),
+            new InvalidOperationException("synthetic-database-detail"),
+            new TimeoutException("synthetic-database-detail"),
+        })
+        {
+            executor.PendingException = failure;
+            var result = await check.CheckHealthAsync(new HealthCheckContext());
+            Assert.AreEqual(HealthStatus.Unhealthy, result.Status);
+            Assert.AreEqual("Database migration state could not be verified.", result.Description);
+            Assert.IsNull(result.Exception);
+        }
+
+        executor.PendingException = new NotSupportedException("unexpected");
+        await Assert.ThrowsExactlyAsync<NotSupportedException>(
+            () => check.CheckHealthAsync(new HealthCheckContext()));
+
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => check.CheckHealthAsync(new HealthCheckContext(), cancellation.Token));
         Assert.AreEqual(0, executor.MigrateCalls);
     }
 
@@ -114,21 +146,53 @@ public sealed class DatabaseMigrationOperationsTests
     public async Task ExplicitCommandReportsFailureWithoutClaimingSuccess()
     {
         await using var fixture = await MigrationFixture.CreateAsync(["MigrationA"]);
+        foreach (var executor in new Exception[]
+        {
+            new InvalidOperationException("synthetic"),
+            new Npgsql.NpgsqlException("synthetic"),
+            new TimeoutException("synthetic"),
+            new IOException("synthetic"),
+            new UnauthorizedAccessException("synthetic"),
+            new JsonException("synthetic"),
+        }.Select(failure => new FakeMigrationExecutor(["MigrationA"])
+        {
+            MigrateException = failure,
+        }))
+        {
+            await using var provider = CreateProvider(executor);
+            using var output = new StringWriter();
+
+            var exitCode = await DatabaseMigrationCommand.TryRunAsync(
+                fixture.Arguments,
+                provider,
+                output);
+
+            Assert.AreEqual(1, exitCode);
+            Assert.AreEqual(1, executor.MigrateCalls);
+            Assert.AreEqual("MigrationA", Assert.ContainsSingle(executor.Pending));
+            Assert.Contains("Database migration failed", output.ToString(), StringComparison.Ordinal);
+            Assert.DoesNotContain("synthetic", output.ToString(), StringComparison.Ordinal);
+            Assert.DoesNotContain("Applied", output.ToString(), StringComparison.Ordinal);
+        }
+    }
+
+    [TestMethod]
+    public async Task ExplicitCommandPropagatesUnexpectedErrors()
+    {
+        await using var fixture = await MigrationFixture.CreateAsync(["MigrationA"]);
         var executor = new FakeMigrationExecutor(["MigrationA"])
         {
-            MigrateException = new InvalidOperationException("synthetic"),
+            MigrateException = new NotSupportedException("unexpected"),
         };
         await using var provider = CreateProvider(executor);
         using var output = new StringWriter();
 
-        var exitCode = await DatabaseMigrationCommand.TryRunAsync(
-            fixture.Arguments,
-            provider,
-            output);
+        await Assert.ThrowsExactlyAsync<NotSupportedException>(
+            () => DatabaseMigrationCommand.TryRunAsync(fixture.Arguments, provider, output));
 
-        Assert.AreEqual(1, exitCode);
         Assert.AreEqual(1, executor.MigrateCalls);
-        Assert.DoesNotContain("synthetic", output.ToString(), StringComparison.Ordinal);
+        Assert.AreEqual("MigrationA", Assert.ContainsSingle(executor.Pending));
+        Assert.AreEqual(string.Empty, output.ToString());
     }
 
     [TestMethod]
@@ -158,7 +222,7 @@ public sealed class DatabaseMigrationOperationsTests
     public void ProductionCompositionRegistersMigrationReadinessAndExecutor()
     {
         var directory = CreateScratchDirectory();
-        var passwordPath = Path.Combine(directory, "postgres-password");
+        var passwordPath = Path.Join(directory, "postgres-password");
         File.WriteAllText(passwordPath, "synthetic-password");
         try
         {
@@ -231,7 +295,7 @@ public sealed class DatabaseMigrationOperationsTests
 
     private static string CreateScratchDirectory()
     {
-        var path = Path.Combine(
+        var path = Path.Join(
             AppContext.BaseDirectory,
             "migration-tests",
             Guid.NewGuid().ToString("N"));
@@ -242,7 +306,7 @@ public sealed class DatabaseMigrationOperationsTests
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "compose.yaml")))
+        while (directory is not null && !File.Exists(Path.Join(directory.FullName, "compose.yaml")))
         {
             directory = directory.Parent;
         }
@@ -260,12 +324,18 @@ public sealed class DatabaseMigrationOperationsTests
 
         public Exception? MigrateException { get; init; }
 
+        public Exception? PendingException { get; set; }
+
         public Action? OnMigrate { get; init; }
 
         public Task<IReadOnlyList<string>> GetPendingMigrationsAsync(
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (PendingException is not null)
+            {
+                throw PendingException;
+            }
             return Task.FromResult<IReadOnlyList<string>>([.. Pending]);
         }
 
@@ -298,9 +368,9 @@ public sealed class DatabaseMigrationOperationsTests
             IReadOnlyList<string> approvedMigrations)
         {
             var directory = CreateScratchDirectory();
-            var backupPath = Path.Combine(directory, "backup.dump");
-            var migrationPath = Path.Combine(directory, "migration.sql");
-            var approvalPath = Path.Combine(directory, "approval.json");
+            var backupPath = Path.Join(directory, "backup.dump");
+            var migrationPath = Path.Join(directory, "migration.sql");
+            var approvalPath = Path.Join(directory, "approval.json");
             await File.WriteAllTextAsync(backupPath, "synthetic-backup");
             await File.WriteAllTextAsync(migrationPath, "synthetic-migration");
             var approval = new DatabaseMigrationApproval
