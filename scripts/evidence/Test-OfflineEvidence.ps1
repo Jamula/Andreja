@@ -4,13 +4,21 @@ param(
     [ValidatePattern("^.+@sha256:[0-9a-f]{64}$")]
     [string] $AuditedAppImage,
 
-    [string] $ProjectName = "andreja",
+    [Parameter(Mandatory)]
+    [ValidatePattern("^andreja-evidence-[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$")]
+    [string] $ProjectName,
+
+    [switch] $ConfirmDisposableProject,
 
     [switch] $DestroySyntheticVolumes
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+if (-not $ConfirmDisposableProject) {
+    throw "Offline evidence requires -ConfirmDisposableProject for an isolated evidence project."
+}
+
 $root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "../.."))
 $composeFiles = @(
     (Join-Path $root "compose.yaml"),
@@ -38,6 +46,41 @@ function Invoke-Docker {
     }
 }
 
+function Assert-ProjectIsEmpty {
+    $resourceQueries = @(
+        @{
+            Name = "containers"
+            Arguments = @(
+                "container", "ls", "--all", "--quiet",
+                "--filter", "label=com.docker.compose.project=$ProjectName"
+            )
+        }
+        @{
+            Name = "networks"
+            Arguments = @(
+                "network", "ls", "--quiet",
+                "--filter", "label=com.docker.compose.project=$ProjectName"
+            )
+        }
+        @{
+            Name = "volumes"
+            Arguments = @(
+                "volume", "ls", "--quiet",
+                "--filter", "label=com.docker.compose.project=$ProjectName"
+            )
+        }
+    )
+
+    foreach ($query in $resourceQueries) {
+        $existing = Invoke-Docker -Arguments $query.Arguments `
+            -FailureMessage "Unable to verify that the evidence project has no existing $($query.Name)" `
+            -Capture
+        if (@($existing | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count -gt 0) {
+            throw "Evidence project '$ProjectName' already has Docker $($query.Name); refusing to modify it."
+        }
+    }
+}
+
 function Wait-AppHealthy {
     $deadline = [DateTimeOffset]::UtcNow.AddMinutes(2)
     while ([DateTimeOffset]::UtcNow -lt $deadline) {
@@ -55,6 +98,7 @@ function Wait-AppHealthy {
 }
 
 $result = $null
+$cleanupRequired = $false
 Push-Location $root
 try {
     $images = Invoke-Docker -Arguments ($compose + @("config", "--images")) `
@@ -70,8 +114,8 @@ try {
         throw "Compose does not resolve to the expected audited application image."
     }
 
-    Invoke-Docker -Arguments ($compose + @("down", "--remove-orphans")) `
-        -FailureMessage "Unable to stop the prior evidence stack"
+    Assert-ProjectIsEmpty
+    $cleanupRequired = $true
     Invoke-Docker -Arguments ($compose + @("up", "--detach", "--pull", "never")) `
         -FailureMessage "Offline Compose startup failed"
     $appContainer = Wait-AppHealthy
@@ -120,11 +164,13 @@ try {
 }
 finally {
     try {
-        $cleanup = $compose + @("down", "--remove-orphans")
-        if ($DestroySyntheticVolumes) {
-            $cleanup += "--volumes"
+        if ($cleanupRequired) {
+            $cleanup = $compose + @("down", "--remove-orphans")
+            if ($DestroySyntheticVolumes) {
+                $cleanup += "--volumes"
+            }
+            & docker @cleanup *> $null
         }
-        & docker @cleanup *> $null
     }
     finally {
         Pop-Location

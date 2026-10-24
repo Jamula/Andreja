@@ -177,8 +177,11 @@ try {
     throw "Browser and telemetry evidence failed."
   }
 
+  $evidenceProject = "andreja-evidence-$([guid]::NewGuid().ToString('N'))"
   pwsh -NoProfile -File scripts\evidence\Test-OfflineEvidence.ps1 `
     -AuditedAppImage $env:ANDREJA_IMAGE `
+    -ProjectName $evidenceProject `
+    -ConfirmDisposableProject `
     -DestroySyntheticVolumes
   if ($LASTEXITCODE -ne 0) {
     throw "Offline and no-egress evidence failed."
@@ -193,6 +196,9 @@ The telemetry command drives the real Edge virtual-authenticator flow and
 requires nonzero browser-request traces, metrics, and logs with zero policy
 violations. The offline command requires preloaded digest-pinned images,
 `--pull never`, internal networks, restart health, and failed TEST-NET egress.
+It requires a unique `andreja-evidence-*` project name and explicit
+`-ConfirmDisposableProject`; it refuses to proceed if that project already has
+containers, networks, or volumes, and cleanup runs only after startup is attempted.
 
 ## Run locally end to end
 

@@ -66,7 +66,7 @@ silently generalized to this revision.
 | Hosted OCI build/audit at the cumulative source revision | Jett Reno / Data | [OCI Supply Chain run 34153528772](https://github.com/Jamula/Andreja/actions/runs/34153528772) | **PASS WITH RECORDED WARNINGS (unsigned audit only):** the ordinary `push` run for the exact cumulative commit produced manifest `sha256:573c255b7e30fa85bb696568a73d7757fafe043d6e879f5c67723166e7ea0a64` and config `sha256:e039a1eb8e310d4ccd106c16828d7063a8cefcabb2fcb57e84ddf6a4159588b1`. Restore emitted repeated NU1801 source-index warnings, Trivy fell back to embedded checks because cached policy content was absent, and runner/action Node deprecation warnings were emitted. The run passed, but it was not a version-tag event, so the keyless signing job did not run and cannot authorize release, startup, or update. |
 | Keyless version-tag signing and offline verification | Tuvok / Jett Reno | `.github\workflows\oci-supply-chain.yml`;<br>`pwsh -NoProfile -File scripts\supply-chain\Test-OciEvidence.ps1 -BundleDirectory artifacts\supply-chain -TrustedPolicyPath D:\trusted\supply-chain-policy.json -TrustedRootPath D:\trusted\sigstore-trusted-root.json -ExpectedSigningMode keyless-sigstore` | **BLOCKED:** ADR 0010's implementation and 36 policy vectors are present, but repository history contains no qualifying `v*` push run or retained signed bundle for this revision. A reviewed tag decision and independently authenticated root are external prerequisites. |
 | PostgreSQL integration and application import | Data | `dotnet test tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj` | **UNAVAILABLE, NOT RUN:** Docker client `29.7.2` was installed but no server responded; `pg_dump`, `pg_restore`, and `psql` were unavailable. No database result is claimed for this revision. |
-| Compose browser, passkey, viewport, reconnect, provider-failure, offline, and all-signal OTel evidence | Data / Jett Reno | `node scripts\evidence\browser-e2e.mjs`;<br>`pwsh -NoProfile -File scripts\evidence\Test-OfflineEvidence.ps1 -AuditedAppImage $env:ANDREJA_IMAGE`;<br>`pwsh -NoProfile -File scripts\evidence\Test-TelemetryEvidence.ps1 -CollectorMetricsUrl http://127.0.0.1:18888/metrics -PrometheusUrl http://127.0.0.1:19090 -MinimumRequestSpanDelta 10` | **UNAVAILABLE, NOT RUN:** run these commands from the repository root in PowerShell with the evidence stack configured. `ANDREJA_IMAGE` must be the audited application reference (`repository@sha256:` plus 64 lowercase hex digits) for the revision under test, matching Compose; all Compose images must be immutable and preloaded for the offline gate. Browser/telemetry require Edge (`EDGE_PATH` if non-default), the local TLS certificate and bootstrap-token file, the reachable app, and Collector/Prometheus on the specified ports. These prerequisites remain unavailable. The prior run below remains bounded to its historical digest. Human assistive-technology review also remains unavailable. |
+| Compose browser, passkey, viewport, reconnect, provider-failure, offline, and all-signal OTel evidence | Data / Jett Reno | `node scripts\evidence\browser-e2e.mjs`;<br>`pwsh -NoProfile -File scripts\evidence\Test-OfflineEvidence.ps1 -AuditedAppImage $env:ANDREJA_IMAGE -ProjectName <unique-andreja-evidence-project> -ConfirmDisposableProject`;<br>`pwsh -NoProfile -File scripts\evidence\Test-TelemetryEvidence.ps1 -CollectorMetricsUrl http://127.0.0.1:18888/metrics -PrometheusUrl http://127.0.0.1:19090 -MinimumRequestSpanDelta 10` | **UNAVAILABLE, NOT RUN:** run these commands from the repository root in PowerShell with the evidence stack configured. `ANDREJA_IMAGE` must be the audited application reference (`repository@sha256:` plus 64 lowercase hex digits) for the revision under test, matching Compose; all Compose images must be immutable and preloaded for the offline gate. The offline harness requires an isolated `andreja-evidence-*` project and refuses pre-existing project containers, networks, or volumes. Browser/telemetry require Edge (`EDGE_PATH` if non-default), the local TLS certificate and bootstrap-token file, the reachable app, and Collector/Prometheus on the specified ports. These prerequisites remain unavailable. The prior run below remains bounded to its historical digest. Human assistive-technology review also remains unavailable. |
 | Encrypted database plus Data Protection recovery and restored sign-in | Jett Reno / Tuvok / Data | Backup, key-custody, clean restore, then real passkey sign-in drill in `docs\operations\self-hosting.md` | **BLOCKED:** neither a current runtime drill nor approved recovery custody exists. Database-only restore is insufficient. |
 | Approved update and rollback pair | Jett Reno / Tuvok / Data | Two separately approved and signed immutable revisions, preserving state in both directions | **BLOCKED:** there is no approved signed pair. Restart evidence and an unsigned image replacement cannot substitute. |
 | Numeric SLO, RPO/RTO, retention, and model-spend limits | Cyrus / Quark / Jett Reno | Candidate queries in `evidence-gates.md`; canonical `docs\cost-model.md` and `docs\privacy.md` | **BLOCKED ON HUMAN DECISION:** candidates exist, but no governing numeric limits or Phase 1A model-spend envelope/hard stop are approved. No external model call or spend occurred in this rerun. |
@@ -223,17 +223,21 @@ docker compose --profile evidence $(
 
 pwsh -NoProfile -File scripts\evidence\Test-OfflineEvidence.ps1 `
   -AuditedAppImage $env:ANDREJA_IMAGE `
+  -ProjectName "andreja-evidence-$([guid]::NewGuid().ToString('N'))" `
+  -ConfirmDisposableProject `
   -DestroySyntheticVolumes
 ```
 
 The script uses those three Compose files, `up --detach --pull never`, and no
-pull or registry fallback. It requires both `${COMPOSE_PROJECT_NAME:-andreja}_edge`
-and `${COMPOSE_PROJECT_NAME:-andreja}_backend` to report `Internal=true`,
+pull or registry fallback. It requires both `${ProjectName}_edge` and
+`${ProjectName}_backend` to report `Internal=true`,
 requires live/ready before and after `docker compose restart app`, and runs a
 preloaded pinned Caddy helper in the app network namespace. The helper must
 reach both loopback health endpoints and must fail to connect to reserved
-TEST-NET address `192.0.2.1`. It always stops the stack; the switch above also
-removes the synthetic volumes.
+TEST-NET address `192.0.2.1`. The script requires the named evidence project to
+have no existing containers, networks, or volumes before startup; it never
+cleans up a pre-existing project. Cleanup occurs only after startup is attempted;
+the switch above also removes the synthetic volumes.
 
 Expected single-line result after cleanup:
 

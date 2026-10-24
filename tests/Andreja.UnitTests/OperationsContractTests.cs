@@ -287,6 +287,8 @@ public sealed class OperationsContractTests
     {
         var root = FindRepositoryRoot();
         var compose = File.ReadAllText(Path.Join(root, "compose.yaml"));
+        var offlineEvidence = File.ReadAllText(
+            Path.Join(root, "scripts", "evidence", "Test-OfflineEvidence.ps1"));
         var dockerfile = File.ReadAllText(Path.Join(root, "Dockerfile"));
         var collector = File.ReadAllText(Path.Join(root, "deploy", "otel-collector.yaml"));
         var maintenance = File.ReadAllText(
@@ -299,6 +301,27 @@ public sealed class OperationsContractTests
             Path.Join(root, "src", "Andreja.Portability.Cli", "Program.cs"));
 
         Assert.Contains("image: ${ANDREJA_IMAGE:?", compose, StringComparison.Ordinal);
+        Assert.Contains(
+            "[ValidatePattern(\"^andreja-evidence-",
+            offlineEvidence,
+            StringComparison.Ordinal);
+        Assert.Contains("[string] $ProjectName,", offlineEvidence, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "[string] $ProjectName = \"andreja\"",
+            offlineEvidence,
+            StringComparison.Ordinal);
+        Assert.Contains("[switch] $ConfirmDisposableProject", offlineEvidence, StringComparison.Ordinal);
+        Assert.Contains("if (-not $ConfirmDisposableProject)", offlineEvidence, StringComparison.Ordinal);
+        Assert.Contains("label=com.docker.compose.project=$ProjectName", offlineEvidence, StringComparison.Ordinal);
+        Assert.Contains("Assert-ProjectIsEmpty", offlineEvidence, StringComparison.Ordinal);
+        Assert.Contains("if ($cleanupRequired)", offlineEvidence, StringComparison.Ordinal);
+        Assert.IsTrue(
+            offlineEvidence.IndexOf(
+                "    $cleanupRequired = $true",
+                StringComparison.Ordinal) <
+            offlineEvidence.IndexOf(
+                "    $cleanup = $compose + @(\"down\", \"--remove-orphans\")",
+                StringComparison.Ordinal));
         Assert.Contains(
             "${ANDREJA_PUBLIC_ORIGIN:-https://${ANDREJA_HOSTNAME:-localhost}}",
             compose,
