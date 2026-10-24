@@ -11,7 +11,7 @@ $root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "../.."))
 if ([string]::IsNullOrWhiteSpace($FixtureConfig)) {
     throw "Explicit -FixtureConfig is required for a disposable evidence fixture."
 }
-$FixtureConfig = [System.IO.Path]::GetFullPath($FixtureConfig)
+$FixtureConfig = (Resolve-Path -LiteralPath $FixtureConfig -ErrorAction Stop).ProviderPath
 $fixtureOutput = & node (Join-Path $PSScriptRoot "evidence-fixture.mjs") --config "$FixtureConfig" offline
 if ($LASTEXITCODE -ne 0) {
     throw "Disposable offline fixture validation failed; no mutation authorized."

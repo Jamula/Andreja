@@ -65,6 +65,19 @@ function verifyRuntimeFixture(config, compose, model) {
 
     for (const service of services) {
         const container = byService.get(service);
+        const expectedVolumes = (model.services[service].volumes ?? [])
+            .filter(mount => mount.type === "volume");
+        const runtimeVolumes = (container.Mounts ?? []).filter(mount => mount.Type === "volume");
+        requireThat(runtimeVolumes.length === expectedVolumes.length,
+            `runtime ${service} volume mounts differ from the validated Compose model`);
+        for (const expected of expectedVolumes) {
+            const expectedName = model.volumes[expected.source]?.name;
+            const matching = runtimeVolumes.filter(mount => mount.Destination === expected.target);
+            requireThat(typeof expectedName === "string" && matching.length === 1
+                && matching[0].Name === expectedName
+                && matching[0].RW === (expected.read_only !== true),
+            `runtime ${service} volume identity or destination differs from the validated Compose model`);
+        }
         const image = inspectJson("docker", ["--context", config.dockerContext, "image", "inspect",
             config.approvedImages[service], "--format", "{{json .}}"])[0];
         requireThat(typeof image?.Id === "string" && image.Id.length > 0

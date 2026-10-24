@@ -1,6 +1,9 @@
-param([string] $Caller, [string] $Config, [string] $Log)
+param([string] $Caller, [string] $Config, [string] $Log, [string] $PowerShellLocation)
 $ErrorActionPreference = "Stop"
 $global:evidenceCounterReads = 0
+if ($PowerShellLocation) {
+    Set-Location -LiteralPath $PowerShellLocation
+}
 function docker {
     $Arguments = @($args)
     @{ command = "docker"; args = $Arguments } | ConvertTo-Json -Compress |

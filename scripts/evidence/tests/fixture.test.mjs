@@ -30,7 +30,13 @@ const model = {
         [service, { image, volumes: [] }])),
     networks: { edge: { name: `${projectName}_edge`, internal: true },
         backend: { name: `${projectName}_backend`, internal: true } },
-    volumes: { "postgres-data": { name: `${projectName}_postgres-data` } },
+    volumes: {
+        "data-protection-keys": { name: `${projectName}_data-protection-keys` },
+        attachments: { name: `${projectName}_attachments` },
+        "evidence-bootstrap": { name: `${projectName}_evidence-bootstrap` },
+        "postgres-data": { name: `${projectName}_postgres-data` },
+        "prometheus-data": { name: `${projectName}_prometheus-data` },
+    },
     secrets: { tls_certificate: { file: config.certificateFile },
         bootstrap_token: { file: config.bootstrapTokenFile }, postgres_password: { file: file("password") } },
 };
@@ -48,6 +54,17 @@ model.services.postgres.environment = {
     POSTGRES_DB: "andreja_evidence",
     POSTGRES_USER: "andreja_evidence",
 };
+model.services.app.volumes = [
+    { type: "volume", source: "data-protection-keys", target: "/var/lib/andreja/keys" },
+    { type: "volume", source: "attachments", target: "/var/lib/andreja/attachments" },
+    { type: "volume", source: "evidence-bootstrap", target: "/run/evidence-bootstrap", read_only: true },
+];
+model.services.postgres.volumes = [
+    { type: "volume", source: "postgres-data", target: "/var/lib/postgresql/data" },
+];
+model.services.prometheus.volumes = [
+    { type: "volume", source: "prometheus-data", target: "/prometheus" },
+];
 for (const [service, target, published] of [
     ["app", 8080, "28080"], ["tls-proxy", 8443, "28443"],
     ["otel-collector", 8888, "28888"], ["prometheus", 9090, "29090"],
@@ -73,6 +90,14 @@ function makeRuntime(changed = config, resolved = model) {
         return {
             Id: String(index + 1).repeat(64),
             Image: imageId,
+            Mounts: (source.volumes ?? []).map(mount => ({
+                Type: mount.type,
+                Name: mount.type === "volume" ? resolved.volumes[mount.source].name : undefined,
+                Source: mount.type === "volume" ? `/synthetic/volumes/${resolved.volumes[mount.source].name}`
+                    : mount.source,
+                Destination: mount.target,
+                RW: mount.read_only !== true,
+            })),
             Config: {
                 Image: source.image,
                 Env: envEntries,
@@ -99,17 +124,18 @@ function makeRuntime(changed = config, resolved = model) {
     };
 }
 function run(caller, changed = config, resolved = model, extraEnv = {}, fromFixtureDirectory = false,
-    runtime = makeRuntime(changed ?? config, resolved ?? model)) {
+    runtime = makeRuntime(changed ?? config, resolved ?? model), powerShellLocation = null) {
     writeFileSync(file("config.json"), JSON.stringify(changed));
     writeFileSync(file("model.json"), JSON.stringify(resolved));
     writeFileSync(file("runtime.json"), JSON.stringify(runtime));
     writeFileSync(file("commands.jsonl"), "");
-    const configArgument = fromFixtureDirectory ? "config.json" : file("config.json");
+    const configArgument = fromFixtureDirectory || powerShellLocation ? "config.json" : file("config.json");
     const args = caller === "browser"
         ? [path.join(root, "scripts", "evidence", "browser-e2e.mjs"), "--config",
             changed === null ? "" : configArgument]
         : ["-NoProfile", "-File", path.join(root, "scripts", "evidence", "tests", "invoke-caller.ps1"),
-            "-Caller", caller, "-Config", changed === null ? "" : configArgument, "-Log", file("commands.jsonl")];
+            "-Caller", caller, "-Config", changed === null ? "" : configArgument, "-Log", file("commands.jsonl"),
+            ...(powerShellLocation ? ["-PowerShellLocation", powerShellLocation] : [])];
     const result = spawnSync(caller === "browser" ? process.execPath : "pwsh", args,
         { cwd: fromFixtureDirectory ? directory : root, env: { ...env, ...extraEnv }, encoding: "utf8" });
     assert.ifError(result.error);
@@ -249,6 +275,21 @@ const runtimeDrift = [
         const setting = "Andreja__Operations__Database__Host=";
         app.Config.Env[app.Config.Env.findIndex(entry => entry.startsWith(setting))] =
             `${setting}host.docker.internal`;
+    }],
+    ["database volume identity drift", runtime => {
+        const postgres = runtime.containers.find(container =>
+            container.Config.Labels["com.docker.compose.service"] === "postgres");
+        postgres.Mounts[0].Name = "andreja_postgres-data";
+    }],
+    ["database volume destination drift", runtime => {
+        const postgres = runtime.containers.find(container =>
+            container.Config.Labels["com.docker.compose.service"] === "postgres");
+        postgres.Mounts[0].Destination = "/var/lib/andreja/postgres";
+    }],
+    ["database volume type drift", runtime => {
+        const postgres = runtime.containers.find(container =>
+            container.Config.Labels["com.docker.compose.service"] === "postgres");
+        postgres.Mounts[0].Type = "bind";
     }],
     ["wrong host port binding", runtime => {
         runtime.containers[0].NetworkSettings.Ports["8080/tcp"][0].HostPort = "18080";
@@ -424,6 +465,13 @@ test("telemetry forwards an absolute config from a different working directory a
     assert.ok(urls.some(url => url.startsWith(`${config.prometheusUrl}/api/`)));
     assert.ok(!urls.some(url => url.includes("//api/")));
 });
+for (const caller of ["offline", "telemetry"]) {
+    test(`${caller} resolves relative fixture config from PowerShell location`, () => {
+        const result = run(caller, config, model, {}, false, undefined, directory);
+        assert.equal(result.status, 0, result.output);
+        assert.match(result.stdout, /"status":"passed"/);
+    });
+}
 test("browser production caller validates before certificate/profile access; browser and restart use scoped args", () => {
     const result = run("browser");
     assert.notEqual(result.status, 0);
