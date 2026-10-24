@@ -51,6 +51,14 @@ model.services.app.environment = {
     Andreja__Operations__Database__Username: "andreja_evidence",
     Andreja__Operations__Database__PasswordFile: "/run/secrets/postgres_password",
 };
+model.services["otel-collector"].command = ["--config=/etc/otelcol-contrib/config.yaml"];
+model.services.prometheus.command = [
+    "--config.file=/etc/prometheus/prometheus.yml",
+    "--storage.tsdb.path=/prometheus",
+];
+model.services["tls-proxy"].command = [
+    "caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile",
+];
 model.services.postgres.environment = {
     POSTGRES_DB: "andreja_evidence",
     POSTGRES_USER: "andreja_evidence",
@@ -109,8 +117,8 @@ function makeRuntime(changed = config, resolved = model) {
     const containers = Object.entries(changed.approvedImages).map(([service, image], index) => {
         const imageId = `sha256:${String(index + 1).repeat(64)}`;
         const imageConfig = {
-            Entrypoint: service === "app" ? ["dotnet", "Andreja.AppHost.dll"] : null,
-            Cmd: null,
+            Entrypoint: service === "app" ? ["dotnet", "Andreja.AppHost.dll"] : [`${service}-entrypoint`],
+            Cmd: service === "postgres" ? ["postgres"] : null,
         };
         images[image] = { Id: imageId, RepoDigests: [image], Config: imageConfig };
         const source = resolved.services[service];
@@ -152,6 +160,7 @@ function makeRuntime(changed = config, resolved = model) {
                     "com.docker.compose.service": service,
                 },
             },
+            HostConfig: { ExtraHosts: source.extra_hosts ?? [] },
             State: { Running: true, Status: "running" },
             NetworkSettings: { Ports: ports, Networks: {} },
         };
@@ -354,6 +363,16 @@ const runtimeDrift = [
         const app = runtime.containers.find(container =>
             container.Config.Labels["com.docker.compose.service"] === "app");
         app.Config.Entrypoint = ["/unapproved/entrypoint"];
+    }],
+    ["runtime TLS proxy command drift", runtime => {
+        const proxy = runtime.containers.find(container =>
+            container.Config.Labels["com.docker.compose.service"] === "tls-proxy");
+        proxy.Config.Cmd = ["caddy", "run", "--config", "/tmp/other.json"];
+    }],
+    ["runtime database extra-host override", runtime => {
+        const app = runtime.containers.find(container =>
+            container.Config.Labels["com.docker.compose.service"] === "app");
+        app.HostConfig.ExtraHosts = ["postgres:host.docker.internal"];
     }],
     ["database volume identity drift", runtime => {
         const postgres = runtime.containers.find(container =>

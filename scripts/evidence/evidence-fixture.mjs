@@ -215,6 +215,13 @@ function verifyRuntimeFixture(config, compose, model) {
                 === JSON.stringify(normalizeArguments(expected)),
             `runtime ${service} ${property === "Cmd" ? "command" : "entrypoint"} differs from the validated Compose model and approved image`);
         }
+        const hasHostOverrides = value => value === null || value === undefined
+            ? false : Array.isArray(value) || typeof value === "object"
+                ? Object.keys(value).length > 0 : true;
+        requireThat(container.HostConfig && typeof container.HostConfig === "object"
+            && !hasHostOverrides(serviceModel.extra_hosts)
+            && !hasHostOverrides(container.HostConfig.ExtraHosts),
+        `runtime ${service} contains unapproved extra host mappings`);
     }
 
     const appEnvironment = byService.get("app").Config.Env ?? [];
