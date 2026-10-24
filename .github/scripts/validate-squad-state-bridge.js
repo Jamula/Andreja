@@ -293,15 +293,22 @@ function validateRepository(root) {
     }
 
     let gitignore = null;
+    let descriptor = null;
     try {
-      const stat = fs.lstatSync(absolutePath);
+      descriptor = fs.openSync(
+        absolutePath,
+        fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0),
+      );
+      const stat = fs.fstatSync(descriptor);
       if (!stat.isFile()) {
         errors.push(`${gitignorePath} must be a regular file`);
         continue;
       }
-      gitignore = fs.readFileSync(absolutePath, 'utf8');
+      gitignore = fs.readFileSync(descriptor, 'utf8');
     } catch (error) {
       errors.push(`${gitignorePath} is unreadable: ${error.message}`);
+    } finally {
+      if (descriptor !== null) fs.closeSync(descriptor);
     }
     if (gitignore !== null) {
       if (gitignorePath === '.gitignore') {
