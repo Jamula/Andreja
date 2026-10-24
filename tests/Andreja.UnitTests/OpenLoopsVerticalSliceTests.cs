@@ -349,11 +349,12 @@ public sealed class OpenLoopsVerticalSliceTests
             new EphemeralDataProtectionProvider(),
             new MutableTimeProvider(Now));
         var handler = new RecordingHandler();
+        using var httpClient = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://andreja.test"),
+        };
         var client = new OpenLoopsApiClient(
-            new HttpClient(handler)
-            {
-                BaseAddress = new Uri("https://andreja.test"),
-            },
+            httpClient,
             new FixedAuthenticationStateProvider(principal),
             tokenService);
 
@@ -398,6 +399,49 @@ public sealed class OpenLoopsVerticalSliceTests
         Assert.AreEqual("/api/v1/open-loops/tasks", activity.GetTagItem("http.route"));
         Assert.IsNull(activity.GetTagItem("task.title"));
         Assert.IsNull(activity.GetTagItem("proposal.payload"));
+    }
+
+    [TestMethod]
+    public async Task TypedClientPreservesApiErrorsAndSanitizesMalformedErrorBodies()
+    {
+        var context = NewContext();
+        var principal = Principal(
+            (ClaimTypes.NameIdentifier, context.AppUserId.Value.ToString("D")),
+            (AndrejaClaimTypes.TenantId, context.TenantId.Value.ToString("D")),
+            (AndrejaClaimTypes.AppUserId, context.AppUserId.Value.ToString("D")),
+            (AndrejaClaimTypes.PrincipalId, context.PrincipalId.Value.ToString("D")));
+        var tokenService = new CircuitDelegationTokenService(
+            new EphemeralDataProtectionProvider(),
+            new MutableTimeProvider(Now));
+
+        foreach (var body in new[]
+        {
+            "<html>private-upstream-detail</html>",
+            "",
+            "null",
+            """{"code":"request-rejected","message":"Review required."}""",
+        })
+        {
+            using var httpClient = new HttpClient(new RecordingHandler { ErrorBody = body })
+            {
+                BaseAddress = new Uri("https://andreja.test"),
+            };
+            var client = new OpenLoopsApiClient(
+                httpClient,
+                new FixedAuthenticationStateProvider(principal),
+                tokenService);
+
+            var exception = await Assert.ThrowsExactlyAsync<OpenLoopsApiException>(
+                () => client.ListAsync());
+
+            var structured = body.StartsWith('{');
+            Assert.AreEqual(structured ? "request-rejected" : "http-400", exception.Code);
+            Assert.AreEqual(
+                structured ? "Review required." : "The request could not be completed.",
+                exception.Message);
+            Assert.DoesNotContain(
+                "private-upstream-detail", exception.ToString(), StringComparison.Ordinal);
+        }
     }
 
     private static Fixture CreateFixture()
@@ -508,6 +552,8 @@ public sealed class OpenLoopsVerticalSliceTests
     {
         public List<RecordedRequest> Requests { get; } = [];
 
+        public string? ErrorBody { get; init; }
+
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
@@ -534,6 +580,14 @@ public sealed class OpenLoopsVerticalSliceTests
                     "Set-Cookie",
                     ".AspNetCore.Antiforgery.test=cookie-value; path=/; secure; httponly");
                 return response;
+            }
+
+            if (ErrorBody is not null)
+            {
+                return new HttpResponseMessage(HttpStatusCode.BadRequest)
+                {
+                    Content = new StringContent(ErrorBody),
+                };
             }
 
             var proposal = new TaskProposalDto(

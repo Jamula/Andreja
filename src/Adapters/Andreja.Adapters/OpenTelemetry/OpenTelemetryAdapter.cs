@@ -171,16 +171,13 @@ public sealed class ContentSuppressingActivityProcessor : BaseProcessor<Activity
         ArgumentNullException.ThrowIfNull(data);
 
         var removed = 0;
-        foreach (var tag in data.TagObjects.ToArray())
+        foreach (var tag in data.TagObjects.Where(tag => !AllowedAttributes.Contains(tag.Key)).ToArray())
         {
-            if (!AllowedAttributes.Contains(tag.Key))
+            data.SetTag(tag.Key, value: null);
+            removed++;
+            if (IsProhibited(tag.Key))
             {
-                data.SetTag(tag.Key, value: null);
-                removed++;
-                if (IsProhibited(tag.Key))
-                {
-                    AndrejaTelemetry.PolicyViolations.Add(1);
-                }
+                AndrejaTelemetry.PolicyViolations.Add(1);
             }
         }
 

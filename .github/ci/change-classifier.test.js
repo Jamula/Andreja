@@ -542,7 +542,6 @@ const labeledRun = (overrides = {}) => {
       fork: false,
     },
     actor: { login: 'Jett-Reno' },
-    pull_requests: pullRequests,
     run_attempt: 1,
     created_at: '2026-08-26T10:01:00Z',
     ...overrides,

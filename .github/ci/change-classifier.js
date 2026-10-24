@@ -1067,7 +1067,7 @@ async function authorizeLabeledRun(
       issueHistories: issueHistoryEvidence,
       runRecords,
       historyFingerprint,
-      currentRunVisible: currentRun !== undefined,
+      currentRunVisible: true,
     });
     if (
       runRecords.some(

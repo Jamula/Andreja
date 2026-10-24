@@ -63,18 +63,16 @@ public sealed class LocalIdentityOptionsValidator : IValidateOptions<LocalIdenti
         }
         else
         {
-            foreach (var originValue in options.AllowedOrigins)
-            {
-                if (!Uri.TryCreate(originValue, UriKind.Absolute, out var origin)
+            foreach (var originValue in options.AllowedOrigins.Where(originValue =>
+                !Uri.TryCreate(originValue, UriKind.Absolute, out var origin)
                     || origin.Scheme != Uri.UriSchemeHttps
                     || !string.IsNullOrEmpty(origin.UserInfo)
                     || !string.IsNullOrEmpty(origin.PathAndQuery.Trim('/'))
                     || !string.IsNullOrEmpty(origin.Fragment)
-                    || !OriginMatchesRelyingParty(origin.Host, options.RelyingPartyId))
-                {
-                    failures.Add(
-                        $"Allowed origin '{originValue}' must be an HTTPS origin within the relying-party domain.");
-                }
+                    || !OriginMatchesRelyingParty(origin.Host, options.RelyingPartyId)))
+            {
+                failures.Add(
+                    $"Allowed origin '{originValue}' must be an HTTPS origin within the relying-party domain.");
             }
         }
 

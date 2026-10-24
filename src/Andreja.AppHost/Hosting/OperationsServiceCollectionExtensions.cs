@@ -126,7 +126,7 @@ public sealed class OperationalReadinessHealthCheck(
     {
         var path = Path.GetFullPath(configuredPath);
         Directory.CreateDirectory(path);
-        var probePath = Path.Combine(path, $".readiness-{Guid.NewGuid():N}");
+        var probePath = Path.Join(path, $".readiness-{Guid.NewGuid():N}");
         using (File.Create(probePath, 1, FileOptions.DeleteOnClose))
         {
         }

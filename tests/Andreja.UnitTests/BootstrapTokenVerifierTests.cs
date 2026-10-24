@@ -74,6 +74,30 @@ public sealed class BootstrapTokenVerifierTests
     }
 
     [TestMethod]
+    public async Task TokenVerificationRequiresExactDecodedLengths()
+    {
+        foreach (var expectedLength in new[] { 0, 31, 32, 33 })
+        {
+            var path = await WriteTokenFileAsync(Convert.ToBase64String(new byte[expectedLength]));
+            try
+            {
+                var verifier = CreateVerifier(path);
+                foreach (var suppliedLength in new[] { 1, 31, 32, 33 })
+                {
+                    var result = await verifier.VerifyAsync(
+                        Convert.ToBase64String(new byte[suppliedLength]));
+
+                    Assert.AreEqual(expectedLength == 32 && suppliedLength == 32, result);
+                }
+            }
+            finally
+            {
+                DeleteTokenFile(path);
+            }
+        }
+    }
+
+    [TestMethod]
     public async Task OversizedFileExceptionDoesNotExposeContents()
     {
         var secret = new string('s', 4097);
@@ -97,7 +121,7 @@ public sealed class BootstrapTokenVerifierTests
     [TestMethod]
     public async Task PreCanceledVerificationDoesNotReadTokenFile()
     {
-        var missingPath = Path.Combine(AppContext.BaseDirectory, $"{Guid.NewGuid():N}.token");
+        var missingPath = Path.Join(AppContext.BaseDirectory, $"{Guid.NewGuid():N}.token");
         var verifier = CreateVerifier(missingPath);
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
@@ -162,7 +186,7 @@ public sealed class BootstrapTokenVerifierTests
 
     private static async Task<string> WriteTokenFileAsync(string contents)
     {
-        var path = Path.Combine(AppContext.BaseDirectory, $"{Guid.NewGuid():N}.token");
+        var path = Path.Join(AppContext.BaseDirectory, $"{Guid.NewGuid():N}.token");
         await File.WriteAllTextAsync(path, contents);
         if (OperatingSystem.IsWindows())
         {
