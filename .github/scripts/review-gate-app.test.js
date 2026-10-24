@@ -8,7 +8,6 @@ const path = require('node:path');
 const test = require('node:test');
 
 const {
-  CHECK_EXTERNAL_PREFIX,
   CHECK_NAME,
   CONTRACT_REVISION,
   COPILOT_REVIEWER,
@@ -26,7 +25,6 @@ const {
   trustedPolicyEvents,
 } = require('./review-gate-policy');
 const {
-  basicPullMapping,
   completeGeneration,
   createGeneration,
   evaluateHeadSnapshot,

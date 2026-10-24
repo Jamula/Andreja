@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "inventory_kind": "current",
-  "updated_on": "2026-10-11",
+  "updated_on": "2026-10-24",
   "historical_baseline_path": "docs/research/test-suite-baseline-112.json",
   "sdk_version": "10.0.301",
   "target_framework": "net10.0",
@@ -10,18 +10,18 @@
     "Andreja.UnitTests": {
       "path": "tests/Andreja.UnitTests/Andreja.UnitTests.csproj",
       "Debug": {
-        "discovered": 258,
-        "trx_total": 258,
-        "executed": 258,
-        "passed": 258,
+        "discovered": 262,
+        "trx_total": 262,
+        "executed": 262,
+        "passed": 262,
         "failed": 0,
         "skipped": 0
       },
       "Release": {
-        "discovered": 254,
-        "trx_total": 254,
-        "executed": 254,
-        "passed": 254,
+        "discovered": 258,
+        "trx_total": 258,
+        "executed": 258,
+        "passed": 258,
         "failed": 0,
         "skipped": 0
       }
