@@ -188,8 +188,9 @@ public static class DatabaseMigrationCommand
             return UsageError;
         }
         catch (Exception exception) when (
-            exception is IOException or UnauthorizedAccessException or JsonException
-                or System.Data.Common.DbException or InvalidOperationException or TimeoutException)
+            exception is IOException or InvalidDataException or UnauthorizedAccessException
+                or JsonException or OptionsValidationException or System.Data.Common.DbException
+                or InvalidOperationException or TimeoutException)
         {
             await output.WriteLineAsync("Database migration failed without changing readiness.");
             return 1;
