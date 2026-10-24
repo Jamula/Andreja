@@ -132,7 +132,7 @@ jobs:
 
       - if: always() && steps.report.outcome == 'success'
         name: Upload bounded validation evidence
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dotnet-${{ matrix.configuration }}-evidence-${{ github.run_attempt }}
           path: artifacts/${{ matrix.configuration }}
@@ -188,7 +188,7 @@ jobs:
 
       - if: always() && steps.report.outcome == 'success'
         name: Upload bounded format evidence
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dotnet-format-evidence-${{ github.run_attempt }}
           path: artifacts/format
@@ -240,7 +240,7 @@ jobs:
 
       - if: always() && steps.report.outcome == 'success'
         name: Upload bounded vulnerability evidence
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: nuget-vulnerability-evidence-${{ github.run_attempt }}
           path: artifacts/vulnerability
@@ -313,7 +313,7 @@ jobs:
 
       - if: always() && steps.report.outcome == 'success'
         name: Upload bounded SAST evidence
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: csharp-sast-evidence-${{ github.run_attempt }}
           path: artifacts/sast
