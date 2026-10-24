@@ -57,9 +57,10 @@ function inside(parent, child) {
         && relative !== ".." && !path.isAbsolute(relative);
 }
 
-function localUrl(value, protocol, pathname) {
+function localUrl(value, protocol, pathname, allowLocalhost = false) {
     const url = new URL(value);
-    requireThat(url.protocol === protocol && ["localhost", "127.0.0.1"].includes(url.hostname)
+    const allowedHosts = allowLocalhost ? ["localhost", "127.0.0.1"] : ["127.0.0.1"];
+    requireThat(url.protocol === protocol && allowedHosts.includes(url.hostname)
         && !url.username && !url.password && !url.search && !url.hash
         && url.pathname === pathname && url.port, `invalid explicit loopback endpoint: ${value}`);
     return url;
@@ -315,7 +316,7 @@ export function loadFixture(configPath) {
     requireThat(typeof config.browserExecutable === "string" && path.isAbsolute(config.browserExecutable),
         "browserExecutable must be an explicit absolute path");
     requireThat(lstatSync(config.browserExecutable).isFile(), "browserExecutable must exist");
-    localUrl(config.baseUrl, "https:", "/");
+    localUrl(config.baseUrl, "https:", "/", true);
     localUrl(config.healthUrl, "http:", "/health/ready");
     localUrl(config.collectorMetricsUrl, "http:", "/metrics");
     config.prometheusUrl = localUrl(config.prometheusUrl, "http:", "/").origin;

@@ -259,6 +259,7 @@ try {
         "--disable-sync",
         "--metrics-recording-only",
         "--no-first-run",
+        "--host-resolver-rules=MAP localhost 127.0.0.1",
         `--remote-debugging-port=${debuggingPort}`,
         `--user-data-dir=${userDataPath}`,
         `--ignore-certificate-errors-spki-list=${spkiPin}`,

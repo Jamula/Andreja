@@ -244,6 +244,9 @@ const invalid = [
     ["cleanup-denied", { ...config, cleanupProjects: [] }],
     ["profile-cleanup-denied", { ...config, cleanupProfiles: [root] }],
     ["remote-endpoint", { ...config, baseUrl: "https://example.com:8443" }],
+    ["HTTP health endpoint uses localhost", { ...config, healthUrl: "http://localhost:28080/health/ready" }],
+    ["HTTP collector endpoint uses localhost", { ...config, collectorMetricsUrl: "http://localhost:28888/metrics" }],
+    ["HTTP Prometheus endpoint uses localhost", { ...config, prometheusUrl: "http://localhost:29090" }],
     ["mutable-image", { ...config, approvedImages: { ...config.approvedImages, app: "app:latest" } }],
     ["default-secret", { ...config, bootstrapTokenFile: path.join(root, "deploy", "secrets", "bootstrap_token") }],
 ];
@@ -660,6 +663,9 @@ test("browser production caller validates before certificate/profile access; bro
     const launch = validBrowser.commands.find(command => command.command === config.browserExecutable);
     assert.equal(launch.command, config.browserExecutable);
     assert.ok(launch.args.includes(`--user-data-dir=${file("browser")}`));
+    assert.ok(launch.args.includes("--host-resolver-rules=MAP localhost 127.0.0.1"));
+    assert.equal(new URL(config.baseUrl).origin, "https://localhost:28443",
+        "WebAuthn origin should remain the configured localhost origin");
     assert.ok(launch.args.some(arg => arg.startsWith("--ignore-certificate-errors-spki-list=")));
     assert.equal(existsSync(file("browser")), false);
     const result2 = spawnSync(process.execPath, ["--input-type=module", "-e",
