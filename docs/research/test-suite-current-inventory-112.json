@@ -7,6 +7,25 @@
   "target_framework": "net10.0",
   "runner": "Microsoft.Testing.Platform",
   "projects": {
+    "Andreja.PublicSiteTests": {
+      "path": "tests/Andreja.PublicSiteTests/Andreja.PublicSiteTests.csproj",
+      "Debug": {
+        "discovered": 28,
+        "trx_total": 28,
+        "executed": 28,
+        "passed": 28,
+        "failed": 0,
+        "skipped": 0
+      },
+      "Release": {
+        "discovered": 28,
+        "trx_total": 28,
+        "executed": 28,
+        "passed": 28,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
     "Andreja.UnitTests": {
       "path": "tests/Andreja.UnitTests/Andreja.UnitTests.csproj",
       "Debug": {
