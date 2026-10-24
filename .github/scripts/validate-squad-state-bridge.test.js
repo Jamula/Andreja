@@ -83,7 +83,7 @@ function fixture(t) {
       squad_state: {
         command: 'npx',
         args: ['-y', `@bradygaster/squad-cli@${SQUAD_VERSION}`, 'state-mcp'],
-        env: {},
+        env: { NPM_CONFIG_REGISTRY: 'https://registry.npmjs.org' },
         tools: REQUIRED_MCP_TOOLS,
       },
     },
@@ -123,6 +123,43 @@ test('accepts the approved two-layer static contract', (t) => {
 
 test('checked-in repository satisfies the upgraded two-layer static contract', () => {
   assert.deepEqual(validateRepository(path.resolve(__dirname, '..', '..')), []);
+});
+
+test('rejects missing, malformed, altered, or broadened registry environment', (t) => {
+  const cases = [
+    ['missing env', undefined],
+    ['empty env', {}],
+    ['null env', null],
+    ['array env', []],
+    ['string env', 'https://registry.npmjs.org'],
+    ['boolean env', true],
+    ['number env', 1],
+    ['alternate registry', { NPM_CONFIG_REGISTRY: 'https://example.invalid' }],
+    ['trailing slash', { NPM_CONFIG_REGISTRY: 'https://registry.npmjs.org/' }],
+    ['non-string registry', { NPM_CONFIG_REGISTRY: true }],
+    ['lowercase key', { npm_config_registry: 'https://registry.npmjs.org' }],
+    ['extra variable', {
+      NPM_CONFIG_REGISTRY: 'https://registry.npmjs.org',
+      NODE_OPTIONS: '--require=unrelated',
+    }],
+    ['case-variant override', {
+      NPM_CONFIG_REGISTRY: 'https://registry.npmjs.org',
+      npm_config_registry: 'https://example.invalid',
+    }],
+  ];
+  for (const [name, env] of cases) {
+    const root = fixture(t);
+    const mcp = JSON.parse(fs.readFileSync(path.join(root, '.mcp.json'), 'utf8'));
+    mcp.mcpServers.squad_state.env = env;
+    writeJson(root, '.mcp.json', mcp);
+    const expected = [
+      'squad_state env must contain only NPM_CONFIG_REGISTRY=https://registry.npmjs.org',
+    ];
+    if (env === undefined) {
+      expected.unshift('squad_state MCP server keys must exactly match: command, args, env, tools');
+    }
+    assert.deepEqual(validateRepository(root), expected, name);
+  }
 });
 
 test('rejects a local-backend fallback', (t) => {
@@ -247,7 +284,7 @@ test('rejects a broadened MCP bridge', (t) => {
       squad_state: {
         command: 'npx',
         args: ['-y', `@bradygaster/squad-cli@${SQUAD_VERSION}`, 'state-mcp'],
-        env: {},
+        env: { NPM_CONFIG_REGISTRY: 'https://registry.npmjs.org' },
         tools: REQUIRED_MCP_TOOLS,
       },
       unrelated: { command: 'other' },
@@ -270,7 +307,7 @@ test('rejects extra squad_state MCP server fields', (t) => {
         squad_state: {
           command: 'npx',
           args: ['-y', `@bradygaster/squad-cli@${SQUAD_VERSION}`, 'state-mcp'],
-          env: {},
+          env: { NPM_CONFIG_REGISTRY: 'https://registry.npmjs.org' },
           tools: REQUIRED_MCP_TOOLS,
           ...extraFields,
         },
@@ -291,7 +328,7 @@ test('rejects a mismatched bridge package version', (t) => {
       squad_state: {
         command: 'npx',
         args: ['-y', '@bradygaster/squad-cli@0.13.1', 'state-mcp'],
-        env: {},
+        env: { NPM_CONFIG_REGISTRY: 'https://registry.npmjs.org' },
         tools: REQUIRED_MCP_TOOLS,
       },
     },
@@ -306,7 +343,7 @@ test('rejects a wildcard MCP tool grant', (t) => {
       squad_state: {
         command: 'npx',
         args: ['-y', `@bradygaster/squad-cli@${SQUAD_VERSION}`, 'state-mcp'],
-        env: {},
+        env: { NPM_CONFIG_REGISTRY: 'https://registry.npmjs.org' },
         tools: ['*'],
       },
     },
@@ -321,7 +358,7 @@ test('rejects an incomplete MCP tool grant', (t) => {
       squad_state: {
         command: 'npx',
         args: ['-y', `@bradygaster/squad-cli@${SQUAD_VERSION}`, 'state-mcp'],
-        env: {},
+        env: { NPM_CONFIG_REGISTRY: 'https://registry.npmjs.org' },
         tools: REQUIRED_MCP_TOOLS.slice(0, -1),
       },
     },
