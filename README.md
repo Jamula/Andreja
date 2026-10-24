@@ -10,12 +10,12 @@ the proposed [ADR 0006 ratification instrument](docs/adr/0006-charter-ratificati
 ## Prerequisites
 
 - Git.
-- .NET SDK 10.0.301, pinned by [`global.json`](global.json).
+- .NET SDK 10.0.402, pinned by [`global.json`](global.json).
 - `dotnet-ef` 10.0.11 for migration inspection and script generation.
 - Python 3, available as `python`, for documentation consistency checks.
 - PowerShell 7 for repository validation scripts.
-- Node.js 22 and Microsoft Edge for browser, passkey, viewport, and telemetry
-  evidence.
+- Node.js 26.12.1 and Microsoft Edge for browser, passkey, viewport, and
+  telemetry evidence.
 - Docker with Buildx and Compose for live PostgreSQL, OCI, and self-host
   evidence.
 
@@ -24,7 +24,7 @@ the proposed [ADR 0006 ratification instrument](docs/adr/0006-charter-ratificati
 ```powershell
 git clone https://github.com/Jamula/Andreja.git
 Set-Location Andreja
-if ((dotnet --version) -ne "10.0.301") {
+if ((dotnet --version) -ne "10.0.402") {
   throw "Install the .NET SDK version pinned by global.json."
 }
 python --version
