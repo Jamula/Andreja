@@ -23,7 +23,8 @@ childProcess.execFileSync = (command, args) => {
     if (args.includes("ps") && args.includes("--quiet")) {
         if (args.includes("--filter")) {
             const port = args[args.indexOf("--filter") + 1].replace("publish=", "");
-            return (fixture.portOwners[port] ?? []).join("\n");
+            const owners = fixture.portOwners[port] ?? [];
+            return (args.includes("--no-trunc") ? owners : owners.map(id => id.slice(0, 12))).join("\n");
         }
         return fixture.projectContainerIds.join("\n");
     }

@@ -116,7 +116,7 @@ evidence-only network, loopback-only TLS port `8443`, and exact source address
 never start this fixture in the ordinary default project:
 
 ```powershell
-$fixtureJson = node scripts\evidence\evidence-fixture.mjs --config $configPath browser
+$fixtureJson = node scripts\evidence\evidence-fixture.mjs --config $configPath browser-static
 if ($LASTEXITCODE -ne 0) { throw 'Fixture validation failed' }
 $evidenceFixture = $fixtureJson | ConvertFrom-Json
 $evidenceCompose = @($evidenceFixture.compose)
@@ -606,9 +606,14 @@ Read-only Compose expansion must resolve exactly the five approved immutable
 service images, project-prefixed non-external volumes/networks, fixture-contained
 secret sources, the repository's read-only configuration binds, the deterministic
 provider, and the declared origin/loopback ports. Browser certificate/bootstrap
-paths must match Compose. A digest allowlist records the operator's approval; it
-does not replace `Test-OciEvidence.ps1` signature/provenance checks. Keep the
-configuration, context, files and project exclusively controlled during the run.
+paths must match Compose. Database settings must target the fixture's `postgres`
+service on port `5432`, use its resolved database/user, and read the configured
+password secret. The `browser-static` mode performs only this read-only
+configuration preparation so a new fixture can be started; browser and telemetry
+still run full runtime verification before requests or credentials are accessed.
+A digest allowlist records the operator's approval; it does not replace
+`Test-OciEvidence.ps1` signature/provenance checks. Keep the configuration,
+context, files and project exclusively controlled during the run.
 
 Before browser or telemetry runners contact any endpoint, read-only runtime
 inspection must find exactly one running container for each approved service
@@ -617,12 +622,15 @@ immutable image references and image identities. The application provider and
 WebAuthn origin must still match the fixture; proxy, app, collector and
 Prometheus bindings must match their explicit loopback endpoints, with no
 additional container owning those host ports. PostgreSQL must have no published
-host port. Missing containers, stopped services, runtime drift, or a
-wrong-project port owner fail before HTTP requests, certificate/bootstrap reads,
-browser-profile changes, or Docker mutations. Static Compose validation remains
-separate: offline evidence validates configuration only and may start an absent
-authorized project. A Compose restart does not apply changed configuration;
-runtime drift is a stop condition, not something to repair by restarting.
+host port. The running app's database settings must exactly match the validated
+Compose model and point to the fixture PostgreSQL service; a host database or
+other drift is rejected. Missing containers, stopped services, runtime drift, or
+a wrong-project port owner fail before HTTP requests, certificate/bootstrap
+reads, browser-profile changes, or Docker mutations. Static Compose validation
+remains separate: `browser-static` prepares startup arguments, while offline
+evidence validates configuration only; either may start an absent authorized
+project. A Compose restart does not apply changed configuration; runtime drift
+is a stop condition, not something to repair by restarting.
 
 After authorization and fixture preparation, run from this checkout:
 

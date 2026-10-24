@@ -37,6 +37,16 @@ const model = {
 model.services.app.environment = {
     Andreja__OpenLoops__AssistantProvider: "deterministic",
     Andreja__Identity__AllowedOrigins__0: new URL(config.baseUrl).origin,
+    Andreja__Operations__Database__Enabled: "true",
+    Andreja__Operations__Database__Host: "postgres",
+    Andreja__Operations__Database__Port: "5432",
+    Andreja__Operations__Database__Name: "andreja_evidence",
+    Andreja__Operations__Database__Username: "andreja_evidence",
+    Andreja__Operations__Database__PasswordFile: "/run/secrets/postgres_password",
+};
+model.services.postgres.environment = {
+    POSTGRES_DB: "andreja_evidence",
+    POSTGRES_USER: "andreja_evidence",
 };
 for (const [service, target, published] of [
     ["app", 8080, "28080"], ["tls-proxy", 8443, "28443"],
@@ -61,7 +71,7 @@ function makeRuntime(changed = config, resolved = model) {
         ]));
         const envEntries = Object.entries(source.environment ?? {}).map(([key, value]) => `${key}=${value}`);
         return {
-            Id: `synthetic-${service}`,
+            Id: String(index + 1).repeat(64),
             Image: imageId,
             Config: {
                 Image: source.image,
@@ -102,6 +112,20 @@ function run(caller, changed = config, resolved = model, extraEnv = {}, fromFixt
             "-Caller", caller, "-Config", changed === null ? "" : configArgument, "-Log", file("commands.jsonl")];
     const result = spawnSync(caller === "browser" ? process.execPath : "pwsh", args,
         { cwd: fromFixtureDirectory ? directory : root, env: { ...env, ...extraEnv }, encoding: "utf8" });
+    assert.ifError(result.error);
+    const commands = readFileSync(file("commands.jsonl"), "utf8").trim().split("\n")
+        .filter(Boolean).map(line => JSON.parse(line));
+    return { ...result, commands, output: result.stdout + result.stderr };
+}
+function runPreparation(mode, runtime = makeRuntime()) {
+    writeFileSync(file("config.json"), JSON.stringify(config));
+    writeFileSync(file("model.json"), JSON.stringify(model));
+    writeFileSync(file("runtime.json"), JSON.stringify(runtime));
+    writeFileSync(file("commands.jsonl"), "");
+    const result = spawnSync(process.execPath, [
+        path.join(root, "scripts", "evidence", "evidence-fixture.mjs"),
+        "--config", file("config.json"), mode,
+    ], { cwd: root, env, encoding: "utf8" });
     assert.ifError(result.error);
     const commands = readFileSync(file("commands.jsonl"), "utf8").trim().split("\n")
         .filter(Boolean).map(line => JSON.parse(line));
@@ -219,6 +243,13 @@ const runtimeDrift = [
     ["WebAuthn origin drift", runtime => {
         runtime.containers[0].Config.Env[1] = "Andreja__Identity__AllowedOrigins__0=https://other.local";
     }],
+    ["database target drift", runtime => {
+        const app = runtime.containers.find(container =>
+            container.Config.Labels["com.docker.compose.service"] === "app");
+        const setting = "Andreja__Operations__Database__Host=";
+        app.Config.Env[app.Config.Env.findIndex(entry => entry.startsWith(setting))] =
+            `${setting}host.docker.internal`;
+    }],
     ["wrong host port binding", runtime => {
         runtime.containers[0].NetworkSettings.Ports["8080/tcp"][0].HostPort = "18080";
     }],
@@ -277,6 +308,18 @@ test("offline static preflight permits startup when the authorized project is ab
         && command.args.includes("ps") && command.args.includes("--all")
         && command.args.includes("--quiet")), "offline static preflight must not require pre-existing containers");
 });
+test("browser static preparation returns scoped Compose args for a fresh fixture without runtime checks", () => {
+    const absent = makeRuntime();
+    absent.projectContainerIds = [];
+    absent.containers = [];
+    absent.portOwners = {};
+    const result = runPreparation("browser-static", absent);
+    assert.equal(result.status, 0, result.output);
+    const prepared = JSON.parse(result.stdout);
+    assertScope(prepared.compose);
+    assert.ok(!result.commands.some(command => command.args.includes("ps")),
+    "static preparation must not require an existing runtime");
+});
 test("runtime inspect uses the explicit context and only project-reported containers", () => {
     const result = run("browser");
     assert.match(result.output, /PEM|certificate|decoder/i);
@@ -289,6 +332,12 @@ test("runtime inspect uses the explicit context and only project-reported contai
         && command.args[0] === "--context" && command.args[2] === "inspect");
     assert.deepEqual(runtimeInspect.args.slice(0, 2), ["--context", config.dockerContext]);
     assert.deepEqual(runtimeInspect.args.slice(3, -2), makeRuntime().projectContainerIds);
+    const portOwners = result.commands.filter(command => command.command === "docker"
+        && command.args.includes("ps") && command.args.includes("--filter"));
+    assert.equal(portOwners.length, 4);
+    assert.ok(portOwners.every(command => command.args.includes("--no-trunc")),
+        "port-owner IDs must not be shortened before comparing with Compose IDs");
+    assert.doesNotMatch(result.output, /additional runtime owner/);
     for (const command of result.commands.filter(command => command.command === "docker"
         && command.args.includes("image") && command.args.includes("inspect"))) {
         assert.deepEqual(command.args.slice(0, 2), ["--context", config.dockerContext]);
@@ -415,7 +464,7 @@ test("browser production caller validates before certificate/profile access; bro
 test("runbook documents every fixture field and the checked-in helper digests", () => {
     const docs = readFileSync(path.join(root, "docs", "operations", "self-hosting.md"), "utf8");
     assert.match(docs, /read-only runtime\s+inspection must find exactly one running container/);
-    assert.match(docs, /offline evidence validates configuration only and may start an absent/);
+    assert.match(docs, /offline\s+evidence validates configuration only/);
     assert.match(docs, /A Compose restart does not apply changed configuration/);
     for (const field of Object.keys(config)) {
         assert.match(docs, new RegExp(`\\b${field}\\b`), `undocumented fixture field ${field}`);

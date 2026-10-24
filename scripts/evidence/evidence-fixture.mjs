@@ -82,6 +82,13 @@ function verifyRuntimeFixture(config, compose, model) {
         "runtime application provider is not deterministic");
     requireThat(environmentValue("Andreja__Identity__AllowedOrigins__0") === new URL(config.baseUrl).origin,
         "runtime application WebAuthn origin differs from the explicit browser endpoint");
+    const databaseSettings = [
+        "Enabled", "Host", "Port", "Name", "Username", "PasswordFile",
+    ].map(setting => `Andreja__Operations__Database__${setting}`);
+    for (const setting of databaseSettings) {
+        requireThat(environmentValue(setting) === model.services.app.environment[setting],
+            `runtime application ${setting} differs from the validated Compose model`);
+    }
 
     const publishedPorts = [
         ["tls-proxy", 8443, config.baseUrl], ["app", 8080, config.healthUrl],
@@ -98,7 +105,7 @@ function verifyRuntimeFixture(config, compose, model) {
         `runtime ${service} published binding differs from its explicit loopback endpoint`);
 
         const owners = execFileSync("docker", ["--context", config.dockerContext, "ps", "--all", "--quiet",
-            "--filter", `publish=${published}`],
+            "--no-trunc", "--filter", `publish=${published}`],
         { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })
             .split(/\r?\n/).map(value => value.trim()).filter(Boolean);
         const foreignOwners = owners.filter(id => !reportedIds.includes(id));
@@ -167,7 +174,7 @@ export function loadFixture(configPath) {
 }
 
 export function composeArguments(config, mode) {
-    requireThat(["browser", "offline"].includes(mode), "unknown evidence mode");
+    requireThat(["browser", "browser-static", "offline"].includes(mode), "unknown evidence mode");
     const files = ["compose.yaml", "deploy/compose.evidence.yaml"];
     if (mode === "offline") files.push("deploy/compose.offline-evidence.yaml");
     return ["--context", config.dockerContext, "compose", "--project-name", config.projectName, "--env-file", config.environmentFile,
@@ -224,6 +231,15 @@ export function prepareFixture(configPath, mode) {
         "only the synthetic deterministic provider is allowed");
     requireThat(app.environment.Andreja__Identity__AllowedOrigins__0 === new URL(config.baseUrl).origin,
         "baseUrl differs from the resolved WebAuthn origin");
+    const database = app.environment;
+    const postgres = model.services.postgres.environment;
+    requireThat(database.Andreja__Operations__Database__Enabled === "true"
+        && database.Andreja__Operations__Database__Host === "postgres"
+        && database.Andreja__Operations__Database__Port === "5432"
+        && database.Andreja__Operations__Database__Name === postgres.POSTGRES_DB
+        && database.Andreja__Operations__Database__Username === postgres.POSTGRES_USER
+        && database.Andreja__Operations__Database__PasswordFile === "/run/secrets/postgres_password",
+    "resolved database settings must target the fixture PostgreSQL service and its credentials");
     const ports = [
         ["tls-proxy", 8443, config.baseUrl], ["app", 8080, config.healthUrl],
         ["otel-collector", 8888, config.collectorMetricsUrl], ["prometheus", 9090, config.prometheusUrl],
@@ -238,7 +254,7 @@ export function prepareFixture(configPath, mode) {
     if (mode === "offline") {
         requireThat(model.networks.edge.internal === true && model.networks.backend.internal === true,
             "offline networks must be internal");
-    } else {
+    } else if (mode === "browser") {
         verifyRuntimeFixture(config, compose, model);
     }
     return { ...config, compose };
@@ -252,7 +268,7 @@ export function restartApplication(config) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
     try {
         requireThat(process.argv.length === 5 && process.argv[2] === "--config",
-            "usage: evidence-fixture.mjs --config <path> <browser|offline>");
+            "usage: evidence-fixture.mjs --config <path> <browser|browser-static|offline>");
         console.log(JSON.stringify(prepareFixture(process.argv[3], process.argv[4])));
     } catch (error) {
         console.error(error.message);
