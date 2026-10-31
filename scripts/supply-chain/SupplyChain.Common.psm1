@@ -29,6 +29,15 @@ function Assert-PinnedImageReference {
     }
 }
 
+function Assert-SupportedSourceRef {
+    param([Parameter(Mandatory)][string] $Ref)
+
+    if ($Ref -notmatch '^refs/(heads|tags)/[A-Za-z0-9][A-Za-z0-9._/-]*$' -and
+        $Ref -notmatch '^refs/pull/[0-9]+/(merge|head)$') {
+        throw "Unsupported source ref '$Ref'."
+    }
+}
+
 function Assert-RequiredCommand {
     param([Parameter(Mandatory)][string] $Name)
 
@@ -647,6 +656,7 @@ Export-ModuleMember -Function @(
     'Assert-SigningStatus',
     'Assert-IndependentSigstoreTrustedRoot',
     'Assert-SigstoreTrustedRootStructure',
+    'Assert-SupportedSourceRef',
     'Get-KeylessCertificateIdentity',
     'Get-KeylessVerificationArguments',
     'Get-ChecksummedFile',
