@@ -19,7 +19,8 @@ The check fails closed unless all of these remain true:
 - `.squad/config.json` selects `two-layer`.
 - `.mcp.json` declares only `squad_state`, backed by
   `@bradygaster/squad-cli@1.1.0 state-mcp`, with the exact governed tool
-  allowlist (wildcard grants are rejected).
+  allowlist, including `squad_state_create_if_absent` (wildcard grants are
+  rejected).
 - The server's `env` contains only
   `NPM_CONFIG_REGISTRY=https://registry.npmjs.org`; no other environment
   injection is permitted.
@@ -80,9 +81,15 @@ the app version and child-session ID, then require this evidence:
    ephemeral governed `.scratch/` namespace, use `squad_state_write`, read back
    the exact value, delete it with `squad_state_delete`, and confirm a final
    read reports key-not-found.
-6. Attempt a non-sensitive write under disallowed `verification/`. The adapter
+6. With a separate unique, non-sensitive
+   `.scratch/state-bridge-create-probe-<session-id>.md` key, use
+   `squad_state_create_if_absent` to create an initial value, then call it again
+   with a different value and require a conflict. Read back the exact initial
+   value, delete the key with `squad_state_delete`, and confirm a final read
+   reports key-not-found.
+7. Attempt a non-sensitive write under disallowed `verification/`. The adapter
    must reject it. Do not use file operations or another namespace to retry.
-7. After the probes, compare the same baseline and retain the Git check:
+8. After the probes, compare the same baseline and retain the Git check:
    ```text
    node .github/scripts/squad-state-protected-manifest.js compare --baseline "<absolute-external-temp-path>"
    git status --short
@@ -90,7 +97,7 @@ the app version and child-session ID, then require this evidence:
    Success prints only `UNCHANGED`. A changed worktree returns nonzero and
    prints only `CHANGED <protected-path-identity>` lines; it never prints
    contents or metadata values. `git status --short` must also be unchanged.
-8. In a second fresh Squad child, request: `Run required Squad preflight, make
+9. In a second fresh Squad child, request: `Run required Squad preflight, make
    no repository or mutable-state changes, dispatch no agents, and report no-op
    completion.` It must complete without a standard-agent fallback. Compare the
    same baseline again and run `git status --short`; both checks must remain

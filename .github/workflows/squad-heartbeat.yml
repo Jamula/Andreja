@@ -16,6 +16,10 @@ on:
   pull_request_target:
     types: [closed]
 
+  # Recover Copilot handoffs that did not complete when first dispatched.
+  schedule:
+    - cron: '*/15 * * * *'
+
   # Manual trigger
   workflow_dispatch:
 
@@ -117,4 +121,71 @@ jobs:
             
             core.info(`🔄 Ralph triaged ${results.length} issue(s)`);
 
-      # Copilot assignment belongs exclusively to squad-issue-assign.yml.
+      - name: Ralph — Recover pending Copilot handoffs
+        if: always()
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b #v7
+        with:
+          script: |
+            const fs = require('fs');
+            const teamPath = '.squad/team.md';
+            if (!fs.existsSync(teamPath)) {
+              core.info('No .squad/team.md found — skipping Copilot recovery');
+              return;
+            }
+
+            const team = fs.readFileSync(teamPath, 'utf8');
+            const hasCopilot = team.includes('@copilot');
+            const autoAssign = /<!--\s*copilot-auto-assign:\s*true\s*-->/i.test(team);
+            if (!hasCopilot || !autoAssign) {
+              core.info('Copilot auto-assignment is not enabled — skipping recovery');
+              return;
+            }
+
+            const { owner, repo } = context.repo;
+            const query = `repo:${owner}/${repo} is:issue is:open label:"squad:copilot" no:assignee`;
+            const { data: search } = await github.rest.search.issuesAndPullRequests({
+              q: query,
+              per_page: 100,
+              sort: 'created',
+              order: 'asc'
+            });
+            const candidates = (search.items || []).filter(issue => !issue.pull_request);
+            if (candidates.length === 0) {
+              core.info('No pending unassigned squad:copilot issues');
+              return;
+            }
+
+            const { data: repository } = await github.rest.repos.get({ owner, repo });
+            let dispatched = 0;
+            let failures = 0;
+            for (const candidate of candidates) {
+              try {
+                const { data: issue } = await github.rest.issues.get({
+                  owner,
+                  repo,
+                  issue_number: candidate.number
+                });
+                const hasCopilotLabel = issue.labels.some(label => label.name === 'squad:copilot');
+                if (issue.state !== 'open' || issue.assignees.length > 0 || !hasCopilotLabel) {
+                  continue;
+                }
+
+                await github.rest.actions.createWorkflowDispatch({
+                  owner,
+                  repo,
+                  workflow_id: 'squad-issue-assign.yml',
+                  ref: repository.default_branch,
+                  inputs: { issue_number: String(issue.number) }
+                });
+                dispatched += 1;
+                core.info(`Dispatched squad-issue-assign.yml for pending issue #${issue.number}`);
+              } catch (error) {
+                failures += 1;
+                core.warning(`Failed to recover Copilot handoff for #${candidate.number}: ${error.message}`);
+              }
+            }
+
+            core.info(`Copilot recovery dispatched ${dispatched} of ${candidates.length} bounded candidates`);
+            if (failures > 0) {
+              core.setFailed(`Failed to dispatch ${failures} pending Copilot handoff(s)`);
+            }

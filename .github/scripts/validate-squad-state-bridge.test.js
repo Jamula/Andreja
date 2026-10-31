@@ -30,6 +30,14 @@ const CANONICAL_FRESH_CHILD_PROBE_STEP = [
   'the exact value, delete it with squad_state_delete, and confirm a final',
   'read reports key-not-found.',
 ].join(' ');
+const CANONICAL_FRESH_CHILD_CREATE_IF_ABSENT_STEP = [
+  '6. With a separate unique, non-sensitive',
+  '.scratch/state-bridge-create-probe-<session-id>.md key, use',
+  'squad_state_create_if_absent to create an initial value, then call it again',
+  'with a different value and require a conflict. Read back the exact initial',
+  'value, delete the key with squad_state_delete, and confirm a final read',
+  'reports key-not-found.',
+].join(' ');
 
 function normalizeMarkdownAndWhitespace(markdown) {
   return markdown
@@ -61,6 +69,27 @@ function freshChildProbeStepErrors(runbook) {
   if (normalizedStep !== CANONICAL_FRESH_CHILD_PROBE_STEP) {
     errors.push(
       'fresh-child acceptance step 5 must retain the canonical affirmative probe sequence',
+    );
+  }
+  return errors;
+}
+
+function freshChildCreateIfAbsentStepErrors(runbook) {
+  const step = parseBoundedNumberedStep(runbook, 6, 7);
+  if (step === null) {
+    return ['fresh-child acceptance must contain one step 6 bounded by step 7'];
+  }
+
+  const errors = [];
+  if (/~~/u.test(step)) {
+    errors.push(
+      'fresh-child acceptance step 6 must not contain Markdown strikethrough markup',
+    );
+  }
+  if (normalizeMarkdownAndWhitespace(step) !==
+      CANONICAL_FRESH_CHILD_CREATE_IF_ABSENT_STEP) {
+    errors.push(
+      'fresh-child acceptance step 6 must verify atomic create conflict preservation',
     );
   }
   return errors;
@@ -293,6 +322,16 @@ test('rejects a broadened MCP bridge', (t) => {
   assert.match(validateRepository(root).join('\n'), /only the squad_state MCP server/);
 });
 
+test('requires the supported atomic create-if-absent MCP tool', (t) => {
+  const root = fixture(t);
+  const mcp = JSON.parse(fs.readFileSync(path.join(root, '.mcp.json'), 'utf8'));
+  mcp.mcpServers.squad_state.tools = REQUIRED_MCP_TOOLS.filter(
+    tool => tool !== 'squad_state_create_if_absent',
+  );
+  writeJson(root, '.mcp.json', mcp);
+  assert.match(validateRepository(root).join('\n'), /tools must exactly match/);
+});
+
 test('rejects extra squad_state MCP server fields', (t) => {
   const cases = [
     ['type and url', { type: 'http', url: 'https://example.invalid/mcp' }],
@@ -469,6 +508,14 @@ test('fresh-child acceptance uses only the ephemeral governed probe namespace', 
   assert.deepEqual(freshChildProbeStepErrors(runbook), []);
 });
 
+test('fresh-child acceptance verifies atomic create conflict preservation', () => {
+  const runbook = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'docs', 'operations', 'squad-state-bridge.md'),
+    'utf8',
+  );
+  assert.deepEqual(freshChildCreateIfAbsentStepErrors(runbook), []);
+});
+
 test('fresh-child step rejects negated governed probe operations', () => {
   const runbook = fs.readFileSync(
     path.resolve(__dirname, '..', '..', 'docs', 'operations', 'squad-state-bridge.md'),
@@ -522,8 +569,8 @@ test('fresh-child step rejects a rendered Markdown-obscured log probe path', () 
     'utf8',
   );
   const variant = runbook.replace(
-    '\n6. Attempt a non-sensitive write',
-    '\n   Also probe **log**/probe.md.\n6. Attempt a non-sensitive write',
+    '\n6. With a separate unique, non-sensitive',
+    '\n   Also probe **log**/probe.md.\n6. With a separate unique, non-sensitive',
   );
 
   assert.deepEqual(
