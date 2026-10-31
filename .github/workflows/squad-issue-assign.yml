@@ -44,10 +44,9 @@ jobs:
               repo: context.repo.repo,
               issue_number: Number(context.payload.inputs.issue_number)
             })).data;
-            const slugify = value => value
-              .toLowerCase()
-              .replace(/[^a-z0-9]+/g, '-')
-              .replace(/^-+|-+$/g, '');
+            function slugify(value) {
+              return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+            }
             const findMemberBySlug = (lines, memberName) => {
               let inMembersTable = false;
               const matches = [];
@@ -183,7 +182,7 @@ jobs:
                 `**Issue:** #${issue_number} — ${issue.title}`,
                 `The API accepted the coding-agent request and returned \`copilot-swe-agent[bot]\` as an assignee (base: \`${baseBranch}\`).`,
                 '',
-                `This is not proof of a running session. Verify a Copilot session linked to this issue or a linked \`copilot/*\` draft PR before treating the handoff as started.`,
+                `This is not proof of a running session. Verify a Copilot session linked to this issue or a linked \`copilot/${issue.number}-{slug}\` draft PR before treating the handoff as started.`,
               ].join('\n')
             });
 
