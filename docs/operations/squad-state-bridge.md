@@ -32,7 +32,8 @@ The check fails closed unless all of these remain true:
   from Git tracking. Local validation also checks untracked, non-excluded
   `.gitignore` files. This repository-wide fail-closed policy avoids
   interpreting gitignore glob syntax: exceptions must be expressed without `!`
-  rules.
+  rules. Atomic casting transaction metadata is protected alongside
+  `.squad/casting/history.json`.
 
 The check does not call MCP, inspect private state, or claim runtime success.
 GitHub Actions validates the repository static contract and the manifest

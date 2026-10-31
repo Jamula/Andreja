@@ -76,6 +76,7 @@ nunit-*.xml
 .squad/agents/*/history.md
 .squad/agents/*/history-archive.md
 .squad/casting/history.json
+.squad/casting/registry-history.commit.json
 .squad/identity/
 .squad/memory/
 .squad/rai/audit-trail.md
