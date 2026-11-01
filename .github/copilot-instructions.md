@@ -20,6 +20,19 @@ Inspect your `agent_instructions` for the coordinator canaries. This is a **two-
    ```
 3. Do not continue with normal Squad routing, spawning, PR, or branch-protection behavior after emitting the warning.
 
+## Tooling and System Language Preference
+
+For new or changed tooling and systems:
+
+1. Prefer a currently supported .NET Long-Term Support (LTS) release.
+2. When .NET cannot reasonably be used, prefer Node.js/JavaScript.
+3. Avoid Python when possible; use it only when required or neither preferred option is practical.
+
+This is a preference, not authorization for unrelated language migrations. Honor
+explicit platform and repository constraints, including existing version pins
+and the exclusion of Squad tooling from migration. Preserve existing-language
+tools when conversion is outside the task's scope.
+
 ## Team Context
 
 Before starting work on any issue:

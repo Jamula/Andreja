@@ -28,6 +28,9 @@ if (-not ($evidenceJson | Test-Json -SchemaFile $schemaPath -ErrorAction Stop)) 
 }
 
 $evidence = $evidenceJson | ConvertFrom-Json -Depth 100
+if ($evidence.schemaVersion -eq '1.1') {
+    Assert-SupportedSourceRef -Ref $evidence.source.ref
+}
 if ($evidence.signing.mode -ne $ExpectedSigningMode) {
     throw "Evidence signing mode '$($evidence.signing.mode)' does not match required mode '$ExpectedSigningMode'."
 }

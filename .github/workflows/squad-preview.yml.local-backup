@@ -1,4 +1,5 @@
 name: Squad Preview Validation
+# dotnet project — configure build, test, and validation commands below
 
 on:
   push:
@@ -11,45 +12,19 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 #v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 #v4
-        with:
-          node-version: 22
-
-      - name: Validate version consistency
+      - name: Build and test
         run: |
-          VERSION=$(node -e "console.log(require('./package.json').version)")
-          if ! grep -q "## \[$VERSION\]" CHANGELOG.md 2>/dev/null; then
-            echo "::error::Version $VERSION not found in CHANGELOG.md — update CHANGELOG.md before release"
-            exit 1
-          fi
-          echo "✅ Version $VERSION validated in CHANGELOG.md"
+          # TODO: Add your dotnet build/test commands here
+          # Go:            go test ./...
+          # Python:        pip install -r requirements.txt && pytest
+          # .NET:          dotnet test
+          # Java (Maven):  mvn test
+          # Java (Gradle): ./gradlew test
+          echo "No build commands configured — update squad-preview.yml"
 
-      - name: Run tests
-        run: node --test test/*.test.cjs
-
-      - name: Check no .ai-team/ or .squad/ files are tracked
+      - name: Validate
         run: |
-          FOUND_FORBIDDEN=0
-          if git ls-files --error-unmatch .ai-team/ 2>/dev/null; then
-            echo "::error::❌ .ai-team/ files are tracked on preview — this must not ship."
-            FOUND_FORBIDDEN=1
-          fi
-          if git ls-files --error-unmatch .squad/ 2>/dev/null; then
-            echo "::error::❌ .squad/ files are tracked on preview — this must not ship."
-            FOUND_FORBIDDEN=1
-          fi
-          if [ $FOUND_FORBIDDEN -eq 1 ]; then
-            exit 1
-          fi
-          echo "✅ No .ai-team/ or .squad/ files tracked — clean for release."
-
-      - name: Validate package.json version
-        run: |
-          VERSION=$(node -e "console.log(require('./package.json').version)")
-          if [ -z "$VERSION" ]; then
-            echo "::error::❌ No version field found in package.json."
-            exit 1
-          fi
-          echo "✅ package.json version: $VERSION"
+          # TODO: Add pre-release validation commands here
+          echo "No validation commands configured — update squad-preview.yml"
