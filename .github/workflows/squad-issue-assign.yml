@@ -18,6 +18,9 @@ jobs:
   assign-work:
     # Only trigger on squad:{member} labels (not the base "squad" label)
     if: github.event_name == 'workflow_dispatch' || startsWith(github.event.label.name, 'squad:')
+    concurrency:
+      group: squad-issue-assign-${{ github.event.issue.number || github.event.inputs.issue_number }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
       - name: Require Copilot assignment token
@@ -131,6 +134,7 @@ jobs:
 
       # Separate step: assign @copilot using PAT (required for coding agent)
       - name: Assign @copilot coding agent
+        id: assign-copilot
         if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'squad:copilot'
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b #v7
         with:
@@ -144,8 +148,17 @@ jobs:
             }
             const label = context.payload.label?.name || 'squad:copilot';
             const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number });
-            if (!issue.labels.some(existing => existing.name === label)) {
-              throw new Error(`Issue #${issue_number} no longer has ${label}; refusing stale Copilot handoff.`);
+            if (issue.state !== 'open' ||
+                !issue.labels.some(existing => existing.name === label)) {
+              core.info(`Issue #${issue_number} is closed or no longer has ${label}; skipping stale Copilot handoff.`);
+              core.setOutput('assignment_accepted', 'false');
+              return;
+            }
+            if ((issue.assignees || []).some(assignee =>
+              assignee?.login === 'copilot-swe-agent[bot]')) {
+              core.info(`Issue #${issue_number} is already assigned to Copilot; skipping duplicate handoff.`);
+              core.setOutput('assignment_accepted', 'false');
+              return;
             }
 
             // Get the default branch name (main, master, etc.)
@@ -185,11 +198,12 @@ jobs:
                 `This is not proof of a running session. Verify a Copilot session linked to this issue or a linked \`copilot/${issue.number}-{slug}\` draft PR before treating the handoff as started.`,
               ].join('\n')
             });
+            core.setOutput('assignment_accepted', 'true');
 
       # Repair the parent label only after the PAT-backed assignment and its acknowledgment succeed.
       # The default GITHUB_TOKEN does not create another issues:labeled workflow run.
       - name: Ensure parent squad label
-        if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'squad:copilot'
+        if: steps.assign-copilot.outputs.assignment_accepted == 'true'
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b #v7
         with:
           script: |

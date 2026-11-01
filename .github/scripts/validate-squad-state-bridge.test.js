@@ -516,6 +516,41 @@ test('fresh-child acceptance verifies atomic create conflict preservation', () =
   assert.deepEqual(freshChildCreateIfAbsentStepErrors(runbook), []);
 });
 
+test('fresh-child create-if-absent step rejects malformed instructions', () => {
+  const runbook = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'docs', 'operations', 'squad-state-bridge.md'),
+    'utf8',
+  );
+  const mutations = [
+    [/squad_state_create_if_absent/u, 'squad_state_write'],
+    [/require a conflict/u, 'require success'],
+    [/Read back the exact initial/u, 'Do not read back the initial'],
+    [/delete the key with `squad_state_delete`/u, 'skip deleting the key'],
+  ];
+
+  for (const [pattern, replacement] of mutations) {
+    const lines = runbook.split(/\r?\n/u);
+    const stepStart = lines.findIndex(line => line.startsWith('6. '));
+    const nextStepStart = lines.findIndex(
+      (line, index) => index > stepStart && line.startsWith('7. '),
+    );
+    const step = lines.slice(stepStart, nextStepStart).join('\n');
+    const malformedStep = step.replace(pattern, replacement);
+    assert.notEqual(malformedStep, step, `step mutation did not match: ${pattern}`);
+    const variant = [
+      ...lines.slice(0, stepStart),
+      ...malformedStep.split('\n'),
+      ...lines.slice(nextStepStart),
+    ].join('\n');
+    assert.notEqual(variant, runbook);
+    assert.deepEqual(
+      freshChildCreateIfAbsentStepErrors(variant),
+      ['fresh-child acceptance step 6 must verify atomic create conflict preservation'],
+      `malformed step mutation was not rejected: ${pattern}`,
+    );
+  }
+});
+
 test('fresh-child step rejects negated governed probe operations', () => {
   const runbook = fs.readFileSync(
     path.resolve(__dirname, '..', '..', 'docs', 'operations', 'squad-state-bridge.md'),

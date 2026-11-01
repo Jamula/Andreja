@@ -12,6 +12,9 @@ jobs:
   assign-work:
     # Only trigger on squad:{member} labels (not the base "squad" label)
     if: startsWith(github.event.label.name, 'squad:')
+    concurrency:
+      group: squad-issue-assign-${{ github.event.issue.number }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -30,6 +33,11 @@ jobs:
 
             // Extract member slug from label (e.g., "squad:deanna-troi" → "deanna-troi")
             const memberName = label.replace('squad:', '').toLowerCase();
+            const isCopilotAssignment = memberName === 'copilot';
+            if (isCopilotAssignment) {
+              core.info('Copilot acknowledgment is posted only after assignment is accepted.');
+              return;
+            }
 
             const teamFile = '.squad/team.md';
             if (!fs.existsSync(teamFile)) {
@@ -40,28 +48,21 @@ jobs:
             const content = fs.readFileSync(teamFile, 'utf8');
             const lines = content.split('\n');
 
-            // Check if this is a coding agent assignment
-            const isCopilotAssignment = memberName === 'copilot';
-
             let assignedMember = null;
-            if (isCopilotAssignment) {
-              assignedMember = { name: '@copilot', role: 'Coding Agent' };
-            } else {
-              let inMembersTable = false;
-              for (const line of lines) {
-                if (line.match(/^##\s+(Members|Team Roster)/i)) {
-                  inMembersTable = true;
-                  continue;
-                }
-                if (inMembersTable && line.startsWith('## ')) {
+            let inMembersTable = false;
+            for (const line of lines) {
+              if (line.match(/^##\s+(Members|Team Roster)/i)) {
+                inMembersTable = true;
+                continue;
+              }
+              if (inMembersTable && line.startsWith('## ')) {
+                break;
+              }
+              if (inMembersTable && line.startsWith('|') && !line.includes('---') && !line.includes('Name')) {
+                const cells = line.split('|').map(c => c.trim()).filter(Boolean);
+                if (cells.length >= 2 && slugify(cells[0]) === memberName) {
+                  assignedMember = { name: cells[0], role: cells[1] };
                   break;
-                }
-                if (inMembersTable && line.startsWith('|') && !line.includes('---') && !line.includes('Name')) {
-                  const cells = line.split('|').map(c => c.trim()).filter(Boolean);
-                  if (cells.length >= 2 && slugify(cells[0]) === memberName) {
-                    assignedMember = { name: cells[0], role: cells[1] };
-                    break;
-                  }
                 }
               }
             }
@@ -78,20 +79,7 @@ jobs:
             }
 
             // Post assignment acknowledgment
-            let comment;
-            if (isCopilotAssignment) {
-              comment = [
-                `### 🤖 Routed to @copilot (Coding Agent)`,
-                '',
-                `**Issue:** #${issue.number} — ${issue.title}`,
-                '',
-                `@copilot has been assigned and will pick this up automatically.`,
-                '',
-                `> The coding agent will create a \`copilot/${issue.number}-{slug}\` branch and open a draft PR.`,
-                `> Review the PR as you would any team member's work.`,
-              ].join('\n');
-            } else {
-              comment = [
+            const comment = [
                 `### 📋 Assigned to ${assignedMember.name} (${assignedMember.role})`,
                 '',
                 `**Issue:** #${issue.number} — ${issue.title}`,
@@ -102,7 +90,6 @@ jobs:
                 `> Otherwise, start a Copilot session and say:`,
                 `> \`${assignedMember.name}, work on issue #${issue.number}\``,
               ].join('\n');
-            }
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -123,39 +110,55 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const issue_number = context.payload.issue.number;
+            const copilotLogin = 'copilot-swe-agent[bot]';
+            const label = context.payload.label.name;
+            const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number });
+            if (issue.state !== 'open' ||
+                !issue.labels.some(existing => existing.name === label)) {
+              core.info(`Issue #${issue_number} is closed or no longer has ${label}; skipping stale Copilot handoff.`);
+              return;
+            }
+            if ((issue.assignees || []).some(assignee => assignee?.login === copilotLogin)) {
+              core.info(`Issue #${issue_number} is already assigned to Copilot; skipping duplicate handoff.`);
+              return;
+            }
 
             // Get the default branch name (main, master, etc.)
             const { data: repoData } = await github.rest.repos.get({ owner, repo });
             const baseBranch = repoData.default_branch;
 
-            try {
-              await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/assignees', {
-                owner,
-                repo,
-                issue_number,
-                assignees: ['copilot-swe-agent[bot]'],
-                agent_assignment: {
-                  target_repo: `${owner}/${repo}`,
-                  base_branch: baseBranch,
-                  custom_instructions: '',
-                  custom_agent: '',
-                  model: ''
-                },
-                headers: {
-                  'X-GitHub-Api-Version': '2022-11-28'
-                }
-              });
-              core.info(`Assigned copilot-swe-agent to issue #${issue_number} (base: ${baseBranch})`);
-            } catch (err) {
-              core.warning(`Assignment with agent_assignment failed: ${err.message}`);
-              // Fallback: try without agent_assignment
-              try {
-                await github.rest.issues.addAssignees({
-                  owner, repo, issue_number,
-                  assignees: ['copilot-swe-agent']
-                });
-                core.info(`Fallback assigned copilot-swe-agent to issue #${issue_number}`);
-              } catch (err2) {
-                core.warning(`Fallback also failed: ${err2.message}`);
+            const response = await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/assignees', {
+              owner,
+              repo,
+              issue_number,
+              assignees: [copilotLogin],
+              agent_assignment: {
+                target_repo: `${owner}/${repo}`,
+                base_branch: baseBranch,
+                custom_instructions: '',
+                custom_agent: '',
+                model: ''
+              },
+              headers: {
+                'X-GitHub-Api-Version': '2022-11-28'
               }
+            });
+            if (![200, 201].includes(response?.status) ||
+                !Array.isArray(response?.data?.assignees) ||
+                !response.data.assignees.some(assignee => assignee?.login === copilotLogin)) {
+              throw new Error(`Copilot assignment API did not confirm ${copilotLogin} for issue #${issue_number}; handoff is unverified.`);
             }
+            core.info(`Copilot assignment API accepted issue #${issue_number} (base: ${baseBranch}); session creation is not verified.`);
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number,
+              body: [
+                '### 🤖 Copilot assignment API accepted',
+                '',
+                `**Issue:** #${issue_number} — ${issue.title}`,
+                `The API accepted the coding-agent request and returned \`${copilotLogin}\` as an assignee (base: \`${baseBranch}\`).`,
+                '',
+                'This is not proof of a running session. Verify a Copilot session linked to this issue or a linked `copilot/{issue_number}-{slug}` draft PR before treating the handoff as started.',
+              ].join('\n')
+            });
