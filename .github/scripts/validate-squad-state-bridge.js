@@ -17,6 +17,7 @@ const REQUIRED_MCP_TOOLS = [
   'squad_state_append',
   'squad_state_delete',
   'squad_state_list',
+  'squad_state_create_if_absent',
   'squad_state_health',
   'memory.classify',
   'memory.write',

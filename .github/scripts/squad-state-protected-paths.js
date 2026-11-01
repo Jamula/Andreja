@@ -13,6 +13,7 @@ const PROTECTED_PATHS = Object.freeze([
   Object.freeze(['.squad/agents/*/history.md', '.squad/agents/state-bridge-validation/history.md', ':(glob).squad/agents/*/history.md']),
   Object.freeze(['.squad/agents/*/history-archive.md', '.squad/agents/state-bridge-validation/history-archive.md', ':(glob).squad/agents/*/history-archive.md']),
   Object.freeze(['.squad/casting/history.json', '.squad/casting/history.json', '.squad/casting/history.json']),
+  Object.freeze(['.squad/casting/registry-history.commit.json', '.squad/casting/registry-history.commit.json', '.squad/casting/registry-history.commit.json']),
   Object.freeze(['.squad/identity/', '.squad/identity/.state-bridge-validation', ':(glob).squad/identity/**']),
   Object.freeze(['.squad/memory/', '.squad/memory/.state-bridge-validation', ':(glob).squad/memory/**']),
   Object.freeze(['.squad/rai/audit-trail.md', '.squad/rai/audit-trail.md', '.squad/rai/audit-trail.md']),

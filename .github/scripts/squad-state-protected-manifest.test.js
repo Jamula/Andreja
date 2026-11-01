@@ -81,6 +81,17 @@ test('detects a deleted protected path', (t) => {
   assert.ok(compareWithBaseline(root, baseline).includes('.squad/casting/history.json'));
 });
 
+test('protects the atomic casting commit manifest', (t) => {
+  const { baseline, root } = fixture(t);
+  const file = protectedFile(root, '.squad/casting/registry-history.commit.json');
+  writeBaseline(root, baseline);
+  fs.rmSync(file);
+  assert.deepEqual(
+    compareWithBaseline(root, baseline),
+    ['.squad/casting/registry-history.commit.json'],
+  );
+});
+
 test('includes protected archived agent history', (t) => {
   const { baseline, root } = fixture(t);
   writeBaseline(root, baseline);

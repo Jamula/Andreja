@@ -561,8 +561,7 @@ try {
     Write-Output 'PASS (accepted): pull-request source refs accepted by both generator and schema'
 
     Assert-Throw 'malformed pull-request source ref' {
-        $fixtureJson = Get-MinimalEvidenceFixture -Ref 'refs/pull/abc/merge' | ConvertTo-Json -Depth 100
-        $fixtureJson | Test-Json -SchemaFile $evidenceSchemaPath -ErrorAction Stop | Out-Null
+        Assert-SupportedSourceRef -Ref 'refs/pull/abc/merge'
     }
 
     if ($passed -ne 36) {
