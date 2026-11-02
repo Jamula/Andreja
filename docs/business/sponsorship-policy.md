@@ -2,20 +2,14 @@
 
 - **Status:** Draft for ratification — **no sponsorship is accepted under this
   policy yet, and no payment provider is selected by this policy**
-- **Owner:** Quark (financial terms) drafts with Sarek (terms/licensing), Deanna
-  Troi (privacy/trust), Tuvok (integration security), and Neelix (public
+- **Owner:** FinOps lead (financial terms) drafts with Legal research lead (terms/licensing), Privacy lead (privacy/trust), Security lead (integration security), and Marketing lead (public
   communication) reviewing; Cyrus approves
 - **Issue:** [#11 - Establish burn, usage, and sponsorship controls](https://github.com/Jamula/Andreja/issues/11)
 - **Milestone:** [Phase 0 - Govern and decide](https://github.com/Jamula/Andreja/milestone/1)
 - **Depends on / referenced by:** [`docs/plan.md`](../plan.md) (`### Initial
   sustainability model`, `## Public website, help, and support`),
   [`docs/adr/0000-plan-ratification.md`](../adr/0000-plan-ratification.md),
-  [`docs/cost-model.md`](../cost-model.md),
-  [`.squad/agents/quark/charter.md`](../../.squad/agents/quark/charter.md),
-  [`.squad/agents/sarek/charter.md`](../../.squad/agents/sarek/charter.md),
-  [`.squad/agents/deanna-troi/charter.md`](../../.squad/agents/deanna-troi/charter.md),
-  [`.squad/agents/tuvok/charter.md`](../../.squad/agents/tuvok/charter.md),
-  [`.squad/agents/neelix/charter.md`](../../.squad/agents/neelix/charter.md)
+  [`docs/cost-model.md`](../cost-model.md)
 
 ## Scope and non-duplication
 
@@ -27,7 +21,7 @@ termination rules. It does **not**:
 - Choose GitHub Sponsors, Open Collective, direct sponsorship, or any other payment
   processor. `docs/plan.md`'s initial sustainability model requires evaluating those
   options only **after** licensing, tax/accounting, payment-processing, and
-  repository-ownership questions are reviewed by Sarek and Quark.
+  repository-ownership questions are reviewed by Legal research lead and FinOps lead.
 - Set the cost model, burn ledger, or unit-economics reporting (see
   [`docs/cost-model.md`](../cost-model.md)).
 - Authorize public posting of a sponsorship page. Publication requires this policy's
@@ -43,7 +37,7 @@ termination rules. It does **not**:
   clearly labeled as sponsorship, and never mixed with editorial or product content
   in a way that implies endorsement of specific claims.
 - Sponsorship income is treated as separate from user subscription revenue and does
-  not, by itself, prove a durable SaaS business model. Quark reports sponsor income
+  not, by itself, prove a durable SaaS business model. FinOps lead reports sponsor income
   separately in the cost model's actual-versus-budget reporting.
 - Accepting sponsorship records income in the company financial ledger but does not
   authorize or increase the development AI-credit, professional-services, or
@@ -64,9 +58,9 @@ accepted. At minimum, Andreja will not accept sponsorship from:
   private planning artifacts as a condition of sponsorship (see [Prohibited
   access](#prohibited-access-no-ads-no-personal-data-no-private-planning)).
 - Entities whose association would create an unresolved conflict of interest with
-  Cyrus, a Squad agent's owning organization, or an existing vendor/legal
+  Cyrus, a contributor's organization, or an existing vendor/legal
   relationship, until that conflict is disclosed and resolved.
-- Anonymous or unverifiable sponsors above a threshold Quark and Sarek set before
+- Anonymous or unverifiable sponsors above a threshold FinOps lead and Legal research lead set before
   intake opens.
 
 The final eligibility list, verification process, and threshold are ratified as part
@@ -79,7 +73,7 @@ of accepting this policy, not assumed from this draft.
   sponsorship, not endorsement.
 - Sponsorship terms (what a sponsor receives, and does not receive) are published in
   full; no side letter grants a sponsor rights beyond the published terms.
-- Sponsor income is included in Quark's aggregate financial reporting; individual
+- Sponsor income is included in FinOps lead's aggregate financial reporting; individual
   sponsorship amounts are disclosed only to the extent the sponsor and Cyrus agree is
   appropriate, but the existence and tier of every sponsorship relationship is never
   hidden.
@@ -89,16 +83,15 @@ of accepting this policy, not assumed from this draft.
 - A sponsorship must not create — or must fully disclose and mitigate — a conflict
   between the sponsor's interests and Andreja's product decisions, public claims, or
   user trust commitments.
-- Sarek reviews sponsorship terms for legal/contractual conflicts; Deanna Troi
-  reviews for privacy/trust conflicts; Tuvok reviews any proposed technical
-  integration for security conflicts; Neelix reviews public communication for
+- Legal research lead reviews sponsorship terms for legal/contractual conflicts; Privacy lead
+  reviews for privacy/trust conflicts; Security lead reviews any proposed technical
+  integration for security conflicts; Marketing lead reviews public communication for
   undisclosed influence.
 - Product, architecture, and roadmap decisions remain governed by `docs/plan.md` and
   accepted ADRs. No sponsorship agreement can amend `docs/plan.md`, override a
   security/privacy/legal gate, or bypass Cyrus's final decision authority.
-- Andreja's crew charters (Picard, Quark, Sarek, Deanna Troi, Tuvok, Neelix) continue
-  to apply unchanged to any work touching a sponsor relationship; no charter is
-  suspended or overridden by a sponsorship agreement.
+- The product, security, privacy, legal, and financial-control boundaries
+  continue to apply to every sponsor relationship.
 
 ## Prohibited access: no ads, no personal data, no private planning
 
@@ -116,12 +109,11 @@ Sponsors receive **none** of the following, without exception:
   routed through the same feedback channels as any other user (see `docs/plan.md`'s
   Feedback and Support Framework) and disclosed as sponsor-originated if it
   influences a decision.
-- **No access to private planning.** Sponsors receive no access to `.squad/` runtime
-  state, private roadmap discussions, unreleased ADRs, or any non-public planning
+- **No access to private planning.** Sponsors receive no access to private roadmap discussions, unreleased ADRs, or any non-public planning
   artifact.
 - **No security or privacy exceptions.** A sponsorship never grants a bypass of a
   security control, privacy commitment, tenant-isolation guarantee, or data
-  classification rule. Tuvok and Deanna Troi's gates apply identically regardless of
+  classification rule. Security lead and Privacy lead's gates apply identically regardless of
   sponsorship status.
 
 ## Termination and refund
@@ -140,7 +132,7 @@ Sponsors receive **none** of the following, without exception:
 
 ## Tax, payment, accounting, and legal questions
 
-The following are explicitly **open questions**, owned by Sarek and Quark, that must
+The following are explicitly **open questions**, owned by Legal research lead and FinOps lead, that must
 be resolved with qualified counsel **before** this policy is activated and before any
 payment provider is selected:
 
@@ -149,7 +141,7 @@ payment provider is selected:
 - Payment-processing terms, fees, chargebacks, and compliance obligations for
   whichever provider (GitHub Sponsors, Open Collective, direct sponsorship, or
   another) is eventually evaluated and chosen.
-- Accounting treatment of sponsorship income in Quark's company financial ledger,
+- Accounting treatment of sponsorship income in FinOps lead's company financial ledger,
   including recognition timing and reporting in actual-versus-budget/runway figures.
 - Repository-ownership and licensing questions that affect who may legally receive
   and administer sponsorship funds on Andreja's behalf (see `docs/plan.md`'s
@@ -163,7 +155,7 @@ This policy does not answer these questions; it records that they gate activatio
 A public sponsorship page or any public solicitation of sponsorship is published
 only after **all** of the following:
 
-1. This policy is approved by Cyrus (with Sarek, Deanna Troi, Tuvok, and Neelix
+1. This policy is approved by Cyrus (with Legal research lead, Privacy lead, Security lead, and Marketing lead
    review recorded).
 2. Product name, trademark, domain, and namespace clearance is complete, per
    `docs/plan.md`'s licensing/IP section — the public site otherwise stays on

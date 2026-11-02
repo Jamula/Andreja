@@ -26,7 +26,7 @@ def framework_scenarios():
         encoding="utf-8"
     )
     section = source.split("## Phase 1B acceptance evidence\n", 1)[1].split(
-        "\nGuinan, Deanna Troi", 1
+        "\nSupport lead, Privacy lead", 1
     )[0]
     return [
         normalized(item)

@@ -3,8 +3,8 @@
 - **Issue:** [#109](https://github.com/Jamula/Andreja/issues/109)
 - **Evaluated:** 2026-08-30
 - **Revalidated:** 2026-09-07
-- **Quality owner:** Data
-- **CI/operations reviewer:** Jett Reno
+- **Quality owner:** Quality lead
+- **CI/operations reviewer:** Operations lead
 - **Original host:** .NET SDK 10.0.301 on Ubuntu 24.04
 - **Revalidation host:** .NET SDK 10.0.301 on Windows ARM64
 - **Outcome:** Retain `xunit.runner.visualstudio` 4.0.0 and
@@ -40,7 +40,7 @@ CodeCoverage 18.9.0, and TestHost supplies ObjectModel 18.9.0. The adapter's
 ## Authorization and current-main revalidation
 
 On 2026-09-07, decision owner Cyrus Jamula explicitly directed issue #109 to
-completion after it was marked ready and assigned to Data. That instruction
+completion after it was marked ready and assigned to Quality lead. That instruction
 narrowly releases this dependency evaluation from ADR 0007's original backlog
 prerequisite; it does not accept the Proposed ADR or authorize the separately
 tracked framework migration.

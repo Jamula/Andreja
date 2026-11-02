@@ -5,7 +5,7 @@
 - **Status:** Phase 0 framework decision complete; operational gates remain open
 - **Framework issue:** [#10](https://github.com/Jamula/Andreja/issues/10)
 - **Source PR:** [#16](https://github.com/Jamula/Andreja/pull/16)
-- **Framework owner:** Guinan
+- **Framework owner:** Support lead
 - **Decision owner:** Cyrus Jamula
 - **Privacy decision package:** [Proposed feedback privacy, retention, and
   data-subject rights decision](../legal/feedback-privacy-retention-dsr.md)
@@ -23,7 +23,7 @@ verdicts are historical; exact-revision review and a human approval are pending.
 
 Cyrus directed that issue #10 close as the completed Phase 0 framework decision
 and delegated schemas, UX, triage, retention proposals, abuse controls, tests,
-metrics, and other implementation details to Guinan and the relevant
+metrics, and other implementation details to Support lead and the relevant
 specialists. Only the consolidated gate packages listed in the
 [gate matrix](#successor-gate-matrix) return to Cyrus for approval.
 
@@ -33,7 +33,7 @@ feedback direction in the ratified `docs/plan.md`. Acceptance of the framework
 settles the lifecycle and execution boundaries below; it is not deployment or
 launch approval and does not amend the plan.
 
-Guinan owns the feedback lifecycle and the user-visible loop. Feature and
+Support lead owns the feedback lifecycle and the user-visible loop. Feature and
 domain owners remain accountable for investigation and remediation. Security
 vulnerabilities and suspected personal-data incidents leave the ordinary
 feedback workflow immediately and use a private response path.
@@ -109,7 +109,7 @@ adds them explicitly.
 | FH-2 | Behavioral | Every unresolved policy, provider, control, capacity, or launch choice is decided in exactly one gate issue in the matrix, not in implementation code or an unreviewed pull request. |
 | FH-3 | Negative | Closing issue #10 or merging a documentation PR does not activate collection, publication, a provider, spend, deployment, launch, external email, or support-time commitments. |
 | FH-4 | Negative | No executor substitutes a convenient provider default, retention period, legal basis, abuse threshold, tracking-secret policy, or service-level target for an approved gate decision. |
-| FH-5 | Edge | If a gate output conflicts with this framework, execution stops and the conflict is escalated to Guinan and the gate owner; the narrower or more convenient interpretation does not win silently. |
+| FH-5 | Edge | If a gate output conflicts with this framework, execution stops and the conflict is escalated to Support lead and the gate owner; the narrower or more convenient interpretation does not win silently. |
 | FH-6 | Edge | If a dependency is unavailable, failed, stale, or cannot be exercised in Phase 0, the evidence records `Blocked` or `Unavailable`; it never records success, skip, or an equivalent success-shaped fallback. |
 | FH-7 | Dependency | Operational readiness issue #158 cannot receive a final proceed recommendation until #155, #156, and #157 contain explicit approved outputs, Cyrus has separately approved the bounded staging/evidence authorization, and the exact-release evidence satisfies all 14 Phase 1B scenarios. |
 | FH-8 | Dependency | Only Cyrus's explicit recorded decision in the applicable gate issue can approve policy, provider/spend, residual risk, deployment stage, or launch; issue closure, label changes, pull-request merge, or specialist approval cannot substitute for it. |
@@ -219,7 +219,7 @@ metadata.
 | `actualOutcome` | No | Actual user-visible outcome. |
 | `reproduction` | No | Minimal sanitized steps; never task, prompt, file, message, or connector content. |
 | `reportedImpact` | Yes | Submitter-described effect and whether a workaround exists. It does not set final severity. |
-| `severity` | Yes after triage | Guinan-assigned severity using the rubric below. |
+| `severity` | Yes after triage | Support lead-assigned severity using the rubric below. |
 | `diagnostics` | No | Array of independently consented diagnostic fields. Empty by default. |
 | `privacyClassification` | Yes after screen | Screening result and handling restrictions, not a copy of detected sensitive content. |
 | `attachments` | No | Empty by default. Enabled only after the attachment controls and retention decision are approved. |
@@ -299,7 +299,7 @@ an Andreja user data plane.
    protected records. The raw receipt secret is disclosed only to the requester
    at issuance and is never persisted. It enqueues only an internal `feedbackId`
    and content-free correlation metadata.
-6. Guinan accesses the private triage view through least-privilege
+6. Support lead accesses the private triage view through least-privilege
    authorization. No direct database or queue browsing is the normal support
    workflow.
 7. Any GitHub issue is produced only from a separately saved sanitized draft
@@ -334,7 +334,7 @@ correction, deletion, objection, and consent-withdrawal routes. Those routes
 must cover both submitters and non-user subjects: people identified, described,
 or otherwise represented in a submission or publication who did not submit it
 and may have no Andreja account, GitHub account, return channel, or tracking
-receipt. Sarek and Deanna Troi must review the legal-basis/consent and notice
+receipt. Legal research lead and Privacy lead must review the legal-basis/consent and notice
 decisions; this framework does not select them.
 
 Every storage class has an approved retention trigger and purge behavior for
@@ -355,7 +355,7 @@ beyond the approved response.
 When submitter and non-user-subject instructions conflict, or a request
 intersects another person's rights, a legal/security hold, incident evidence,
 or an unsafe disclosure risk, processing and publication of the disputed
-content remain restricted while Deanna Troi and Sarek apply the approved
+content remain restricted while Privacy lead and Legal research lead apply the approved
 conflict rule. The decision records the controlling reason, partial
 access/correction/deletion or redaction result, denial basis, appeal route,
 backup/derived-store propagation, completion evidence, and a safe response.
@@ -408,7 +408,7 @@ ordinary spam, and rejected submissions never echo sensitive input.
 
 ### Privacy screen
 
-Guinan or an authorized restricted reviewer:
+Support lead or an authorized restricted reviewer:
 
 1. Checks the category and private-route triggers.
 2. Removes or restricts prohibited content without copying it elsewhere.
@@ -418,7 +418,7 @@ Guinan or an authorized restricted reviewer:
 6. Records only controlled reason codes for redaction or restriction.
 
 Security/privacy incident content is not investigated in this workflow.
-Guinan sends the safe acknowledgment and hands the restricted reference to the
+Support lead sends the safe acknowledgment and hands the restricted reference to the
 approved incident owner.
 
 ### Dedupe before GitHub
@@ -431,7 +431,7 @@ Deduplication occurs after privacy screening and before issue drafting:
 2. Search active and recently resolved private feedback plus sanitized
    repository issues. Do not compare contact data, tenant identifiers, IP
    addresses, or excluded content.
-3. Have Guinan confirm the match; similarity alone does not merge records.
+3. Have Support lead confirm the match; similarity alone does not merge records.
 4. Link the new `feedbackId` to the canonical work item while preserving its
    own tracking reference, contact preference, consent receipts, and
    verification opportunity.
@@ -450,12 +450,12 @@ resolution time.
 | Severity | Definition | Route |
 | --- | --- | --- |
 | `S0 Restricted` | Suspected vulnerability, unauthorized cross-tenant access, secret exposure, or personal-data incident | Stop ordinary triage; acknowledge without detail and hand to the approved private security/privacy incident route. |
-| `S1 Critical` | Widespread unavailability, unrecoverable data loss/corruption, critical accessibility barrier, or severe safety/user-agency failure without a viable workaround | Escalate to Guinan, the accountable domain owner, operations, Data, and the applicable security/privacy lead. Cyrus decides extraordinary prioritization. |
+| `S1 Critical` | Widespread unavailability, unrecoverable data loss/corruption, critical accessibility barrier, or severe safety/user-agency failure without a viable workaround | Escalate to Support lead, the accountable domain owner, operations, Quality lead, and the applicable security/privacy lead. Cyrus decides extraordinary prioritization. |
 | `S2 High` | Major supported outcome blocked for one or more users, repeated data-integrity risk, or serious accessibility failure; workaround absent or unsafe | Route promptly to the domain owner with acceptance and failure-path evidence. |
 | `S3 Normal` | Material defect, documentation/support gap, or degraded outcome with a reasonable workaround | Normal triage and prioritization. |
 | `S4 Improvement` | Feature request, usability improvement, question, or low-impact documentation suggestion | Route to the appropriate portfolio or help backlog after dedupe. |
 
-Guinan may raise or lower severity when evidence changes and communicates the
+Support lead may raise or lower severity when evidence changes and communicates the
 reason. Security/privacy classification overrides ordinary severity handling.
 Numeric escalation and aging thresholds are Phase 0 capacity decisions.
 
@@ -494,7 +494,7 @@ Rules:
 
 `NeedsInformation`, `Declined`, `Duplicate`, `Delivered`, and `Closed` can
 return to `Triaged`. A submitter can request reopen through the tracking
-experience or safe return channel. Guinan records the new evidence, confirms or
+experience or safe return channel. Support lead records the new evidence, confirms or
 rejects reopen with a reason, and never requires a new public disclosure.
 
 ### Opaque tracking
@@ -585,30 +585,30 @@ from notifications, caches, clones, or forks.
 | Feedback class | Accountable destination |
 | --- | --- |
 | Product/domain behavior | Relevant feature or domain owner |
-| Public site, help, accessibility | Jadzia Dax, with Data for accessibility evidence |
-| Platform/channel operations | Jett Reno |
-| Assistant, skills, semantic graph, federation | Seven of Nine or the named capability owner |
-| Non-conflict-class security vulnerability or technical incident | Tuvok through the private incident process |
-| Non-conflict-class privacy/consent or suspected data incident | Deanna Troi, with Tuvok and Sarek as required, through the private process |
+| Public site, help, accessibility | UX lead, with Quality lead for accessibility evidence |
+| Platform/channel operations | Operations lead |
+| Assistant, skills, semantic graph, federation | Assistant and skills lead or the named capability owner |
+| Non-conflict-class security vulnerability or technical incident | Security lead through the private incident process |
+| Non-conflict-class privacy/consent or suspected data incident | Privacy lead, with Security lead and Legal research lead as required, through the private process |
 | Conflict-class report, including a security or privacy incident | Directly to appointed qualified external counsel or an appointed independent reviewer; no Cyrus-mediated intake or triage; specialist participation only as the appointed recipient determines. Unavailable until the recipient is appointed and a direct contact method is verified. |
-| Legal, IP, regulatory, or privilege-sensitive inquiry | Sarek for non-privileged research and counsel-ready questions; requests for legal advice or privileged handling route only to appointed qualified external counsel |
-| Cost, sponsorship, or sustainability | Quark; Neelix joins for approved public/community communication |
-| Quality, regression, or release evidence | Data |
-| Portfolio priority or cross-owner conflict | Picard; Cyrus retains final human accountability |
+| Legal, IP, regulatory, or privilege-sensitive inquiry | Legal research lead for non-privileged research and counsel-ready questions; requests for legal advice or privileged handling route only to appointed qualified external counsel |
+| Cost, sponsorship, or sustainability | FinOps lead; Marketing lead joins for approved public/community communication |
+| Quality, regression, or release evidence | Quality lead |
+| Portfolio priority or cross-owner conflict | Product lead; Cyrus retains final human accountability |
 
 ### RACI
 
 | Activity | Responsible | Accountable | Consulted | Informed |
 | --- | --- | --- | --- | --- |
-| Ordinary intake operation, acknowledgment, privacy screen, dedupe, tracking, and closure for non-conflict-class reports | Guinan | Guinan | Deanna Troi, Tuvok, Jadzia Dax, Jett Reno as applicable | Submitter |
-| Feature investigation and remediation | Assigned delivery team | Feature/domain owner | Guinan, Data, applicable specialists | Submitter |
-| Non-conflict-class security vulnerability/incident handling | Approved incident responders | Tuvok | Deanna Troi, Sarek, Jett Reno, Data | Guinan and Cyrus on a need-to-know basis |
-| Non-conflict-class privacy/consent/data-incident handling | Approved privacy/incident responders | Deanna Troi | Tuvok, Sarek, Jett Reno, Data | Guinan and Cyrus on a need-to-know basis |
+| Ordinary intake operation, acknowledgment, privacy screen, dedupe, tracking, and closure for non-conflict-class reports | Support lead | Support lead | Privacy lead, Security lead, UX lead, Operations lead as applicable | Submitter |
+| Feature investigation and remediation | Assigned delivery team | Feature/domain owner | Support lead, Quality lead, applicable specialists | Submitter |
+| Non-conflict-class security vulnerability/incident handling | Approved incident responders | Security lead | Privacy lead, Legal research lead, Operations lead, Quality lead | Support lead and Cyrus on a need-to-know basis |
+| Non-conflict-class privacy/consent/data-incident handling | Approved privacy/incident responders | Privacy lead | Security lead, Legal research lead, Operations lead, Quality lead | Support lead and Cyrus on a need-to-know basis |
 | Conflict-class report handling (unavailable until recipient appointment and direct-contact verification) | Appointed qualified external counsel or appointed independent reviewer | The appointed recipient | Qualified specialists only as the appointed recipient determines | Reporter and other parties only as the appointed recipient or law authorizes; Cyrus is excluded |
-| Acceptance and regression evidence | Delivery team and Data | Data | Domain owner, Guinan, submitter where safe | Cyrus |
-| Help, known-issue, and release-content update | Domain owner and Jadzia Dax | Domain owner | Guinan, Data, Neelix when public claims apply | Submitters following the item |
-| Feedback metric definitions and quality | Guinan and Data | Guinan | Deanna Troi, Tuvok, Quark, Picard | Cyrus |
-| Numeric targets, retention, legal basis, provider, and launch approval | Named artifact owners | Cyrus | Guinan, Deanna Troi, Tuvok, Sarek, Data, Jett Reno, Quark | Relevant delivery owners |
+| Acceptance and regression evidence | Delivery team and Quality lead | Quality lead | Domain owner, Support lead, submitter where safe | Cyrus |
+| Help, known-issue, and release-content update | Domain owner and UX lead | Domain owner | Support lead, Quality lead, Marketing lead when public claims apply | Submitters following the item |
+| Feedback metric definitions and quality | Support lead and Quality lead | Support lead | Privacy lead, Security lead, FinOps lead, Product lead | Cyrus |
+| Numeric targets, retention, legal basis, provider, and launch approval | Named artifact owners | Cyrus | Support lead, Privacy lead, Security lead, Legal research lead, Quality lead, Operations lead, FinOps lead | Relevant delivery owners |
 
 RACI does not grant broad access to feedback content. Each participant receives
 only the minimum sanitized information needed for the assigned action.
@@ -619,7 +619,7 @@ access to its contents, investigation, findings, remediation, or retaliation
 decisions. Until that recipient is appointed and a direct contact method is
 verified, the conflict-class reporting capability remains unavailable: do not
 represent it as available or accept or process conflict-class reports through
-ordinary intake. Sarek may prepare non-privileged research and counsel-ready
+ordinary intake. Legal research lead may prepare non-privileged research and counsel-ready
 questions but is not counsel, does not create privilege, and does not operate a
 privileged channel.
 
@@ -737,7 +737,7 @@ Controls:
 - Prohibit joins to personal task/profile data, assistant prompts, connector
   data, advertising identifiers, company accounting, or unrestricted product
   telemetry.
-- Keep support metrics separate from Quark's financial ledger and any future
+- Keep support metrics separate from FinOps lead's financial ledger and any future
   business/product analytics platform.
 - Do not rank, target, price, moderate, or personalize users from feedback
   behavior.
@@ -761,8 +761,8 @@ specialist verdicts, or approval of #155-#157 do not create this authorization.
 The authorization is binary and independently revocable. It must record:
 
 - Explicit approved outputs from #155, #156, and #157 as prerequisites; the
-  exact release commit and immutable artifact digest under test; Jett Reno as
-  staging operator; Data as evidence custodian; Tuvok and Deanna Troi as
+  exact release commit and immutable artifact digest under test; Operations lead as
+  staging operator; Quality lead as evidence custodian; Security lead and Privacy lead as
   security/privacy stop authorities; and the named reviewers and approvers.
 - An allowlisted inventory of non-production accounts, providers, regions,
   resources, queues, stores, keys, sender identities, and dedicated staging DNS
@@ -778,7 +778,7 @@ The authorization is binary and independently revocable. It must record:
 - Immediate revocation and containment on scope drift, real-data contact,
   isolation failure, unauthorized recipient/domain, cost-cap breach, credential
   compromise, or failed security/privacy control. Cyrus may revoke at any time;
-  Tuvok, Deanna Troi, and Jett Reno may stop the exercise within their named
+  Security lead, Privacy lead, and Operations lead may stop the exercise within their named
   containment authority without converting that stop into a launch decision.
 - Teardown, key revocation and receipt-secret verifier revocation, DNS/sender
   removal, queue/store purge, provider cancellation or disablement, cost
@@ -849,7 +849,7 @@ Evidence Authorization demonstrate:
 14. The required runbooks are reviewed and exercised with content-free
     evidence, and each unresolved failure has a blocking issue and owner.
 
-Guinan, Deanna Troi, Tuvok, Data, and Cyrus review the evidence appropriate to
+Support lead, Privacy lead, Security lead, Quality lead, and Cyrus review the evidence appropriate to
 their roles. Cyrus approves the Phase 1B launch decision and residual risks.
 
 ## Successor gate matrix
@@ -862,10 +862,10 @@ blocked.
 
 | Gate package | Tracking issue | Accountable owner | Dependencies | Status and authority |
 | --- | --- | --- | --- | --- |
-| Privacy, legal, retention, and DSR | [#155](https://github.com/Jamula/Andreja/issues/155) | Deanna Troi, with qualified counsel; Picard independently revises the rejected retention gate | Framework #10; descriptive baselines #116/PR #117 | **AMEND / Blocked.** Issue #155 is reopened after merge #172 without approval. Cyrus authorized the v1.1 amendment, not policy acceptance. The single seven-calendar-day interval cannot operate until human/qualified-counsel post-deadline disposition is authorized; silence cannot renew retention and binding duties remain protected. Exact-revision approval and counsel confirmation remain pending for roles, basis/consent, notice, retention, rights/conflicts/propagation, transfers, holds, and public-artifact remediation. No activation is authorized. |
-| Security, abuse, tracking, and incident routing | [#156](https://github.com/Jamula/Andreja/issues/156) | Tuvok, with Jett Reno | Framework #10; intake-specific privacy outputs from #155 | **Open / Blocked.** Cyrus accepts or rejects the consolidated control set and residual security risk. |
-| Platform, vendor, residency, transactional email, and cost | [#157](https://github.com/Jamula/Andreja/issues/157) | Jett Reno, with Quark | Approved requirements from #155 and #156; Phase 0 $0/no-cloud rule | **Open / Blocked.** Cyrus approves architecture/provider/cost choices and any separately bounded budget; the issue itself authorizes no account or spend. |
-| Operational readiness, commitments, evidence, and launch | [#158](https://github.com/Jamula/Andreja/issues/158) | Guinan, with Data | Approved outputs from #155-#157; a separate Cyrus-approved bounded Evidence Authorization; canonical help may be delivered through [#93](https://github.com/Jamula/Andreja/issues/93); exact-release evidence for all 14 scenarios | **Open / Blocked.** Cyrus separately authorizes the temporary staging exercise, then alone records proceed, extend-learning, de-scope, or stop and any residual-risk/launch approval. Neither decision implies the other. |
+| Privacy, legal, retention, and DSR | [#155](https://github.com/Jamula/Andreja/issues/155) | Privacy lead, with qualified counsel; Product lead independently revises the rejected retention gate | Framework #10; descriptive baselines #116/PR #117 | **AMEND / Blocked.** Issue #155 is reopened after merge #172 without approval. Cyrus authorized the v1.1 amendment, not policy acceptance. The single seven-calendar-day interval cannot operate until human/qualified-counsel post-deadline disposition is authorized; silence cannot renew retention and binding duties remain protected. Exact-revision approval and counsel confirmation remain pending for roles, basis/consent, notice, retention, rights/conflicts/propagation, transfers, holds, and public-artifact remediation. No activation is authorized. |
+| Security, abuse, tracking, and incident routing | [#156](https://github.com/Jamula/Andreja/issues/156) | Security lead, with Operations lead | Framework #10; intake-specific privacy outputs from #155 | **Open / Blocked.** Cyrus accepts or rejects the consolidated control set and residual security risk. |
+| Platform, vendor, residency, transactional email, and cost | [#157](https://github.com/Jamula/Andreja/issues/157) | Operations lead, with FinOps lead | Approved requirements from #155 and #156; Phase 0 $0/no-cloud rule | **Open / Blocked.** Cyrus approves architecture/provider/cost choices and any separately bounded budget; the issue itself authorizes no account or spend. |
+| Operational readiness, commitments, evidence, and launch | [#158](https://github.com/Jamula/Andreja/issues/158) | Support lead, with Quality lead | Approved outputs from #155-#157; a separate Cyrus-approved bounded Evidence Authorization; canonical help may be delivered through [#93](https://github.com/Jamula/Andreja/issues/93); exact-release evidence for all 14 scenarios | **Open / Blocked.** Cyrus separately authorizes the temporary staging exercise, then alone records proceed, extend-learning, de-scope, or stop and any residual-risk/launch approval. Neither decision implies the other. |
 
 ### Decision coverage and handoffs
 
@@ -885,12 +885,12 @@ dependency's decision.
 
 | Signal | Required response | Owner |
 | --- | --- | --- |
-| An implementation needs an unapproved legal basis, retention period, provider term, control threshold, support target, or launch exception | **Stop.** Record the open choice in its existing gate issue; do not create a local default or duplicate decision issue. | Guinan and the gate owner |
-| Feedback content, contact data, diagnostics, tracking secrets, incident details, or DSR evidence reaches GitHub, logs, metrics, alerts, queue metadata, or provider metadata outside the approved contract | **Contain and escalate privately.** Suspend the affected route and follow the approved incident process; do not investigate publicly. | Tuvok or Deanna Troi |
-| Accepted records can be silently lost, duplicated without independent status, enumerated, or disclosed through response differences | **Block activation.** Treat the behavior as a failed security and operational-readiness criterion. | Tuvok, Guinan, and Data |
-| A provider, region, subprocessor, sender, cost unit, quota, or cancellation path cannot be evidenced | **Stop provider selection.** Keep Phase 0 paper/local and return the gap to #157. | Jett Reno and Quark |
-| A controlled-live exercise lacks an unexpired Evidence Authorization, exceeds its resource/recipient/time/spend scope, touches real data, or cannot prove teardown | **Stop and contain.** Revoke access, preserve only content-free evidence, and return to #158 for a new explicit Cyrus decision; never treat partial evidence as launch approval. | Jett Reno, Data, Tuvok, and Deanna Troi |
-| Capacity cannot support a proposed public commitment or a required runbook has no owner/exercise evidence | **Do not publish the commitment or recommend launch.** De-scope or extend learning in #158. | Guinan and Data |
+| An implementation needs an unapproved legal basis, retention period, provider term, control threshold, support target, or launch exception | **Stop.** Record the open choice in its existing gate issue; do not create a local default or duplicate decision issue. | Support lead and the gate owner |
+| Feedback content, contact data, diagnostics, tracking secrets, incident details, or DSR evidence reaches GitHub, logs, metrics, alerts, queue metadata, or provider metadata outside the approved contract | **Contain and escalate privately.** Suspend the affected route and follow the approved incident process; do not investigate publicly. | Security lead or Privacy lead |
+| Accepted records can be silently lost, duplicated without independent status, enumerated, or disclosed through response differences | **Block activation.** Treat the behavior as a failed security and operational-readiness criterion. | Security lead, Support lead, and Quality lead |
+| A provider, region, subprocessor, sender, cost unit, quota, or cancellation path cannot be evidenced | **Stop provider selection.** Keep Phase 0 paper/local and return the gap to #157. | Operations lead and FinOps lead |
+| A controlled-live exercise lacks an unexpired Evidence Authorization, exceeds its resource/recipient/time/spend scope, touches real data, or cannot prove teardown | **Stop and contain.** Revoke access, preserve only content-free evidence, and return to #158 for a new explicit Cyrus decision; never treat partial evidence as launch approval. | Operations lead, Quality lead, Security lead, and Privacy lead |
+| Capacity cannot support a proposed public commitment or a required runbook has no owner/exercise evidence | **Do not publish the commitment or recommend launch.** De-scope or extend learning in #158. | Support lead and Quality lead |
 | A specialist verdict conflicts with another gate or the framework | Record the conflict and alternatives in both affected issues; Cyrus resolves the consolidated tension. | Gate owners; Cyrus decides |
 
 ## Assumptions and revision triggers

@@ -5,32 +5,31 @@
   [confirmed with the other plan-of-record baselines](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115264261))
 - **Accepted source SHA-256 (LF-normalized):**
   `cf1f9d3a81684cc03478231eeb585f574bfa9b1522da9d4aed858059deb533aa`
+- **Current copy:** Proposed editorial cleanup; not accepted.
 - **Version note:** The decision accepts the exact source hash above. This
-  status annotation does not amend the financial-control framework or authorize
+  proposed copy does not amend the accepted financial-control framework or authorize
   a numeric envelope, purchase, account, provider call, cloud provisioning,
   counsel/legal conclusion, residual-risk acceptance, collection, launch, plan
   amendment, operating-model acceptance, or Phase 0 exit.
-- **Owner:** Quark (CFO, FinOps and Sustainability Lead)
+- **Owner:** FinOps lead (CFO, FinOps and Sustainability Lead)
 - **Issue:** [#11 - Establish burn, usage, and sponsorship controls](https://github.com/Jamula/Andreja/issues/11)
 - **Milestone:** [Phase 0 - Govern and decide](https://github.com/Jamula/Andreja/milestone/1)
 - **Depends on / referenced by:** [`docs/plan.md`](plan.md) (`## Cost and FinOps`,
   `### Initial sustainability model`, `## Documentation structure`),
   [`docs/adr/0000-plan-ratification.md`](adr/0000-plan-ratification.md),
-  [`.squad/directives.md`](../.squad/directives.md),
-  [`.squad/agents/quark/charter.md`](../.squad/agents/quark/charter.md),
   [`docs/business/sponsorship-policy.md`](business/sponsorship-policy.md)
 
 ## Scope and non-duplication
 
-This document is Quark's cost model: the three usage/spend ledgers, the Phase 0
+This document is FinOps lead's cost model: the three usage/spend ledgers, the Phase 0
 no-provisioning rule, the separate AI-credit and professional-services envelopes, the
 Phase 1A and Phase 1B spend approval gates, vendor commitment tracking, and the
-actual-versus-budget/forecast/runway/unit-economics reporting Quark publishes. It does
+actual-versus-budget/forecast/runway/unit-economics reporting FinOps lead publishes. It does
 not set sponsorship terms or eligibility (see
 [`docs/business/sponsorship-policy.md`](business/sponsorship-policy.md)), does not
 replace an architecture ADR's cost-delta section, and does not authorize spend by
 itself — Cyrus decides every funding, stop, de-scope, or risk-acceptance choice from
-Quark's recommendation.
+FinOps lead's recommendation.
 
 ## Three separate ledgers
 
@@ -40,14 +39,14 @@ user/product telemetry never becomes company accounting input.
 
 | Ledger | What it records | Owner | Storage / access | Retention | Reconciliation |
 |---|---|---|---|---|---|
-| **Development AI/session usage** | Squad/agent session and fleet-research AI-credit consumption, per-run cost, success/failure outcome, orchestration efficiency | Quark (records), Coordinator/Squad (source events) | Session/orchestration logs and Quark's FinOps issues; no personal task/prompt content | Duration of Phase 0/1 development; aggregate summaries only in GitHub issues | Quark reconciles credit counts against the AI-credit provider's usage statement; the statement's monetary charge is reconciled only against the AI-credit envelope, with variance explained in the recurring FinOps report |
-| **Product tenant/provider metering** | Per-tenant and per-capability usage (compute, storage, model tokens, egress, queues/functions, notifications) once the product has tenants | Jett Reno (instrumentation), Quark (cost aggregation) | Product metering store, scoped to aggregate/tenant-billing fields only; excluded from company accounting systems | Per data-classification and billing-cycle retention set in `docs/privacy.md` once ratified | Quark reconciles metering aggregates against provider invoices to compute cost per active user/tenant/capability |
-| **Company financial burn/income** | Cash burn, income (including sponsorship), invoices, vendor commitments, payroll/contractor cost, tax/accounting entries | Quark | Company accounting system/spreadsheet, access limited to Quark and Cyrus | Statutory/tax retention once a legal entity and accounting system are chosen (Sarek review) | Quark reconciles ledger entries against actual vendor/payment-processor invoices monthly |
+| **Development AI/session usage** | Development session and fleet-research AI-credit consumption, per-run cost, success/failure outcome, orchestration efficiency | FinOps lead (records), Session operator (source events) | Session/orchestration logs and FinOps lead's FinOps issues; no personal task/prompt content | Duration of Phase 0/1 development; aggregate summaries only in GitHub issues | FinOps lead reconciles credit counts against the AI-credit provider's usage statement; the statement's monetary charge is reconciled only against the AI-credit envelope, with variance explained in the recurring FinOps report |
+| **Product tenant/provider metering** | Per-tenant and per-capability usage (compute, storage, model tokens, egress, queues/functions, notifications) once the product has tenants | Operations lead (instrumentation), FinOps lead (cost aggregation) | Product metering store, scoped to aggregate/tenant-billing fields only; excluded from company accounting systems | Per data-classification and billing-cycle retention set in `docs/privacy.md` once ratified | FinOps lead reconciles metering aggregates against provider invoices to compute cost per active user/tenant/capability |
+| **Company financial burn/income** | Cash burn, income (including sponsorship), invoices, vendor commitments, payroll/contractor cost, tax/accounting entries | FinOps lead | Company accounting system/spreadsheet, access limited to FinOps lead and Cyrus | Statutory/tax retention once a legal entity and accounting system are chosen (Legal research lead review) | FinOps lead reconciles ledger entries against actual vendor/payment-processor invoices monthly |
 
 Only the corresponding invoiced monetary charges from the product and development
 ledgers flow into the company financial ledger (for example, "$X model spend this
 month"), as separately classified entries; raw usage, AI-credit counts, and personal
-data do not. Only Quark performs that roll-up.
+data do not. Only FinOps lead performs that roll-up.
 
 ## Phase 0: $0 and no-cloud-provisioning rule
 
@@ -70,7 +69,7 @@ FinOps` section:
 
 Cyrus explicitly left the initial `fleet-research` run uncapped to maximize
 foundational research quality; no automatic cap applies retroactively to this run.
-Quark recorded the actual result to inform future limits:
+FinOps lead recorded the actual result to inform future limits:
 
 | Item | AI credits |
 |---|---|
@@ -78,15 +77,15 @@ Quark recorded the actual result to inform future limits:
 | Failed/halted attempts (earlier capped runs that exhausted credits/subagent limits without an artifact) | 76.62 |
 | **Total initial factory research burn** | **896.87** |
 
-AI credits are not currency. Quark reconciles credit counts against the AI-credit
+AI credits are not currency. FinOps lead reconciles credit counts against the AI-credit
 provider's billing statement separately, and uses the failed-run ratio (76.62 of
 896.87, ~8.5%) as evidence to improve future orchestration and to propose caps or
 checkpoints for subsequent uncapped-scope requests. This figure is preserved as
-Quark's failure-cost baseline and is not amended retroactively.
+FinOps lead's failure-cost baseline and is not amended retroactively.
 
 ## Cost categories and SKU tracking
 
-`docs/cost-model.md` maintains the provider/SKU baseline Quark updates as
+`docs/cost-model.md` maintains the provider/SKU baseline FinOps lead updates as
 evidence changes. Phase 0 remains no-provisioning, so cloud SKUs stay at `$0.00`
 until a separately approved Phase 1B spike budget exists:
 
@@ -96,7 +95,7 @@ until a separately approved Phase 1B spike budget exists:
 | GitHub (repository CI/docs hosting) | Repository hosting, Actions/docs workflow execution | 0.00 (Phase 0 baseline) | Build minutes, artifact/storage usage, docs/deploy runs | Stay within included quota; no paid upgrades in Phase 0 | Included quota only; no paid overage approval in Phase 0 | Quota-pressure or overage risk triggers FinOps review before any upgrade |
 | Cloud provider (TBD by ADR) | Compute, SQL/Postgres, storage, backups, queues/functions, secrets, egress | 0.00 (Phase 0 cap) | vCPU-hours, GB-month, requests, egress GB, function invocations | Local/paper estimation only; no account/subscription/trial provisioning in Phase 0 | N/A in Phase 0 (free tiers/trials are prohibited) | Phase 1B spike budget + TTL/quota/teardown evidence required |
 | Domains/CDN registrar/provider (TBD) | Domain registration/renewal and CDN add-ons | 0.00 baseline until purchased | Domain years purchased, add-on subscriptions | Professional-services envelope only; not cloud-infrastructure spend | No auto-renew purchase without explicit approval | Renewal date or proposed first purchase triggers approval workflow |
-| Legal/compliance vendors (TBD) | Trademark search/counsel and regulatory/compliance assessments | 0.00 baseline until engaged | Fixed-fee engagement or hourly billing | Professional-services envelope only; Sarek-reviewed before commitment | N/A | New matter request triggers explicit spend approval |
+| Legal/compliance vendors (TBD) | Trademark search/counsel and regulatory/compliance assessments | 0.00 baseline until engaged | Fixed-fee engagement or hourly billing | Professional-services envelope only; Legal research lead-reviewed before commitment | N/A | New matter request triggers explicit spend approval |
 
 Every paid dependency in any category has a named owner, a renewal or usage trigger,
 a documented cancellation path, and a lower-cost alternative on file where one is
@@ -104,7 +103,7 @@ credible (see [Vendor commitments](#vendor-commitments-and-renewalcancel-paths))
 
 ## Actual-versus-budget, forecast, and runway
 
-Quark publishes, on a recurring cadence (at minimum every Phase 0/1 milestone review
+FinOps lead publishes, on a recurring cadence (at minimum every Phase 0/1 milestone review
 and monthly once there is live spend):
 
 - **Actual-versus-budget** for every tracked category and vendor commitment, with
@@ -141,7 +140,7 @@ No vendor commitment is entered without all five fields populated.
 ## Separate AI/professional-service envelopes
 
 - The **AI-credit envelope** funds development-time agent/session usage (fleet
-  research, Squad orchestration) and is reconciled against the AI provider's billing
+  research, development orchestration) and is reconciled against the AI provider's billing
   statement, never against cloud infrastructure spend.
 - The **professional-services envelope** funds domain registration, trademark
   search/counsel fees, and other one-time or recurring professional costs identified
@@ -161,7 +160,7 @@ No vendor commitment is entered without all five fields populated.
   separately classified entries. It does not replace or merge the development usage
   ledger, product metering ledger, professional-services envelope, or
   cloud-infrastructure envelope.
-- Quark reports the envelopes' actual-versus-budget figures alongside one another,
+- FinOps lead reports the envelopes' actual-versus-budget figures alongside one another,
   but never merges their budgets or reconciliation.
 
 ## Phase 1A: model-spend approval gate
@@ -169,13 +168,13 @@ No vendor commitment is entered without all five fields populated.
 Before Phase 1A (independent self-hosted assistant MVP) incurs live model-token
 spend:
 
-1. Quark estimates expected model-token cost per user session/task using the
+1. FinOps lead estimates expected model-token cost per user session/task using the
    assistant provider's published pricing.
 2. The estimate, assumptions, and a stop/de-scope threshold are recorded in a FinOps
    issue linked to the Phase 1A milestone.
 3. Cyrus approves the model-spend budget before any BYOK/managed-provider call runs
    against real spend (test/mock providers do not require this gate).
-4. Quark tracks actual model spend against the approved budget from the first live
+4. FinOps lead tracks actual model spend against the approved budget from the first live
    call and issues a no-go recommendation if spend is unmeasured or exceeds the
    approved envelope.
 
@@ -197,10 +196,10 @@ Before a real Phase 1B Copilot/provider call:
 
 1. Accepted ADR 0009's provider gates have current evidence, and
    Cyrus has separately approved this specific provider activation/call.
-2. For Andreja- or organization-funded use, Quark records the provider
+2. For Andreja- or organization-funded use, FinOps lead records the provider
    statement/invoice owner, billable unit, approved numeric envelope, pre-call
    reservation/hard stop, anomaly threshold, and reconciliation cadence.
-3. For user-funded subscription use, Quark reconciles Andreja's content-free
+3. For user-funded subscription use, FinOps lead reconciles Andreja's content-free
    session usage to the user's account quota/attribution evidence and explicitly
    records that Andreja receives no currency invoice. Andreja does not request or
    retain personal billing statements without a separate approved purpose,
@@ -227,20 +226,20 @@ spending, so before any Phase 1B provisioning:
    environment.
 4. **Automatic teardown** — spike/preview environments tear down automatically at
    TTL expiry, with deterministic teardown/purge evidence.
-5. **Anomaly alerts** — budget alerts notify Quark and Cyrus on unexpected spend, but
+5. **Anomaly alerts** — budget alerts notify FinOps lead and Cyrus on unexpected spend, but
    are a detective control, not a spending cap.
-6. **Invoice reconciliation** — Quark reconciles the actual provider invoice against
+6. **Invoice reconciliation** — FinOps lead reconciles the actual provider invoice against
    the approved spike budget and the metering ledger before the spike is closed out.
 
 Only after the spike budget, TTL/quota/teardown evidence, and reconciliation are
-complete does Quark define the steady-state personal-use/production budget and
+complete does FinOps lead define the steady-state personal-use/production budget and
 propose it for its own separate approval. Any Phase 1B cloud spike requires a new,
 explicitly approved budget decision — none is inherited from a prior spike or from
 Phase 0.
 
 ## Invoice reconciliation
 
-For every ledger and every approved envelope/spike, Quark reconciles the recorded
+For every ledger and every approved envelope/spike, FinOps lead reconciles the recorded
 figure against its authoritative financial or quota/attribution source:
 
 - **Development AI/session usage** reconciles against the AI-credit provider's
@@ -261,16 +260,16 @@ or accept the recorded risk.
 
 ## No-go recommendations
 
-Quark issues a documented no-go recommendation whenever cost is unestimated,
+FinOps lead issues a documented no-go recommendation whenever cost is unestimated,
 unmeasured, or outside the approved envelope for any ledger, vendor commitment, or
-approval gate above. Quark cannot spend, sign, or accept sponsorship; Cyrus decides
-whether to stop, fund, de-scope, or accept the recorded risk after reviewing Quark's
+approval gate above. FinOps lead cannot spend, sign, or accept sponsorship; Cyrus decides
+whether to stop, fund, de-scope, or accept the recorded risk after reviewing FinOps lead's
 recommendation.
 
 ## Open items
 
-- **Phase 1A no-egress Copilot SDK toolchain spike:** Seven of Nine owns the
-  technical spike; Quark owns its FinOps record and Cyrus owns envelope approval.
+- **Phase 1A no-egress Copilot SDK toolchain spike:** Assistant and skills lead owns the
+  technical spike; FinOps lead owns its FinOps record and Cyrus owns envelope approval.
   The estimate units are engineering hours, development AI credits, CI minutes,
   and dependency/license-review hours. Numeric estimates and a separately
   approved development envelope are pending. Numeric stop thresholds for
@@ -283,7 +282,7 @@ recommendation.
   selected funding mode/model/topology, numeric hard stops, and reconciliation
   evidence above.
 - Company legal entity, accounting system, and statutory retention schedule: pending
-  Sarek's counsel-reviewed legal/regulatory work (`docs/legal/regulatory-applicability.md`,
+  Legal research lead's counsel-reviewed legal/regulatory work (`docs/legal/regulatory-applicability.md`,
   once ratified).
 - Managed-host pricing, subscription tiers, and marketplace economics: deferred until
   usage and cost evidence exists, per `docs/plan.md`'s initial sustainability model.

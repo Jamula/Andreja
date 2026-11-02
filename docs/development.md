@@ -7,7 +7,9 @@
 ## GitHub Codespaces
 
 The checked-in `.devcontainer/devcontainer.json` configures Codespaces with
-Node.js 26.12.1, npm 12.2.1, Squad CLI 1.1.0, and the pinned .NET SDK 10.0.402.
+Node.js 26.12.1 and the pinned .NET SDK 10.0.402. Container creation installs
+the latest npm and the configured global CLI tool; it does not initialize
+repository agents, skills, workflows, labels, or MCP configuration.
 Rebuild the container after changing these versions. Codespaces use Linux, so
 Windows Package Manager (`winget`) is not available there.
 
@@ -212,19 +214,16 @@ exclusions and CodeQL if the code or entitlement changes.
 
 GitHub may also attach a platform-managed dynamic `Analyze (csharp)` CodeQL
 check to a pull request. That supplementary check ran successfully while this
-gate was introduced, but it is not a repository-owned substitute: the committed
-CodeQL workflow remains manually disabled, and the dynamic check does not
+gate was introduced, but it is not a repository-owned substitute: the repository-owned
+CodeQL workflow has been removed, and the dynamic check does not
 establish committed push-to-`main` or `merge_group` coverage. As observed on
 2026-09-07, while the repository was in that unresolved public state, the
 code-scanning default-setup and alerts API endpoints returned `200` and
 listed `csharp`, so the earlier `403` entitlement denial no longer applied at
 that time; re-verify live before relying on this, since visibility or
 entitlement can change, and visibility itself remains an open governance
-question (issue #6). The committed `.github/workflows/codeql.yml` matrix
-currently analyzes only `actions` and `javascript-typescript`; it does not
-scan C# or Python today. Re-enabling that workflow as-is and extending its
-matrix to add `csharp`/`python` are two separate, not-yet-authorized changes;
-neither is implied or claimed by this correction.
+question (issue #6). The disabled repository-owned CodeQL workflow has been removed; no additional
+CodeQL language coverage or re-enablement is claimed.
 
 Default-branch required-check enforcement and the entitlement-aware merge
 procedure are defined by

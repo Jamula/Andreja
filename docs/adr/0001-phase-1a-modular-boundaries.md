@@ -1,6 +1,7 @@
 # ADR 0001: Phase 1A modular boundaries
 
 - **Status:** Accepted
+- **Current copy:** Proposed editorial update; not accepted
 - **Date proposed:** 2026-08-23
 - **Date accepted:** 2026-09-07
 - **Issues:** [#9](https://github.com/Jamula/Andreja/issues/9),
@@ -11,7 +12,7 @@
 - **Non-authoritative input:** Proposed
   [company charter](../charter.md#decision-and-launch-enforcement)
 - **Diagram:** [High-level architecture and data flows](../architecture/andreja-high-level.md)
-- **Proposed by:** Spock
+- **Proposed by:** Architecture lead
 - **Decision owner:** Cyrus
 - **Decision record:** [Phase 1A packet decision record](../phase-1a/packet-decision-66.md)
   under [#66](https://github.com/Jamula/Andreja/issues/66)

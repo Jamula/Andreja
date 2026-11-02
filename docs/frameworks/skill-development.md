@@ -2,9 +2,9 @@
 
 ## Owner and status
 
-Seven of Nine owns the Skill Development Framework end to end, per
+Assistant and skills lead owns the Skill Development Framework end to end, per
 [plan §Phase 0 deliverables](../plan.md#phase-0---govern-and-decide) ("Assign
-... Seven as Skill Framework owner"). This document is the ratified
+... Assistant and skills lead as Skill Framework owner"). This document is the ratified
 **operational expansion** of
 [plan §Skill Development Framework](../plan.md#skill-development-framework):
 it operationalizes the plan's skill lifecycle into numbered stages with exit
@@ -71,8 +71,8 @@ Per [ADR 0000](../adr/0000-plan-ratification.md) and the
 - For skills that extend the personal semantic graph (Personal Semantic
   Profile, Life Context and Opportunity Navigator, Relationships and
   Communities Map, Life Event Planner), this stage must align with the
-  ontology research led by Seven with Spock, T'Pol, Deanna Troi, Tuvok, Data,
-  Hoshi, and Jadzia
+  ontology research led by Assistant and skills lead with Architecture lead, Application lead, Privacy lead, Security lead, Quality lead,
+  Mobile lead, and UX lead
   ([plan §Personal semantic graph](../plan.md#personal-semantic-graph)).
 - Exit evidence: contract documented in the skill's issue or a linked
   `docs/skills/` entry.
@@ -109,8 +109,8 @@ Per [ADR 0000](../adr/0000-plan-ratification.md) and the
 - Threat and privacy artifacts, prompt-injection/untrusted-data boundaries,
   sensitive inference controls, abuse cases, publication/share risks, and
   provider terms.
-- Tuvok challenges the security artifact; Deanna Troi challenges the privacy
-  artifact; Rai reviews AI safety; Cyrus approves.
+- Security lead challenges the security artifact; Privacy lead challenges the privacy
+  artifact; AI safety reviewer reviews AI safety; Cyrus approves.
 - Exit evidence: threat-model and privacy-classification entries merged for
   this skill.
 
@@ -119,15 +119,15 @@ Per [ADR 0000](../adr/0000-plan-ratification.md) and the
 - Unit/domain, manifest/schema, permission-negative, channel contract,
   component/accessibility, E2E, adversarial AI, failure/recovery,
   performance/cost, compatibility, export/delete, and help-link tests.
-- Exit evidence: test suite green in CI; Data signs off on scenario coverage.
+- Exit evidence: test suite green in CI; Quality lead signs off on scenario coverage.
 
 ### 8. Dogfood
 
 - Smallest complete vertical slice, draft/read-only before consequential
-  side effects, user feedback captured through Guinan's workflow (issue
+  side effects, user feedback captured through Support lead's workflow (issue
   #10), and measured outcome/usage/cost.
 - Exit evidence: Cyrus (Customer Zero) uses the skill for real personal work;
-  Quark's per-session usage evidence attached to the issue.
+  FinOps lead's per-session usage evidence attached to the issue.
 
 ### 9. Release progression
 

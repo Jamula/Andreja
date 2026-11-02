@@ -1,6 +1,7 @@
 # ADR 0004: Phase 1A assistant, skill, channel, and control-plane contracts
 
 - **Status:** Accepted
+- **Current copy:** Proposed editorial update; not accepted
 - **Date proposed:** 2026-08-23
 - **Date accepted:** 2026-09-07
 - **Issues:** [#9](https://github.com/Jamula/Andreja/issues/9),
@@ -10,7 +11,7 @@
   and [ADR 0000](0000-plan-ratification.md)
 - **Non-authoritative input:** Proposed
   [company charter](../charter.md#decision-and-launch-enforcement)
-- **Proposed by:** Seven of Nine
+- **Proposed by:** Assistant and skills lead
 - **Decision owner:** Cyrus
 - **Decision record:** [Phase 1A packet decision record](../phase-1a/packet-decision-66.md)
   under [#66](https://github.com/Jamula/Andreja/issues/66)
@@ -194,5 +195,5 @@ not defer those seams.
 The deterministic provider keeps normal CI and local evidence free of model spend.
 The OpenAI-compatible seam adds adapter, conformance, disclosure, credential-custody,
 and support maintenance. External usage remains disabled at zero approved units;
-provider activation requires Quark's numeric per-session/task estimate, a durable
+provider activation requires FinOps lead's numeric per-session/task estimate, a durable
 hard stop and reconciliation design, and Cyrus's explicit budget approval.

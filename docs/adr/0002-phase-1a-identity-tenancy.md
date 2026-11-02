@@ -1,6 +1,7 @@
 # ADR 0002: Phase 1A identity and tenant isolation
 
 - **Status:** Accepted
+- **Current copy:** Proposed editorial update; not accepted
 - **Date proposed:** 2026-08-23
 - **Date accepted:** 2026-09-07
 - **Issues:** [#9](https://github.com/Jamula/Andreja/issues/9),
@@ -9,7 +10,7 @@
 - **Governing:** [Platform plan](../plan.md#identity-tenancy-and-authorization-foundations)
   and [ADR 0000](0000-plan-ratification.md)
 - **Non-authoritative input:** Proposed [company charter](../charter.md#commitments)
-- **Proposed by:** Tuvok
+- **Proposed by:** Security lead
 - **Decision owner:** Cyrus
 - **Decision record:** [Phase 1A packet decision record](../phase-1a/packet-decision-66.md)
   under [#66](https://github.com/Jamula/Andreja/issues/66)

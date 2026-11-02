@@ -46,7 +46,7 @@ already be satisfied:
   recommendations`.
 - [ ] The merged framework amendment must resolve the
   `docs/frameworks/feedback-support.md` routing-table row `Legal, IP, regulatory,
-  or privileged inquiry | Sarek through the confidential counsel route`.
+  or privileged inquiry | Legal research lead through the confidential counsel route`.
   It must also reconcile the RACI rows for security incident handling and
   privacy, consent, or data-incident handling that inform Cyrus on a
   need-to-know basis, so those rows preserve the direct Cyrus bypass and
