@@ -146,8 +146,8 @@ connector catalog.
 - SLOs, freshness/quality, token expiry, webhook/delta reconciliation,
   provider incidents, cost, support ownership, API/version monitoring, and
   user-facing status.
-- Support lead receives channel feedback/support trends; the channel owner (Operations lead
-  Reno, plus the domain specialist named in the catalog) remains accountable
+- Support lead receives channel feedback/support trends; the channel owner
+  (Operations lead, plus the domain specialist named in the catalog) remains accountable
   for technical resolution and user-visible status.
 - Exit evidence: dashboards, alerts, and a named SLO owner exist per
   [plan §OpenTelemetry and operability](../plan.md#opentelemetry-and-operability).

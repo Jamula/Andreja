@@ -1469,7 +1469,7 @@ Before installation, review source/publisher provenance, immutable digest/versio
 - Product packaging and economics for independent self-hosting versus managed freemium/paid data hosting.
 - The Phase 0 website matrix, claims inventory, local prototype, and Proposed ADR 0008 are complete as recommendation evidence; unintended GitHub Pages publication was contained under #114. Acceptance, any future hosting/CDN/DNS, evidence-based public claims, domain/trademark readiness, and publication remain open.
 - Native mobile architecture proof-of-concept, offline synchronization, device security, push/background behavior, and app-store lifecycle cost.
-- Minimal semantic-profile/provenance/export contracts are implemented; Assistant and skills lead-led standards, ontology, privacy, representative-journey, storage, and ADR decisions remain open.
+- Minimal semantic-profile/provenance/export contracts are implemented; standards, ontology, privacy, representative-journey, storage, and ADR decisions led by the Assistant and skills lead remain open.
 - Phase 0 prioritization score weights and stage-specific Must/Should/Could/Won't scope.
 - Personal Brand Studio evidence model and official LinkedIn/Facebook/Instagram API/account-type access before any publishing capability.
 - Gmail/Graph/Discord/WhatsApp delivery-topology, scope, verification, relay/polling, deliverability, cost and support ADRs.
@@ -1571,7 +1571,7 @@ Deliverables:
 - Domain registration and counsel/trademark fees are outside the $0 cloud-infrastructure cap but require their own explicit professional-services budget approval before purchase.
 - Create documentation skeleton, architecture diagrams, ADR template, and risk register.
 - ADRs for Clean/Onion boundaries, modular slices, tenancy, identity/CIAM path, API-first Blazor boundary, self-host/control-plane separation, persistence portability, assistant providers, reminders, open federation, grants/consent, connectors, skills, and versioning.
-- Assistant and skills lead-led personal semantic graph research: representative journeys, standards/ontology matrix, provenance/inference/privacy model, minimal schema, portability format, and smallest viable storage/projection ADR.
+- Personal semantic graph research led by the Assistant and skills lead: representative journeys, standards/ontology matrix, provenance/inference/privacy model, minimal schema, portability format, and smallest viable storage/projection ADR.
 - Ratify the initial first-party skill catalog, connector release bands, issue scorecard fields, launch stages, and stage-specific Must/Should/Could/Won't scope.
 - Ratify workstream charters, owners, shared contracts, WIP/integration/handoff rules and the protected Phase 0 -> Phase 1A MVP critical path.
 - Ratify the Andreja company charter, Amazon-inspired operating principles, Microsoft-inspired culture, Customer Zero doctrine, ethical/sustainability indicators and confidential accountability mechanisms.
@@ -1734,7 +1734,7 @@ Deliverables:
 - Portable idempotent reminder execution through a queue/scheduler adapter and at least one useful notification channel.
 - Checklists, dependencies, reading/podcast queues, social/travel commitments, and trading research/watchlists.
 - Family/Relationships, Health/Wellbeing manual artifacts, Household/Vehicle/Insurance/Projects, Travel/Social and Hobbies/Social Groups first-party skills in manual/in-app mode.
-- Before manual Health/Wellbeing dogfood: approved consumer-health privacy/data-flow assessment, breach-response/HBNR analysis, retention/delete/export, model-provider/content rules, support/escalation language and Beverly safety artifact.
+- Before manual Health/Wellbeing dogfood: approved consumer-health privacy/data-flow assessment, breach-response/HBNR analysis, retention/delete/export, model-provider/content rules, support/escalation language and the Health lead's safety artifact.
 - Before personalized insurance comparisons/referrals: jurisdiction, licensing, compensation, disclosure and neutral-ranking review.
 - Manual Life Event Planner with branchable scenarios, milestones, dependencies, documents, risks, professional questions and private stakeholder roles.
 - Customer Zero Small Business and Entrepreneur Manager for Andreja company operations in manual/document mode, with personal/business persona separation.
@@ -1851,7 +1851,7 @@ Exit gate:
 
 Deliverables:
 
-- Beverly-led requirements/safety model for appointments, medications/refills, allergies, providers, labs, imaging reports/scans, referrals, questions, care plans, insurance artifacts, wellness routines and goals.
+- Requirements/safety model led by the Health lead for appointments, medications/refills, allergies, providers, labs, imaging reports/scans, referrals, questions, care plans, insurance artifacts, wellness routines and goals.
 - Highest-sensitivity data model, source-preserving artifact storage, confidence-labeled AI/OCR extraction proposals, derived-index deletion, sharing/consent, retention/export/delete and audit.
 - Feasibility/terms/security/privacy/regulatory matrix for SMART on FHIR/FHIR, patient portals, Apple Health/HealthKit, Android Health Connect, pharmacy, lab, imaging and approved wearable/provider APIs.
 - Manual/document mode first; connected read-only pilot before any user-confirmed refill, appointment, record-request or provider-message action.
@@ -1893,7 +1893,7 @@ Exit gate:
 23. Phase 0-1B: establish Support lead's feedback/support framework and privacy-safe public/in-app channels with user-visible follow-through.
 24. Phase 11: research/build Lifestyle Rewards Optimizer and Miles/Points Manager with read-only-first approved channels and gated confirmed actions.
 25. Phase 11: research/build Employer Benefits and Perks Manager with document-first tracking and gated provider actions.
-26. Phase 4: dogfood manual Health and Wellbeing artifacts only after consumer-health privacy/breach/retention/model/Beverly safety gates.
+26. Phase 4: dogfood manual Health and Wellbeing artifacts only after consumer-health privacy/breach/retention/model and Health lead safety gates.
 27. Phase 12: add approved connected Health and Wellbeing channels and separately gated actions.
 28. Phase 4/8: build Hobbies/Social Groups manually, then official Discord/Xbox/community channels.
 29. Phase 0/2/6: research/build Life Context and Opportunity Navigator from private explainable insights to consented connections.
