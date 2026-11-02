@@ -1,8 +1,9 @@
-# Squad two-layer state bridge
+# Squad state backend contract and bridge
 
-This runbook verifies the repository half of the Squad state contract and the
-runtime bridge loaded by an app-created child session. The static check is
-necessary but cannot prove that a running app session loaded MCP tools.
+This runbook verifies the repository half of the Squad state contract for the
+`local` and `two-layer` backends. Runtime bridge acceptance applies only to
+`two-layer`; the static check cannot prove that a running app session loaded MCP
+tools.
 
 ## Static contract
 
@@ -16,19 +17,20 @@ node --test .github/scripts/squad-state-protected-manifest.test.js
 
 The check fails closed unless all of these remain true:
 
-- `.squad/config.json` selects `two-layer`.
+- `.squad/config.json` selects `local` or `two-layer`.
 - `.mcp.json` declares only `squad_state`, backed by
   `@bradygaster/squad-cli@1.1.0 state-mcp`, with the exact governed tool
   allowlist, including `squad_state_create_if_absent` (wildcard grants are
-  rejected).
+  rejected). The exact bridge configuration is retained in local mode, but
+  local sessions do not require the runtime health probe.
 - The server's `env` contains only
   `NPM_CONFIG_REGISTRY=https://registry.npmjs.org`; no other environment
   injection is permitted.
 - the checked-in coordinator has its ordered HEAD/EOF canaries and matching
   version stamp;
 - coordinator ownership rules keep static team configuration on disk and
-  mutable state behind governed tools; and
-- runtime-owned state is effectively ignored, every tracked repository
+  select the state access path for the configured backend; and
+- protected runtime/private state is effectively ignored, every tracked repository
   `.gitignore` contains no active negation rules, and runtime state is absent
   from Git tracking. Local validation also checks untracked, non-excluded
   `.gitignore` files. This repository-wide fail-closed policy avoids
@@ -41,6 +43,12 @@ GitHub Actions validates the repository static contract and the manifest
 utility's isolated tests only; it cannot create app child sessions or prove
 runtime bridge behavior.
 
+Local mode stores new Squad state as files in the workspace. This repository
+intentionally keeps protected mutable state ignored and untracked in both
+backends. Changing `stateBackend` does not transfer existing two-layer state
+into local files, and `squad sync` is a no-op for the local backend; do not
+represent a config-only switch as a state migration.
+
 ## Server-scoped package registry
 
 The pinned launcher remains `npx -y @bradygaster/squad-cli@1.1.0 state-mcp`.
@@ -48,18 +56,19 @@ The `squad_state` entry in `.mcp.json` overrides the npm registry only for that
 server process and its children. The configured package-feed proxy returned
 `ETARGET`/`E404` for this published version; the public npm registry resolves
 `1.1.0` and supports the pinned server's initialize, tools/list, and read-only
-health calls. Do not change global npm settings, remove the version pin, broaden
-the tool allowlist, or replace the `two-layer` backend to work around retrieval.
+health calls. Do not change global npm settings, remove the version pin, or
+broaden the tool allowlist to work around retrieval.
 
-After changing `.mcp.json`, restart/reload the app/session so it loads the
-server-scoped environment, then start a fresh Squad child. A successful
-standalone stdio health probe verifies the launcher, not app-exposed MCP tool
-discovery; fresh-child acceptance below remains required.
+When validating `two-layer`, after changing `.mcp.json`, restart/reload the
+app/session so it loads the server-scoped environment, then start a fresh Squad
+child. A successful standalone stdio health probe verifies the launcher, not
+app-exposed MCP tool discovery; fresh-child acceptance below remains required.
 
-## Fresh-child acceptance
+## Fresh-child two-layer acceptance
 
-Start a fresh app child session with `agent: Squad` in a clean worktree. Record
-the app version and child-session ID, then require this evidence:
+Run this acceptance only when `.squad/config.json` selects `two-layer`. Start a
+fresh app child session with `agent: Squad` in a clean worktree. Record the app
+version and child-session ID, then require this evidence:
 
 1. Before starting the state probes, capture the protected worktree state to a
    new, explicitly supplied absolute path outside the repository:
@@ -104,25 +113,27 @@ the app version and child-session ID, then require this evidence:
    unchanged.
 
 Parent and child sessions follow the same boundary: read static configuration
-from the worktree; use `squad_state_*` or governed memory tools for mutable
-state. Never enumerate or expose another agent's private history as evidence.
+from the worktree; in `two-layer`, use `squad_state_*` or governed memory tools
+for mutable state; in `local`, use local state files. Never enumerate or expose
+another agent's private history as evidence.
 
-Before closing the linked issue or PR, attach the fresh-child results (including
-session IDs, tested commit, probe outcomes, and clean-status evidence) to its
-acceptance record. Runtime evidence must accompany closure; do not represent
-the static GitHub Actions job as an automated runtime gate.
+Before closing a linked issue or PR for a `two-layer` change, attach the
+fresh-child results (including session IDs, tested commit, probe outcomes, and
+clean-status evidence) to its acceptance record. Runtime evidence must
+accompany closure; do not represent the static GitHub Actions job as an
+automated runtime gate.
 
 ## Failure and recovery
 
 | Failure | Required response |
 | --- | --- |
-| Static validator fails | Stop. Review the reported tracked-file drift; do not change `stateBackend` or add MCP servers to make the check pass. |
+| Static validator fails | Stop. Review the reported tracked-file drift; do not change `stateBackend` or add MCP servers just to make the check pass. |
 | Pinned server retrieval fails with npm `ETARGET`/`E404` | Confirm the `squad_state` server-scoped registry value above is present and reload the app/session. If retrieval still fails, stop and report the exact failure; do not change global npm settings or bypass an access-control block. |
 | Protected-state manifest capture or comparison errors, or reports `CHANGED` | Stop and treat acceptance as failed. Do not inspect protected file contents to diagnose it; retain only the reported path identities and clean up the external baseline after recording the result. |
-| `squad_state_health` is missing or errors | Stop before repository or mutable-state mutation and end the child. Preserve or restore `stateBackend` to `two-layer` in `.squad/config.json`, then restart the app/session so project `.mcp.json` and the two-layer bridge are reloaded. Only after the fresh child reports the restored `two-layer` backend may you rerun fresh-child acceptance. For ordinary task recovery, a standard/general-purpose fallback may proceed only after that Squad-first child stops cleanly; fallback work is recovery only and cannot count as successful Squad bridge acceptance. Never fall back to raw state files. |
+| `squad_state_health` is missing or errors during `two-layer` acceptance | Stop before repository or mutable-state mutation and end the child. Preserve or restore `stateBackend` to `two-layer` in `.squad/config.json`, then restart the app/session so project `.mcp.json` and the two-layer bridge are reloaded. Only after the fresh child reports the restored `two-layer` backend may you rerun fresh-child acceptance. For ordinary task recovery, a standard/general-purpose fallback may proceed only after that Squad-first child stops cleanly; fallback work is recovery only and cannot count as successful Squad bridge acceptance. Never fall back to raw state files. |
 | Probe write outcome is uncertain | Read the exact unique probe key through `squad_state_read`. If present and exact, delete that key through `squad_state_delete`; then verify key-not-found. Never overwrite unknown content. |
 | Disallowed `verification/` write succeeds | Stop all probes and escalate as a state-boundary failure. Do not broaden access or invent success. |
 | No-op child mutates or falls back | Treat acceptance as failed, preserve the clean baseline evidence, and investigate the app/session bridge before retrying in another fresh child. |
 
-Only governed state tools may recover probe state. Do not edit runtime-owned
-`.squad` paths, use git-notes choreography, or expose provider/private state.
+Only governed state tools may recover two-layer probe state. Do not use
+git-notes choreography or expose provider/private state.

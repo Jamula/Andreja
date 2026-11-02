@@ -150,8 +150,17 @@ test('accepts the approved two-layer static contract', (t) => {
   assert.deepEqual(validateRepository(fixture(t)), []);
 });
 
-test('checked-in repository satisfies the upgraded two-layer static contract', () => {
+test('checked-in repository satisfies the static state contract', () => {
   assert.deepEqual(validateRepository(path.resolve(__dirname, '..', '..')), []);
+});
+
+test('accepts local backend while preserving the protected-state contract', (t) => {
+  const root = fixture(t);
+  writeJson(root, path.join('.squad', 'config.json'), {
+    version: 1,
+    stateBackend: 'local',
+  });
+  assert.deepEqual(validateRepository(root), []);
 });
 
 test('rejects missing, malformed, altered, or broadened registry environment', (t) => {
@@ -191,13 +200,19 @@ test('rejects missing, malformed, altered, or broadened registry environment', (
   }
 });
 
-test('rejects a local-backend fallback', (t) => {
-  const root = fixture(t);
-  writeJson(root, path.join('.squad', 'config.json'), {
-    version: 1,
-    stateBackend: 'local',
-  });
-  assert.match(validateRepository(root).join('\n'), /must be "two-layer"/);
+test('rejects state backends outside the approved local and two-layer contract', (t) => {
+  for (const stateBackend of ['orphan', 'external']) {
+    const root = fixture(t);
+    writeJson(root, path.join('.squad', 'config.json'), {
+      version: 1,
+      stateBackend,
+    });
+    assert.match(
+      validateRepository(root).join('\n'),
+      /stateBackend must be one of: local, two-layer/u,
+      stateBackend,
+    );
+  }
 });
 
 test('rejects an absent MCP bridge', (t) => {
@@ -508,6 +523,21 @@ test('fresh-child acceptance uses only the ephemeral governed probe namespace', 
   assert.deepEqual(freshChildProbeStepErrors(runbook), []);
 });
 
+test('runbook distinguishes local backend selection from state migration', () => {
+  const runbook = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'docs', 'operations', 'squad-state-bridge.md'),
+    'utf8',
+  );
+  assert.match(
+    runbook,
+    /Changing `stateBackend` does not transfer existing two-layer state\s+into local files, and `squad sync` is a no-op for the local backend/u,
+  );
+  assert.match(
+    runbook,
+    /Run this acceptance only when `.squad\/config\.json` selects `two-layer`/u,
+  );
+});
+
 test('fresh-child acceptance verifies atomic create conflict preservation', () => {
   const runbook = fs.readFileSync(
     path.resolve(__dirname, '..', '..', 'docs', 'operations', 'squad-state-bridge.md'),
@@ -655,7 +685,9 @@ test('runbook recovery permits acceptance only after restoring two-layer', () =>
     'utf8',
   );
   const healthFailureRow = runbook.split(/\r?\n/u)
-    .find(line => line.startsWith('| `squad_state_health` is missing or errors |'));
+    .find(line => line.startsWith(
+      '| `squad_state_health` is missing or errors during `two-layer` acceptance |',
+    ));
 
   assert.notEqual(healthFailureRow, undefined);
   assert.match(healthFailureRow, /restore `stateBackend` to `two-layer`/u);
@@ -865,6 +897,37 @@ test('rejects force-tracked runtime-owned state', (t) => {
   assert.match(
     validateRepository(root).join('\n'),
     /runtime-owned state must not be tracked: \.squad\/decisions\.md/,
+  );
+});
+
+test('local backend still requires canonical protected-state ignore rules', (t) => {
+  const root = fixture(t);
+  writeJson(root, path.join('.squad', 'config.json'), {
+    version: 1,
+    stateBackend: 'local',
+  });
+  fs.writeFileSync(
+    path.join(root, '.gitignore'),
+    REQUIRED_IGNORES.filter(rule => rule !== '.squad/decisions.md').join('\n'),
+  );
+  assert.match(
+    validateRepository(root).join('\n'),
+    /canonical protected ignore rule: \.squad\/decisions\.md/u,
+  );
+});
+
+test('local backend still rejects force-tracked runtime-owned state', (t) => {
+  const root = fixture(t);
+  writeJson(root, path.join('.squad', 'config.json'), {
+    version: 1,
+    stateBackend: 'local',
+  });
+  const decisions = path.join(root, '.squad', 'decisions.md');
+  fs.writeFileSync(decisions, 'runtime-owned\n');
+  execFileSync('git', ['add', '--force', '.squad/decisions.md'], { cwd: root });
+  assert.match(
+    validateRepository(root).join('\n'),
+    /runtime-owned state must not be tracked: \.squad\/decisions\.md/u,
   );
 });
 

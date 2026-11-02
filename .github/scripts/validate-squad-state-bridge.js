@@ -6,6 +6,7 @@ const { spawnSync } = require('node:child_process');
 const { PROTECTED_PATHS } = require('./squad-state-protected-paths');
 
 const SQUAD_VERSION = '1.1.0';
+const SUPPORTED_STATE_BACKENDS = ['local', 'two-layer'];
 const HEAD_CANARY = 'SQUAD_COORDINATOR_CANARY_HEAD_b7d2';
 const EOF_CANARY = 'SQUAD_COORDINATOR_CANARY_a8f3';
 const PROBE_FAILURE_RECOVERY_SENTENCE = 'Preserve or restore `stateBackend` as `two-layer` in `.squad/config.json`, then restart the app/session so project `.mcp.json` and the two-layer bridge are reloaded before starting a fresh child session.';
@@ -177,8 +178,10 @@ function validateRepository(root) {
     if (config.version !== 1) {
       errors.push('.squad/config.json must keep version 1');
     }
-    if (config.stateBackend !== 'two-layer') {
-      errors.push('.squad/config.json stateBackend must be "two-layer"; do not use a local fallback');
+    if (!SUPPORTED_STATE_BACKENDS.includes(config.stateBackend)) {
+      errors.push(
+        `.squad/config.json stateBackend must be one of: ${SUPPORTED_STATE_BACKENDS.join(', ')}`,
+      );
     }
   }
 
@@ -398,7 +401,7 @@ function main() {
     process.exitCode = 1;
     return;
   }
-  console.log(`Squad ${SQUAD_VERSION} two-layer static contract is valid.`);
+  console.log(`Squad ${SQUAD_VERSION} static state contract is valid.`);
 }
 
 if (require.main === module) {
