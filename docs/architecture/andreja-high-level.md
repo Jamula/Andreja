@@ -112,11 +112,11 @@ request changes any trust boundary, module/deployable, durable store or custody
 rule, external data flow, status classification, or extension contract. The PR
 author must complete this checklist:
 
-- [ ] Spock: architecture, current/future status, and no accidental topology claim.
-- [ ] Tuvok and Deanna Troi: trust, authorization, secret, consent, and privacy flows.
-- [ ] Seven of Nine and Jett Reno: assistant, skill, channel, peer, provider, portability, and telemetry seams.
-- [ ] Data: source/render consistency and flow-to-document mapping.
-- [ ] Jadzia Dax: label clarity, color-independent legend, contrast, normal-width readability, and no clipped/invisible text.
+- [ ] Architecture lead: architecture, current/future status, and no accidental topology claim.
+- [ ] Security lead and Privacy lead: trust, authorization, secret, consent, and privacy flows.
+- [ ] Assistant and skills lead and Operations lead: assistant, skill, channel, peer, provider, portability, and telemetry seams.
+- [ ] Quality lead: source/render consistency and flow-to-document mapping.
+- [ ] UX lead: label clarity, color-independent legend, contrast, normal-width readability, and no clipped/invisible text.
 - [ ] Open the `.excalidraw` source at <https://aka.ms/excalidraw>; inspect at fit-to-screen and 100% zoom.
 - [ ] Regenerate and verify artifacts:
 

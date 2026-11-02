@@ -102,7 +102,7 @@ Andreja expresses those influences in original language and adds its own
 requirements for user ownership, data dignity, consent, portability, ethical
 optimization, sustainability, and protected dissent. Amazon and Microsoft have
 not sponsored, approved, or endorsed Andreja. Before any public culture page,
-Sarek's research on the source links, attribution, and trademark exposure must
+Legal research lead's research on the source links, attribution, and trademark exposure must
 be recorded for Cyrus's decision. Cyrus, not an agent, determines and records
 whether the legal or trademark exposure is material. Cyrus approves publication,
 and qualified counsel in each relevant jurisdiction must review exposure that
@@ -146,7 +146,7 @@ review beyond Customer Zero.
 
 Every major ADR, launch gate, sponsorship or partner decision, and public claim
 must include the impact assessment below. Missing evidence blocks approval.
-Tuvok, Deanna Troi, Quark, Sarek, Data, Rai, and the Fact Checker may challenge
+Security lead, Privacy lead, FinOps lead, Legal research lead, Quality lead, AI safety reviewer, and the Evidence reviewer may challenge
 work in their domains; Cyrus makes the final human decision after required
 challenges and residual risks are recorded.
 
@@ -257,11 +257,11 @@ becomes a tracked `type:decision` issue, and is resolved through a reviewed
 amendment to the governing artifact. Ratification requires reconciliation of
 both the plan's charter seed and conflicting ratified framework text. The known
 framework conflict is the `docs/frameworks/feedback-support.md` routing-table row
-`Legal, IP, regulatory, or privileged inquiry | Sarek through the confidential
+`Legal, IP, regulatory, or privileged inquiry | Legal research lead through the confidential
 counsel route`. The framework's RACI rows for security incident handling and
 privacy, consent, or data-incident handling also inform Cyrus on a need-to-know
 basis without the conflict-class exception required here. That text must be
-reconciled without implying that Sarek or any other agent is counsel, creates
+reconciled without implying that Legal research lead or any other agent is counsel, creates
 privilege, or operates a privileged channel; agent research is neither counsel
 nor privilege. Before Cyrus may ratify this charter or ADR 0006 may be accepted,
 reviewed amendments reconciling both the plan seed and all of those framework
@@ -278,7 +278,7 @@ precedence, or public attribution require a tracked issue and reviewed
 documentation pull request. Editorial clarifications may use the same process
 without re-ratification when they do not change meaning.
 
-Public publication requires recorded Sarek research on attribution, trademark,
+Public publication requires recorded Legal research lead research on attribution, trademark,
 reporting, and legal posture, Cyrus's recorded materiality determination and
 approval, and review by qualified counsel in each relevant jurisdiction where
 Cyrus determines and records that legal or trademark exposure is material.
@@ -286,7 +286,7 @@ Those inputs inform publication language; they do not weaken the commitments in
 this private-facing charter or constitute a claim that clearance has occurred.
 
 Any repository visibility change uses the same decision path for official-source
-attribution, trademark posture, internal Star Trek codenames, and public-culture
-wording: recorded Sarek research, Cyrus's recorded materiality determination
+attribution, trademark posture, and public-culture
+wording: recorded Legal research lead research, Cyrus's recorded materiality determination
 and approval, and qualified-jurisdiction counsel review where Cyrus records
 exposure as material.

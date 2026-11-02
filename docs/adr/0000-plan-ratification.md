@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `e2044133f47deba7dcbbd4d931f2ec0e9a866432726d982182617716f7abfad2`
-- **Current proposed Plan SHA-256:** `795e66fe0428618a44cb722ba4b93fc378006b93378a92225e11874b3a8e8bc2`
+- **Current proposed Plan SHA-256:** `812228811a4d8429336c2d9140217a14175ba6aacab4494e81a73a0193ffd08c`
 - **Accepted plan content:** [PR #202](https://github.com/Jamula/Andreja/pull/202)
   at merge commit
   [`861bff7c6d74be5a497e7a0f706a3a92bdae9ddc`](https://github.com/Jamula/Andreja/commit/861bff7c6d74be5a497e7a0f706a3a92bdae9ddc)
@@ -30,7 +30,6 @@ approval.
 
 - `docs/plan.md` is the durable architecture and roadmap source of truth.
 - Repository Issues and milestones become the execution source of truth.
-- The documentation PR lands before the separate sanitized Squad scaffold PR.
 - External contributions and repository visibility changes remain blocked by
   the licensing, IP, trademark, and governance decisions in Phase 0.
 - Phase 1A protects the independent self-hosted MVP critical path.
@@ -145,7 +144,7 @@ not match the merged `docs/plan.md`.
   merged as
   [`2e35d4da59b6b1c660b596dee527ec9eba2a4dda`](https://github.com/Jamula/Andreja/commit/2e35d4da59b6b1c660b596dee527ec9eba2a4dda).
 - **Scope:** Record that `docs/privacy.md` and `docs/threat-model.md` now provide
-  canonical descriptive baselines but are not ratified. Tuvok/Deanna Troi/Rai
+  canonical descriptive baselines but are not ratified. Security lead/Privacy lead/AI safety reviewer
   challenge, Cyrus residual-risk acceptance, classification/impact assessment,
   numeric retention, residency, production export/purge, model-provider choices,
   and evidence exits remain open. Also record #106 as completed at `7a1fc20`, the
@@ -561,14 +560,14 @@ not match the merged `docs/plan.md`.
   historical; review and approval of this exact revision remain pending.
   Preserve the accepted plan hash, all unrelated pending amendment decisions,
   and #104 merge gates unchanged.
-- **Independent third-author retention amendment:** Picard replaces the
+- **Independent third-author retention amendment:** Product lead replaces the
   rejected indefinite fallback with one nonrenewable seven-calendar-day
   interval from original hold expiry or metadata purge trigger, immediate and
   deadline escalation, and documented scope-specific counsel authority and
   duration for continuation. Binding duties remain protected. The lawful
   post-deadline disposition is an unresolved human/qualified-counsel
   preactivation gate in #155, not delegated to agents or presumed from merge.
-  Fresh exact-head Data review is required; Deanna and Sarek remain locked out
+  Fresh exact-head Quality lead review is required; Privacy lead and Legal research lead remain locked out
   of this revision. This amendment remains Proposed.
 
 ### 2026-10-11 — proposed conflict-class feedback-routing correction
@@ -612,7 +611,7 @@ not match the merged `docs/plan.md`.
 - **Pull request:** [#202](https://github.com/Jamula/Andreja/pull/202) (draft)
 - **Plan SHA-256:** `ff82d1fc29a12fa1d5d69b5d87e2ff1504be8a270d03593e4564c6fd10b10fc6`
 - **Approver:** Cyrus Jamula; **pending**
-- **Approval status:** No Cyrus authorization or approval is claimed. Picard
+- **Approval status:** No Cyrus authorization or approval is claimed. Product lead
   corrected the proxy-picker attribution on issue #2; no human decision is
   inferred from it.
 - **Classification:** Proposed documentation/status amendment; no
@@ -631,8 +630,8 @@ not match the merged `docs/plan.md`.
 - **Pull request:** [#202](https://github.com/Jamula/Andreja/pull/202) (draft)
 - **Plan SHA-256:** `f82c91114bb5d72c7610dbe46d1ba625e9b2187e0d91467beb6f690da4d0449a`
 - **Approver:** Cyrus Jamula; **pending**
-- **Revision owner:** Jett Reno, independently of locked-out Spock following
-  Tuvok's challenge at `dc569e201c1cd1af5b8dc408d9315b25337660b2`.
+- **Revision owner:** Operations lead, independently of locked-out Architecture lead following
+  Security lead's challenge at `dc569e201c1cd1af5b8dc408d9315b25337660b2`.
 - **Classification:** Proposed documentation/status-artifact hash refresh;
   no re-ratification, risk acceptance, or gate closure.
 - **Scope:** Separate current task/device/operator coercive-control risk from
@@ -652,10 +651,10 @@ not match the merged `docs/plan.md`.
 - **Pull request:** [#202](https://github.com/Jamula/Andreja/pull/202) (draft)
 - **Plan SHA-256:** `e2044133f47deba7dcbbd4d931f2ec0e9a866432726d982182617716f7abfad2`
 - **Approver:** Cyrus Jamula; **pending**
-- **Revision owner:** Data, Quality Engineering Lead, independently of
-  locked-out Spock and Jett Reno after Tuvok rejected published head
+- **Revision owner:** Quality lead, Quality Engineering Lead, independently of
+  locked-out Architecture lead and Operations lead after Security lead rejected published head
   `b816653e849135a4ab36af1b23e0ab8449309fff`.
-- **Authorship provenance:** Coordinator-dispatched Data session
+- **Authorship provenance:** Coordinator-dispatched Quality lead session
   `2631cfb2-9d67-4500-92e7-103777b3e3bc`, runtime session
   `6aee8eef-96aa-487d-95e9-c8a7c4b9e5b7`, created 2026-10-11T18:28:52.685Z;
   this is a new independent revision owner, not shared-account attribution.
@@ -670,9 +669,9 @@ not match the merged `docs/plan.md`.
   no leak or new runtime test is claimed. Preserve prior coercion High (15),
   telemetry High (12), the unchanged BYOK privacy proposal, all ten impact
   mappings, accepted plan hash, and earlier amendment records.
-- **Review status:** Prior privacy approval and Rai's YELLOW advisory
+- **Review status:** Prior privacy approval and AI safety reviewer's YELLOW advisory
   disposition of the ten mappings remain historical verdicts, not approval
-  of this exact revision. Fresh Tuvok challenge and any necessary privacy/AI
+  of this exact revision. Fresh Security lead challenge and any necessary privacy/AI
   safety re-review remain pending. Cyrus's assessment, authorization-boundary,
   and residual-risk decisions remain separate and pending. The October 16
   deadline does not waive evidence or gates; the proxy-picker response
@@ -746,3 +745,18 @@ not match the merged `docs/plan.md`.
   exact-head review, synthetic-only evidence, and Cyrus's explicit decision
   remain required; no current records, exports, backups, logs, or prior
   provider copies are retroactively encrypted.
+
+### 2026-11-01 — proposed operating and documentation cleanup
+
+- **Tracking issue:** N/A; user-directed repository cleanup
+- **Pull request:** Pending
+- **Plan SHA-256:** `812228811a4d8429336c2d9140217a14175ba6aacab4494e81a73a0193ffd08c`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed operating and documentation amendment; no
+  re-ratification, risk acceptance, or gate closure.
+- **Scope:** Remove repository-level agent routing and automation, replace
+  persona ownership with functional roles, and record manual issue-status
+  maintenance. Preserve the accepted plan hash, historical source hashes,
+  the independently pending owner-device proposal, and all outstanding
+  security, privacy, legal, spending, and launch decisions. This record does
+  not treat the requested repository cleanup as approval of those decisions.

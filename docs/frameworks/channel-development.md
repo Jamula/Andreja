@@ -2,9 +2,9 @@
 
 ## Owner and status
 
-Jett Reno owns the Channel Development Framework end to end, per
+Operations lead owns the Channel Development Framework end to end, per
 [plan §Phase 0 deliverables](../plan.md#phase-0---govern-and-decide) ("Assign
-Jett Reno as Channel Framework owner"). This document is the ratified
+Operations lead as Channel Framework owner"). This document is the ratified
 **operational expansion** of
 [plan §Channel Development Framework](../plan.md#channel-development-framework):
 it operationalizes the plan's channel lifecycle into numbered stages with
@@ -101,7 +101,7 @@ connector catalog.
 - Least privilege, token isolation, consent preview, provenance, untrusted-
   content handling, data-flow/retention map, model exposure, abuse/rate
   limits, disconnect/purge, and user export.
-- Tuvok challenges the security artifact; Deanna Troi challenges the privacy
+- Security lead challenges the security artifact; Privacy lead challenges the privacy
   artifact; Cyrus approves both.
 - Exit evidence: threat-model and privacy-classification entries added to
   `docs/threat-model.md` and `docs/privacy.md` (or their Phase 0 equivalents).
@@ -128,7 +128,7 @@ connector catalog.
 - Query and draft/export before writes or publishing; require
   proposal/preview/confirmation for side effects.
 - Exit evidence: Cyrus (Customer Zero) uses the channel for real personal
-  work in read-only/draft mode; feedback captured through Guinan's workflow
+  work in read-only/draft mode; feedback captured through Support lead's workflow
   (issue #10).
 
 ### 8. Release by stage
@@ -146,7 +146,7 @@ connector catalog.
 - SLOs, freshness/quality, token expiry, webhook/delta reconciliation,
   provider incidents, cost, support ownership, API/version monitoring, and
   user-facing status.
-- Guinan receives channel feedback/support trends; the channel owner (Jett
+- Support lead receives channel feedback/support trends; the channel owner (Operations lead
   Reno, plus the domain specialist named in the catalog) remains accountable
   for technical resolution and user-visible status.
 - Exit evidence: dashboards, alerts, and a named SLO owner exist per
@@ -185,12 +185,12 @@ following occurs, and the trigger is recorded in the retirement issue:
 - The provider deprecates the API/scope the manifest depends on.
 - A security or privacy artifact identifies an unmitigated risk that the
   provider cannot address.
-- Cost or support burden exceeds the envelope Quark approved for the channel.
+- Cost or support burden exceeds the envelope FinOps lead approved for the channel.
 - Usage/evidence shows the channel does not serve the user outcome in its
   charter (Prioritization and Launch Framework stop criteria, see
   [`prioritization-launch.md`](prioritization-launch.md#program-stop-and-de-scope-rules)).
 - A regulated-data channel (rows 18–22 of the connector catalog) loses its
-  legal/regulatory basis per Sarek's applicability matrix.
+  legal/regulatory basis per Legal research lead's applicability matrix.
 
 ## Cross-references
 

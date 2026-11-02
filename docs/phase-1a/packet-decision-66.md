@@ -53,7 +53,9 @@ Acceptance includes these amendments:
 
 ## Content hashes
 
-These SHA-256 hashes bind the five accepted ADR files as amended below:
+These SHA-256 hashes preserve the five accepted ADR source versions as amended
+below. The current editorial copies are identified separately and are not
+accepted solely by this record.
 
 | ADR | SHA-256 |
 | --- | --- |
@@ -80,6 +82,22 @@ not modify the accepted Phase 1A assistant contract, authorize any account,
 runtime, authentication, network/model call, content exposure, spend, canary,
 deployment, publication, merge, or launch.
 
+## Current proposed ADR hashes
+
+- **Status:** Proposed; not accepted
+- **Scope:** Replace former agent identities with functional roles and identify
+  the current copies as proposed. The original accepted source hashes above
+  remain unchanged; this editorial update does not change accepted technical
+  requirements or authorize a gate, deployment, or release.
+
+| ADR | SHA-256 |
+| --- | --- |
+| 0001 | `c78b37aeae2380fe98fdb8dc5df0f37cd40979d3fb942320a1a98d4e584f7178` |
+| 0002 | `defb0ac7416a03c2a4e75959e4c0900fa88d15919f999bb82ecbd508b4ccf081` |
+| 0003 | `90a501176dc2000ec8791e9cd92f7afdcf18641a91ea6c94e414afc84d6697de` |
+| 0004 | `bb751ef9a03a2bc860fc99f38aba4ab7b2cecaa735b67d92e5f8025b562df450` |
+| 0005 | `4ca6113e6664db48975fe022c2d9908b770a7409cc08025b8dc9d46cba97826e` |
+
 ## Specialist challenge record
 
 The acceptance review recorded the following domain challenges. These are
@@ -89,28 +107,28 @@ certification. Their durable summary is the
 
 | Reviewer | Decision | Material challenge and disposition |
 | --- | --- | --- |
-| Spock | Accept amended | Correct shared-assembly enforcement and assistant-contract drift; re-review on a module split, provider activation, or trust-boundary change. |
-| Tuvok | Accept amended | Fix identity parameters, exporter-authentication limits, and egress wording; combined recovery and hosted provenance remain exit blockers. |
-| Deanna Troi | Accept amended | Bind purpose limitation, minimization, no inferred consent/shadow profiling, deletion/export limits, and deny-by-default exposure. |
-| Data | Accept bounded baseline | Historical evidence proves only its recorded source; reconcile current-tip evidence before a current implementation or exit claim. |
-| Quark | Accept amended | Add cost deltas; zero external units remains mandatory until numeric limits, durable hard stop, and reconciliation are approved. |
-| Jett Reno | Accept amended | Limit the host matrix to exercised evidence and retain signing, recovery, update/rollback, and operating objectives as blockers. |
-| Seven of Nine | Accept amended | Align ADR 0004 with the implemented response contract; contract fixtures do not establish live federation or provider conformance. |
-| Rai | Accept amended | Preserve proposal-before-write and human authority; accessibility, coercion, overreliance, and consequential-action risks remain gated. |
-| Sarek | Accept amended | Limit acceptance to private internal architecture; no counsel, compliance, IP, publication, or external-use approval is claimed. |
+| Architecture lead | Accept amended | Correct shared-assembly enforcement and assistant-contract drift; re-review on a module split, provider activation, or trust-boundary change. |
+| Security lead | Accept amended | Fix identity parameters, exporter-authentication limits, and egress wording; combined recovery and hosted provenance remain exit blockers. |
+| Privacy lead | Accept amended | Bind purpose limitation, minimization, no inferred consent/shadow profiling, deletion/export limits, and deny-by-default exposure. |
+| Quality lead | Accept bounded baseline | Historical evidence proves only its recorded source; reconcile current-tip evidence before a current implementation or exit claim. |
+| FinOps lead | Accept amended | Add cost deltas; zero external units remains mandatory until numeric limits, durable hard stop, and reconciliation are approved. |
+| Operations lead | Accept amended | Limit the host matrix to exercised evidence and retain signing, recovery, update/rollback, and operating objectives as blockers. |
+| Assistant and skills lead | Accept amended | Align ADR 0004 with the implemented response contract; contract fixtures do not establish live federation or provider conformance. |
+| AI safety reviewer | Accept amended | Preserve proposal-before-write and human authority; accessibility, coercion, overreliance, and consequential-action risks remain gated. |
+| Legal research lead | Accept amended | Limit acceptance to private internal architecture; no counsel, compliance, IP, publication, or external-use approval is claimed. |
 
 ## Required gate ledger
 
 | Gate | Owner | Decision | Residual risk | Expiry / re-review trigger | Affected PRs |
 | --- | --- | --- | --- | --- | --- |
-| Architecture | Spock; Cyrus decides | Accept amended ADRs 0001–0005 | Shared-assembly coupling and future contract drift | Module split, new provider/channel/federation boundary, or 90 days | #46, #47, #49, #48, #60 |
-| Security | Tuvok; Cyrus accepts risk | Accept private baseline only | Host compromise, recovery loss, export-source authenticity, provider custody | Identity/key/export/egress change or before release | #49, #48 |
-| Privacy | Deanna Troi; Cyrus accepts risk | Accept binding minimization and deny-by-default invariants | Non-user data, coercion, backup/provider deletion, remote telemetry | New data class, recipient, inference, household flow, or retention change | #47, #49, #48 |
-| Legal/regulatory | Sarek; Cyrus and qualified counsel decide when triggered | Accept internal architecture only | IP, terms, jurisdiction, notice, regulated-domain and public-claim exposure | Before external user, distribution, provider, jurisdiction, or regulated data | #46, #47, #49, #48, #60 |
-| Cost | Quark; Cyrus approves spend | Accept zero-external-unit baseline | Operator labor, host/storage cost, nondurable usage accounting | Before non-loopback call, provider/pricing change, or managed service | #47, #48 |
-| Quality | Data; Cyrus accepts exit evidence | Accept historical evidence only within its recorded source | Evidence drift, incomplete accessibility and provider-failure UX | Relevant code/schema/UI/deployment change or before exit | #46, #47, #49, #48, #60 |
-| Operations | Jett Reno; Cyrus accepts risk | Accept Docker Compose v5 Linux/ARM64 evidence host | Signing, combined recovery, update/rollback, host portability | Before release/update, host change, key rotation, or backup change | #48 |
-| Public claims | Picard and Sarek; Cyrus approves publication | No public readiness/compliance claim authorized | Overstatement, licensing/IP, accessibility and provider-term exposure | Before publication, distribution, marketing, or external onboarding | #46, #47, #49, #48, #60 |
+| Architecture | Architecture lead; Cyrus decides | Accept amended ADRs 0001–0005 | Shared-assembly coupling and future contract drift | Module split, new provider/channel/federation boundary, or 90 days | #46, #47, #49, #48, #60 |
+| Security | Security lead; Cyrus accepts risk | Accept private baseline only | Host compromise, recovery loss, export-source authenticity, provider custody | Identity/key/export/egress change or before release | #49, #48 |
+| Privacy | Privacy lead; Cyrus accepts risk | Accept binding minimization and deny-by-default invariants | Non-user data, coercion, backup/provider deletion, remote telemetry | New data class, recipient, inference, household flow, or retention change | #47, #49, #48 |
+| Legal/regulatory | Legal research lead; Cyrus and qualified counsel decide when triggered | Accept internal architecture only | IP, terms, jurisdiction, notice, regulated-domain and public-claim exposure | Before external user, distribution, provider, jurisdiction, or regulated data | #46, #47, #49, #48, #60 |
+| Cost | FinOps lead; Cyrus approves spend | Accept zero-external-unit baseline | Operator labor, host/storage cost, nondurable usage accounting | Before non-loopback call, provider/pricing change, or managed service | #47, #48 |
+| Quality | Quality lead; Cyrus accepts exit evidence | Accept historical evidence only within its recorded source | Evidence drift, incomplete accessibility and provider-failure UX | Relevant code/schema/UI/deployment change or before exit | #46, #47, #49, #48, #60 |
+| Operations | Operations lead; Cyrus accepts risk | Accept Docker Compose v5 Linux/ARM64 evidence host | Signing, combined recovery, update/rollback, host portability | Before release/update, host change, key rotation, or backup change | #48 |
+| Public claims | Product lead and Legal research lead; Cyrus approves publication | No public readiness/compliance claim authorized | Overstatement, licensing/IP, accessibility and provider-term exposure | Before publication, distribution, marketing, or external onboarding | #46, #47, #49, #48, #60 |
 
 ## Residual-risk disposition
 
@@ -119,13 +137,13 @@ external distribution, or paid/external model use**:
 
 | Risk | Owner | Required evidence | Re-review trigger |
 | --- | --- | --- | --- |
-| Hosted artifact provenance is unproven | Jett Reno, Tuvok; Cyrus accepts | Reviewed protected version-tag run satisfying accepted ADR 0010, with retained bundle/root and network-blocked verification | Before the first release or update artifact |
-| Database-plus-key recovery with restored sign-in is unproven | Jett Reno, Tuvok, Deanna Troi; Cyrus accepts | Encrypted clean-instance restore of PostgreSQL and Data Protection history followed by passkey sign-in | Any key, backup destination, identity adapter, or recovery-procedure change |
-| Genuine update and rollback are unproven | Jett Reno; Cyrus accepts | A second separately approved and signed revision updated and rolled back against preserved state | Any migration or distribution-policy change |
-| Numeric SLO, RPO/RTO, retention, and model-spend limits are unapproved | Data, Jett Reno, Quark; Cyrus approves | Numeric limits in canonical artifacts, durable enforcement, and reconciliation | Before any non-loopback model call or Phase 1A exit; on provider/pricing change |
-| Evidence is historical and accessibility review is incomplete | Data, Rai | Current-tip evidence reconciliation, human assistive-technology review, and complete provider-failure/reconnect evidence | Any relevant code, schema, deployment, or UI change |
-| Host/operator compromise and export source authenticity remain outside application controls | Tuvok, Jett Reno | Approved custody procedures and, if required, a separately decided exporter-signature/trust design | Before importing non-operator-controlled archives or widening deployment |
-| External legal, IP, privacy, accessibility, and provider obligations remain unresolved | Sarek, Deanna Troi, Rai; qualified counsel where triggered | Applicable human/counsel decisions, notices, terms, and evidence | Before external users, publication, distribution, regulated data, or public claims |
+| Hosted artifact provenance is unproven | Operations lead, Security lead; Cyrus accepts | Reviewed protected version-tag run satisfying accepted ADR 0010, with retained bundle/root and network-blocked verification | Before the first release or update artifact |
+| Database-plus-key recovery with restored sign-in is unproven | Operations lead, Security lead, Privacy lead; Cyrus accepts | Encrypted clean-instance restore of PostgreSQL and Data Protection history followed by passkey sign-in | Any key, backup destination, identity adapter, or recovery-procedure change |
+| Genuine update and rollback are unproven | Operations lead; Cyrus accepts | A second separately approved and signed revision updated and rolled back against preserved state | Any migration or distribution-policy change |
+| Numeric SLO, RPO/RTO, retention, and model-spend limits are unapproved | Quality lead, Operations lead, FinOps lead; Cyrus approves | Numeric limits in canonical artifacts, durable enforcement, and reconciliation | Before any non-loopback model call or Phase 1A exit; on provider/pricing change |
+| Evidence is historical and accessibility review is incomplete | Quality lead, AI safety reviewer | Current-tip evidence reconciliation, human assistive-technology review, and complete provider-failure/reconnect evidence | Any relevant code, schema, deployment, or UI change |
+| Host/operator compromise and export source authenticity remain outside application controls | Security lead, Operations lead | Approved custody procedures and, if required, a separately decided exporter-signature/trust design | Before importing non-operator-controlled archives or widening deployment |
+| External legal, IP, privacy, accessibility, and provider obligations remain unresolved | Legal research lead, Privacy lead, AI safety reviewer; qualified counsel where triggered | Applicable human/counsel decisions, notices, terms, and evidence | Before external users, publication, distribution, regulated data, or public claims |
 
 Any isolation, consent, recovery, content-suppression, signature, or spend-control
 failure stops exit and reopens the affected decision. A newly discovered unresolved

@@ -18,6 +18,8 @@ Fails the build when:
      or has a SHA-256 value that does not match the referenced file.
   6. The feedback framework permits raw tracking- or receipt-secret persistence
      or omits required raw-secret exfiltration boundaries.
+  7. Phase 1A ADR hashes drift, or proposed copies are not explicitly marked
+     as unaccepted.
 
 Per docs/plan.md and docs/frameworks/prioritization-launch.md, the roadmap
 catalogs are authoritative and the plan's seed tables must stay in sync.
@@ -65,8 +67,8 @@ EXPECTED_STATUS_ARTIFACTS = {
     "docs/legal/feedback-privacy-retention-dsr.md",
 }
 CANONICAL_BASELINE_REQUIREMENTS = {
-    "docs/privacy.md": ("Deanna Troi", "Tuvok", "Rai (AI safety); pending"),
-    "docs/threat-model.md": ("Tuvok", "Deanna Troi", "Rai (AI safety); pending"),
+    "docs/privacy.md": ("Privacy lead", "Security lead", "AI safety reviewer (AI safety); pending"),
+    "docs/threat-model.md": ("Security lead", "Privacy lead", "AI safety reviewer (AI safety); pending"),
 }
 CANONICAL_OPEN_ASSESSMENT = (
     "The classification/impact assessment remains open unless explicitly approved "
@@ -794,27 +796,66 @@ def check_status_artifact_hashes() -> None:
 
 
 def extract_phase_1a_adr_hashes(decision_text: str) -> dict[str, str]:
-    section = decision_text.split("## Content hashes", 1)
-    if len(section) != 2:
-        raise ValueError("Phase 1A decision record is missing its Content hashes section.")
-    section = section[1].split("## ", 1)[0]
-    matches = re.findall(
-        r"(?m)^\|\s*(000[1-5])\s*\|\s*`([0-9a-fA-F]{64})`\s*\|$",
-        section,
-    )
-    rows = dict(matches)
-    if len(matches) != len(ACCEPTED_PHASE_1A_ADRS) or set(rows) != set(
-        ACCEPTED_PHASE_1A_ADRS
-    ):
-        raise ValueError(
-            "Phase 1A decision record must contain exactly one hash for ADRs 0001–0005."
+    def extract_section(heading: str) -> tuple[str, dict[str, str]]:
+        sections = re.split(
+            rf"(?m)^## {re.escape(heading)}[ \t]*$", decision_text
         )
-    return {adr: digest.lower() for adr, digest in rows.items()}
+        if len(sections) != 2:
+            raise ValueError(
+                f"Phase 1A decision record must contain one {heading} section."
+            )
+        section = re.split(r"(?m)^## ", sections[1], maxsplit=1)[0]
+        matches = re.findall(
+            r"(?m)^\|\s*(000[1-5])\s*\|\s*`([0-9a-fA-F]{64})`\s*\|$",
+            section,
+        )
+        rows = dict(matches)
+        if len(matches) != len(ACCEPTED_PHASE_1A_ADRS) or set(rows) != set(
+            ACCEPTED_PHASE_1A_ADRS
+        ):
+            raise ValueError(
+                f"{heading} must contain exactly one hash for ADRs 0001–0005."
+            )
+        return section, {adr: digest.lower() for adr, digest in rows.items()}
+
+    _, accepted = extract_section("Content hashes")
+    if not re.search(r"(?m)^## Current proposed ADR hashes[ \t]*$", decision_text):
+        return accepted
+
+    proposed_section, proposed = extract_section("Current proposed ADR hashes")
+    status_markers = re.findall(
+        r"(?m)^- \*\*Status:\*\* Proposed; not accepted[ \t]*$",
+        proposed_section,
+    )
+    if len(status_markers) != 1:
+        raise ValueError("Proposed ADR hashes must be explicitly marked not accepted.")
+    return proposed
+
+
+def validate_proposed_phase_1a_adr_copies(
+    decision_text: str, documents: dict[str, str]
+) -> None:
+    if not re.search(r"(?m)^## Current proposed ADR hashes[ \t]*$", decision_text):
+        return
+    for adr in ACCEPTED_PHASE_1A_ADRS:
+        copy_markers = re.findall(
+            r"(?m)^- \*\*Current copy:\*\* Proposed editorial update; not accepted[ \t]*$",
+            documents[adr],
+        )
+        if len(copy_markers) != 1:
+            raise ValueError(
+                f"ADR {adr} must identify its current copy as proposed, not accepted."
+            )
 
 
 def check_phase_1a_adr_hashes() -> None:
     try:
-        recorded = extract_phase_1a_adr_hashes(read(PHASE_1A_DECISION_PATH))
+        decision_text = read(PHASE_1A_DECISION_PATH)
+        recorded = extract_phase_1a_adr_hashes(decision_text)
+        validate_proposed_phase_1a_adr_copies(
+            decision_text,
+            {adr: read(path) for adr, path in ACCEPTED_PHASE_1A_ADRS.items()},
+        )
         validate_status_artifact_hashes(
             recorded,
             set(ACCEPTED_PHASE_1A_ADRS),
@@ -824,7 +865,7 @@ def check_phase_1a_adr_hashes() -> None:
         )
     except (OSError, ValueError) as error:
         fail(str(error))
-    print("OK: accepted Phase 1A ADR hashes match.")
+    print("OK: current Phase 1A ADR hashes match the decision record.")
 
 
 def check_skill_catalog() -> None:
