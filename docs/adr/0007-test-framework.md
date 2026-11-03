@@ -289,7 +289,7 @@ telemetry; official MTP documentation confirms
 
 Both projects discovered exactly ten rows and completed with nine passed, one
 intentional skip, and zero failures. Filters selected the same six rows with
-five passed and one intentional skip. Assistant and skills lead stabilized full runs per framework
+five passed and one intentional skip. Seven stabilized full runs per framework
 (five timing runs, one memory run, one final evidence run) had no intermittent
 failure.
 
