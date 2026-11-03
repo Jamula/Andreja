@@ -416,7 +416,7 @@ contains no ruleset mutation client, HTTP write, confirmation phrase, or hidden
 override. A future activation must be a separate reviewed implementation after
 all prerequisites exist; this revision cannot enable it.
 
-## Latency, cost, and selective CI
+## Latency and cost
 
 The review delay that motivated #104 was 237 seconds on #100, 489 seconds on
 #101, and 267 seconds on #105 (median 267, maximum 489). The worker contract
@@ -424,7 +424,5 @@ adds no model request. Future canaries must measure webhook-to-pending latency,
 reconciliation delay, API calls/rate limits, durable-store cost, and total
 review latency.
 
-Issue [#102](https://github.com/Jamula/Andreja/issues/102) may reduce unrelated
-C# work for docs-only PRs. It must not path-filter, skip, synthesize, or publish
-this gate. This package coordinates that boundary only and does not implement
-#102.
+Any future CI changes must not path-filter, skip, synthesize, or publish this
+gate. This package coordinates that boundary only.

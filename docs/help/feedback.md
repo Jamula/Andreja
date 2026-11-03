@@ -2,7 +2,7 @@
 
 **Help version:** feedback-help-v1
 
-**Owner:** Guinan; website integration: Jadzia Dax; quality: Data
+**Owner:** Support lead; website integration: UX lead; quality: Quality lead
 
 **Applies to:** proposed feedback capability, not the current running product
 
@@ -55,7 +55,7 @@ When separately activated and evidenced:
 If a report concerns Cyrus or an actual, potential or perceived conflict for
 him, only an appointed independent reviewer/qualified external counsel with
 verified direct contact may receive it; ordinary intake and Cyrus-mediated
-handling are not substitutes. Sarek is not qualified external counsel and this
+handling are not substitutes. Legal research lead is not qualified external counsel and this
 page does not promise privilege.
 
 ## What never to submit
@@ -167,8 +167,8 @@ without a new public disclosure; the owner must record accept/reject and reason.
 
 ## Accessibility, ownership and stale help
 
-Before this page or its routes are presented as operational, Guinan/Jadzia Dax/
-Data must check headings/search labels, meaningful links, keyboard order/focus,
+Before this page or its routes are presented as operational, Support lead/UX lead/
+Quality lead must check headings/search labels, meaningful links, keyboard order/focus,
 screen-reader names and errors, zoom/reflow, non-color cues, shared-device
 recovery and accessible challenge/non-web alternatives under WCAG 2.2 AA.
 Plain-text and HTML email must carry equivalent meaning; supported languages

@@ -1,6 +1,6 @@
 # Feedback exact-release scenario execution plan
 
-**Version:** feedback-scenarios-v1; **owner/custodian:** Data with Guinan
+**Version:** feedback-scenarios-v1; **owner/custodian:** Quality lead with Support lead
 
 **Applicability:** proposed feedback release; **document review:** 2026-10-15
 
@@ -16,7 +16,7 @@ execution rather than become a skip/pass.
 
 ## Shared setup, binding and result contract
 
-Before every scenario, Data/Jett bind the exact release commit, immutable
+Before every scenario, Quality lead/Operations lead bind the exact release commit, immutable
 artifact digest, fixture manifest digest, approved configuration and current
 Cyrus #158 Evidence Authorization. All are **UNSET** here. Independently compare
 the actual build/deployment/fixture/inventory to those identifiers before and
@@ -86,7 +86,7 @@ only after durability; injected tenant fields, including empty/null, deny.
 response cannot claim acceptance or expose whether another case exists.
 **Failure evidence:** boundary counts, receipt/durability ordering and
 cookie/header field-presence results, never credential values.
-**Owner:** Jett; Data reviews; Guinan lifecycle.
+**Owner:** Operations lead; Quality lead reviews; Support lead lifecycle.
 **Runbooks:** [R01](../runbooks/feedback-operations.md#r01-intake-health-backpressure-and-recovery),
 [R06](../runbooks/feedback-operations.md#r06-opaque-tracking-custody-recovery-rotation-and-suspected-enumeration).
 **Status:** NOT RUN.
@@ -109,7 +109,7 @@ digest; tenant is server-derived and A cannot read/mutate B or public records.
 field, stale notice or client tenant; deny without auto-consenting or crossing scope.
 **Failure evidence:** selected-field names/counts and receipt-binding/authorization
 results, no values or principals.
-**Owner:** Guinan; Deanna Troi/Tuvok domain review, Data evidence.
+**Owner:** Support lead; Privacy lead/Security lead domain review, Quality lead evidence.
 **Runbooks:** [R02](../runbooks/feedback-operations.md#r02-intake-privacy-screening-and-safe-redaction),
 [R06](../runbooks/feedback-operations.md#r06-opaque-tracking-custody-recovery-rotation-and-suspected-enumeration).
 **Status:** NOT RUN.
@@ -134,7 +134,7 @@ GitHub or support tooling. Evidence reports only zero/nonzero category counts.
 and scanner outage cannot bypass minimization or echo.
 **Failure evidence:** offending sink category and match count, not matched text;
 invoke private containment if a canary escapes.
-**Owner:** Tuvok/Deanna Troi; Guinan screening, Data evidence.
+**Owner:** Security lead/Privacy lead; Support lead screening, Quality lead evidence.
 **Runbooks:** [R02](../runbooks/feedback-operations.md#r02-intake-privacy-screening-and-safe-redaction),
 [R03](../runbooks/feedback-operations.md#r03-private-vulnerability-and-personal-data-incident-handoff).
 **Status:** NOT RUN.
@@ -172,7 +172,7 @@ block completion/activation, not trigger automatic purge or indefinite retention
 **Failure evidence:** proof-level result, restriction denials, scoped
 propagation receipts/remaining counts, original-deadline comparison and safe
 appeal outcome, not claimant details or advice.
-**Owner:** Deanna Troi with Sarek/qualified counsel; Data reviews, Jett propagation.
+**Owner:** Privacy lead with Legal research lead/qualified counsel; Quality lead reviews, Operations lead propagation.
 **Runbooks:** [R08](../runbooks/feedback-operations.md#r08-access-correction-deletion-objection-withdrawal-and-holds),
 [R05](../runbooks/feedback-operations.md#r05-github-preview-consent-failure-withdrawal-and-removal).
 **Status:** NOT RUN.
@@ -199,7 +199,7 @@ alternative, attacker-induced victim lockout and expired authorization all deny
 unsafe operation; no quota increase or unlimited retry.
 **Failure evidence:** thresholds/units, reservations versus observed counts,
 response-class/timing tolerance and accessibility failure observations.
-**Owner:** Tuvok/Jett/Quark; Data evidence, Guinan appeal workflow.
+**Owner:** Security lead/Operations lead/FinOps lead; Quality lead evidence, Support lead appeal workflow.
 **Runbooks:** [R09](../runbooks/feedback-operations.md#r09-abuse-appeal-cost-and-accessible-recovery),
 [R01](../runbooks/feedback-operations.md#r01-intake-health-backpressure-and-recovery),
 [R06](../runbooks/feedback-operations.md#r06-opaque-tracking-custody-recovery-rotation-and-suspected-enumeration).
@@ -225,7 +225,7 @@ cross-reporter lookup and stale canonical update deny or require authorized
 correction without lost history.
 **Failure evidence:** link/transition counts, pre-publish ordering and
 independent-status authorization results.
-**Owner:** Guinan; Data reviews.
+**Owner:** Support lead; Quality lead reviews.
 **Runbook:** [R04](../runbooks/feedback-operations.md#r04-dedupe-split-and-incorrect-merge-recovery).
 **Status:** NOT RUN.
 
@@ -259,7 +259,7 @@ minimized evidence and explicit unretractable-copy limits.
 uncertain creation result or failed removal cannot yield success/retry blindly.
 **Failure evidence:** consent/draft digests, operation marker, object action
 receipts, suspended-route observation and residual-copy category only.
-**Owner:** Guinan; Deanna Troi/Tuvok with Sarek legal handoff, Data evidence.
+**Owner:** Support lead; Privacy lead/Security lead with Legal research lead legal handoff, Quality lead evidence.
 **Runbook:** [R05](../runbooks/feedback-operations.md#r05-github-preview-consent-failure-withdrawal-and-removal).
 **Status:** NOT RUN.
 
@@ -285,7 +285,7 @@ classification or conflict routed to Cyrus blocks that capability; no invented
 email or public fallback.
 **Failure evidence:** restricted handoff receipt, ordinary/public access-denial
 observations and contact/expiry validation outcome, not investigation details.
-**Owner:** Tuvok/Deanna Troi or appointed independent recipient; Data evidence.
+**Owner:** Security lead/Privacy lead or appointed independent recipient; Quality lead evidence.
 **Runbook:** [R03](../runbooks/feedback-operations.md#r03-private-vulnerability-and-personal-data-incident-handoff).
 **Status:** NOT RUN.
 
@@ -312,7 +312,7 @@ credential, changed-candidate retry, expired marker and lost candidate all deny
 unsafe access; no-return appeal grants no status/recovery.
 **Failure evidence:** active-generation/count transitions, denial/response-class
 results and help accessibility observation, no secrets or private links.
-**Owner:** Guinan/Tuvok; Data reviews, Jett custody.
+**Owner:** Support lead/Security lead; Quality lead reviews, Operations lead custody.
 **Runbooks:** [R06](../runbooks/feedback-operations.md#r06-opaque-tracking-custody-recovery-rotation-and-suspected-enumeration),
 [R10](../runbooks/feedback-operations.md#r10-aging-handoff-decline-delivery-verification-closure-and-reopen).
 **Status:** NOT RUN.
@@ -340,7 +340,7 @@ unverified closure truthful; reopen does not reset age/retention.
 unachievable target and replay cannot silently succeed or lose accountability.
 **Failure evidence:** transition coverage matrix, expected/observed event counts,
 owner acceptance, clock deltas, failure/retry outcomes and safe reason codes.
-**Owner:** Guinan/domain delivery owner; Data reviews.
+**Owner:** Support lead/domain delivery owner; Quality lead reviews.
 **Runbooks:** [R10](../runbooks/feedback-operations.md#r10-aging-handoff-decline-delivery-verification-closure-and-reopen),
 [R04](../runbooks/feedback-operations.md#r04-dedupe-split-and-incorrect-merge-recovery).
 **Status:** NOT RUN.
@@ -372,7 +372,7 @@ missing alignment or provider outage denies safely without sender substitution.
 **Failure evidence:** verifier receipt references, alignment/template/accessibility
 verdicts, send/event counts, cap denials, purge/cancellation receipts and safe
 error class; no raw destinations/messages/provider response body.
-**Owner:** Jett/Quark; Guinan/Deanna Troi/Data reviews.
+**Owner:** Operations lead/FinOps lead; Support lead/Privacy lead/Quality lead reviews.
 **Runbook:** [R07](../runbooks/feedback-operations.md#r07-return-channel-verification-revocation-and-email-suppression).
 **Status:** NOT RUN.
 
@@ -401,7 +401,7 @@ or break thresholds.
 field, stale source and restore of suppressed/deleted output block the metric.
 **Failure evidence:** expected/observed totals, schema field names, suppression/
 access/use denial results and purge receipts, not individual records.
-**Owner:** Guinan/Data; Deanna Troi/Tuvok review.
+**Owner:** Support lead/Quality lead; Privacy lead/Security lead review.
 **Runbook:** [R11](../runbooks/feedback-operations.md#r11-metric-generation-threshold-failure-access-purge-and-misuse).
 **Status:** NOT RUN.
 
@@ -429,7 +429,7 @@ not satisfy active help/private-route evidence.
 email-only DSR/status or private GitHub-only link blocks release claims.
 **Failure evidence:** page/route ID/version, link outcome, accessibility criterion/
 observation, stale-page detector result and owner/expiry check; no report data.
-**Owner:** Guinan/Jadzia Dax; Data reviews with privacy/security/claims reviewers.
+**Owner:** Support lead/UX lead; Quality lead reviews with privacy/security/claims reviewers.
 **Runbooks:** [R03](../runbooks/feedback-operations.md#r03-private-vulnerability-and-personal-data-incident-handoff),
 [R10](../runbooks/feedback-operations.md#r10-aging-handoff-decline-delivery-verification-closure-and-reopen).
 **Status:** NOT RUN.
@@ -459,6 +459,6 @@ teardown receipt, unresolved risk, unauthorized extension/substitution/
 recipient/artifact drift stops execution and final proceed recommendation.
 **Failure evidence:** drill coverage/results, stop/recovery observations,
 inventory-to-exit receipt matrix, cost delta and blocking issue/owner reference.
-**Owner:** Guinan/Data with Jett; each runbook approver reviews.
+**Owner:** Support lead/Quality lead with Operations lead; each runbook approver reviews.
 **Runbooks:** R01–R11 in the [operator collection](../runbooks/feedback-operations.md).
 **Status:** NOT RUN.

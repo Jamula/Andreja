@@ -4,7 +4,7 @@
 - **Date proposed:** 2026-10-11
 - **Tracking issue:** [#2](https://github.com/Jamula/Andreja/issues/2)
 - **Decision owner:** Cyrus Jamula
-- **Proposed by:** T'Pol, Domain/Application Lead
+- **Proposed by:** Application lead, Domain/Application Lead
 - **Governing:** [ADR 0000](0000-plan-ratification.md) and the proposed
   [plan amendment](../plan.md#proposed-owner-device-content-encryption-amendment--2026-10-11)
 - **Related:** [ADR 0002](0002-phase-1a-identity-tenancy.md),

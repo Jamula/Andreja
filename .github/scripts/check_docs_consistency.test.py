@@ -48,7 +48,7 @@ def canonical_documents() -> dict[str, str]:
                 "# Baseline",
                 "",
                 "- **Status:** Canonical descriptive baseline; not ratified",
-                "- **Owner:** Trust — Tuvok, Deanna Troi, Rai",
+                "- **Owner:** Trust — Security lead, Privacy lead, AI safety reviewer",
                 f"- **Required challenge:** {', '.join(challengers)}",
                 "- **Residual-risk acceptance:** Cyrus; pending",
                 "- **Classification/impact assessment:** "
@@ -314,9 +314,9 @@ class StatusArtifactHashTests(unittest.TestCase):
 
     def test_canonical_baseline_requires_challenge_and_residual_acceptance(self) -> None:
         for requirement in (
-            "Deanna Troi",
-            "Tuvok",
-            "Rai",
+            "Privacy lead",
+            "Security lead",
+            "AI safety reviewer",
             "Cyrus",
             "residual-risk acceptance",
         ):
@@ -395,7 +395,7 @@ class StatusArtifactHashTests(unittest.TestCase):
     def test_challengers_must_be_in_required_challenge_not_owner(self) -> None:
         for path, challengers in DOCS_CHECK.CANONICAL_BASELINE_REQUIREMENTS.items():
             challenge_line = f"- **Required challenge:** {', '.join(challengers)}"
-            for challenger in ("Deanna Troi", "Tuvok", "Rai"):
+            for challenger in ("Privacy lead", "Security lead", "AI safety reviewer"):
                 with self.subTest(path=path, challenger=challenger):
                     documents = canonical_documents()
                     documents[path] = documents[path].replace(
@@ -404,7 +404,7 @@ class StatusArtifactHashTests(unittest.TestCase):
                         1,
                     )
                     self.assertIn(
-                        "- **Owner:** Trust — Tuvok, Deanna Troi, Rai",
+                        "- **Owner:** Trust — Security lead, Privacy lead, AI safety reviewer",
                         documents[path],
                     )
                     with self.assertRaisesRegex(
@@ -480,6 +480,13 @@ class StatusArtifactHashTests(unittest.TestCase):
 
 
 class Phase1AHashTests(unittest.TestCase):
+    @staticmethod
+    def hash_table(heading: str, offset: int = 0) -> str:
+        rows = "\n".join(
+            f"| 000{i} | `{i + offset:064x}` |" for i in range(1, 6)
+        )
+        return f"## {heading}\n\n| ADR | SHA-256 |\n| --- | --- |\n{rows}\n"
+
     def test_extracts_all_accepted_adr_hashes(self) -> None:
         hashes = {f"000{i}": f"{i:064x}" for i in range(1, 6)}
         decision = "\n".join(
@@ -501,6 +508,62 @@ class Phase1AHashTests(unittest.TestCase):
             DOCS_CHECK.extract_phase_1a_adr_hashes(
                 "## Content hashes\n| 0001 | `" + "a" * 64 + "` |\n"
             )
+
+    def test_extracts_proposed_hashes_without_replacing_accepted_hashes(self) -> None:
+        accepted = self.hash_table("Content hashes")
+        proposed = self.hash_table("Current proposed ADR hashes", offset=10)
+        decision = (
+            accepted + proposed + "- **Status:** Proposed; not accepted\n"
+        )
+        expected = {f"000{i}": f"{i + 10:064x}" for i in range(1, 6)}
+
+        self.assertEqual(expected, DOCS_CHECK.extract_phase_1a_adr_hashes(decision))
+        self.assertEqual(
+            {f"000{i}": f"{i:064x}" for i in range(1, 6)},
+            DOCS_CHECK.extract_phase_1a_adr_hashes(accepted),
+        )
+
+    def test_rejects_unmarked_or_incomplete_proposed_hashes(self) -> None:
+        accepted = self.hash_table("Content hashes")
+        proposed = self.hash_table("Current proposed ADR hashes", offset=10)
+        with self.assertRaisesRegex(ValueError, "not accepted"):
+            DOCS_CHECK.extract_phase_1a_adr_hashes(accepted + proposed)
+        with self.assertRaisesRegex(ValueError, "not accepted"):
+            DOCS_CHECK.extract_phase_1a_adr_hashes(
+                accepted + proposed + "<!-- - **Status:** Proposed; not accepted -->\n"
+            )
+        with self.assertRaisesRegex(ValueError, "exactly one hash"):
+            DOCS_CHECK.extract_phase_1a_adr_hashes(
+                accepted
+                + "## Current proposed ADR hashes\n"
+                + "- **Status:** Proposed; not accepted\n"
+                + f"| 0001 | `{1:064x}` |\n"
+            )
+
+    def test_proposed_hashes_do_not_substitute_for_accepted_history(self) -> None:
+        proposed = self.hash_table("Current proposed ADR hashes", offset=10)
+        with self.assertRaisesRegex(ValueError, "Content hashes"):
+            DOCS_CHECK.extract_phase_1a_adr_hashes(
+                proposed + "- **Status:** Proposed; not accepted\n"
+            )
+
+    def test_proposed_hashes_require_each_current_adr_copy_to_be_proposed(self) -> None:
+        decision = self.hash_table("Current proposed ADR hashes", offset=10)
+        marker = "- **Current copy:** Proposed editorial update; not accepted\n"
+        documents = {f"000{i}": marker for i in range(1, 6)}
+
+        DOCS_CHECK.validate_proposed_phase_1a_adr_copies(decision, documents)
+        for malformed in ("", "<!-- " + marker.rstrip() + " -->\n", marker * 2):
+            with self.subTest(malformed=malformed):
+                invalid = dict(documents)
+                invalid["0003"] = malformed
+                with self.assertRaisesRegex(ValueError, "ADR 0003.*proposed"):
+                    DOCS_CHECK.validate_proposed_phase_1a_adr_copies(decision, invalid)
+
+    def test_accepted_only_hashes_do_not_require_proposed_copy_markers(self) -> None:
+        DOCS_CHECK.validate_proposed_phase_1a_adr_copies(
+            self.hash_table("Content hashes"), {f"000{i}": "" for i in range(1, 6)}
+        )
 
 
 if __name__ == "__main__":

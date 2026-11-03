@@ -25,10 +25,10 @@ readiness, authorize external spend, accept remaining exit risks, or claim Phase
 
 | Domain | Canonical source and ownership | Phase 1A use |
 |---|---|---|
-| Threat | The canonical [`docs/threat-model.md`](../threat-model.md) reconciles current, contract-only, evidence-blocked, and future/gated threats and controls. Tuvok owns challenge; the ratified plan governs. The [charter](../charter.md#ethics-and-sustainability-impact-assessment) is a proposed input until explicitly ratified. | The threat rows below index Phase 1A controls and proof into that canonical model. |
-| Privacy | The canonical [`docs/privacy.md`](../privacy.md) owns the inventory and handling baseline. Deanna Troi owns challenge; the ratified plan governs. The [charter](../charter.md#ethics-and-sustainability-impact-assessment) is a proposed input until explicitly ratified. | The privacy gate below is a Phase 1A field/test overlay, not a second data inventory. |
-| Testing | The canonical [`docs/testing-matrix.md`](../testing-matrix.md) records current local evidence and exclusions. Data owns challenge; the plan defines the governing [validation strategy](../plan.md#validation-and-regression-strategy). | The table below supplies Phase 1A rows/test IDs to that canonical matrix. |
-| Cost | The canonical [`docs/cost-model.md`](../cost-model.md) is Quark's accepted financial-control framework and ledger source (Cyrus's exact-version decision is recorded on [#73](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115160981)). It authorizes no numeric envelope or spend; the plan's [Cost and FinOps rules](../plan.md#cost-and-finops) remain governing. | This file only links the Phase 1A usage query and stop checks. It neither duplicates price/SKU figures nor changes the cost model's authority. |
+| Threat | The canonical [`docs/threat-model.md`](../threat-model.md) reconciles current, contract-only, evidence-blocked, and future/gated threats and controls. Security lead owns challenge; the ratified plan governs. The [charter](../charter.md#ethics-and-sustainability-impact-assessment) is a proposed input until explicitly ratified. | The threat rows below index Phase 1A controls and proof into that canonical model. |
+| Privacy | The canonical [`docs/privacy.md`](../privacy.md) owns the inventory and handling baseline. Privacy lead owns challenge; the ratified plan governs. The [charter](../charter.md#ethics-and-sustainability-impact-assessment) is a proposed input until explicitly ratified. | The privacy gate below is a Phase 1A field/test overlay, not a second data inventory. |
+| Testing | The canonical [`docs/testing-matrix.md`](../testing-matrix.md) records current local evidence and exclusions. Quality lead owns challenge; the plan defines the governing [validation strategy](../plan.md#validation-and-regression-strategy). | The table below supplies Phase 1A rows/test IDs to that canonical matrix. |
+| Cost | The canonical [`docs/cost-model.md`](../cost-model.md) is FinOps lead's accepted financial-control framework and ledger source (Cyrus's exact-version decision is recorded on [#73](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115160981)). It authorizes no numeric envelope or spend; the plan's [Cost and FinOps rules](../plan.md#cost-and-finops) remain governing. | This file only links the Phase 1A usage query and stop checks. It neither duplicates price/SKU figures nor changes the cost model's authority. |
 
 These links are self-correcting pointers: the same change that makes a canonical
 path, status, owner, or evidence mapping stale must correct this index. Conflicts
@@ -83,7 +83,7 @@ into the residual-risk register under
 | Backup/export disclosure | Encryption, least-privilege destination, explicit exclusions, checksum validation, restore/import access tests |
 
 Any unresolved critical/high threat, isolation failure, reusable-secret leak, or
-unexplained outbound call blocks exit. Tuvok challenges the threat artifact and
+unexplained outbound call blocks exit. Security lead challenges the threat artifact and
 Cyrus accepts residual risk.
 
 ## Privacy gate
@@ -113,7 +113,7 @@ Defaults are:
   records require the canonical privacy inventory and active-slice approval;
 - no cloud processor or Andreja service receives self-host content by default.
 
-Deanna Troi challenges the data-flow/retention/export/delete matrix and Cyrus
+Privacy lead challenges the data-flow/retention/export/delete matrix and Cyrus
 approves residual risk before dogfood data is entered.
 
 ## Test strategy
@@ -187,7 +187,7 @@ Column names are the required evidence shape, not a frozen physical schema.
 
 - Phase 0 cloud-infrastructure spend remains `$0`; this packet performs only
   local/paper analysis and selects no cloud resource.
-- A real BYOK call is blocked until Quark records published-price assumptions,
+- A real BYOK call is blocked until FinOps lead records published-price assumptions,
   per-session/task estimates, warning/hard-stop thresholds, and Cyrus approves the
   Phase 1A model-spend envelope in the canonical cost source identified above.
 - Unknown provider units remain unknown. They are not converted into invented cost.

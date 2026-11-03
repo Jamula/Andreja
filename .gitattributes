@@ -1,16 +1,3 @@
-# Squad: union merge for append-only team state files
-.squad/decisions.md merge=union
-.squad/agents/*/history.md merge=union
-.squad/log/** merge=union
-.squad/orchestration-log/** merge=union
-.squad/rai/audit-trail.md merge=union
-.squad/fact-checker/audit-trail.md merge=union
-
-# Casting transaction manifests hash the exact SDK-written LF bytes.
-.squad/casting/registry.json text eol=lf
-.squad/casting/history.json text eol=lf
-.squad/casting/registry-history.commit.json text eol=lf
-
 # Portable operational artifacts
 *.sh text eol=lf
 Dockerfile text eol=lf
