@@ -20,21 +20,21 @@ and records each specialist's findings and re-review triggers.
 
 - [x] Cyrus accepts the amended ADRs 0001–0005 as the bounded Phase 1A
       architecture baseline.
-- [x] Spock challenges architecture boundaries, portability, alternatives, and
+- [x] Architecture lead challenges architecture boundaries, portability, alternatives, and
       federation coherence.
-- [x] Tuvok challenges threat and identity controls.
-- [x] Deanna Troi challenges privacy, retention, model exposure, export, and delete.
-- [x] Data challenges test topology, production-impossible auth, SLO queries, and
+- [x] Security lead challenges threat and identity controls.
+- [x] Privacy lead challenges privacy, retention, model exposure, export, and delete.
+- [x] Quality lead challenges test topology, production-impossible auth, SLO queries, and
       evidence reproducibility.
-- [x] Quark challenges cost, accounting, operator labor, and sustainability.
-- [ ] Quark supplies and Cyrus approves numeric Phase 1A model-spend limits.
-- [x] Jett Reno challenges OCI/runtime, channel seam, offline-start, telemetry,
+- [x] FinOps lead challenges cost, accounting, operator labor, and sustainability.
+- [ ] FinOps lead supplies and Cyrus approves numeric Phase 1A model-spend limits.
+- [x] Operations lead challenges OCI/runtime, channel seam, offline-start, telemetry,
       backup/update/recovery, and operational support proof.
-- [x] Seven of Nine challenges assistant/skill contracts and the
+- [x] Assistant and skills lead challenges assistant/skill contracts and the
       grant/consent/disclosure/share-audit/peer-envelope conformance boundary.
-- [x] Rai challenges AI safety, human confirmation, harmful misuse, fairness, and
+- [x] AI safety reviewer challenges AI safety, human confirmation, harmful misuse, fairness, and
       the packet-level impact assessment.
-- [x] Sarek challenges legal/regulatory, consent/audit, external-provider terms,
+- [x] Legal research lead challenges legal/regulatory, consent/audit, external-provider terms,
       licensing/IP, and claims; qualified counsel remains authoritative where needed.
 - [x] Residual risks, owners, expiry/re-review triggers, and deferred exit
       decisions are recorded in [`packet-decision-66.md`](packet-decision-66.md).

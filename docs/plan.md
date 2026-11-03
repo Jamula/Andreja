@@ -2,12 +2,16 @@
 
 ## Plan status and source of truth
 
-This is the approval copy of the living plan. Ratification approves the architecture direction and bounded Phase 0 local/paper discovery/governance only. ADR 0000 records a $0, no-provisioning cloud-infrastructure cap for Phase 0; unresolved production choices and any provisioned deployment remain separately budgeted and gated by their ADRs and measured evidence. Ratification records the approver, date, and exact SHA-256 content hash of `docs/plan.md` as merged in `docs/adr/0000-plan-ratification.md`. Implementation begins with two separate pull requests:
+This is the current proposed copy of the living plan; the last accepted version
+and its exact hash remain recorded in ADR 0000. The proposed removal of agent
+roles and automation does not itself approve pending architecture or policy
+decisions. Ratification approves the architecture direction and bounded Phase 0
+local/paper discovery/governance only. ADR 0000 records a $0, no-provisioning
+cloud-infrastructure cap for Phase 0; unresolved production choices and any
+provisioned deployment remain separately budgeted and gated by their ADRs and
+measured evidence. Implementation follows the ratified plan and linked ADRs.
 
-1. `docs/plan.md`, ADR skeleton, and ratification record.
-2. A file-by-file reviewed Squad scaffold that removes machine-specific state, corrects the project identity to Andreja, resolves `squad doctor`, extends casting policy for Star Trek, and casts the approved crew.
-
-After the documentation PR, create repository roadmap issues and milestones and link execution work back to the approved plan and ADRs. Repository documentation becomes the durable architecture source of truth; repository Issues and milestones become the execution source of truth; Squad state remains a routing and learning aid. A GitHub Project board is deferred until Andreja moves into an organization. The earlier PR request remains pending until the plan is ratified; do not publish the current 165-file scaffold as-is.
+After the documentation PR, create repository roadmap issues and milestones and link execution work back to the approved plan and ADRs. Repository documentation becomes the durable architecture source of truth; repository Issues and milestones become the execution source of truth. A GitHub Project board is deferred until Andreja moves into an organization.
 
 ADR 0000 stores the initial hash plus an append-only amendment log containing issue, PR, new hash, approver, and decision. Documentation CI verifies that the recorded hash matches merged `docs/plan.md`; a mismatch fails the build. Editorial clarifications and phase evidence are logged amendments; changes to vision, data ownership, trust boundaries, Phase 0 envelope, public claims, legal posture, or non-negotiable architecture require explicit re-ratification.
 
@@ -55,20 +59,23 @@ stale rows fail documentation CI. A closed issue, merged PR, title containing
 “ratify,” or downstream description of an artifact as authoritative is not an
 explicit Cyrus decision.
 
+The accepted source hashes identify the recorded prior versions. Current copies
+changed by this editorial cleanup do not themselves become accepted.
+
 | Artifact | Source and current SHA-256 | Current authority |
 | --- | --- | --- |
-| [`docs/operating-model.md`](operating-model.md) | Issue [#14](https://github.com/Jamula/Andreja/issues/14), PR [#17](https://github.com/Jamula/Andreja/pull/17), and issue [#3](https://github.com/Jamula/Andreja/issues/3) authority reconciliation; current status/authority copy SHA-256 (LF-normalized) `01ec4329c3b99831112945b1034ef5c20fefdc538e9496f025f69a70ae7d04e3`; exact accepted source SHA-256 `ecfa53473cd08972f269a822e0b55e13b5f68bf64f787f11fb474b8be316136d`; Cyrus's exact-version decision and confirmation on [#73](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115232586) and [#73](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115264261) | **Accepted for current workstream ownership, handoffs, WIP rules, and human/agent authority framework only.** This copy records status/authority wording; the exact accepted source hash is retained. Facts/policies separation remains a later amendment; higher-authority rules and independent gates remain controlling. |
-| [`docs/cost-model.md`](cost-model.md) | Issue [#11](https://github.com/Jamula/Andreja/issues/11), PR [#20](https://github.com/Jamula/Andreja/pull/20); provider-allowance proposal [#74](https://github.com/Jamula/Andreja/issues/74), PR [#119](https://github.com/Jamula/Andreja/pull/119); current status copy SHA-256 (LF-normalized) `d1186be365c2111a9f33353a278a9e822a2b807b05d846d260eb61b7a8729ab7`; exact accepted source SHA-256 `cf1f9d3a81684cc03478231eeb585f574bfa9b1522da9d4aed858059deb533aa`; Cyrus's exact-version decision and confirmation on [#73](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115160981) and [#73](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115264261) | **Accepted financial-control framework only**: ledger separation, approval controls, reconciliation, and no-go recommendations. The exact accepted source hash is retained. No numeric envelope, spend, account, provider call, cloud provisioning, counsel/legal conclusion, residual-risk acceptance, collection, launch, plan amendment, operating-model acceptance, or Phase 0 exit is authorized. |
-| [`docs/frameworks/feedback-support.md`](frameworks/feedback-support.md) | Framework issue [#10](https://github.com/Jamula/Andreja/issues/10), source PR [#16](https://github.com/Jamula/Andreja/pull/16), handoff PR [#159](https://github.com/Jamula/Andreja/pull/159), issue [#3](https://github.com/Jamula/Andreja/issues/3) prerequisite reconciliation, successor gate packages [#155](https://github.com/Jamula/Andreja/issues/155)-[#158](https://github.com/Jamula/Andreja/issues/158), and privacy decision proposal [#155](https://github.com/Jamula/Andreja/issues/155)/PR [#172](https://github.com/Jamula/Andreja/pull/172); `40e9b9797900debf646f685152ed3c7dad0b02563b3e6af8c3fd09b3ea72ca03` | **Phase 0 framework decision complete; operational gates remain open.** Cyrus directed closure of #10 and delegated implementation details to Guinan and the relevant specialists; only consolidated gate packages return for explicit recorded approval. The separate privacy v1.1 decision remains pending after human AMEND; #155 is reopened, not approved. Its seven-day retention proposal requires executable human/qualified-counsel post-deadline disposition before activation. Closing a successor issue or merging its documentation is not approval. After #155-#157 are explicitly approved, #158 may request a separate, expiring Cyrus authorization for a private synthetic-only non-production staging-evidence exercise; that authorization does not approve public GitHub publication, production/public collection, deployment, launch, general email, or support commitments. |
-| [`docs/frameworks/feedback-security-abuse-incident-routing.md`](frameworks/feedback-security-abuse-incident-routing.md) | Decision package [#156](https://github.com/Jamula/Andreja/issues/156), PR [#177](https://github.com/Jamula/Andreja/pull/177); `405e42445816bd7890318a9df124d36e2f94003a0689910781fb637a1066d918` | **Proposed decision package.** Cyrus's decision remains pending; this inventory entry does not grant approval or authorize implementation. |
-| [`docs/legal/feedback-privacy-retention-dsr.md`](legal/feedback-privacy-retention-dsr.md) | Privacy decision proposal [#155](https://github.com/Jamula/Andreja/issues/155), merged PR [#172](https://github.com/Jamula/Andreja/pull/172), revised proposed package in PR [#193](https://github.com/Jamula/Andreja/pull/193), `feedback-privacy-v1.1` / `feedback-notice-v1.1`; `d50dbd302c7ed139ee2acbf6e7923e72198c3f217dc46abc00c81818c49bb34e` | **Human AMEND; revised proposal awaiting approval.** Amendment authorization is not approval, activation, or counsel signoff. #155 is reopened after closure through #172 without human approval. Picard's independent third-author proposal replaces the indefinite fallback with one nonrenewable seven-calendar-day interval from original expiry/purge trigger; executable human/qualified-counsel post-deadline disposition remains a preactivation gate. Binding duties remain protected and missing decisions cannot renew retention. Historical reviewer verdicts do not accept this revision; exact-revision reviews and explicit approval remain pending. Collection and publication remain blocked. |
-| [`docs/frameworks/prioritization-launch.md`](frameworks/prioritization-launch.md) | Issue [#5](https://github.com/Jamula/Andreja/issues/5), PR [#19](https://github.com/Jamula/Andreja/pull/19); current status copy SHA-256 (LF-normalized) `798343531ee42a86b3cb03c9a5dbe6720584373a4a2eb790415cfb9f522b6779`; original source SHA-256 `7ba4d30a901e881cf167afe8964c9c2e6ba2584ac94151f2e4f8bc9b2e79104c` | **Review-ready draft.** Its operational mechanics remain advisory until explicitly ratified; the plan owns phased scope and exits. The operating model's separate accepted authority for workstream ownership is recorded above. |
-| [`docs/charter.md`](charter.md) | Issue [#3](https://github.com/Jamula/Andreja/issues/3), PRs [#15](https://github.com/Jamula/Andreja/pull/15), [#27](https://github.com/Jamula/Andreja/pull/27), and the [ADR 0006 ratification instrument](adr/0006-charter-ratification.md); `d030d985c5de8260035eb83b17bc3be74876700487575408cf9679a05b4fa843` | **Proposed; not authoritative.** Issue #3 remains open and the file becomes effective only after Cyrus explicitly ratifies it through Proposed ADR 0006. The charter section in this ratified plan remains the seed summary. |
-| [`docs/privacy.md`](privacy.md) | Issue [#116](https://github.com/Jamula/Andreja/issues/116), PR [#117](https://github.com/Jamula/Andreja/pull/117), packet decision [#66](https://github.com/Jamula/Andreja/issues/66), feedback privacy decision proposal [#155](https://github.com/Jamula/Andreja/issues/155), PR [#172](https://github.com/Jamula/Andreja/pull/172), corrective proposal [#2](https://github.com/Jamula/Andreja/issues/2); current proposed revision SHA-256 (LF-normalized) `2f2c81ca5adf8a0014c6bc9418b7f86e9757cb89802482a7333ee6708b8a0546`; historical canonical descriptive baseline SHA-256 `d5ceb88f794f93b1fb20196df0163616547e16d3978871950a4632e5fc74a93f` | **Canonical descriptive baseline; not ratified.** The historical baseline hash is retained, and the proposed feedback v1.1 decision remains linked after human AMEND but not approved. Baseline challenge on #2 accepted documented/open-evidence status only; historical current-proposal challenge by Deanna Troi (privacy), Tuvok (security), Rai (AI safety); pending applied only to the prior exact version; prior baseline reviewer verdicts do not review this revision. The appended owner-device proposal is new, unreviewed, and not approved; independent exact-head challenge is pending. Cyrus residual-risk acceptance remains pending. The classification/impact assessment remains open unless explicitly approved with cited evidence. The bounded packet challenge under #66 does not ratify this baseline; the proposal makes no human authorization claim. |
-| [`docs/threat-model.md`](threat-model.md) | Issue [#116](https://github.com/Jamula/Andreja/issues/116), PR [#117](https://github.com/Jamula/Andreja/pull/117), keyless supply-chain update [#127](https://github.com/Jamula/Andreja/issues/127), packet decision [#66](https://github.com/Jamula/Andreja/issues/66), corrective proposal [#2](https://github.com/Jamula/Andreja/issues/2); current proposed revision SHA-256 (LF-normalized) `99c8ff630fd8ffa50803ec3ffe39ef6b8cb9fa372d84dab30a0fc174aa321d27`; historical canonical descriptive baseline SHA-256 `0eeac8726f8cec0c22e488fb21cadafdd7ce037081ef2f51a8dc99dfc4844eb6` | **Canonical descriptive baseline; not ratified.** Accepted ADR 0010 governs the hosted keyless signing boundary. The historical baseline hash is retained; baseline challenge on #2 accepted documented/open-evidence status only; historical current-proposal challenge by Tuvok (security), Deanna Troi (privacy), Rai (AI safety); pending applied only to the prior exact version; prior reviewer verdicts do not review this revision. The appended owner-device proposal is new, unreviewed, and not approved; independent exact-head challenge is pending. Cyrus residual-risk acceptance remains pending. The classification/impact assessment remains open unless explicitly approved with cited evidence. The bounded packet challenge under #66 does not ratify this baseline; the proposal makes no human authorization claim. |
-| [`docs/impact-assessment.md`](impact-assessment.md) | Corrective proposal tracked by [issue #2](https://github.com/Jamula/Andreja/issues/2); current proposed revision SHA-256 (LF-normalized) `18df8acd261ad1ede1e42e399e85dd3ed5abbf3cc132fdb54ba4384383ee9d34`; historical open-evidence baseline SHA-256 `09df0ff3ef592ce4f4e34f4f4e3412667f704e500644519d60515a090cbaed82` | **Proposed integrated impact and classification assessment.** No approval, risk acceptance, legal classification, runtime authorization, or gate closure is claimed; specialist challenge and Cyrus's separate human decision remain pending. The owner-device proposal is a new unreviewed supplement; previous exact-version assessment decisions do not apply to it. |
+| [`docs/operating-model.md`](operating-model.md) | Issue [#14](https://github.com/Jamula/Andreja/issues/14), PR [#17](https://github.com/Jamula/Andreja/pull/17), and issue [#3](https://github.com/Jamula/Andreja/issues/3) authority reconciliation; current status/authority copy SHA-256 (LF-normalized) `89aace19f786ba407e38ada06ff8dc4126bca44a4f117309746be62295f0965e`; exact accepted source SHA-256 `ecfa53473cd08972f269a822e0b55e13b5f68bf64f787f11fb474b8be316136d`; Cyrus's exact-version decision and confirmation on [#73](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115232586) and [#73](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115264261) | **Exact source accepted; current copy proposed.** The functional-role and manual-ownership update is not an accepted revision; the exact accepted source hash is retained. Facts/policies separation remains a later amendment; higher-authority rules and independent gates remain controlling. |
+| [`docs/cost-model.md`](cost-model.md) | Issue [#11](https://github.com/Jamula/Andreja/issues/11), PR [#20](https://github.com/Jamula/Andreja/pull/20); provider-allowance proposal [#74](https://github.com/Jamula/Andreja/issues/74), PR [#119](https://github.com/Jamula/Andreja/pull/119); current status copy SHA-256 (LF-normalized) `bb840fe7f48ff40b7f55f27b0c4f062c109e3c60f5166e3c19efc1541dba9286`; exact accepted source SHA-256 `cf1f9d3a81684cc03478231eeb585f574bfa9b1522da9d4aed858059deb533aa`; Cyrus's exact-version decision and confirmation on [#73](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115160981) and [#73](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115264261) | **Accepted financial-control framework only**: ledger separation, approval controls, reconciliation, and no-go recommendations. The exact accepted source hash is retained. No numeric envelope, spend, account, provider call, cloud provisioning, counsel/legal conclusion, residual-risk acceptance, collection, launch, plan amendment, operating-model acceptance, or Phase 0 exit is authorized. |
+| [`docs/frameworks/feedback-support.md`](frameworks/feedback-support.md) | Framework issue [#10](https://github.com/Jamula/Andreja/issues/10), source PR [#16](https://github.com/Jamula/Andreja/pull/16), handoff PR [#159](https://github.com/Jamula/Andreja/pull/159), issue [#3](https://github.com/Jamula/Andreja/issues/3) prerequisite reconciliation, successor gate packages [#155](https://github.com/Jamula/Andreja/issues/155)-[#158](https://github.com/Jamula/Andreja/issues/158), and privacy decision proposal [#155](https://github.com/Jamula/Andreja/issues/155)/PR [#172](https://github.com/Jamula/Andreja/pull/172); `08c47934445991a0c930b849c5856e7f38a015b6ffcc237df913e5d0f8968356` | **Phase 0 framework decision complete; operational gates remain open.** Cyrus directed closure of #10 and delegated implementation details to Support lead and the relevant specialists; only consolidated gate packages return for explicit recorded approval. The separate privacy v1.1 decision remains pending after human AMEND; #155 is reopened, not approved. Its seven-day retention proposal requires executable human/qualified-counsel post-deadline disposition before activation. Closing a successor issue or merging its documentation is not approval. After #155-#157 are explicitly approved, #158 may request a separate, expiring Cyrus authorization for a private synthetic-only non-production staging-evidence exercise; that authorization does not approve public GitHub publication, production/public collection, deployment, launch, general email, or support commitments. |
+| [`docs/frameworks/feedback-security-abuse-incident-routing.md`](frameworks/feedback-security-abuse-incident-routing.md) | Decision package [#156](https://github.com/Jamula/Andreja/issues/156), PR [#177](https://github.com/Jamula/Andreja/pull/177); `caf4d9ebcee66b5f792b435fb94b7e2be0750e1a579dcbbff3e84b7951ed17ca` | **Proposed decision package.** Cyrus's decision remains pending; this inventory entry does not grant approval or authorize implementation. |
+| [`docs/legal/feedback-privacy-retention-dsr.md`](legal/feedback-privacy-retention-dsr.md) | Privacy decision proposal [#155](https://github.com/Jamula/Andreja/issues/155), merged PR [#172](https://github.com/Jamula/Andreja/pull/172), revised proposed package in PR [#193](https://github.com/Jamula/Andreja/pull/193), `feedback-privacy-v1.1` / `feedback-notice-v1.1`; `0af69ce87385cf66274205e0c80cf749575916524a049c6547bc15d9b83f222a` | **Human AMEND; revised proposal awaiting approval.** Amendment authorization is not approval, activation, or counsel signoff. #155 is reopened after closure through #172 without human approval. Product lead's independent third-author proposal replaces the indefinite fallback with one nonrenewable seven-calendar-day interval from original expiry/purge trigger; executable human/qualified-counsel post-deadline disposition remains a preactivation gate. Binding duties remain protected and missing decisions cannot renew retention. Historical reviewer verdicts do not accept this revision; exact-revision reviews and explicit approval remain pending. Collection and publication remain blocked. |
+| [`docs/frameworks/prioritization-launch.md`](frameworks/prioritization-launch.md) | Issue [#5](https://github.com/Jamula/Andreja/issues/5), PR [#19](https://github.com/Jamula/Andreja/pull/19); current status copy SHA-256 (LF-normalized) `f00ae11ad82b26a59d30036efad5920eb9b52b57c771dad6d3b84f896dcb3335`; original source SHA-256 `7ba4d30a901e881cf167afe8964c9c2e6ba2584ac94151f2e4f8bc9b2e79104c` | **Review-ready draft.** Its operational mechanics remain advisory until explicitly ratified; the plan owns phased scope and exits. The operating model's separate accepted authority for workstream ownership is recorded above. |
+| [`docs/charter.md`](charter.md) | Issue [#3](https://github.com/Jamula/Andreja/issues/3), PRs [#15](https://github.com/Jamula/Andreja/pull/15), [#27](https://github.com/Jamula/Andreja/pull/27), and the [ADR 0006 ratification instrument](adr/0006-charter-ratification.md); `c5bae1b99c420823a3bf4a1586cd295e20a0b28c8540620d9b61d92d12881008` | **Proposed; not authoritative.** Issue #3 remains open and the file becomes effective only after Cyrus explicitly ratifies it through Proposed ADR 0006. The charter section in this ratified plan remains the seed summary. |
+| [`docs/privacy.md`](privacy.md) | Issue [#116](https://github.com/Jamula/Andreja/issues/116), PR [#117](https://github.com/Jamula/Andreja/pull/117), packet decision [#66](https://github.com/Jamula/Andreja/issues/66), feedback privacy decision proposal [#155](https://github.com/Jamula/Andreja/issues/155), PR [#172](https://github.com/Jamula/Andreja/pull/172), corrective proposal [#2](https://github.com/Jamula/Andreja/issues/2); current proposed revision SHA-256 (LF-normalized) `c8e916d9615233b8a244d521e2cc393f701139afc4e34a5fbc77534c7b477b5b`; historical canonical descriptive baseline SHA-256 `d5ceb88f794f93b1fb20196df0163616547e16d3978871950a4632e5fc74a93f` | **Canonical descriptive baseline; not ratified.** The historical baseline hash is retained, and the proposed feedback v1.1 decision remains linked after human AMEND but not approved. Baseline challenge on #2 accepted documented/open-evidence status only; historical current-proposal challenge by Privacy lead (privacy), Security lead (security), AI safety reviewer (AI safety); pending applied only to the prior exact version; prior baseline reviewer verdicts do not review this revision. The appended owner-device proposal is new, unreviewed, and not approved; independent exact-head challenge is pending. Cyrus residual-risk acceptance remains pending. The classification/impact assessment remains open unless explicitly approved with cited evidence. The bounded packet challenge under #66 does not ratify this baseline; the proposal makes no human authorization claim. |
+| [`docs/threat-model.md`](threat-model.md) | Issue [#116](https://github.com/Jamula/Andreja/issues/116), PR [#117](https://github.com/Jamula/Andreja/pull/117), keyless supply-chain update [#127](https://github.com/Jamula/Andreja/issues/127), packet decision [#66](https://github.com/Jamula/Andreja/issues/66), corrective proposal [#2](https://github.com/Jamula/Andreja/issues/2); current proposed revision SHA-256 (LF-normalized) `345f9dd540b83282bc6e7f382b38c2db8ea03acb99c204ee55bcec9f83b1222b`; historical canonical descriptive baseline SHA-256 `0eeac8726f8cec0c22e488fb21cadafdd7ce037081ef2f51a8dc99dfc4844eb6` | **Canonical descriptive baseline; not ratified.** Accepted ADR 0010 governs the hosted keyless signing boundary. The historical baseline hash is retained; baseline challenge on #2 accepted documented/open-evidence status only; historical current-proposal challenge by Security lead (security), Privacy lead (privacy), AI safety reviewer (AI safety); pending applied only to the prior exact version; prior reviewer verdicts do not review this revision. The appended owner-device proposal is new, unreviewed, and not approved; independent exact-head challenge is pending. Cyrus residual-risk acceptance remains pending. The classification/impact assessment remains open unless explicitly approved with cited evidence. The bounded packet challenge under #66 does not ratify this baseline; the proposal makes no human authorization claim. |
+| [`docs/impact-assessment.md`](impact-assessment.md) | Corrective proposal tracked by [issue #2](https://github.com/Jamula/Andreja/issues/2); current proposed revision SHA-256 (LF-normalized) `0e3dd2c743db403b4c32585dab07319b3940ee67b4c83112837f0d24328b092b`; historical open-evidence baseline SHA-256 `09df0ff3ef592ce4f4e34f4f4e3412667f704e500644519d60515a090cbaed82` | **Proposed integrated impact and classification assessment.** No approval, risk acceptance, legal classification, runtime authorization, or gate closure is claimed; specialist challenge and Cyrus's separate human decision remain pending. The owner-device proposal is a new unreviewed supplement; previous exact-version assessment decisions do not apply to it. |
 | [`docs/legal/license-evaluation.md`](legal/license-evaluation.md) | Issue [#6](https://github.com/Jamula/Andreja/issues/6), merged source PR [#12](https://github.com/Jamula/Andreja/pull/12); `4b8f325941e79a3d802bd03ef1472d55d69540efddced54853acda43f801d5e2` | **Counsel-ready research; not approved policy.** Issue #6 remains open; qualified counsel and Cyrus approval are still required. It authorizes no visibility, contribution, license, trademark, domain, or publication change. |
-| [`docs/legal/regulatory-applicability.md`](legal/regulatory-applicability.md) | Issue [#8](https://github.com/Jamula/Andreja/issues/8), PRs [#21](https://github.com/Jamula/Andreja/pull/21) and [#28](https://github.com/Jamula/Andreja/pull/28); `b28a350a3e1c188c8d1508430f7932214fff67b0e4b8d15e6398a032c2574a34` | **Draft legal-research/governance artifact.** Issue #8 remains open; qualified counsel and Cyrus approval are required before it is authoritative or supports a legal/compliance claim. |
+| [`docs/legal/regulatory-applicability.md`](legal/regulatory-applicability.md) | Issue [#8](https://github.com/Jamula/Andreja/issues/8), PRs [#21](https://github.com/Jamula/Andreja/pull/21) and [#28](https://github.com/Jamula/Andreja/pull/28); `69102a72dbf3ad235f19664a18ac7eaffec710891069a73207081ace4a018290` | **Draft legal-research/governance artifact.** Issue #8 remains open; qualified counsel and Cyrus approval are required before it is authoritative or supports a legal/compliance claim. |
 
 #### Phase 0 website containment
 
@@ -124,7 +131,7 @@ rows do not weaken these exits.
 The canonical [`docs/privacy.md`](privacy.md) and
 [`docs/threat-model.md`](threat-model.md) now provide descriptive cross-phase
 baselines under [#116](https://github.com/Jamula/Andreja/issues/116), but are not
-ratified. Tuvok's security challenge, Deanna Troi's privacy challenge, Rai's
+ratified. Security lead's security challenge, Privacy lead's privacy challenge, AI safety reviewer's
 AI-safety challenge, Cyrus's explicit residual-risk acceptance, and the
 classification/impact assessment remain open. They do not accept a Proposed ADR,
 authorize production or a future
@@ -158,7 +165,7 @@ enable PR-level auto-merge until one of those sign-offs is recorded for the
 current head; a new head invalidates it. This procedural proposal does not claim an always-present automated gate,
 change repository settings, or authorize a human/native-account approval
 requirement. If the reviewer rejects a change, the author is locked out from
-revising that artifact; a different agent must own the revision.
+revising that artifact; a different contributor must own the revision.
 
 The exact-head, independent-review, unresolved-thread, and rejection-lockout
 requirements remain. Material-risk, legal, policy, counsel, ratification,
@@ -168,12 +175,9 @@ waived by code-review sign-off. Merged PR
 human-blocked design evidence only; no external GitHub App/worker or
 always-present review-completion gate exists or is authorized.
 
-The next safe engineering lane is fail-closed selective CI under
-[#102](https://github.com/Jamula/Andreja/issues/102). It must keep stable,
-always-present, fail-closed aggregate checks on pull-request, merge-group, and
-default-branch paths. Implementation of #102 must not depend on, substitute
-for, or weaken #115 or #104; unknown or unclassified changes must fail closed
-into the full relevant suite.
+The disabled selective-CI prototype has been retired. Any future CI change must
+preserve the existing required checks and must not depend on, substitute for,
+or weaken #115 or #104.
 
 Public launch, a real Copilot provider, managed cloud, federation, and production
 connectors remain deferred to their later phases and explicit gates.
@@ -306,7 +310,7 @@ Empower people to understand and improve their lives through a trustworthy, user
 ### How the charter is enforced
 
 - Every major ADR, launch gate, sponsorship/partner decision and public claim includes an ethics/sustainability impact section.
-- Tuvok, Deanna Troi, Quark, Sarek, Data and Rai challenge security, privacy, cost/sustainability, legal/evidence and responsible-AI effects; Cyrus retains final human accountability.
+- Security lead, Privacy lead, FinOps lead, Legal research lead, Quality lead and AI safety reviewer challenge security, privacy, cost/sustainability, legal/evidence and responsible-AI effects; Cyrus retains final human accountability.
 - Before GA, every charter indicator area—human agency and user control;
   accessibility and inclusion; privacy and data dignity; security and safety;
   product truth and quality; support and accountability; AI and compute efficiency;
@@ -570,7 +574,7 @@ The architecture review identified these required changes:
 ## Personal semantic graph
 
 - Treat the "semantic web of the user" as a private, user-owned personal semantic graph, not as automatic publication to the public web.
-- Seven of Nine leads the research with Spock for ontology/architecture, T'Pol for persistence, Deanna Troi for privacy/inference controls, Tuvok for authorization, Data for quality/provenance, and Hoshi/Jadzia for usable review experiences.
+- Assistant and skills lead leads the research with Architecture lead for ontology/architecture, Application lead for persistence, Privacy lead for privacy/inference controls, Security lead for authorization, Quality lead for quality/provenance, and Mobile lead/UX lead for usable review experiences.
 - Research and compare JSON-LD, RDF/OWL, schema.org, PROV-O, ActivityStreams, Solid concepts, portable graph formats, relational/JSON projections, graph databases, and embeddings. Reuse standards selectively; do not adopt a graph database or universal ontology without measured use cases.
 - Candidate concepts include:
   - Person, Principal, Contact, Relationship, Organization, Account, Role, Project, Goal, Commitment, Task, Event, Place, Artifact, Skill, Interest, Preference, Persona, Claim, Source, Connector, Grant, Consent, and Publication.
@@ -666,7 +670,7 @@ First-party skills follow the same platform contract and quality gates expected 
 5. **Implementation:** domain/application use cases behind `ISkillHost`, typed tools, no ambient `DbContext`/secrets/service-provider access, structured results, cancellation, idempotency, telemetry suppression, and cost events.
 6. **Safety/privacy/security review:** threat and privacy artifacts, prompt-injection/untrusted-data boundaries, sensitive inference controls, abuse cases, publication/share risks, and provider terms.
 7. **Validation:** unit/domain, manifest/schema, permission-negative, channel contract, component/accessibility, E2E, adversarial AI, failure/recovery, performance/cost, compatibility, export/delete, and help-link tests.
-8. **Dogfood:** smallest complete vertical slice, draft/read-only before consequential side effects, user feedback captured through Guinan's workflow, and measured outcome/usage/cost.
+8. **Dogfood:** smallest complete vertical slice, draft/read-only before consequential side effects, user feedback captured through Support lead's workflow, and measured outcome/usage/cost.
 9. **Release progression:** dogfood, invite alpha, private beta, public beta, GA; every stage records supported capabilities, known limits, evidence, and rollback.
 10. **Operate and improve:** SLOs, quality/freshness, model/channel changes, user feedback, outcome metrics, costs, incidents, compatibility, and backlog re-scoring.
 11. **Version/deprecate:** semantic versioning, minimum platform/protocol, migration, re-consent for new scopes, compatibility window, export, replacement path, and revocation/retirement.
@@ -702,12 +706,12 @@ First-party skills follow the same platform contract and quality gates expected 
 
 ### Assistant usage feedback loop
 
-- Record one append-only usage event after every Copilot/Squad/assistant session: session ID, agent, provider, model, input/output/cache tokens when reported, provider usage units, duration, retries, tool calls, outcome, and phase/task attribution.
+- Record one append-only usage event after every Copilot/assistant session: session ID, agent, provider, model, input/output/cache tokens when reported, provider usage units, duration, retries, tool calls, outcome, and phase/task attribution.
 - Never persist prompts, responses, task content, or personal data in the usage ledger.
 - Mark unavailable measurements as unknown; do not invent token or cost estimates.
 - Treat Copilot `assistant.usage` as ephemeral per-call telemetry and provider `cost` as a usage value, not invoice currency. Reconcile provider usage, GitHub AI credits, invoices, and internal attribution separately before publishing financial totals.
-- Quark owns session-close aggregation and reports cost per successful outcome, model mix, retry waste, and unusual growth to the retrospective.
-- Feed Quark's evidence into model routing, economy mode, prompt/context reduction, agent fan-out limits, caching, and budget decisions.
+- FinOps lead owns session-close aggregation and reports cost per successful outcome, model mix, retry waste, and unusual growth to the retrospective.
+- Feed FinOps lead's evidence into model routing, economy mode, prompt/context reduction, agent fan-out limits, caching, and budget decisions.
 - Set warning and hard-stop budgets for sessions, days, phases, tenants, and expensive live-test suites.
 - Keep raw per-session usage in runtime/operational storage; commit only reviewed aggregate decisions or cost-model updates.
 - Phase 0 must verify which fields each provider and Copilot CLI/SDK actually emits. Before product storage exists, write raw usage to session-scoped local operational storage; if token counts are unavailable, use explicitly labeled fallback units such as turns, sessions, duration, tool calls, and successful outcomes.
@@ -771,7 +775,7 @@ All actual first-party skills use the same manifest, capability, proposal, conse
 - Keep private identity/relationship/task graph data separate from publishable brand facts. Moving information into a public persona is an explicit disclosure proposal.
 - Do not include identifiable third-party names, photos, relationships, workplace details, family context, or private communications in a publication proposal without a specific disclosure check and consent where required.
 - Record each channel's AI-generated-content disclosure, automation, authenticity, rate, and publishing rules in its channel manifest and enforce them before publication.
-- Neelix leads product/market requirements, Seven owns the skill and semantic integration, Jadzia owns authoring UX, Deanna Troi owns privacy/authenticity, Tuvok owns connector/publishing security, Data owns evidence quality, and Cyrus approves publication.
+- Marketing lead leads product/market requirements, Assistant and skills lead owns the skill and semantic integration, UX lead owns authoring UX, Privacy lead owns privacy/authenticity, Security lead owns connector/publishing security, Quality lead owns evidence quality, and Cyrus approves publication.
 
 ### Lifestyle rewards, miles, and points guardrails
 
@@ -784,7 +788,7 @@ All actual first-party skills use the same manifest, capability, proposal, conse
 - No credential scraping, browser self-bots, terms-violating automation, card churning, deceptive applications, manufactured spending, or recommendations that misrepresent eligibility/income.
 - Show valuations, transfer ratios, fees, taxes, availability, devaluation/expiration risk, and assumptions as time-sensitive estimates rather than guaranteed value or financial advice.
 - Research current product/API status before promising integrations. Named candidates include approved financial aggregators, Quicken products/successors, Chase, American Express, AwardWallet, Rakuten, CardPointers, Bilt, airline programs, hotel programs, and card reward programs.
-- Quark owns economic/value methodology, Seven owns skills/channels, Tuvok owns financial-action security, Deanna Troi owns data minimization, Sarek owns regulatory/terms questions, Data owns reconciliation quality, and Cyrus confirms consequential actions.
+- FinOps lead owns economic/value methodology, Assistant and skills lead owns skills/channels, Security lead owns financial-action security, Privacy lead owns data minimization, Legal research lead owns regulatory/terms questions, Quality lead owns reconciliation quality, and Cyrus confirms consequential actions.
 
 ### Employer Benefits and Perks Manager guardrails
 
@@ -796,7 +800,7 @@ All actual first-party skills use the same manifest, capability, proposal, conse
 - Never store employer, payroll, retirement or benefits passwords/session cookies. Use provider-hosted OAuth/SSO/partner APIs or user-controlled documents.
 - Keep employer/confidential plan data, compensation, elections, donations, health benefits and inferred financial/health traits highly sensitive and excluded from sponsors, public brand, business analytics and unrelated skills.
 - Research current approved access for employer portals and providers such as Workday/benefits systems, retirement custodians, charitable-match platforms, wellness/perks services and employer-specific systems before promising automation.
-- Quark owns benefit-value methodology, Seven owns the skill/channel design, Sarek owns plan/tax/legal boundaries, Tuvok owns high-assurance actions, Deanna Troi owns privacy, Beverly Crusher reviews health-benefit boundaries, Data owns reconciliation and Cyrus confirms consequential actions.
+- FinOps lead owns benefit-value methodology, Assistant and skills lead owns the skill/channel design, Legal research lead owns plan/tax/legal boundaries, Security lead owns high-assurance actions, Privacy lead owns privacy, Health lead reviews health-benefit boundaries, Quality lead owns reconciliation and Cyrus confirms consequential actions.
 
 ### Health and Wellbeing Manager guardrails
 
@@ -809,7 +813,7 @@ All actual first-party skills use the same manifest, capability, proposal, conse
 - Treat health data and inferred health traits as highest-sensitivity. Use separate scopes, encryption/key/access review, minimal telemetry, explicit sharing, short retention where appropriate, export/delete, derived-index purge, and no sponsor/business analytics use.
 - Research applicable consumer-health, medical-record, HIPAA/covered-entity/business-associate, state privacy, GDPR special-category, app-store and provider requirements based on deployment and partnerships; do not assume HIPAA status from feature names.
 - Candidate channels require official access and conformance evidence: user-controlled documents, SMART on FHIR/FHIR, patient portals, Apple Health/HealthKit, Android Health Connect, pharmacy, lab, imaging and approved wearable/provider APIs.
-- Beverly Crusher owns health outcomes/safety requirements; Seven owns the skill/channel architecture; Tuvok owns access/action security; Deanna Troi owns sensitive-data privacy; Sarek owns legal/regulatory research; Data owns provenance/reconciliation; Cyrus confirms consequential actions.
+- Health lead owns health outcomes/safety requirements; Assistant and skills lead owns the skill/channel architecture; Security lead owns access/action security; Privacy lead owns sensitive-data privacy; Legal research lead owns legal/regulatory research; Quality lead owns provenance/reconciliation; Cyrus confirms consequential actions.
 
 ### Household, Vehicle, Insurance and Projects Manager guardrails
 
@@ -822,7 +826,7 @@ All actual first-party skills use the same manifest, capability, proposal, conse
 - Same-tenant household work arrives in Phase 5; independently hosted family collaboration uses Phase 6 federation proposals/reference sharing. Single-owner records remain authoritative.
 - Never store insurer/utility/vehicle portal passwords, full payment card data, garage/access codes, alarm credentials, vehicle keys or sensitive property-security details outside dedicated approved secret/key facilities.
 - Candidate channels require official/partner access: user-controlled documents/email/calendar, insurance/provider APIs, vehicle/telematics, utilities, warranty/receipt services, home-service/contractor platforms and approved smart-home sources.
-- Jett Reno owns household/vehicle/project workflow, Quark owns cost/deal methodology, Seven owns skills/channels, Tuvok owns property/action security, Deanna Troi owns household privacy, Sarek owns insurance/contract boundaries, Data owns comparison provenance and Cyrus confirms consequential actions.
+- Operations lead owns household/vehicle/project workflow, FinOps lead owns cost/deal methodology, Assistant and skills lead owns skills/channels, Security lead owns property/action security, Privacy lead owns household privacy, Legal research lead owns insurance/contract boundaries, Quality lead owns comparison provenance and Cyrus confirms consequential actions.
 
 ### Hobbies and Social Groups Manager guardrails
 
@@ -833,7 +837,7 @@ All actual first-party skills use the same manifest, capability, proposal, conse
 - Sending invitations/messages, changing group state, publishing attendance/results or sharing contact/location data requires preview and confirmation; apply anti-spam/rate and abuse controls.
 - Poker support is social scheduling, records and user-defined entertainment budgeting only; no wagering execution, payment custody, odds/betting optimization, illegal-game facilitation or claims of gambling profit.
 - Public game/card/reference data may enrich user-owned records only under compatible terms and provenance; distinguish community facts from private group data.
-- Neelix owns community/group outcomes, Seven owns skill/channel integration, Deanna Troi owns relationship/privacy controls, Tuvok owns messaging/access abuse controls, Data owns record quality and Cyrus confirms consequential sharing.
+- Marketing lead owns community/group outcomes, Assistant and skills lead owns skill/channel integration, Privacy lead owns relationship/privacy controls, Security lead owns messaging/access abuse controls, Quality lead owns record quality and Cyrus confirms consequential sharing.
 
 ### Life Context and Opportunity Navigator guardrails
 
@@ -845,7 +849,7 @@ All actual first-party skills use the same manifest, capability, proposal, conse
 - Meaningful connection proposals require purpose, mutual benefit and consent. Do not rank people by worth, reveal private compatibility/stress/finance/health data, create shadow profiles, manipulate relationships or contact others without confirmation.
 - Event opportunities may include learning, career, community, family, health, travel, volunteering or financial deadlines, but provider/public-source terms, time/location privacy and user availability are respected.
 - Users can inspect, correct, disable or delete any context domain/inference and run the assistant in a deliberately narrow mode.
-- Seven owns semantic/assistant design, Deanna Troi owns human/privacy boundaries, Picard owns outcome strategy, Neelix owns community/opportunity framing, Tuvok owns access/abuse controls, Data owns evidence quality and Cyrus controls goals and actions.
+- Assistant and skills lead owns semantic/assistant design, Privacy lead owns human/privacy boundaries, Product lead owns outcome strategy, Marketing lead owns community/opportunity framing, Security lead owns access/abuse controls, Quality lead owns evidence quality and Cyrus controls goals and actions.
 
 ### Life Event Planner guardrails
 
@@ -856,7 +860,7 @@ All actual first-party skills use the same manifest, capability, proposal, conse
 - Collaboration is purpose-scoped: spouse/family/caregivers receive only the event resources/operations they need. Children, elders and other affected people are not silently profiled or enrolled; adult-only account policy and future guardian/care authority rules still apply.
 - Financial/health/legal/employer inputs remain within their source skills and grants. The planner consumes access-scoped projections and cannot bypass confirmations or perform transactions/actions itself.
 - Every recommendation states user goals, sources, scenario assumptions, tradeoffs, uncertainty, reversibility and next review point. Users can branch scenarios without overwriting the agreed plan.
-- Seven owns cross-skill orchestration, Picard owns outcome/decision framing, Quark owns financial scenarios, Beverly Crusher owns care/health boundaries, Sarek owns legal/tax boundaries, Deanna Troi owns family consent, Data owns assumptions/evidence and Cyrus chooses the plan.
+- Assistant and skills lead owns cross-skill orchestration, Product lead owns outcome/decision framing, FinOps lead owns financial scenarios, Health lead owns care/health boundaries, Legal research lead owns legal/tax boundaries, Privacy lead owns family consent, Quality lead owns assumptions/evidence and Cyrus chooses the plan.
 
 ### Relationships and Communities Map guardrails
 
@@ -868,7 +872,7 @@ All actual first-party skills use the same manifest, capability, proposal, conse
 - Strip or minimize precise location/device metadata unless explicitly needed. Never publish photos, names, locations, relationship labels or cluster membership to brand/social/sharing features without a separate disclosure proposal.
 - Non-user contacts remain tenant-local `Contact` records, not principals or shadow accounts. The user can correct, merge, unlink, expire and delete relationship/cluster hypotheses and all derived indexes.
 - Future premium on-device face clustering requires a separate biometric/legal/privacy/security ADR, explicit opt-in, local encrypted templates, no automatic names, no cloud template upload, reset/delete/export and device capability evidence.
-- Deanna Troi owns relationship/privacy requirements, Seven owns semantic/photo integration, Tuvok owns biometric/location/access security, Neelix owns community use cases, Data owns provenance/quality and Cyrus approves any expansion beyond non-biometric mode.
+- Privacy lead owns relationship/privacy requirements, Assistant and skills lead owns semantic/photo integration, Security lead owns biometric/location/access security, Marketing lead owns community use cases, Quality lead owns provenance/quality and Cyrus approves any expansion beyond non-biometric mode.
 
 ### Small Business and Entrepreneur Manager guardrails
 
@@ -879,7 +883,7 @@ All actual first-party skills use the same manifest, capability, proposal, conse
 - Multi-user businesses require business-tenant roles, least-privilege access, separation of duties, audit, offboarding, records retention and ownership transfer; a personal relationship does not imply business access.
 - Customer/employee/vendor personal data is not available to Personal Brand, Life Context or unrelated personal skills without purpose and explicit policy.
 - Customer Zero uses this skill to operate Andreja company/brand/marketplace and expose platform gaps, while keeping internal company data out of generic samples/tests.
-- Picard owns business outcomes, Quark owns financial administration, Seven owns skill/channel contracts, Guinan owns customer/support workflows, Neelix owns marketing/community, Tuvok/Deanna/Sarek own trust/legal boundaries, Data owns reconciliation and Cyrus confirms consequential actions.
+- Product lead owns business outcomes, FinOps lead owns financial administration, Assistant and skills lead owns skill/channel contracts, Support lead owns customer/support workflows, Marketing lead owns marketing/community, Security lead/Privacy lead/Legal research lead own trust/legal boundaries, Quality lead owns reconciliation and Cyrus confirms consequential actions.
 
 ## Deployment, data ownership, hosting, and scale
 
@@ -985,7 +989,7 @@ A channel is a typed, permissioned connection between Andreja and an external id
 
 - Channel writes, sends, shares, publishes, deletes, or financial actions always require the capability and confirmation tier defined in the manifest and policy evaluator.
 - One provider may expose multiple isolated channels/grants. GitHub assistant, content, identity, feedback, and publishing roles are never collapsed into one token.
-- Guinan receives channel feedback/support trends; the channel owner remains accountable for technical resolution and user-visible status.
+- Support lead receives channel feedback/support trends; the channel owner remains accountable for technical resolution and user-visible status.
 
 ## OpenTelemetry and operability
 
@@ -1011,7 +1015,7 @@ A channel is a typed, permissioned connection between Andreja and an external id
 
 - Create a threat model before the first deployed slice and update it per phase.
 - Model external attackers, malicious or compromised users, hostile peers, malicious skills, prompt injection, account linking attacks, confused deputies, insider/admin access, supply-chain compromise, and telemetry leakage.
-- Require a security artifact for identity, authorization, cryptography, grants, delegated tokens, federation, sandboxing, and data export/delete changes; Tuvok challenges the artifact and Cyrus approves it.
+- Require a security artifact for identity, authorization, cryptography, grants, delegated tokens, federation, sandboxing, and data export/delete changes; Security lead challenges the artifact and Cyrus approves it.
 - Use secure headers, antiforgery, output encoding, CSP, rate limiting, abuse controls, secret scanning, dependency review, SAST, container/IaC scanning, signed build provenance, and SBOM generation.
 - Encrypt in transit and at rest; document key ownership/rotation and when customer-managed keys become justified.
 - Verify tenant isolation at every API and background-worker boundary.
@@ -1027,7 +1031,7 @@ A channel is a typed, permissioned connection between Andreja and an external id
 - Define data residency, subprocessors, DPA needs, privacy notices, records of processing, and data-subject request workflows before public SaaS launch.
 - Define controller/processor roles for self-host versus managed deployments and a handling path for non-user data subjects whose personal data appears in another person's tenant, including contacts, group members, photo subjects, care recipients, business customers/employees/vendors and family members. Decide correction/access/erasure/objection handling before Phase 2 Relationships/Communities and before public onboarding.
 - Perform privacy impact assessments for AI, federation, family sharing, connectors, and third-party skills.
-- Require a privacy artifact for new data fields, telemetry changes, sharing UX, AI context, connectors, retention, and external processors; Deanna Troi challenges the artifact and Cyrus approves it.
+- Require a privacy artifact for new data fields, telemetry changes, sharing UX, AI context, connectors, retention, and external processors; Privacy lead challenges the artifact and Cyrus approves it.
 - AI agents assist with privacy analysis but do not replace qualified privacy or legal counsel.
 
 ## Cost and FinOps
@@ -1039,19 +1043,19 @@ A channel is a typed, permissioned connection between Andreja and an external id
 - Use telemetry sampling/caps, SQL auto-pause only with a cold-start UX, consumption hosting where reliable, and ephemeral test environments where cheaper than permanent staging.
 - Track costs for compute, SQL, storage, telemetry, egress, model tokens, queues/functions, secrets, backups, federation traffic, audits, and CI.
 - Establish per-tenant and per-capability usage metering before pricing the SaaS product.
-- Quark owns the complete burn ledger: cloud and self-host reference infrastructure, domains/CDN, CI, observability, model usage, app stores, connector verification, security assessments, legal, support, tooling, contractors, and other operating expenses.
-- Keep three ledgers distinct: development-time Squad/session usage, product tenant/provider metering, and business financial burn/income. They have different schemas, storage, retention, access and reconciliation; never combine raw user/product telemetry with company accounting.
-- Quark publishes recurring actual-versus-budget, forecast, runway, cost per active user/tenant/capability, sponsor income, and variance explanations using aggregate financial data only.
+- FinOps lead owns the complete burn ledger: cloud and self-host reference infrastructure, domains/CDN, CI, observability, model usage, app stores, connector verification, security assessments, legal, support, tooling, contractors, and other operating expenses.
+- Keep three ledgers distinct: development-time session usage, product tenant/provider metering, and business financial burn/income. They have different schemas, storage, retention, access and reconciliation; never combine raw user/product telemetry with company accounting.
+- FinOps lead publishes recurring actual-versus-budget, forecast, runway, cost per active user/tenant/capability, sponsor income, and variance explanations using aggregate financial data only.
 - Every paid dependency has an owner, renewal/usage trigger, cancellation path, and lower-cost alternative where credible.
-- Quark issues a documented no-go recommendation when cost is unestimated, unmeasured or outside the approved envelope; Cyrus decides whether to stop, fund, de-scope or accept the recorded risk.
-- Cyrus explicitly left the initial `fleet-research` run uncapped to maximize foundational research quality. Quark records actual usage and uses it to propose later limits; no automatic cap is applied retroactively to this run.
+- FinOps lead issues a documented no-go recommendation when cost is unestimated, unmeasured or outside the approved envelope; Cyrus decides whether to stop, fund, de-scope or accept the recorded risk.
+- Cyrus explicitly left the initial `fleet-research` run uncapped to maximize foundational research quality. FinOps lead records actual usage and uses it to propose later limits; no automatic cap is applied retroactively to this run.
 
 ### Initial sustainability model
 
 - Monetization is not a near-term product gate, but architecture and operations must preserve measurable unit economics and future plan/billing boundaries.
 - Begin with transparent project sponsorship/donations and optional sponsor recognition on the public site.
 - Sponsors receive no personal data, targeted advertising, privileged telemetry, hidden product influence, security/privacy exceptions, or access to private planning.
-- Publish a sponsorship policy covering eligibility, disclosures, recognition format, conflicts, independence, refunds/termination, and prohibited sponsors; Sarek reviews terms, Deanna Troi reviews privacy/trust, Tuvok reviews integrations, Neelix manages public communication, and Cyrus approves.
+- Publish a sponsorship policy covering eligibility, disclosures, recognition format, conflicts, independence, refunds/termination, and prohibited sponsors; Legal research lead reviews terms, Privacy lead reviews privacy/trust, Security lead reviews integrations, Marketing lead manages public communication, and Cyrus approves.
 - Evaluate GitHub Sponsors, Open Collective, or direct sponsorship only after licensing, tax/accounting, payment-processing, and repository-ownership questions are reviewed.
 - Treat sponsor income separately from user subscription revenue and do not assume it proves a durable SaaS business model.
 - Revisit managed-host pricing, subscriptions, marketplace economics, and support tiers only after usage and cost evidence exists.
@@ -1100,7 +1104,7 @@ The approved implementation creates:
 - `docs/runbooks/`: deployment, rollback, database recovery, identity, incident, privacy, and cost-response procedures.
 - `docs/legal/license-evaluation.md`: licensing/IP investigation and counsel-reviewed decision record.
 - `docs/charter.md`: ratified company mission, ethical/sustainability commitments and operating/culture principles.
-- `docs/legal/regulatory-applicability.md`: Sarek's jurisdiction/capability applicability and horizon register with counsel decisions.
+- `docs/legal/regulatory-applicability.md`: Legal research lead's jurisdiction/capability applicability and horizon register with counsel decisions.
 - `docs/business/sponsorship-policy.md`: eligibility, disclosures, recognition, conflicts, independence, termination and prohibited sponsors.
 - `docs/marketplace/governance.md`: publisher/user rights, review/ranking/appeal, portability, commercial and trust rules.
 - `docs/repository-migration.md`: canonical repository ownership, roadmap Project, migration checks, and operations follow-ups.
@@ -1118,14 +1122,14 @@ The approved implementation creates:
   - Required automated/live test evidence.
   - Architecture, security, privacy, cost, legal, and operability gates.
   - Dependencies and links to ADRs, threat/privacy artifacts, and related issues.
-- Encode Status, Phase, Workstream, Type, Priority, Risk, Data Classification, Cost Impact, Squad Owner, Human Owner, and Evidence through milestones, labels, issue forms, assignees, and linked artifacts until organization Project fields are available.
-- Use labels consistently for feature areas, architecture spikes, security/privacy/legal/FinOps gates, connectors, skills, federation, bugs, regressions, and Squad routing.
+- Encode Status, Phase, Workstream, Type, Priority, Risk, Data Classification, Cost Impact, Workstream Owner, Human Owner, and Evidence through milestones, labels, issue forms, assignees, and linked artifacts until organization Project fields are available.
+- Use labels consistently for feature areas, architecture spikes, security/privacy/legal/FinOps gates, connectors, skills, federation, bugs, regressions, and workstream ownership.
 - Add issue forms for feature work, bugs, architecture spikes/ADRs, security/privacy review, connectors/skills, cost review, and retrospective actions.
 - Require implementation pull requests to link an issue, describe acceptance/test evidence, and update issue/milestone state automatically where practical.
 - Treat ADRs and `docs/plan.md` as decisions; do not duplicate or contradict them in issue comments. Proposed plan/architecture changes require an issue and reviewed documentation PR.
 - Keep personal task content, profile details, tokens, connector data, and private diagnostics out of issues and project fields.
-- Configure Squad to consume GitHub Issues as the work queue and write status/evidence back to the issue, avoiding a parallel markdown backlog.
-- Add Quark's aggregate usage/cost findings to the relevant retrospective or FinOps issue; never post raw prompts or personal data.
+- Use GitHub Issues as the work queue and record status/evidence back to the issue, avoiding a parallel markdown backlog.
+- Add FinOps lead's aggregate usage/cost findings to the relevant retrospective or FinOps issue; never post raw prompts or personal data.
 
 ## Licensing, IP, and project governance
 
@@ -1155,14 +1159,14 @@ The approved implementation creates:
   - Privacy/data brokers/biometrics/children, cybersecurity/breach reporting, AI/automated decisions, consumer protection, accessibility, communications/marketing, records/e-signatures.
   - Health/consumer health, financial/rewards/payments/securities, insurance, employment/benefits, education/family/elder care, tax/accounting/sponsorship, marketplace/platform and intellectual property.
 - For every regulated feature, document applicability hypotheses, authoritative sources, counsel questions, owner, decision, obligations, controls/evidence, deadlines, residual risk and re-review trigger.
-- Sarek monitors legal changes and opens impact issues; he does not interpret law as binding advice, create attorney-client privilege, sign contracts, submit filings or approve launch without Cyrus and qualified jurisdiction-appropriate counsel.
+- Legal research lead monitors legal changes and opens impact issues; he does not interpret law as binding advice, create attorney-client privilege, sign contracts, submit filings or approve launch without Cyrus and qualified jurisdiction-appropriate counsel.
 - Separate legal research from product policy and technical controls. A legal hypothesis never silently becomes an authorization rule or public claim.
 - Preserve source/date/jurisdiction and clearly distinguish enacted law, effective law, proposed legislation, guidance, contract terms and platform policy.
 - Establish confidential counsel/security/privacy channels, litigation/hold and regulatory-inquiry procedures before they are needed; do not place privileged or sensitive legal material in public GitHub issues.
 
 ## Feedback and Support Framework
 
-Guinan is the User Feedback and Support Lead and owns acknowledgment, privacy screening, deduplication, severity, reproduction quality, routing, status communication, resolution evidence, and closing the loop with the user. Feature/domain owners remain accountable for investigation and fixes.
+Support lead is the User Feedback and Support Lead and owns acknowledgment, privacy screening, deduplication, severity, reproduction quality, routing, status communication, resolution evidence, and closing the loop with the user. Feature/domain owners remain accountable for investigation and fixes.
 
 ### Feedback channels
 
@@ -1178,7 +1182,7 @@ Guinan is the User Feedback and Support Lead and owns acknowledgment, privacy sc
 - Public unauthenticated feedback enters a separately deployed tenant-less intake service/queue, never the Andreja user data plane. It has its own privacy notice, lawful-basis/consent analysis, retention clock, encryption/access controls, deletion/access request path, abuse controls, and data-flow owner.
 - Default exclusions: task/file/prompt content, tokens, identities, family/health/finance details, connector payloads, raw logs, and secrets. Diagnostics are field-level opt-in with a preview.
 - Lifecycle: `Received` -> `PrivacyScreened` -> `Acknowledged` -> `NeedsInformation` or `Triaged` -> `Planned`/`InProgress`/`Declined`/`Duplicate` -> `Delivered` -> `Verified` -> `Closed`.
-- Guinan acknowledges receipt through the user's chosen safe channel, supplies a tracking reference, requests missing information, explains routing/priority decisions, and sends resolution/release/help links.
+- Support lead acknowledges receipt through the user's chosen safe channel, supplies a tracking reference, requests missing information, explains routing/priority decisions, and sends resolution/release/help links.
 - While the project repository is private, an external submitter's tracking reference is opaque and status is communicated through the chosen return channel; never send an inaccessible private GitHub link as the status experience.
 - Before issue creation, search for duplicates and link/comment rather than opening another issue. Public GitHub publication requires explicit consent and a final content preview.
 - Route validated work into repository Issues/milestones with category, severity, privacy, phase, owner, dependency, acceptance/test evidence, and source-feedback link that reveals no personal data.
@@ -1198,20 +1202,20 @@ Guinan is the User Feedback and Support Lead and owns acknowledgment, privacy sc
     - Assistant, skill, connector, sharing, identity, backup/export, and troubleshooting guides.
     - Versioned product and federation/skill developer documentation.
     - Security/privacy disclosures, release notes, known issues, status/support routes, and escalation guidance.
-- Include Guinan's public feedback/support entry point, tracking guidance, security/privacy reporting route, and clear explanation of what may become a GitHub issue.
+- Include Support lead's public feedback/support entry point, tracking guidance, security/privacy reporting route, and clear explanation of what may become a GitHub issue.
 - Add a transparent sponsorship page only after the sponsorship policy is approved; disclose sponsors and aggregate project support without targeted ads, tracking-based placement, or access to user data.
 - Author documentation as reviewed repository content with link checking, search indexing, versioning, accessibility, and stale-page ownership. Product behavior changes are incomplete until matching help content and scenario tests are updated.
 - Keep the public site product-data-free and auth-independent. It must not query task data, reuse app cookies, share user tokens, or become a privileged route into the application. Its optional feedback form posts only to the separately governed tenant-less intake service.
 - Start with analytics off. Add only privacy-preserving aggregate analytics after a documented purpose, field list, retention, consent/legal basis, and opt-out review.
-- Jadzia Dax leads a design-and-hosting decision matrix; Jett Reno evaluates deployment/CDN/runtime operations, Spock validates architecture and attack-surface separation, and Quark validates cost. Their reviewed artifact informs one ADR; they do not cast four independent approval votes.
+- UX lead leads a design-and-hosting decision matrix; Operations lead evaluates deployment/CDN/runtime operations, Architecture lead validates architecture and attack-surface separation, and FinOps lead validates cost. Their reviewed artifact informs one ADR; they do not cast four independent approval votes.
 - Distinguish pre-generated static hosting from server-rendered Blazor SSR, which still requires compute. Evaluate static generation, CDN/static hosting, search, documentation tooling, preview environments, custom domains, localization readiness, and portability. Prefer a low-cost static outcome when requirements permit.
 - Meet WCAG 2.2 AA, publish `security.txt`, and gate public security/privacy/availability/sponsorship claims on reviewed evidence with a named owner and expiry/revalidation rule.
-- Neelix joins when marketing/community content begins, after product claims have evidence and licensing/trademark decisions permit public promotion.
+- Marketing lead joins when marketing/community content begins, after product claims have evidence and licensing/trademark decisions permit public promotion.
 
 ## Mobile client roadmap
 
 - Keep the responsive web app as the first universal client, while treating native mobile as a distinct future client rather than wrapping server-only Blazor behavior.
-- Hoshi Sato owns the mobile architecture evaluation with Jadzia Dax for UX/accessibility, Spock for contracts, Tuvok for device security, Deanna Troi for mobile privacy, Jett Reno for delivery/operations, Data for device testing, and Quark for lifecycle cost.
+- Mobile lead owns the mobile architecture evaluation with UX lead for UX/accessibility, Architecture lead for contracts, Security lead for device security, Privacy lead for mobile privacy, Operations lead for delivery/operations, Quality lead for device testing, and FinOps lead for lifecycle cost.
 - Compare .NET MAUI Blazor Hybrid, native iOS/Android, and other credible approaches against:
   - Reuse of API contracts and safe presentation components.
   - Offline-first data, synchronization, conflict/proposal handling, and federation behavior.
@@ -1225,10 +1229,10 @@ Guinan is the User Feedback and Support Lead and owns acknowledgment, privacy sc
 ## Business and product analytics dashboard
 
 - Defer the dashboard until the MVP is useful and the managed/self-host product boundaries produce meaningful evidence.
-- Quark and Neelix co-lead future requirements:
-  - Quark owns burn, sponsor income, unit economics, resource use, cost efficiency, and forecast metrics.
-  - Neelix owns adoption, onboarding, engagement, help/support effectiveness, skill/connector discovery, retention, and market-learning metrics.
-- Picard ensures metrics connect to product outcomes rather than vanity; Data owns definitions and statistical/data quality; Jett Reno owns reliable telemetry pipelines; Deanna Troi owns privacy/minimization; Tuvok owns access and abuse controls.
+- FinOps lead and Marketing lead co-lead future requirements:
+  - FinOps lead owns burn, sponsor income, unit economics, resource use, cost efficiency, and forecast metrics.
+  - Marketing lead owns adoption, onboarding, engagement, help/support effectiveness, skill/connector discovery, retention, and market-learning metrics.
+- Product lead ensures metrics connect to product outcomes rather than vanity; Quality lead owns definitions and statistical/data quality; Operations lead owns reliable telemetry pipelines; Privacy lead owns privacy/minimization; Security lead owns access and abuse controls.
 - Maintain a versioned metric catalog with owner, definition, numerator/denominator, source, freshness, quality checks, privacy classification, retention, and decision/use case.
 - Candidate views:
   - Project delivery: issue throughput, cycle/lead time, release frequency, blocked work, defect/regression escape, test health, review evidence, and AI credits/cost per successful outcome.
@@ -1243,7 +1247,7 @@ Guinan is the User Feedback and Support Lead and owns acknowledgment, privacy sc
 
 Andreja uses independent workstreams with one integrated product mission, shared architecture contracts, GitHub issue dependencies, artifact gates, and a protected-main target with procedural fallback when repository entitlements do not support a control. A workstream owns outcomes and evidence, not a private architecture or duplicate backlog.
 
-### Squad guiding principles
+### Project guiding principles
 
 These are Andreja-specific adaptations of Amazon's published Leadership Principles. They guide decisions and retrospectives; they are not copied corporate slogans or a substitute for product evidence.
 
@@ -1252,7 +1256,7 @@ These are Andreja-specific adaptations of Amazon's published Leadership Principl
 3. **Invent and simplify:** create useful mechanisms, remove accidental complexity and make the safe path the easiest path.
 4. **Evidence-informed judgment:** form a clear view, seek diverse perspectives, test assumptions, distinguish fact/inference and actively look for disconfirming evidence.
 5. **Learn and stay curious:** run bounded experiments, study users/providers/standards and convert learning into documented decisions.
-6. **Develop the crew and ecosystem:** raise capability through charters, coaching, reusable skills, clear handoffs, documentation and external-developer enablement.
+6. **Develop contributors and the ecosystem:** raise capability through coaching, clear handoffs, documentation and external-developer enablement.
 7. **Insist on durable standards:** quality, security, privacy, accessibility, operability and testability are part of done; defects are fixed so they stay fixed.
 8. **Think big, slice small:** preserve the bold assistant/skills/federation vision while shipping the smallest complete vertical slice that proves value.
 9. **Bias for reversible action:** move quickly on reversible, low-risk choices; escalate irreversible, consequential or trust-boundary decisions for evidence and human approval.
@@ -1266,7 +1270,7 @@ These are Andreja-specific adaptations of Amazon's published Leadership Principl
 
 **Precedence:** user agency/data ownership, security/privacy, legal/ethical obligations, accessibility and truthful evidence are non-negotiable. Bias for action, frugality, disagreement/commit and delivery never override those constraints.
 
-Use the principles in issue/PR templates, architecture/business decisions, retrospectives, crew charters and recognition. Evaluate observable behavior and evidence, not personality conformity.
+Use the principles in issue/PR templates, architecture/business decisions, retrospectives, workstream responsibilities and recognition. Evaluate observable behavior and evidence, not personality conformity.
 
 ### Microsoft-inspired company culture
 
@@ -1285,19 +1289,19 @@ Andreja incorporates those themes as:
 
 | Workstream | Accountable lead(s) | Core scope |
 | --- | --- | --- |
-| Executive, Product and Business | Picard/CEO; Quark/CFO | Vision, business model from free/self-host to freemium/premium, portfolio, launch, sponsorship, unit economics, priorities, partnerships and executive risk |
-| Product Discovery and User Research | Picard, Jadzia, Guinan, Neelix | Jobs-to-be-done, dogfood, customer interviews/feedback, usability, delight criteria, roadmap evidence and adoption learning |
-| Core Platform and Architecture | Spock, T'Pol, Seven | Clean/Onion modules, API/domain, identity/tenancy, semantic graph, assistant/provider, skill/channel hosts, data ownership and federation seams |
-| Web, Public Site and User Experience | Jadzia, Neelix, Guinan | Blazor web app, accessible workflows, public site, help/docs, feedback/support surfaces, evidence-based product communication |
-| Native Mobile and Device Experience | Hoshi | iOS/Android architecture, offline sync, secure device storage, push/background, deep links, app-store integration and lifecycle |
-| Platform Operations, Hosting and FinOps | Jett Reno, Quark | Self-host package, cloud adapters, OpenTofu, CI/CD, reliability, OTel, incidents, backups/DR, cost/burn and scale evidence |
-| Quality, Performance and Release | Data | Test architecture, E2E/accessibility, performance/scale, provider conformance, release evidence, regression prevention and quality metrics |
-| Channels and Connectors | Jett Reno, Seven, Tuvok | Channel Framework, provider qualification, adapters, auth/scopes, email/messaging/files/photos/partner channels, support/runbooks and retirement |
-| First-party Skills and Developer Ecosystem | Seven plus domain leads | Skill Framework, manifests, first-party catalog, SDK/examples/conformance, third-party trust/marketplace path and compatibility |
-| Trust, Security, Privacy and Legal | Tuvok, Deanna Troi, Sarek | Threat/privacy/legal artifacts, data classification, auth/grants, abuse/safety, terms/licensing/trademark, public claims and regulatory gates |
-| Customer Success, Feedback and Support | Guinan | Intake/triage, support status, user communication, help gaps, resolution verification, feedback insights and close-the-loop quality |
-| Marketing, Community and Partnerships | Neelix, Picard, Quark | Positioning, Personal Brand Studio input, public/community content, sponsorship communication, partner/channel ecosystem and launch learning |
-| Future Research and Innovation | Spock, Seven, rotating specialists | Semantic/AI, federation, on-device intelligence, new providers/skills/channels and bounded experiments before roadmap commitment |
+| Executive, Product and Business | Product lead/CEO; FinOps lead/CFO | Vision, business model from free/self-host to freemium/premium, portfolio, launch, sponsorship, unit economics, priorities, partnerships and executive risk |
+| Product Discovery and User Research | Product lead, UX lead, Support lead, Marketing lead | Jobs-to-be-done, dogfood, customer interviews/feedback, usability, delight criteria, roadmap evidence and adoption learning |
+| Core Platform and Architecture | Architecture lead, Application lead, Assistant and skills lead | Clean/Onion modules, API/domain, identity/tenancy, semantic graph, assistant/provider, skill/channel hosts, data ownership and federation seams |
+| Web, Public Site and User Experience | UX lead, Marketing lead, Support lead | Blazor web app, accessible workflows, public site, help/docs, feedback/support surfaces, evidence-based product communication |
+| Native Mobile and Device Experience | Mobile lead | iOS/Android architecture, offline sync, secure device storage, push/background, deep links, app-store integration and lifecycle |
+| Platform Operations, Hosting and FinOps | Operations lead, FinOps lead | Self-host package, cloud adapters, OpenTofu, CI/CD, reliability, OTel, incidents, backups/DR, cost/burn and scale evidence |
+| Quality, Performance and Release | Quality lead | Test architecture, E2E/accessibility, performance/scale, provider conformance, release evidence, regression prevention and quality metrics |
+| Channels and Connectors | Operations lead, Assistant and skills lead, Security lead | Channel Framework, provider qualification, adapters, auth/scopes, email/messaging/files/photos/partner channels, support/runbooks and retirement |
+| First-party Skills and Developer Ecosystem | Assistant and skills lead plus domain leads | Skill Framework, manifests, first-party catalog, SDK/examples/conformance, third-party trust/marketplace path and compatibility |
+| Trust, Security, Privacy and Legal | Security lead, Privacy lead, Legal research lead | Threat/privacy/legal artifacts, data classification, auth/grants, abuse/safety, terms/licensing/trademark, public claims and regulatory gates |
+| Customer Success, Feedback and Support | Support lead | Intake/triage, support status, user communication, help gaps, resolution verification, feedback insights and close-the-loop quality |
+| Marketing, Community and Partnerships | Marketing lead, Product lead, FinOps lead | Positioning, Personal Brand Studio input, public/community content, sponsorship communication, partner/channel ecosystem and launch learning |
+| Future Research and Innovation | Architecture lead, Assistant and skills lead, rotating specialists | Semantic/AI, federation, on-device intelligence, new providers/skills/channels and bounded experiments before roadmap commitment |
 
 ### Cross-workstream contract
 
@@ -1305,8 +1309,8 @@ Andreja incorporates those themes as:
 - Every initiative has one accountable owner, named contributors/review artifacts, dependencies, interface contract, acceptance evidence, cost, privacy/security classification and user outcome.
 - Shared APIs/manifests/schemas are agreed interface-first. After the contract lands, implementation streams use isolated worktrees and run independently in parallel.
 - Changes crossing trust boundaries, product claims, paid commitments or shared contracts trigger the relevant artifact review; ordinary local implementation does not wait for unrelated workstreams.
-- Session handoffs record decision, evidence, changed contracts, remaining risk, next ready issue and owner. Guinan/Scribe preserve user/operational context without creating a second backlog.
-- Integration failures are owned by a dedicated integration/revision agent, not bounced between stream owners.
+- Session handoffs record decision, evidence, changed contracts, remaining risk, next ready issue and owner. Support lead/Documentation owner preserve user/operational context without creating a second backlog.
+- Integration failures are owned by a dedicated integration/revision owner, not bounced between stream owners.
 
 ### MVP mission and urgency rules
 
@@ -1319,82 +1323,54 @@ Andreja incorporates those themes as:
 - "Delight" means the user achieves a valuable outcome with clarity, trust, speed, control and low friction—not feature count or engagement time.
 - Speed and urgency never waive tenant isolation, user data ownership, backup/restore, explicit consent, security/privacy, accessibility or truthful product claims.
 
-## Squad crew
+## Workstream leadership
 
-Squad is already initialized, but the specialist roster and routing are empty. Keep the built-in Scribe, Ralph, Rai, and Fact Checker identities upgrade-safe. Add the following Star Trek crew members only after Cyrus approves this plan:
-
-| Crew member | Squad role | Accountabilities | Activation |
-| --- | --- | --- | --- |
-| Jean-Luc Picard | CEO and Lead/Captain | Vision, strategy, product/business portfolio, company principles, launch decisions, stakeholder alignment, sponsorship/funding strategy, executive risk and cross-role decisions | Phase 0 |
-| Spock | Chief Architect | Architecture, ADRs, boundaries, scale, federation coherence | Phase 0 |
-| Tuvok | Security Engineer | Threat model, identity, authorization, cryptography, AppSec | Phase 0 |
-| Deanna Troi | Privacy and Consent Lead | Privacy engineering, understandable consent, data minimization | Phase 0 |
-| Jett Reno | Platform/SRE and Channel Platform Lead | Channel Development Framework, cloud portability, reliability, OTel, delivery, hosting evaluation, incident readiness | Phase 0 |
-| Data | Quality Engineering Lead | Scenario matrix, E2E, performance, regression evidence | Phase 0 |
-| Quark | CFO, FinOps and Sustainability Lead | Financial controls, burn ledger, budgets, forecast/runway, unit economics, sponsor income, per-session Copilot usage, efficiency feedback, cost gates | Phase 0 |
-| T'Pol | Domain/Application Lead | .NET core, APIs, portable relational persistence, tenancy and data boundaries | Phase 1 |
-| Jadzia Dax | Blazor Experience Lead | Cross-device UX, accessibility, workflow clarity | Phase 1 |
-| Seven of Nine | Assistant, Skills, Semantic Graph, and Federation Lead | Skill Development Framework, provider abstraction, Copilot, skill host, personal ontology/provenance, open protocol | Phase 0 design; Phase 1-2 implementation |
-| Hoshi Sato | Mobile Platform Lead | Native/mobile architecture, offline sync, secure device storage, push/background capabilities, app-store delivery | Deferred mobile phase |
-| Beverly Crusher | Health and Wellbeing Lead | Health artifact requirements, clinical-safety boundaries, medication/lab/imaging workflows, wellbeing outcomes | Manual skill in Phase 4; connected health in 12 |
-| Sarek | General Counsel and Regulatory Research Lead | Federal/state regulatory applicability, legal horizon scanning, licensing/IP, contracts, contributor/marketplace terms, privacy/AI/consumer/industry issues and counsel coordination | Phase 0 and every regulated gate |
-| Neelix | Marketing/Community and Personal Brand Advisor | Personal Brand Studio requirements, positioning, product story, adoption, ecosystem community, transparent sponsorship communication | Brand dogfood and evidence-ready public communication |
-| Guinan | User Feedback and Support Lead | Intake, privacy screening, dedupe, severity, routing, user communication, resolution verification, feedback insights | Phase 0 framework; Phase 1 channels |
-
-Cyrus remains the human founder/product owner and final business, governance,
-ratification, and risk-acceptance decision-maker unless formal governance
-changes. Qualified counsel, not Cyrus or an agent, provides legal advice,
-clearance, and jurisdiction-specific legal opinions and directs
-privilege-sensitive handling; no wording here guarantees that privilege
-attaches. Cyrus records whether an exposure is material and decides whether
-Andreja proceeds after any required counsel review. CEO/CFO and other crew
-titles describe accountable advisory/operating roles for Squad; they do not
-grant agents authority to sign contracts, spend funds, make legal
-representations, or publish without human approval.
-
-Star Trek character names are internal/private Squad codenames pending trademark/licensing review. Any repository visibility change re-reviews committed codename usage. Do not use them in public product branding, marketplace roles, endorsements or commercial claims without counsel approval.
+Functional roles in this plan describe responsibilities, not installed agents.
+Current ownership is recorded with GitHub issue assignees and review requests.
+Cyrus remains the final human business, governance, ratification, and
+risk-acceptance decision-maker. Qualified counsel provides legal advice and
+clearance. No functional role grants authority to sign contracts, spend funds,
+make legal representations, or publish without human approval.
 
 ### Business leadership responsibilities
 
-- **Picard/CEO:** maintain mission, strategy, product portfolio, launch readiness, company principles/culture, customer trust, competitive/market learning, public claims, partnership/sponsorship strategy, organizational design, executive risk register and cross-functional decisions. He proposes priorities and capital allocation with Quark for Cyrus's approval.
-- **Quark/CFO:** maintain financial controls, complete burn/income ledger, budgets, forecasts/runway, unit economics, provider/vendor commitments, sponsorship receipts, invoice reconciliation, tax/accounting questions, cost scenarios and financial risk. He challenges unfunded scope and reports tradeoffs to Picard and Cyrus.
-- **Sarek/General Counsel:** maintain the legal/regulatory issue register, identify applicable federal/state/local and later international requirements, translate product proposals into questions for qualified counsel, track obligations/deadlines/terms, preserve privilege boundaries and block unsupported legal/public claims.
-- Picard and Quark co-own the business case, scorecard weights and stage-gate recommendation; neither can bypass Tuvok/Deanna/Sarek/Data evidence or Cyrus's final decision.
+- **Product lead/CEO:** maintain mission, strategy, product portfolio, launch readiness, company principles/culture, customer trust, competitive/market learning, public claims, partnership/sponsorship strategy, organizational design, executive risk register and cross-functional decisions. He proposes priorities and capital allocation with FinOps lead for Cyrus's approval.
+- **FinOps lead/CFO:** maintain financial controls, complete burn/income ledger, budgets, forecasts/runway, unit economics, provider/vendor commitments, sponsorship receipts, invoice reconciliation, tax/accounting questions, cost scenarios and financial risk. He challenges unfunded scope and reports tradeoffs to Product lead and Cyrus.
+- **Legal research lead/General Counsel:** maintain the legal/regulatory issue register, identify applicable federal/state/local and later international requirements, translate product proposals into questions for qualified counsel, track obligations/deadlines/terms, preserve privilege boundaries and block unsupported legal/public claims.
+- Product lead and FinOps lead co-own the business case, scorecard weights and stage-gate recommendation; neither can bypass Security lead/Privacy lead/Legal research lead/Quality lead evidence or Cyrus's final decision.
 
 ### Review gates
 
 - Gates are artifact-based, not agent-vote ceremonies. The required ADR, threat/privacy entry, cost delta, test evidence, or runbook must exist and Cyrus gives human approval.
-- Spock, Tuvok, Deanna Troi, Jett Reno, Quark, Data, and other specialists produce or challenge the relevant artifact; they do not all need to run for every change.
-- Activate a crew member only when that specialist's first required artifact is due.
+- Architecture lead, Security lead, Privacy lead, Operations lead, FinOps lead, Quality lead, and other specialists produce or challenge the relevant artifact; they do not all need to run for every change.
+- Activate a specialist only when that specialist's first required artifact is due.
 - Batch related ADRs/artifacts into themed review packets with a decision checklist and at most three evidence/revision cycles. Unresolved items become explicit `needs-decision` issues; silence is never approval and unrelated packets do not block each other.
-- AI safety: Rai review.
-- Claims and external facts: Fact Checker review.
+- AI safety: AI safety reviewer review.
+- Claims and external facts: Evidence reviewer review.
 - Legal and privacy conclusions requiring professional judgment remain human/counsel decisions.
-- Before casting, reproduce and diagnose the npm 12 `EALLOWREMOTE` failure hypothesis involving a transitive `isexe` tarball through the configured Microsoft/Azure feed; fix or pin the trusted registry/package path rather than granting `allow-remote=all`. Restrict Squad MCP tools to required capabilities instead of `"*"`. Then extend `.squad/casting/policy.json` with an approved Star Trek universe/capacity, add the Star Trek casting roster, correct the project identity to Andreja, remove machine-specific paths/state, and re-run `squad doctor`.
 
 ### Parallel worktree execution
 
-- Andreja intentionally uses `main` as its only integration/release branch. Target native branch protection/merge queue when current GitHub entitlement supports them; otherwise enforce reviewed PRs, status checks, no direct pushes and serialized coordinator merges procedurally. Project directives override Squad's generic dev-first template.
+- Andreja intentionally uses `main` as its only integration/release branch. Target native branch protection/merge queue when current GitHub entitlement supports them; otherwise enforce reviewed PRs, status checks, no direct pushes and serialized integration merges procedurally.
 - Every implementation issue gets:
-  - A `squad/{issue-number}-{kebab-case-slug}` branch from current `origin/main`.
+  - A `copilot/{issue-number}-{kebab-case-slug}` branch from current `origin/main`.
   - A sibling isolated worktree.
-  - One accountable owning agent.
+  - One accountable owner.
   - An early draft pull request targeting `main`.
   - Issue-linked acceptance criteria, test evidence, and required artifact gates.
-- When two or more ready issues are independent, Squad should fan them out concurrently into separate worktrees by default.
+- When two or more ready issues are independent, contributors may work concurrently into separate worktrees by default.
 - Parallelize only when file/module ownership and contracts are independent. For shared interfaces, land or agree the contract first; express dependencies in GitHub Issues and the todo graph.
 - Prefer a protected-main merge queue with required CI/security/architecture checks, `merge_group` workflow coverage, up-to-date branch requirements, CODEOWNERS/artifact gates and deterministic asynchronous merge policy. If unavailable, use documented equivalent procedural controls and ordinary reviewed PRs.
-- Agents never switch the branch of another worktree, edit another agent's files, or share mutable build/output directories.
-- The coordinator owns cross-agent interface decisions, conflict detection, sequencing, and integration. A dedicated integration/revision owner resolves rejected or conflicting work; the original author follows reviewer-lockout rules.
-- Runtime Squad state uses the configured state backend. Worktrees commit only authoritative project configuration and issue changes; agents do not rewrite append-only or state-backend-owned files.
+- Contributors never switch the branch of another worktree, edit another contributor's files, or share mutable build/output directories.
+- The integration owner manages cross-contributor interface decisions, conflict detection, sequencing, and integration. A dedicated integration/revision owner resolves rejected or conflicting work; an author whose change is rejected does not revise that artifact.
 - After merge, remove the worktree, prune metadata, delete the issue branch, update the issue/milestone, and record aggregate usage/validation evidence.
-- Limit concurrency dynamically using dependency readiness, test/CI capacity, overlapping ownership, Quark's measured efficiency, and human review capacity rather than a fixed fleet size.
+- Limit concurrency dynamically using dependency readiness, test/CI capacity, overlapping ownership, FinOps lead's measured efficiency, and human review capacity rather than a fixed fleet size.
 
 ### Native stacked pull requests
 
 - Use GitHub native PR stacks, currently a preview/API-version dependency, as the preferred option for small dependent changes when available. Do not force independent or trivial work into a stack.
 - The bottom PR targets `main`; every higher PR targets the branch immediately below it.
-- Each layer remains one GitHub Issue, one app session, one branch, one isolated worktree, one accountable agent, and one ordinary app-created PR.
+- Each layer remains one GitHub Issue, one app session, one branch, one isolated worktree, one accountable owner, and one ordinary app-created PR.
 - Create layers sequentially from bottom to top. A higher worktree is created only after its parent layer has committed and pushed so the base snapshot is stable. Other independent stacks/issues may still run in parallel.
 - After every intended layer PR exists and preflight passes, register bottom-to-top membership with GitHub's Stacks REST API. The API records stack metadata only; app-native flows continue to own branches, commits, pushes, PRs, review, and tests.
 - Before registration or append, verify every PR is open/unmerged, in the base repository rather than a fork, not queued/auto-merging, and has the exact base/head chain and unchanged SHAs.
@@ -1402,7 +1378,7 @@ Star Trek character names are internal/private Squad codenames pending trademark
 - Rebase or sync inside each layer's owning session. Never force-push another active worktree's branch.
 - Remove, insert below the top, or reorder layers only through an explicit guarded restack decision with recovery data; normal synchronization does not rebuild metadata.
 - If native registration/API version/entitlement is unavailable or a layer is cross-fork, keep an ordinary dependent-PR chain and do not fake stack metadata.
-- Add stack membership/order, final base, dependency links, and validation state to issue/PR templates and Squad routing instructions.
+- Add stack membership/order, final base, dependency links, and validation state to issue/PR templates and workstream handoff documentation.
 
 ## Tool, skill, and agent readiness
 
@@ -1416,9 +1392,7 @@ Star Trek character names are internal/private Squad codenames pending trademark
   isolation patterns. Documentation and package availability establish
   qualification inputs, not Andreja entitlement, commercial permission,
   effective isolation, retention/residency, support fitness, or activation.
-- The repository has Squad scaffolding and built-in Scribe, Ralph, Rai, and Fact Checker agents.
 - Built-in specialist agents cover architecture critique/rubber-duck review, code review, security review, research, exploration, test/build execution, and general implementation.
-- Existing Squad templates include architectural proposals, CI validation gates, E2E template testing, distributed-mesh concepts, economy mode, secret handling, reviewer protocol, and test discipline.
 - Azure, GitHub, filesystem, shell, web research, Context7, SQL tracking, browser/UI automation, and Canvas tooling are available.
 
 ### Candidate specialist resources found, not installed
@@ -1449,9 +1423,7 @@ Before installation, review source/publisher provenance, immutable digest/versio
 - Repository baseline, private visibility, Apache-2.0 file, and license commit history inspected.
 - .NET, Node, npm, GitHub CLI, and Copilot CLI prerequisites verified.
 - Working-profile document extracted and translated into product principles.
-- Initial personal scope, trading boundary, adults-only boundary, responsive Blazor direction, open-federation commitment, self-host independence, connector mode choice, third-party skill isolation, Star Trek crew, repo-native tracking, public-site separation, help-site consolidation, and Hoshi-led future mobile role selected.
-- Squad scaffold and empty specialist roster/routing placeholders inspected.
-- `squad-state` verified as the intended orphan mutable-state branch containing decisions and agent histories; it is not merged into main. Authoritative static config is reviewed separately in the Squad PR.
+- Initial personal scope, trading boundary, adults-only boundary, responsive Blazor direction, open-federation commitment, self-host independence, connector mode choice, third-party skill isolation, repo-native tracking, public-site separation, help-site consolidation, and future mobile ownership selected.
 - Official Copilot SDK backend/OAuth documentation reviewed; stable NuGet 1.0.11 located.
 - Agent Finder searches completed for architecture, ASP.NET, security, privacy, FinOps, testing, Legal, and Marketing candidates.
 - Five rubber-duck passes, including federation/skills, open-thread ratifiability, catalog/framework/feedback review and final post-closure ratification review, completed; latest verdict is RATIFIABLE after the applied Phase 0 envelope wording fix.
@@ -1461,7 +1433,6 @@ Before installation, review source/publisher provenance, immutable digest/versio
 
 ### Partial or provisional
 
-- Squad bootstrap validation: `squad doctor` was attempted but npm blocked a transitive remote package with `EALLOWREMOTE`; diagnose the configured npm feed/policy before treating the scaffold as validated.
 - Working-profile defaults: principles are known, but user-approved preference fields/default values still need a settings-schema review.
 - WhatsApp API limitations: directionally researched and conservatively deferred, but verify against official Meta documentation before connector work.
 - Copilot SDK qualification and Phase 1B operational fit: before runtime, “SDK
@@ -1474,9 +1445,8 @@ Before installation, review source/publisher provenance, immutable digest/versio
   audit, offline, test, legal/privacy/security, operations, and rollback gate.
 - External resource readiness: discovery is complete; source, publisher, permission, maintenance, license, and data-handling trust reviews are not.
 - Testing strategy: layers and scenarios are defined; test-auth impossibility, environment topology, thresholds, and budget require Phase 0 decisions.
-- Earlier capped `fleet-research` attempts exhausted credits/subagent limits without an artifact. Preserve them as Quark failure-cost evidence; the later uncapped run succeeded.
-- Initial factory research burn: 896.87 AI credits total—820.25 from two successful fleet runs and 76.62 from failed/halted attempts. AI credits are not currency; Quark reconciles them separately with provider billing and uses the failed-run ratio to improve future orchestration.
-- Existing worktree/PR: 165 generated Squad files remain uncommitted, include machine/worktree-specific values, and are intentionally excluded from the future plan/ADR PR. The earlier PR request remains pending.
+- Earlier capped `fleet-research` attempts exhausted credits/subagent limits without an artifact. Preserve them as FinOps lead failure-cost evidence; the later uncapped run succeeded.
+- Initial factory research burn: 896.87 AI credits total—820.25 from two successful fleet runs and 76.62 from failed/halted attempts. AI credits are not currency; FinOps lead reconciles them separately with provider billing and uses the failed-run ratio to improve future orchestration.
 
 ### Open Phase 0 investigations
 
@@ -1499,7 +1469,7 @@ Before installation, review source/publisher provenance, immutable digest/versio
 - Product packaging and economics for independent self-hosting versus managed freemium/paid data hosting.
 - The Phase 0 website matrix, claims inventory, local prototype, and Proposed ADR 0008 are complete as recommendation evidence; unintended GitHub Pages publication was contained under #114. Acceptance, any future hosting/CDN/DNS, evidence-based public claims, domain/trademark readiness, and publication remain open.
 - Native mobile architecture proof-of-concept, offline synchronization, device security, push/background behavior, and app-store lifecycle cost.
-- Minimal semantic-profile/provenance/export contracts are implemented; Seven-led standards, ontology, privacy, representative-journey, storage, and ADR decisions remain open.
+- Minimal semantic-profile/provenance/export contracts are implemented; standards, ontology, privacy, representative-journey, storage, and ADR decisions led by the Assistant and skills lead remain open.
 - Phase 0 prioritization score weights and stage-specific Must/Should/Could/Won't scope.
 - Personal Brand Studio evidence model and official LinkedIn/Facebook/Instagram API/account-type access before any publishing capability.
 - Gmail/Graph/Discord/WhatsApp delivery-topology, scope, verification, relay/polling, deliverability, cost and support ADRs.
@@ -1565,7 +1535,7 @@ Every roadmap issue records evidence and a 0-5 assessment for:
 - Implementation effort, ongoing operating/support cost, technical complexity, and reversibility.
 - Privacy/security exposure and potential user-harm cost.
 
-Picard and Quark maintain a documented weighting formula after dogfood evidence exists. Scores order eligible work; they never override hard security/privacy/legal/data-ownership gates or issue dependencies. Re-score when evidence, cost, or provider access changes.
+Product lead and FinOps lead maintain a documented weighting formula after dogfood evidence exists. Scores order eligible work; they never override hard security/privacy/legal/data-ownership gates or issue dependencies. Re-score when evidence, cost, or provider access changes.
 
 Use Must/Should/Could/Won't scope per launch stage, with explicit kill/de-scope criteria. Prefer the smallest vertical slice that proves a user outcome, architecture seam, or market assumption over broad horizontal framework work.
 
@@ -1599,18 +1569,16 @@ Deliverables:
 - ADR 0000 records the Phase 0 cloud-infrastructure cap of $0 and the no-provisioning rule—no cloud accounts, subscriptions, free tiers or trials—plus separate AI-credit/professional-services envelopes, approved uncapped `fleet-research` exception, maximum review cycles, owners, stop conditions and amendment policy. Any Phase 1B cloud spike requires a new approved budget decision.
 - Complete product-name/trademark/domain/namespace clearance before public or externally stable artifacts; complete license/IP tracking enough to define external-contribution rules and obtain counsel before a final license change or collaborator intake.
 - Domain registration and counsel/trademark fees are outside the $0 cloud-infrastructure cap but require their own explicit professional-services budget approval before purchase.
-- Cast the approved Squad crew and replace routing placeholders.
-- Repair and re-run `squad doctor`; establish Quark's automatic session-close usage ledger and retrospective report.
 - Create documentation skeleton, architecture diagrams, ADR template, and risk register.
 - ADRs for Clean/Onion boundaries, modular slices, tenancy, identity/CIAM path, API-first Blazor boundary, self-host/control-plane separation, persistence portability, assistant providers, reminders, open federation, grants/consent, connectors, skills, and versioning.
-- Seven-led personal semantic graph research: representative journeys, standards/ontology matrix, provenance/inference/privacy model, minimal schema, portability format, and smallest viable storage/projection ADR.
+- Personal semantic graph research led by the Assistant and skills lead: representative journeys, standards/ontology matrix, provenance/inference/privacy model, minimal schema, portability format, and smallest viable storage/projection ADR.
 - Ratify the initial first-party skill catalog, connector release bands, issue scorecard fields, launch stages, and stage-specific Must/Should/Could/Won't scope.
 - Ratify workstream charters, owners, shared contracts, WIP/integration/handoff rules and the protected Phase 0 -> Phase 1A MVP critical path.
 - Ratify the Andreja company charter, Amazon-inspired operating principles, Microsoft-inspired culture, Customer Zero doctrine, ethical/sustainability indicators and confidential accountability mechanisms.
-- Sarek reviews attribution/trademark posture before adapted Amazon/Microsoft-inspired principles appear on a public culture page.
-- Ratify Sarek's legal/regulatory charter and initial federal/state applicability/horizon matrix before regulated feature research or public legal/compliance claims.
-- Ratify the Channel Development Framework, Skill Development Framework, and Guinan-owned Feedback and Support Framework, including manifests, templates, lifecycle states, privacy defaults, routing, and stage gates.
-- Assign Jett Reno as Channel Framework owner, Seven as Skill Framework owner, Guinan as Feedback Framework owner, and Picard/Quark as Prioritization/Launch Framework owners.
+- Legal research lead reviews attribution/trademark posture before adapted Amazon/Microsoft-inspired principles appear on a public culture page.
+- Ratify Legal research lead's legal/regulatory charter and initial federal/state applicability/horizon matrix before regulated feature research or public legal/compliance claims.
+- Ratify the Channel Development Framework, Skill Development Framework, and Support lead-owned Feedback and Support Framework, including manifests, templates, lifecycle states, privacy defaults, routing, and stage gates.
+- Assign Operations lead as Channel Framework owner, Assistant and skills lead as Skill Framework owner, Support lead as Feedback Framework owner, and Product lead/FinOps lead as Prioritization/Launch Framework owners.
 - Personal Brand Studio requirements/guardrails and official API access research for GitHub, LinkedIn, Facebook, and Instagram, with draft/export fallbacks.
 - Qualify Gmail, Outlook.com/Hotmail, Microsoft 365, transactional outbound email/notification, Discord, WhatsApp user-share/export, and official WhatsApp Business options through the Channel Development Framework, including deliverability, SPF/DKIM/DMARC, provider terms, scopes, verification, cost, abuse and support.
 - Define the tenant-less public feedback intake ADR: separate deployment/storage, privacy notice, retention/deletion/access, spam/abuse controls, GitHub publication consent, and safe user status responses.
@@ -1619,7 +1587,7 @@ Deliverables:
 - Self-host identity qualification for HTTPS/WebAuthn RP configuration, first-admin bootstrap, recovery, external identity collision/linking, Data Protection key backup, and restoration.
 - OpenTofu state/provider design and local-backend validation with pinned providers/lock files, remote-state encryption/locking/recovery design, CI workload-identity design, deployment TTLs/quotas and teardown. Provisioning remote state and CI identity moves to separately budgeted Phase 1B.
 - Copilot event-schema and billing-reconciliation spike covering usage events, AI credits, session content persistence, provider retention, credential/tool isolation, and invoice-grade limits.
-- Jadzia-led public website design/hosting matrix with Jett Reno, Spock, and Quark; cover static/SSR options, help/search tooling, CDN/hosting, portability, security separation, preview environments, and cost. Tracked by [#94](https://github.com/Jamula/Andreja/issues/94).
+- UX lead-led public website design/hosting matrix with Operations lead, Architecture lead, and FinOps lead; cover static/SSR options, help/search tooling, CDN/hosting, portability, security separation, preview environments, and cost. Tracked by [#94](https://github.com/Jamula/Andreja/issues/94).
 - Keep all Phase 0 website review on loopback or behind private access control. GitHub Pages, public previews, CDN delivery, and DNS publication remain disabled. Only a separately approved private preview may use authorization and expiry; `noindex` never substitutes for authorization. The historical public `main:/docs` GitHub Pages nonconformance was contained under #114 and is not evidence of an approved launch.
 - Initial threat model, privacy classification, numeric spike/steady-state cost envelopes, numeric SLO definitions with owners/evidence queries, and test strategy.
 - Evaluate but do not automatically install the recommended external skills/tools.
@@ -1673,15 +1641,15 @@ Deliverables:
   never public. Otherwise defer Copilot and retain fake/BYOK.
 - Invitees may link their own BYOK provider. Copilot remains restricted to the
   one-identity ADR 0009 canary until a separate expansion decision repeats the
-  provider gates for the cohort. Only after Sarek's counsel/vendor-reviewed
+  provider gates for the cohort. Only after Legal research lead's counsel/vendor-reviewed
   answer on Copilot entitlement, acceptable use and redistribution may an
   approved canary identity opt into an Andreja-funded dogfood allowance. Funded
   usage has explicit consent, a separately approved product-provider/model
   envelope, per-tenant quotas, model/tool limits, attribution, budget exhaustion
   behavior and no hidden transfer of one user's entitlement to another.
 - Independently deployed pre-generated public-site artifact, conditional on product-name/domain clearance, covering vision, data ownership, privacy posture, help/support and evidence-based availability. Tracked by [#93](https://github.com/Jamula/Andreja/issues/93).
-- Tenant-less public feedback intake plus authenticated in-app feedback, Guinan triage/status workflow, and sanitized/consented GitHub issue publication.
-- Minimal transactional outbound email for Guinan acknowledgments/status, with sender identity, SPF/DKIM/DMARC, bounce/complaint handling, abuse controls and cost evidence. Phase 3A expands email intake, reminders and provider choice.
+- Tenant-less public feedback intake plus authenticated in-app feedback, Support lead triage/status workflow, and sanitized/consented GitHub issue publication.
+- Minimal transactional outbound email for Support lead acknowledgments/status, with sender identity, SPF/DKIM/DMARC, bounce/complaint handling, abuse controls and cost evidence. Phase 3A expands email intake, reminders and provider choice.
 - Invite-only adult onboarding for a small dogfood cohort, with each invitee in a separate tenant, repeatable recovery and explicit support/feedback consent. Cross-tenant access is limited to the Group Travel workspace contract below.
 - MVP Email Triage across Gmail and Outlook.com/Microsoft 365: per-account policies, dry-run historical relationship proposals, autonomous classification/tasks/permitted calendar sync/quarantined deletion, adaptive rules, full control-plane audit/undo and success metrics.
 - A narrow managed cross-tenant Group Travel slice: host-owned trip workspace, bilateral participant grants, minimum-disclosure projections, proposals/voting, in-app collaboration, audit/revocation and no general resource sharing.
@@ -1695,7 +1663,7 @@ Exit gate checklist:
    between Copilot, deterministic fake, and BYOK. Otherwise run that same scenario
    on deterministic fake and BYOK, demonstrate switching between those providers,
    and record Copilot as deferred without weakening offline behavior.
-3. Inspect trace and Quark reconciled usage/cost evidence without content leakage.
+3. Inspect trace and FinOps lead reconciled usage/cost evidence without content leakage.
 4. Verify WebSocket reconnect, rolling revision, cold-start and circuit behavior.
 5. Submit public and in-app feedback, receive an opaque tracking update, and verify privacy/abuse controls.
 6. Onboard the invite cohort, prove each tenant cannot read/write/infer/enumerate another tenant's data, and complete deterministic tenant cleanup.
@@ -1725,7 +1693,7 @@ Deliverables:
 
 Exit gate:
 
-- Cyrus can use the assistant and skills daily for real personal work, retain full data control through self-hosting or managed hosting, and see Quark's efficiency feedback after every session.
+- Cyrus can use the assistant and skills daily for real personal work, retain full data control through self-hosting or managed hosting, and see FinOps lead's efficiency feedback after every session.
 
 ### Phase 3A - Email and messaging channel expansion
 
@@ -1766,7 +1734,7 @@ Deliverables:
 - Portable idempotent reminder execution through a queue/scheduler adapter and at least one useful notification channel.
 - Checklists, dependencies, reading/podcast queues, social/travel commitments, and trading research/watchlists.
 - Family/Relationships, Health/Wellbeing manual artifacts, Household/Vehicle/Insurance/Projects, Travel/Social and Hobbies/Social Groups first-party skills in manual/in-app mode.
-- Before manual Health/Wellbeing dogfood: approved consumer-health privacy/data-flow assessment, breach-response/HBNR analysis, retention/delete/export, model-provider/content rules, support/escalation language and Beverly safety artifact.
+- Before manual Health/Wellbeing dogfood: approved consumer-health privacy/data-flow assessment, breach-response/HBNR analysis, retention/delete/export, model-provider/content rules, support/escalation language and the Health lead's safety artifact.
 - Before personalized insurance comparisons/referrals: jurisdiction, licensing, compensation, disclosure and neutral-ranking review.
 - Manual Life Event Planner with branchable scenarios, milestones, dependencies, documents, risks, professional questions and private stakeholder roles.
 - Customer Zero Small Business and Entrepreneur Manager for Andreja company operations in manual/document mode, with personal/business persona separation.
@@ -1841,7 +1809,7 @@ Deliverables:
 
 Deliverables:
 
-- Hoshi-led ADR and proof-of-concept comparing .NET MAUI Blazor Hybrid and native approaches on real iOS and Android devices.
+- Mobile lead-led ADR and proof-of-concept comparing .NET MAUI Blazor Hybrid and native approaches on real iOS and Android devices.
 - Production mobile client architecture using stable Andreja APIs, portable identity linking, secure local storage, offline sync, push/background behavior, deep links/share targets, accessibility, and privacy-safe telemetry.
 - Self-host and managed-cloud connection flows with explicit trust, instance discovery, and recovery.
 - Device/browser compatibility matrix, automated device tests, app-store release/security/privacy checklists, and lifecycle cost model.
@@ -1854,7 +1822,7 @@ Exit gate:
 
 Deliverables:
 
-- Quark/Neelix requirements brief and versioned metric catalog approved through privacy, security, data-quality, operability, and product-outcome review.
+- FinOps lead/Marketing lead requirements brief and versioned metric catalog approved through privacy, security, data-quality, operability, and product-outcome review.
 - Privacy-separated project, adoption, and resource/cost data products with explicit managed/self-host collection boundaries.
 - Role-restricted dashboard, quality/freshness indicators, cohort thresholds, drill-through that never exposes personal content, and exportable aggregate evidence.
 - Workflow experiment framework with hypotheses, success/guardrail metrics, rollback, cost accounting, and retrospective outcomes.
@@ -1883,7 +1851,7 @@ Exit gate:
 
 Deliverables:
 
-- Beverly-led requirements/safety model for appointments, medications/refills, allergies, providers, labs, imaging reports/scans, referrals, questions, care plans, insurance artifacts, wellness routines and goals.
+- Requirements/safety model led by the Health lead for appointments, medications/refills, allergies, providers, labs, imaging reports/scans, referrals, questions, care plans, insurance artifacts, wellness routines and goals.
 - Highest-sensitivity data model, source-preserving artifact storage, confidence-labeled AI/OCR extraction proposals, derived-index deletion, sharing/consent, retention/export/delete and audit.
 - Feasibility/terms/security/privacy/regulatory matrix for SMART on FHIR/FHIR, patient portals, Apple Health/HealthKit, Android Health Connect, pharmacy, lab, imaging and approved wearable/provider APIs.
 - Manual/document mode first; connected read-only pilot before any user-confirmed refill, appointment, record-request or provider-message action.
@@ -1899,15 +1867,15 @@ Exit gate:
 1. Phase 0: investigate licensing, IP, contribution, trademark, employer obligations, sponsorship, public culture and governance.
 2. Phase 0: persist the ratified plan, ADR 0000, company charter, legal/regulatory matrix, architecture documentation and ADR system.
 3. Phase 0: create repository roadmap issues, milestones, labels, forms, automation and the later organization Project migration plan.
-4. Phase 0: establish Quark's separate burn/usage/metering ledgers, budgets, unit economics and sponsorship controls.
-5. Phase 0: sanitize/validate Squad, extend Star Trek casting, cast the crew and trust-review external resources.
+4. Phase 0: establish FinOps lead's separate burn/usage/metering ledgers, budgets, unit economics and sponsorship controls.
+5. Phase 0: assign workstream owners and trust-review external resources.
 6. Phase 0: complete architecture, portability, threat/privacy, cost, identity, federation, channel/skill, website, mobile-readiness and testing decisions.
 7. Phase 1A: deliver the independent self-hosted assistant MVP with tenancy, passkeys/recovery, BYOK, one task skill, backup/restore, portable export and local E2E evidence.
 8. Phase 1B: after separate budget/legal approval, deliver managed reference,
    invite cohort, BYOK, public/help site and feedback; add a limited real Copilot
    provider only after ADR 0009 acceptance and all provider gates, otherwise
    defer it; pass six Email Triage and five Group Travel acceptance scenarios
-   and record Seven's extensibility-proof measurements.
+   and record Assistant and skills lead's extensibility-proof measurements.
 9. Phase 1B-2: mature the independently deployed public website and canonical versioned help/support documentation.
 10. Phase 2: build the daily-use assistant and first-party skill product.
 11. Phase 3A: build email-first Gmail/Outlook.com-Hotmail/Microsoft 365 intake, minimal outbound email, in-app messaging, interaction-first Discord and conditional WhatsApp share/export.
@@ -1922,10 +1890,10 @@ Exit gate:
 20. Phase 0: research personal semantic graph provenance, ontology, portability, privacy, non-user data subjects and skill-extension model.
 21. Phase 0: ratify skill/channel catalogs, Channel/Skill/Feedback/Prioritization frameworks, issue scorecard, launch stages and roadmap metadata.
 22. Phase 0/2: research Personal Brand provider access/guardrails, dogfood draft-only skill and gate publishing by evidence/provider approval.
-23. Phase 0-1B: establish Guinan's feedback/support framework and privacy-safe public/in-app channels with user-visible follow-through.
+23. Phase 0-1B: establish Support lead's feedback/support framework and privacy-safe public/in-app channels with user-visible follow-through.
 24. Phase 11: research/build Lifestyle Rewards Optimizer and Miles/Points Manager with read-only-first approved channels and gated confirmed actions.
 25. Phase 11: research/build Employer Benefits and Perks Manager with document-first tracking and gated provider actions.
-26. Phase 4: dogfood manual Health and Wellbeing artifacts only after consumer-health privacy/breach/retention/model/Beverly safety gates.
+26. Phase 4: dogfood manual Health and Wellbeing artifacts only after consumer-health privacy/breach/retention/model and Health lead safety gates.
 27. Phase 12: add approved connected Health and Wellbeing channels and separately gated actions.
 28. Phase 4/8: build Hobbies/Social Groups manually, then official Discord/Xbox/community channels.
 29. Phase 0/2/6: research/build Life Context and Opportunity Navigator from private explainable insights to consented connections.
@@ -1935,7 +1903,7 @@ Exit gate:
 33. Phase 4/8/10: dogfood Small Business Manager for Andreja company, add approved channels and privacy-safe owner analytics.
 34. Phase 4/5-6/8: build Household/Vehicle/Insurance/Projects manually, add household collaboration, then approved channels.
 35. Phase 0: ratify ethical/sustainable company charter, Amazon-inspired operating principles and Microsoft-inspired culture.
-36. Phase 0+: maintain Sarek's federal/state/local legal applicability and horizon register for every regulated gate.
+36. Phase 0+: maintain Legal research lead's federal/state/local legal applicability and horizon register for every regulated gate.
 
 ## Explicitly not day-one work
 

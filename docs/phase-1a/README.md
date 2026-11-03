@@ -65,8 +65,7 @@ voluntary, accessible, or uncoerced consent.
 
 ## Current merged inputs, not accepted dependencies
 
-The packet was checked against ADR 0000, the plan, the static Squad directives,
-the assigned charter, issues #9 and #62, and these merged Phase 0 inputs:
+The packet was checked against ADR 0000, the plan, the assigned charter, issues #9 and #62, and these merged Phase 0 inputs:
 
 - [PR #19 — catalog and launch frameworks](https://github.com/Jamula/Andreja/pull/19)
 - [PR #20 — burn and sponsorship controls](https://github.com/Jamula/Andreja/pull/20)
@@ -138,8 +137,8 @@ for ADRs 0001–0005; each ADR separately records its technical alternatives.
    permission-negative, envelope, telemetry, accessibility, and cost evidence can
    disprove the design. Each ADR rejects a higher-risk or higher-resource alternative;
    failed evidence reopens the decision rather than converting assumptions to claims.
-8. **Owner and stop conditions:** Cyrus owns acceptance; Spock, Tuvok, Deanna Troi,
-   Data, Quark, Jett Reno, Seven of Nine, Rai, and Sarek own the listed challenges.
+8. **Owner and stop conditions:** Cyrus owns acceptance; Architecture lead, Security lead, Privacy lead,
+   Quality lead, FinOps lead, Operations lead, Assistant and skills lead, AI safety reviewer, and Legal research lead own the listed challenges.
    Isolation, consent, recovery, content-suppression, accessibility, unknown spend,
    unexplained egress, or high/critical residual-risk failure pauses exit and triggers
    remediation, de-scope, rollback, or a new decision.

@@ -11,7 +11,7 @@
 
 Before any test project, package, source, runner, or workflow was changed,
 issue [#112](https://github.com/Jamula/Andreja/issues/112) was confirmed open
-with `priority:p2` and `squad:data`. Prerequisites #108, #109, and #110 were
+with `priority:p2` and Quality lead. Prerequisites #108, #109, and #110 were
 closed and merged through PRs #124, #153, and #152. The separate baseline
 checkpoint records all three assemblies in Debug and Release before
 conversion; its source counters and timing samples are in

@@ -62,7 +62,7 @@ of absence.** Every statement below is limited to what was observed.
   not an ancestor of current `HEAD`. In current HEAD ancestry,
   `license-evaluation.md` was added by `ab15b72` (#12, 2026-08-23) and
   modified by `e9995d1` (#34, 2026-08-23), titled "Migrate repository
-  ownership to Jamula." PR #18 targeted `squad/7-sanitize-cast-squad`,
+  ownership to Jamula." PR #18 targeted a feature branch,
   not `main`. Preserve both provenance references; the ancestry difference
   alone does not establish a rewrite or its cause. No conclusion about
   validity, intent, or legal effect is drawn.
@@ -187,7 +187,7 @@ Each gap distinguishes the **sanitized in-repo** portion (producible in
 material — identified recipients, employment/consulting agreements,
 invention disclosures, entity/tax records, counsel communications —
 which does **not** belong in this repository, a GitHub issue, a PR body
-or comment, or ephemeral chat). Nothing here is directed into `.squad/`.
+or comment, or ephemeral chat).
 
 | # | Missing evidence | Owner | Source | Sanitized in-repo portion | Counsel-held portion | Exit evidence (closes the gap) | Blocks |
 |---|---|---|---|---|---|---|---|

@@ -7,10 +7,10 @@
 - **Issue:** [#156](https://github.com/Jamula/Andreja/issues/156).
 - **Candidate version:** `feedback-security-v1.1`, comprising this supplement
   and the unchanged [v1 package](feedback-security-abuse-incident-routing.md).
-- **Owner:** Tuvok; operational co-lead Jett Reno. Original proposal prepared by
-  Tuvok; current independent revision prepared by Guinan, without participation
+- **Owner:** Security lead; operational co-lead Operations lead. Original proposal prepared by
+  Security lead; current independent revision prepared by Support lead, without participation
   from locked-out prior revision authors.
-- **Required review:** Jett Reno, Deanna Troi, Guinan, Data, and Quark.
+- **Required review:** Operations lead, Privacy lead, Support lead, Quality lead, and FinOps lead.
 - **Decision authority:** Cyrus Jamula, including residual-risk disposition.
 - **Evidence checked:** 2026-10-10; the v1 package arrived through merged
   [#177](https://github.com/Jamula/Andreja/pull/177), merge commit
@@ -30,7 +30,7 @@ Live #156 and [#155](https://github.com/Jamula/Andreja/issues/155) are open.
 decision-request comment did not record approval of `feedback-privacy-v1`.
 The [privacy package](../legal/feedback-privacy-retention-dsr.md) remains proposed.
 Its historical specialist recommendations do not approve this supplement,
-its subsequent amendments, or activation. Deanna is rechecking transfer and
+its subsequent amendments, or activation. Privacy lead is rechecking transfer and
 hold gaps; no retention duration, proof ladder, exception, or hold is inherited
 as approved.
 
@@ -45,7 +45,7 @@ privacy artifact `docs/legal/feedback-privacy-retention-dsr.md` has Git blob
 `d50dbd302c7ed139ee2acbf6e7923e72198c3f217dc46abc00c81818c49bb34e`,
 matching the current plan inventory. This pins the merged proposal only.
 Neither the proposal nor a documentation merge is an approved privacy output.
-Cyrus's direction to Deanna to **AMEND and proceed** authorizes that amendment,
+Cyrus's direction to Privacy lead to **AMEND and proceed** authorizes that amendment,
 not acceptance, a new proof policy, or activation. Recheck the final privacy
 revision before recording #156 reviews; do not bind them to obsolete v1 text.
 
@@ -67,7 +67,7 @@ boundary, lifecycle, or privacy policy is redesigned.
 | D2: credential custody | V1 open decision 4 leaves verifier algorithm/storage, expiry and throttling details for review; #156 requires verifier-only custody and record/boundary denial evidence | Proposed namespace encoding and generation/session binding, browser/proxy capture controls; expiry/proof still privacy-gated |
 | D3: transaction proof | V1 requires atomic swap but does not enumerate nonce/proof-grant consumption, stale-session invalidation and scoped retry-marker transaction assertions | Linearizable transaction/rollback oracle and authenticated lost-response retry; preserves client-held candidate protocol |
 | D4: recoverable custody | V1 open decision 3 lacks key inventory and backup/restore evidence; #156 includes encryption/key custody/rotation and revoked-credential isolation | Required custody fields, key-retirement and restore reconciliation criteria, without provider selection |
-| D5: measurable abuse | V1 open decision 2 lacks numerical limits/load evidence; #156 requires measurable rules, cost bounds and degraded behavior for every control | Parameter/evidence shape and cap-boundary oracle for existing controls; Jett/Quark still own numeric proposal |
+| D5: measurable abuse | V1 open decision 2 lacks numerical limits/load evidence; #156 requires measurable rules, cost bounds and degraded behavior for every control | Parameter/evidence shape and cap-boundary oracle for existing controls; Operations lead/FinOps lead still own numeric proposal |
 | D6: acceptance proof | V1 tests are blocked and open decision 7 lacks exact-version reviews; #156 cannot be decided on inferred passing behavior or inherited verdicts | Test identifiers, observable transaction/boundary assertions, criterion crosswalk and version-bound pending ledger |
 
 ## Proposed decisions that close specification gaps
@@ -98,7 +98,7 @@ for that receipt; incident evidence still requires separate incident authority.
 **Unresolved #155 dependency:** receipt/stub purpose, recipient/access class,
 retention trigger/duration, purge and hold exception must be explicitly covered
 and approved through a separate inventory/lifecycle amendment and human
-decision. Deanna confirmed that #193 is transfer/hold-only and does not include
+decision. Privacy lead confirmed that #193 is transfer/hold-only and does not include
 or authorize this new receipt/stub class. **Keep the proposed class disabled.**
 Existing private-case or proof-token retention is not permission to create
 stubs. Do not expand #193 or infer that its eventual approval clears this gap.
@@ -110,7 +110,7 @@ failures may use a distinct failure class; they must not depend on lookup
 existence, content classification, or incident routing. Apply any abuse refusal
 uniformly before record lookup. Unproved lookup outcomes share status, body
 schema/length bucket, headers, rate accounting, and notification behavior, with
-a measured timing tolerance fixed in the reviewed release artifact. Data must
+a measured timing tolerance fixed in the reviewed release artifact. Quality lead must
 test the distinction between processing and acceptance; a friendly response is
 not durability proof.
 
@@ -148,7 +148,7 @@ the approved #155 mechanism; otherwise the person receives only the common
 processing response. The proposed workflow permits retry or use of an accessible
 alternative only after the applicable approval and activation evidence; neither
 route is represented as available here.
-Incident-classified material routes only to Tuvok/Deanna incident handling.
+Incident-classified material routes only to Security lead/Privacy lead incident handling.
 Until #155 approves proof, hold and stub policy, this route stays disabled and
 no approved lifecycle exists.
 
@@ -223,7 +223,7 @@ authorization, revocation, generation, and expiry can still be checked.
 
 ### Encryption, roles, restore, and incident containment
 
-Jett must supply a boundary-specific custody inventory: TLS termination,
+Operations lead must supply a boundary-specific custody inventory: TLS termination,
 case/tracking/quarantine/incident/backup encryption, distinct contact-vault keys,
 key ID/version, authorized runtime/admin roles, custodian and recovery custodian,
 rotation trigger/runbook, compromise revocation, and decrypt/restore evidence.
@@ -245,7 +245,7 @@ or bypass rights/hold policy.
 Key rotation must keep approved retained ciphertext readable without extending
 retention; old decrypt keys retire only after permitted re-encryption/backup
 expiry and recovery evidence. Compromise pauses affected access and sends the
-case to restricted Tuvok/Deanna/Jett handling, with Sarek for legal/notification
+case to restricted Security lead/Privacy lead/Operations lead handling, with Legal research lead for legal/notification
 questions. Do not rotate all receipt secrets merely to change an encryption key.
 Restore in isolation and reconcile authoritative revocation generations,
 deletion tombstones, consent withdrawal, expiry, and scoped holds before serving
@@ -254,8 +254,8 @@ a stale backup may not revive an old credential or destination.
 
 Suspected secrets, vulnerabilities, personal-data incidents, threats, or uncertain
 high-risk classification stop ordinary triage/dedupe/publication. Route security
-cases to Tuvok and privacy cases jointly to Deanna/Tuvok; Jett contains the source
-boundary, Sarek assesses counsel/notification questions, and Guinan receives
+cases to Security lead and privacy cases jointly to Privacy lead/Security lead; Operations lead contains the source
+boundary, Legal research lead assesses counsel/notification questions, and Support lead receives
 only authorized safe workflow status. Neither spam rejection nor human appeal
 releases an incident to ordinary handling. False-positive release needs a
 restricted reviewer, minimized reason, fresh privacy screen and publication
@@ -275,7 +275,7 @@ previously approved private alternative may be displayed.
 The v1 abuse register remains the control inventory, including each owner,
 evidence-retention rule, private appeal/accessible alternative, cost bound, and
 degraded mode. Every row remains subject to #155 retention/hold approval;
-no numeric period is silently adopted. Jett and Quark's
+no numeric period is silently adopted. Operations lead and FinOps lead's
 [#157](https://github.com/Jamula/Andreja/issues/157) package owns measured capacity
 and cost proposals, not weaker security behavior. Before review, attach this
 complete parameter record, not provider defaults:
@@ -292,7 +292,7 @@ complete parameter record, not provider defaults:
 
 Each measurement records configuration/revision, units, workload, hardware,
 expected boundary behavior, observed peak, cost assumption, owner and safe
-failure result. Data checks cap-minus-one/cap/cap-plus-one, cancellation, partial
+failure result. Quality lead checks cap-minus-one/cap/cap-plus-one, cancellation, partial
 failure and saturation without real data. Accessible/private appeal consumes a
 separately bounded path, never an unlimited bypass; a challenged submitter need
 not obtain an account, email, GitHub access, or visual challenge capability.
@@ -302,7 +302,7 @@ default. This document claims no measured numeric threshold.
 
 ## Boundary-negative and failure test plan
 
-Data owns future exact-release execution; Tuvok reviews adversarial expectations.
+Quality lead owns future exact-release execution; Security lead reviews adversarial expectations.
 Retain test source, configuration, exact command/result, build commit and
 content-free observations. Test failures/unknowns are blockers, not skipped
 passes. Use synthetic canaries only; never keep raw receipt values in reports.
@@ -347,12 +347,12 @@ reconfirm unaffected reviews rather than silently carrying them forward.
 
 | Role | Current record | Blocking input |
 | --- | --- | --- |
-| Tuvok | Original proposal author; owner verdict pending. Guinan prepared the independent current revision without locked-out authors' participation | Valid privacy outputs and required challenges; neither original nor revision authorship is independent review |
-| Jett Reno | Pending | Custody/restore and measured failure/capacity/cost record |
-| Deanna Troi | Pending | Valid #155 decision, transfer/hold/proof/stub mapping; no privacy-review substitution |
-| Guinan | Pending | Honest acknowledgment, accountless workflow and private accessible appeal |
-| Data | Pending | All acceptance oracles and future exact-release evidence plan/results |
-| Quark | Pending | Bounded work/storage/challenge/incident cost and hard-stop evidence |
+| Security lead | Original proposal author; owner verdict pending. Support lead prepared the independent current revision without locked-out authors' participation | Valid privacy outputs and required challenges; neither original nor revision authorship is independent review |
+| Operations lead | Pending | Custody/restore and measured failure/capacity/cost record |
+| Privacy lead | Pending | Valid #155 decision, transfer/hold/proof/stub mapping; no privacy-review substitution |
+| Support lead | Pending | Honest acknowledgment, accountless workflow and private accessible appeal |
+| Quality lead | Pending | All acceptance oracles and future exact-release evidence plan/results |
+| FinOps lead | Pending | Bounded work/storage/challenge/incident cost and hard-stop evidence |
 | Cyrus Jamula | Not yet solicited; pending | Consolidated exact-version reviews, valid #155 dependency and explicit residual-risk disposition |
 
 Do not request final approval while these inputs remain unresolved. Once ready,

@@ -9,9 +9,9 @@
 - **Privacy dependency:** [Feedback privacy, retention, and data-subject rights](../legal/feedback-privacy-retention-dsr.md), issue [#155](https://github.com/Jamula/Andreja/issues/155)
 - **Security dependency:** [Feedback security, abuse, and incident routing](feedback-security-abuse-incident-routing.md), issue [#156](https://github.com/Jamula/Andreja/issues/156)
 - **Cost baseline:** [Andreja cost model](../cost-model.md)
-- **Accountable owner:** Jett Reno
-- **Cost co-lead:** Quark
-- **Required reviewers:** Spock, Tuvok, Deanna Troi, Sarek, Guinan, and Data
+- **Accountable owner:** Operations lead
+- **Cost co-lead:** FinOps lead
+- **Required reviewers:** Architecture lead, Security lead, Privacy lead, Legal research lead, Support lead, and Quality lead
 - **Decision authority:** Cyrus Jamula
 - **Evidence reviewed:** 2026-10-10
 
@@ -32,12 +32,12 @@ Review the candidate topology, provider shortlist, outbound-email posture,
 staging inventory, and cost controls below. A provider and operating region
 cannot be selected until the approved #155 policy and #156 security controls
 are available, the deployment jurisdiction and controller are named, provider
-terms are checked against those policies, Quark records a priced budget
+terms are checked against those policies, FinOps lead records a priced budget
 recommendation, required specialists record their reviews, and Cyrus decides.
 
 No Phase 1B funding request is submitted in this draft. There is no usable
 numeric 14-day spend cap yet: the required operating region, account class,
-database/queue SKUs, backup settings, support plan, email provider, and Quark's
+database/queue SKUs, backup settings, support plan, email provider, and FinOps lead's
 unit-price review are unresolved. An unpriced cap or provider default must not
 be passed to #158 as a budget. If any of these inputs remains unknown, the
 provider-backed exercise is a no-go; the local/paper test path remains usable.
@@ -64,7 +64,7 @@ boundaries; this package does not reopen them:
 The proposed #155 package and its retention table remain unapproved. Cyrus
 reopened #155 because the automatic closure on PR #172's merge did not meet
 the explicit human-decision criterion; neither historical issue closure nor
-that merge is approval. Cyrus directed Deanna Troi to amend and proceed on
+that merge is approval. Cyrus directed Privacy lead to amend and proceed on
 transfer and hold-policy gaps on 2026-10-10. The independent third-author
 proposal in [PR #193](https://github.com/Jamula/Andreja/pull/193) remains
 **unapproved**; its exact current package hash is recorded in the
@@ -82,7 +82,7 @@ approved hold rule or inherit any retention period until Cyrus explicitly
 approves the revised #155 package.
 
 The #156 proposal and its existing merged source (PR #177) are also
-unapproved. Tuvok's proposed supplement in draft PR #194 adds verifier/
+unapproved. Security lead's proposed supplement in draft PR #194 adds verifier/
 namespace, generation/nonce/idempotency, response/stub, boundary-key, and
 abuse-evidence controls that must be reviewed before this topology can pass.
 This document proposes no security verdict and does not assign runtime abuse
@@ -195,7 +195,7 @@ Proposed invariants for specialist review:
     queue semantics, or email APIs.
 
 The proposed topology is intentionally stricter than a shared service with
-tenant tags. Tuvok and Deanna must confirm that the actual isolation, transfer,
+tenant tags. Security lead and Privacy lead must confirm that the actual isolation, transfer,
 hold, and recovery controls satisfy their packages before Cyrus considers it.
 The minimum receipt/stub behavior for accepted, quarantined, rejected,
 duplicate, missing, and incident cases is not selected here. Keep any new
@@ -218,15 +218,15 @@ replicas, or backups stay in-region.
 | Candidate | Service mapping and published cost drivers | Residency, deletion, and subprocessors | Security, access, portability, support, and limits | Current disposition |
 |---|---|---|---|---|
 | **Self-hosted OCI + PostgreSQL** | Container/runtime hours and host capacity; PostgreSQL CPU/RAM/storage/backup; queue operations or database-backed queue; encrypted backup bytes; key custody; outbound bandwidth. No cloud unit price is implied. | The operator chooses the host, storage and backup destination, but is responsible for physical location, onward transfers, subprocessors, deletion, restore tombstones, and evidence. No specific operator, region, processor, or contract is selected. | Strongest fit to the existing OCI/PostgreSQL portability direction. Operator owns patching, access reviews, key rotation, backup restore, failure response, and cancellation. Queue and mail adapters still need conformance tests. Operator-console accessibility, support coverage, capacity and actual infrastructure cost are unmeasured. | **Local/paper baseline only.** A real self-hosted staging environment still requires an approved host, numeric budget, and #158 authorization. |
-| **AWS** | Candidate mapping: RDS for PostgreSQL, SQS, S3 only if approved, KMS; SES for outbound mail. Pricing drivers include database instance-hours, provisioned storage/backups/IO, SQS API requests and data transfer, S3 storage and operations, KMS key-months and requests, egress, and SES messages/recipient and optional features. See [RDS pricing](https://aws.amazon.com/rds/postgresql/pricing/), [SQS pricing](https://aws.amazon.com/sqs/pricing/), [S3 pricing](https://aws.amazon.com/s3/pricing/), [KMS pricing](https://aws.amazon.com/kms/pricing/), and [SES pricing](https://aws.amazon.com/ses/pricing/). | Selectable service regions do not settle transfer or support-access rules. RDS backup settings, replication, logging and queue event destinations must be enumerated. SES documentation describes event publishing; retention of any content/event copies and deletion obligations must be verified against the chosen configuration and contract. Review the live [AWS DPA](https://aws.amazon.com/legal/data-processing-addendum/) and [subprocessor register](https://aws.amazon.com/compliance/sub-processors/); exact applicable entities and locations remain unrecorded. | IAM and key controls are product-specific and require least-privilege role mapping, admin/break-glass evidence, access-log retention and restore tests. SQS delivery semantics and AWS resource identifiers require an adapter; PostgreSQL logical export remains the database exit path. AWS quota values are account/region dependent and must be checked without requesting an increase. Support tier, response commitments, accessibility evidence, exact cancellation and residual backup deletion are unverified. | **Candidate only.** Do not create an account or choose a region. Obtain Quark's priced 14-day quote and specialist contract/access/transfer review first. |
+| **AWS** | Candidate mapping: RDS for PostgreSQL, SQS, S3 only if approved, KMS; SES for outbound mail. Pricing drivers include database instance-hours, provisioned storage/backups/IO, SQS API requests and data transfer, S3 storage and operations, KMS key-months and requests, egress, and SES messages/recipient and optional features. See [RDS pricing](https://aws.amazon.com/rds/postgresql/pricing/), [SQS pricing](https://aws.amazon.com/sqs/pricing/), [S3 pricing](https://aws.amazon.com/s3/pricing/), [KMS pricing](https://aws.amazon.com/kms/pricing/), and [SES pricing](https://aws.amazon.com/ses/pricing/). | Selectable service regions do not settle transfer or support-access rules. RDS backup settings, replication, logging and queue event destinations must be enumerated. SES documentation describes event publishing; retention of any content/event copies and deletion obligations must be verified against the chosen configuration and contract. Review the live [AWS DPA](https://aws.amazon.com/legal/data-processing-addendum/) and [subprocessor register](https://aws.amazon.com/compliance/sub-processors/); exact applicable entities and locations remain unrecorded. | IAM and key controls are product-specific and require least-privilege role mapping, admin/break-glass evidence, access-log retention and restore tests. SQS delivery semantics and AWS resource identifiers require an adapter; PostgreSQL logical export remains the database exit path. AWS quota values are account/region dependent and must be checked without requesting an increase. Support tier, response commitments, accessibility evidence, exact cancellation and residual backup deletion are unverified. | **Candidate only.** Do not create an account or choose a region. Obtain FinOps lead's priced 14-day quote and specialist contract/access/transfer review first. |
 | **Microsoft Azure** | Candidate mapping: Azure Database for PostgreSQL Flexible Server, Queue Storage (or another specifically approved queue), Blob Storage only if approved, Key Vault. Pricing drivers include database compute-hours/storage/backup, storage operations and capacity, key operations, networking/egress and support. See [PostgreSQL pricing](https://azure.microsoft.com/pricing/details/postgresql/flexible-server/), [Queue Storage pricing](https://azure.microsoft.com/pricing/details/storage/queues/), [Blob pricing](https://azure.microsoft.com/pricing/details/storage/blobs/), and [Key Vault pricing](https://azure.microsoft.com/pricing/details/key-vault/). | Flexible Server backup geo-redundancy and restore behavior require an explicit choice; do not enable paired-region replication by default. Queue message TTL and retention configuration must be explicitly bounded. Microsoft's [data residency overview](https://azure.microsoft.com/explore/global-infrastructure/data-residency/), [DPA](https://www.microsoft.com/licensing/docs/view/Data-Protection-Addendum-DPA), and current subprocessor disclosures must be reviewed for the actual services, regions, support access and transfer pathway. Exact entities/countries and post-termination deletion are not established here. | Azure RBAC, Key Vault and service identities need exact least-privilege, key custody, administrative access and restore evidence. Queue Storage has different visibility/TTL semantics from SQS/Pub/Sub; isolate those in an adapter and test replay/idempotency. PostgreSQL logical export is the database exit path. Exact support tier, service quotas, accessibility, cancellation, and deletion of provider-managed backup copies remain unverified. | **Candidate only.** Region and backup configuration cannot be inferred from an Azure-wide residency page. No account or resource creation. |
 | **Google Cloud** | Candidate mapping: Cloud SQL for PostgreSQL, Pub/Sub, Cloud Storage only if approved, Cloud KMS. Pricing drivers include database vCPU/RAM-hours, storage/backups, Pub/Sub throughput/retention, object storage operations/capacity, key versions/operations, networking/egress and support. See [Cloud SQL pricing](https://cloud.google.com/sql/pricing), [Pub/Sub pricing](https://cloud.google.com/pubsub/pricing), [Cloud Storage pricing](https://cloud.google.com/storage/pricing), and [Cloud KMS pricing](https://cloud.google.com/kms/pricing). | Pub/Sub message storage policies can restrict message storage/processing regions, but do not apply to all topic metadata or IAM data. Cloud SQL backup/restore location, support, logs and other metadata need separate evidence. Review the current [Google Cloud DPA](https://cloud.google.com/terms/data-processing-addendum) and [subprocessor list](https://cloud.google.com/terms/subprocessors); exact service-specific entities, locations, support access and deletion at termination remain unrecorded. | IAM, Cloud KMS, backup and restore roles must be mapped to approved security controls. Pub/Sub differs in retention, ordering and acknowledgment behavior from other queues; do not let those semantics escape its adapter. PostgreSQL logical export is the database exit path. Exact support terms, quotas, accessibility, cancellation and backup-deletion evidence are unverified. | **Candidate only.** A message storage policy is not whole-service residency. No account or resource creation. |
 
 For all hosted options, processor qualification is blocked until the chosen
 contract covers documented instructions, approved subprocessors and change
 notice, support access, incident notification, rights assistance, deletion or
-return at termination, transfer protections, and audit evidence. Sarek must
-review the exact applicable terms. Data must separately verify user-facing
+return at termination, transfer protections, and audit evidence. Legal research lead must
+review the exact applicable terms. Quality lead must separately verify user-facing
 accessibility and failure behavior; provider compliance badges are not test
 evidence.
 
@@ -234,7 +234,7 @@ evidence.
 
 | Candidate | Purpose, delivery, quotas, and price evidence | Residency, data retention, access, and subprocessors | Lock-in, support, and disposition |
 |---|---|---|---|
-| **Amazon SES** | Supports outbound API/SMTP sending and event publishing for send/delivery/bounce/complaint-related activity. The [SES pricing page](https://aws.amazon.com/ses/pricing/) is the source for current per-message/recipient, attachment and optional-feature charges; pricing varies by service option/region. Per-account, per-region sending quotas must be read from the selected account; do not request an increase for staging. SPF/DKIM/DMARC are customer-owned DNS/authentication work; AWS explains alignment in its [DMARC guide](https://docs.aws.amazon.com/ses/latest/dg/send-email-authentication-dmarc.html). | SES region and event destination configuration do not alone establish message-content or event retention. Exact message handling, event storage, account support access, and deletion need written/configuration evidence. Review AWS's current DPA and subprocessor register above. SES suppression behavior and its scope must be verified; never assume the provider's suppression list replaces Andreja's complaint handling. | Lower-volume published costs are usage-based, but connected SNS/EventBridge/CloudWatch, storage, transfer, and account/support charges also need inclusion. SES-specific event payloads and quota controls require an adapter; delivery is not equivalent to user verification. Cancellation requires disabling send identities/credentials, deleting event destinations and provider configuration, and reconciling provider-held data. **Candidate only; actual cost and service terms pending Quark and reviewers.** |
+| **Amazon SES** | Supports outbound API/SMTP sending and event publishing for send/delivery/bounce/complaint-related activity. The [SES pricing page](https://aws.amazon.com/ses/pricing/) is the source for current per-message/recipient, attachment and optional-feature charges; pricing varies by service option/region. Per-account, per-region sending quotas must be read from the selected account; do not request an increase for staging. SPF/DKIM/DMARC are customer-owned DNS/authentication work; AWS explains alignment in its [DMARC guide](https://docs.aws.amazon.com/ses/latest/dg/send-email-authentication-dmarc.html). | SES region and event destination configuration do not alone establish message-content or event retention. Exact message handling, event storage, account support access, and deletion need written/configuration evidence. Review AWS's current DPA and subprocessor register above. SES suppression behavior and its scope must be verified; never assume the provider's suppression list replaces Andreja's complaint handling. | Lower-volume published costs are usage-based, but connected SNS/EventBridge/CloudWatch, storage, transfer, and account/support charges also need inclusion. SES-specific event payloads and quota controls require an adapter; delivery is not equivalent to user verification. Cancellation requires disabling send identities/credentials, deleting event destinations and provider configuration, and reconciling provider-held data. **Candidate only; actual cost and service terms pending FinOps lead and reviewers.** |
 | **Postmark** | Transactional API/SMTP, message streams, and delivery/bounce/complaint events are documented. Its [official pricing page](https://postmarkapp.com/pricing) lists a paid Basic tier at **$15/month for 10,000 emails**, with overage pricing shown there; the free plan is prohibited for this work. Event/webhook behavior and account quotas must be tested against a paid contract before consideration. DNS authentication and sender validation remain owner-controlled. | Postmark's [EU data-protection page](https://postmarkapp.com/eu-privacy) says its primary servers are at a US data center and AWS and that it has no current plan for EU servers; it provides a DPA and subprocessor listing. That is a material blocker if an approved residency/transfer rule requires EU processing. Its [activity-retention description](https://postmarkapp.com/email-analytics) says full message content and message history are stored for 45 days by default, configurable from 0 to 365 days via a retention add-on; confirm the exact selected setting, event coverage, purge behavior and contractual evidence. Access is limited by its described need-to-know policy; exact administrative-access records and contract terms still need review. | Vendor API, streams, and event schemas create lock-in; hide them behind an email adapter and store only minimized, content-free event state. Paid recurring minimums mean low staged volume still incurs a base fee. Support commitments, plan-specific quotas, accessibility evidence, cancellation notice and post-cancellation deletion remain unverified. **Candidate only; US hosting and 45-day default are explicit privacy/transfer concerns, not accepted terms.** |
 
 No provider is preferred until its evidence passes the same privacy, security,
@@ -247,7 +247,7 @@ set; cost or convenience cannot waive the conflict.
 The specific deployment jurisdiction and data controller are not yet named.
 The proposed #155 policy requires that processors, independent recipients,
 transfer routes, locations and purposes be reviewed and that holds be scoped;
-Deanna is amending those requirements. For each chosen vendor and service,
+Privacy lead is amending those requirements. For each chosen vendor and service,
 the decision record must therefore identify:
 
 - Data class (case body, contact destination, consent/receipt, verifier,
@@ -368,7 +368,7 @@ envelopes as described in `docs/cost-model.md`.
 
 ### Cost equation and measurable units
 
-Quark must calculate the proposed 14-day total from the selected region and
+FinOps lead must calculate the proposed 14-day total from the selected region and
 public provider price source, excluding free-tier offsets and discounts:
 
 ```text
@@ -389,7 +389,7 @@ public provider price source, excluding free-tier offsets and discounts:
 Each estimate records service, SKU/tier, region, currency, billing granularity,
 quantity, unit rate, source URL and retrieval date, included/overage threshold,
 tax treatment, uncertainty, minimum commitment/term, partial-period proration,
-early-cancellation charge, and a higher-than-forecast stop. Quark must
+early-cancellation charge, and a higher-than-forecast stop. FinOps lead must
 separately report fixed minimums and variable ceilings, including support and
 other ancillary charges. Budgets/alerts are detective only; the actual hard
 stop is enforced before resource creation or message send, with an independent
@@ -401,9 +401,9 @@ increase is allowed.
 
 ### Proposed synthetic exercise bounds (not runtime abuse policy)
 
-These are Jett's proposed *exercise* quantities for a future #158 decision.
+These are Operations lead's proposed *exercise* quantities for a future #158 decision.
 They are not approved public-intake rate, payload, availability, or abuse
-thresholds; those remain with #156, Data and Cyrus.
+thresholds; those remain with #156, Quality lead and Cyrus.
 
 | Dimension | Proposed maximum for one later exercise |
 |---|---:|
@@ -418,7 +418,7 @@ thresholds; those remain with #156, Data and Cyrus.
 | Test email | 100 messages total, at most 2 verifier-controlled recipients, no attachments, no live-user addresses |
 | Public exposure | No general public intake/launch endpoint or public search indexing; only access controlled as #158 authorizes |
 | Regions | 1 specifically named region per provider; no cross-region replication, backup, or failover |
-| Cloud spend | **Not yet priced or requested.** Future numeric cap must be quoted by Quark and approved by Cyrus in #158 before provisioning. |
+| Cloud spend | **Not yet priced or requested.** Future numeric cap must be quoted by FinOps lead and approved by Cyrus in #158 before provisioning. |
 
 The 100-message cap is a test-volume ceiling, not permission to send. A
 provider's account quota or its free tier cannot substitute for the #158
@@ -430,7 +430,7 @@ the option.
 
 - Reserve cost before every billable resource or external send. Stop when
   actual or forecast consumption reaches the later Cyrus-approved cap; alert
-  Quark and Cyrus earlier at a threshold Quark proposes and Cyrus records.
+  FinOps lead and Cyrus earlier at a threshold FinOps lead proposes and Cyrus records.
 - Reconcile metering to the provider statement at exercise close; record
   price changes, missing usage, and mismatches as blockers. Do not present
   alert configuration as a billing cap.
@@ -464,7 +464,7 @@ field with a specific value and include its source/owner:
 | Sender and DNS | Dedicated non-production child domain(s), exact SPF/DKIM/DMARC record set, and a separate provider sender identity/credential set per boundary | Domain-owner approval, boundary-specific validation and alignment test, recipient restriction, removal plan; no production-domain root changes or shared sender credentials |
 | Recipients and messages | Maximum 2 verifier-controlled recipients and 100 generated test messages | Named recipient custody in the private #158 authorization only; safe templates, no personal/case content |
 | Observability | Content-free logs/metrics/alerts only; no raw destination, feedback body, verifier, token or provider error body | Canary tests, access control, retention/purge mapping, no third-party telemetry until separately approved |
-| Spend | `[numeric USD cap, provider quote, service/unit table, billing owner]` | Quark recommendation, pre-action reservation/hard stop test and Cyrus's explicit #158 cap |
+| Spend | `[numeric USD cap, provider quote, service/unit table, billing owner]` | FinOps lead recommendation, pre-action reservation/hard stop test and Cyrus's explicit #158 cap |
 | Expiry and teardown | Start time; expiry by day 14; automatic denial; named operator/custodian | Tested teardown workflow, cancellation notice, DNS/key revocation and scoped purge receipts |
 
 The actual account identifiers, recipient list and credentials belong only in
@@ -474,7 +474,7 @@ references and content-free completion evidence.
 
 ## Local/paper failure-test plan
 
-Data owns exact executable scenarios and evidence; this plan is the
+Quality lead owns exact executable scenarios and evidence; this plan is the
 provider-neutral platform input. It has not been executed against a live
 provider. For each test, use deterministic local adapters and generated
 records. A test result that cannot be exercised locally is `Blocked` or
@@ -520,10 +520,10 @@ evidence. A local/paper scenario cannot substitute for that evidence.
 | 10. Authorized lifecycle transitions, ownership, delivery and verification | Lifecycle and status audit; queue recovery; delivery reconciliation | Planned locally; exact transition contract remains gated by #155/#156 |
 | 11. Minimal transactional email, accessibility, suppression, retention and cost | Delivery reconciliation; bounce/complaint recovery; email accessibility; cost stop | Planned locally; live sender, recipient and provider evidence remains unauthorized |
 | 12. Thresholded aggregate metrics without identifiers or joins | Observability and aggregate metrics | Planned locally; privacy thresholds and exact-release evidence remain for #155/#158 |
-| 13. Canonical accessible help/status/DSR/consent content | No platform content test; Guinan/#93 and #158 own the reviewed help evidence | Outside this platform package; blocked until version, accessibility, ownership and stale-link evidence is supplied |
+| 13. Canonical accessible help/status/DSR/consent content | No platform content test; Support lead/#93 and #158 own the reviewed help evidence | Outside this platform package; blocked until version, accessibility, ownership and stale-link evidence is supplied |
 | 14. Reviewed, exercised runbooks and blocking owners for unresolved failures | Teardown/cancellation; quarantine and incident evidence | Plan only; exact-release drills and residual-failure ownership remain for #158 |
 
-Before any live exercise, Data must replace this planned crosswalk with
+Before any live exercise, Quality lead must replace this planned crosswalk with
 exact-release results and evidence for every applicable criterion, including
 provider failure, queue recovery, delivery reconciliation, approved cost-stop
 behavior, and complete teardown. No local result substitutes for the separate
@@ -533,30 +533,30 @@ behavior, and complete teardown. No local result substitutes for the separate
 
 | Role | Required review | Status |
 |---|---|---|
-| Jett Reno | Platform topology, operational failure paths, portability and teardown | Draft recommendation only |
-| Quark | Region/SKU quote, fixed/variable units, hard stop, cancellation, and cost cap | Pending; no priced recommendation or numeric cap |
-| Spock | Architecture and boundary compatibility | Pending |
-| Tuvok | Security, abuse, key, queue and staging controls | Pending; the bounded topology feedback has been incorporated; #156 and its supplement remain proposed/unapproved |
-| Deanna Troi | Privacy, transfer, retention, recipient and hold alignment | Pending; #155 amendment in progress |
-| Sarek | Legal/contract, role, transfer and jurisdiction review | Pending |
-| Guinan | Intake/status/email workflow and non-email fallback | Pending |
-| Data | Testability, failure evidence, accessibility and exact-release mapping | Pending |
+| Operations lead | Platform topology, operational failure paths, portability and teardown | Draft recommendation only |
+| FinOps lead | Region/SKU quote, fixed/variable units, hard stop, cancellation, and cost cap | Pending; no priced recommendation or numeric cap |
+| Architecture lead | Architecture and boundary compatibility | Pending |
+| Security lead | Security, abuse, key, queue and staging controls | Pending; the bounded topology feedback has been incorporated; #156 and its supplement remain proposed/unapproved |
+| Privacy lead | Privacy, transfer, retention, recipient and hold alignment | Pending; #155 amendment in progress |
+| Legal research lead | Legal/contract, role, transfer and jurisdiction review | Pending |
+| Support lead | Intake/status/email workflow and non-email fallback | Pending |
+| Quality lead | Testability, failure evidence, accessibility and exact-release mapping | Pending |
 | Cyrus Jamula | Explicit `APPROVE`, `AMEND`, or `REJECT` decision | Pending; no activation authorization |
 
 ## Open blockers and revision triggers
 
-1. **#155 approval:** The proposed privacy package is not approved. Deanna's
+1. **#155 approval:** The proposed privacy package is not approved. Privacy lead's
    directed transfer/hold amendment and Cyrus's later explicit decision are
    prerequisites. Until then, residency, recipients, retention, deletion,
    holds and data transfer remain gates.
-2. **#156 approval:** The proposed security package and Tuvok's proposed
+2. **#156 approval:** The proposed security package and Security lead's proposed
    supplement are not approvals. Verifier/key namespace, idempotency,
    non-accepted response, abuse evidence, numeric controls, and exact
    boundary-level access remain blockers.
 3. **Provider and legal evidence:** No jurisdiction, operating entity, region,
    account, contract, service plan, subprocessor snapshot, support path, or
    service-specific transfer evidence is selected.
-4. **Cost recommendation:** Quark has not supplied a region/SKU quote or
+4. **Cost recommendation:** FinOps lead has not supplied a region/SKU quote or
    numeric 14-day cloud/email cap. This draft asks for no spend. An unpriced
    provider exercise is not eligible for #158 authorization.
 5. **Sender authority:** No domain owner, approved child domain, sender

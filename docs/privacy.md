@@ -3,9 +3,9 @@
 - **Status:** Canonical descriptive baseline; not ratified
 - **Scope:** Current Phase 1A implementation, contract-only seams, blocked evidence,
   and explicitly gated future capabilities
-- **Owner:** Trust, Security, Privacy and Legal — Tuvok, Deanna Troi, Sarek
-- **Required challenge:** Deanna Troi (privacy), Tuvok (security), and
-  Rai (AI safety); pending for this proposed revision; baseline challenge is
+- **Owner:** Trust, Security, Privacy and Legal — Security lead, Privacy lead, Legal research lead
+- **Required challenge:** Privacy lead (privacy), Security lead (security), and
+  AI safety reviewer (AI safety); pending for this proposed revision; baseline challenge is
   recorded on issue #2
 - **Residual-risk acceptance:** Cyrus; pending
 - **Classification/impact assessment:** Open; this inventory does not satisfy that

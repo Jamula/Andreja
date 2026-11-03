@@ -5,22 +5,20 @@ artifact only.
 
 ## Not legal advice, no privilege, no authority to bind
 
-This document is Sarek's (General Counsel and Regulatory Research Lead) research
-artifact under `.squad/agents/sarek/charter.md` and the Legal and regulatory charter in
+This document is a legal research
+artifact governed by the Legal and regulatory charter in
 `docs/plan.md`. Read every claim below with these boundaries in force:
 
 - **Not legal advice.** Nothing here is a legal opinion, a compliance certification, or a
   substitute for jurisdiction-appropriate qualified counsel. It is a structured research
   hypothesis with sources, so a human decision-maker and counsel can evaluate it faster.
-- **No privilege.** This file lives in a version-controlled repository and, per
-  `.squad/directives.md`, must never contain privileged, confidential-counsel, or
+- **No privilege.** This file lives in a version-controlled repository and must never contain privileged, confidential-counsel, or
   regulatory-inquiry material. Privileged analysis belongs in the confidential paths
   described below, not here.
-- **No authority to sign, file, approve, or launch.** Sarek (the agent) does not
+- **No authority to sign, file, approve, or launch.** Legal research lead (the agent) does not
   interpret law as binding, create attorney-client privilege, sign contracts, submit
   regulatory filings, or approve a launch decision. Only qualified, jurisdiction-appropriate
-  counsel and Cyrus (as the accountable human) can do that, per `.squad/agents/sarek/charter.md`
-  and `docs/plan.md` (Business leadership responsibilities, Review gates).
+  counsel and Cyrus (as the accountable human) can do that, per `docs/plan.md` (Business leadership responsibilities, Review gates).
 - **Agent research is not a public claim.** A legal hypothesis in this document never
   silently becomes a marketing claim, a public compliance statement, or a technical
   authorization rule. Product policy and engineering controls are separate artifacts that
@@ -74,7 +72,7 @@ and linked ADRs so it stays synchronized with actual delivery work rather than d
 
 ### Current footprint bounds what applies today
 
-Per `.squad/directives.md` (Phase 0 boundary) and `docs/plan.md` (Phase 0 deliverables),
+Per `docs/plan.md` (Phase 0 boundary and deliverables),
 Andreja currently has: a private GitHub repository, no cloud accounts or provisioning, no
 external users, no revenue, and no public site. Most of the domain sections below describe
 **future** applicability that attaches once a specific capability, deployment, or user
@@ -199,7 +197,7 @@ appeal requirement by design, or does it still require a separate disclosure/imp
 assessment?
 
 **Obligations/controls/evidence:** RAI review gate (already required per `docs/plan.md`,
-Review gates: "AI safety: Rai review"); explainability requirement already built into Life
+Review gates: "AI safety: AI safety reviewer review"); explainability requirement already built into Life
 Context and Opportunity Navigator guardrails; maintain an AI-feature inventory tagging
 each skill against "consequential decision" criteria before any regulated-skill phase
 (11, 12) begins implementation.
@@ -234,8 +232,8 @@ guardrails "lowest price is not automatically best value"; Lifestyle rewards gua
 INFORM Consumers Act or state marketplace-facilitator exposure? What renewal/cancellation
 disclosure design satisfies the strictest applicable state before any paid tier ships?
 
-**Obligations/controls/evidence:** claims-review gate already assigned to Fact Checker
-(`docs/plan.md`, Review gates: "Claims and external facts: Fact Checker review");
+**Obligations/controls/evidence:** claims-review gate already assigned to Evidence reviewer
+(`docs/plan.md`, Review gates: "Claims and external facts: Evidence reviewer review");
 design cancellation flows with subscription-parity before any paid tier.
 
 **Deadlines:** none until a paid tier or marketplace exists.
@@ -269,7 +267,7 @@ if so, what audit/evidence cadence supports that claim safely?
 
 **Obligations/controls/evidence:** accessibility checks already required for Personal
 Brand Studio publication content (`docs/plan.md`); extend WCAG 2.2 AA conformance checks to
-the public website/help site design work (Jadzia-led, per `docs/plan.md` Public website
+the public website/help site design work (UX lead-led, per `docs/plan.md` Public website
 section) and to the Blazor app.
 
 **Deadlines:** none binding pre-launch; target WCAG 2.2 AA conformance evidence (meeting or
@@ -612,7 +610,7 @@ compliant consent UX? Will mobile monetization use platform billing (with revenu
 or an external entitlement model, and is the latter permitted on each platform?
 
 **Obligations/controls/evidence:** build the AI-data-sharing disclosure/consent flow into
-the mobile client design before any iOS submission (Hoshi-led, per `docs/plan.md` mobile
+the mobile client design before any iOS submission (Mobile lead-led, per `docs/plan.md` mobile
 client roadmap, currently deferred).
 
 **Deadlines:** none until Phase 9 native mobile client work begins.
@@ -643,7 +641,7 @@ its consumer-protection and marketing-law touchpoints.
 |---|---|---|---|
 | [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) | Effective (already present in repository history) | 2026-08-23 | Per `docs/plan.md`: grants broad, perpetual, irrevocable rights to any recipient of code actually distributed under it. Qualified counsel must determine current exposure and the effect of any future relicensing before any collaborator receives code — this document does not resolve that question and defers to `docs/legal/license-evaluation.md` and qualified counsel. |
 | U.S. Copyright Act (17 U.S.C.) | Effective | 2026-08-23 | Governs ownership of code, documentation, and creative brand assets; interacts with employer invention-assignment obligations that must be separately confirmed (`docs/legal/license-evaluation.md`). |
-| Trademark law (Lanham Act, 15 U.S.C. §1051 et seq.) and state trademark registries | Effective | 2026-08-23 | Blocks public use of "Andreja" branding, Star Trek internal codenames, any adapted Amazon/Microsoft-inspired culture language, and Personal Brand Studio persona/content publication until clearance is complete (`docs/plan.md`, Licensing section; Squad crew section already requires Sarek's review before any public culture page). |
+| Trademark law (Lanham Act, 15 U.S.C. §1051 et seq.) and state trademark registries | Effective | 2026-08-23 | Blocks public use of "Andreja" branding, any adapted Amazon/Microsoft-inspired culture language, and Personal Brand Studio persona/content publication until clearance is complete (`docs/plan.md`, Licensing section). |
 | Contributor License Agreement (CLA) vs. Developer Certificate of Origin (DCO) frameworks | Not yet adopted — decision pending | 2026-08-23 | No external contributions are accepted until this policy is decided (`docs/plan.md`, Phase 0 exit gate, already a hard gate; `docs/legal/license-evaluation.md` recommends an inbound CLA with rights matched to the eventual outbound strategy). |
 | Third-party dependency licenses (npm, NuGet, and any AI-model provider terms) | Effective (varies per dependency) | 2026-08-23 | Requires an inbound license-compatibility review before any dependency is added at scale; folded into the same license/IP investigation track. |
 | [GitHub Copilot product terms / acceptable use](https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features) | Contract term | 2026-08-23 | `docs/plan.md` flags this explicitly: entitlement, redistribution, and commercial-use conditions for a paid third-party product used via end-user OAuth, BYOK, or a headless backend must be confirmed before the Assistant Runtime ships broadly. |
@@ -676,13 +674,13 @@ draft-only.
 
 ## Confidential paths
 
-Per the Legal and regulatory charter and Sarek's charter boundaries, the following
+Per the Legal and regulatory charter and Legal research lead's charter boundaries, the following
 channels must exist and stay separate from public GitHub issues/PRs before they are
 needed:
 
 - **Confidential counsel channel.** A private, non-public communication path (not a public
   GitHub issue or PR comment) for questions directed to qualified jurisdiction-appropriate
-  counsel. Sarek drafts the question; only Cyrus and counsel exchange privileged analysis.
+  counsel. Legal research lead drafts the question; only Cyrus and counsel exchange privileged analysis.
 - **Security/privacy incident channel.** Already structurally distinct from public feedback
   per `docs/plan.md` (Feedback and Support Framework: "Security/privacy reporting... never
   require public issue disclosure for vulnerabilities or personal-data incidents"). Extend
@@ -708,7 +706,7 @@ of the Phase 0 architecture spike.
 ## Launch jurisdictions
 
 **Current state:** Andreja has not launched. There are no external users, no public site,
-and no cloud provisioning (`.squad/directives.md`, Phase 0 boundary). No jurisdiction is
+and no cloud provisioning (`docs/plan.md`, Phase 0 boundary). No jurisdiction is
 currently a "launch jurisdiction" in the sense of active regulatory exposure beyond
 ordinary U.S. federal law applicable to any private repository and any future U.S.
 business.
@@ -879,7 +877,7 @@ the gap is explicit rather than implied.
 
 | Condition | State | Who can change it |
 |---|---|---|
-| Every regulated feature has a defined legal gate | **Met by this document** — see the register above; each feature has a named gate condition, owning domain section, and re-review trigger. | Sarek maintains it; drift is caught by the Governance and maintenance rule. |
+| Every regulated feature has a defined legal gate | **Met by this document** — see the register above; each feature has a named gate condition, owning domain section, and re-review trigger. | Legal research lead maintains it; drift is caught by the Governance and maintenance rule. |
 | Cyrus approves the framework | **Not met.** No ratification record exists. | Cyrus only. |
 | Qualified counsel approves the framework | **Not met.** No counsel engagement has occurred; Phase 0 provisions no professional services. | Qualified, jurisdiction-appropriate counsel only. |
 
@@ -890,8 +888,7 @@ document being merged.
 
 ## Governance and maintenance
 
-- **Owner:** Sarek (General Counsel and Regulatory Research Lead), per
-  `.squad/agents/sarek/charter.md`.
+- **Owner:** Legal research lead.
 - **Approval:** Cyrus and qualified jurisdiction-appropriate counsel, per this document's
   boundaries section and `docs/plan.md`'s Legal and regulatory charter.
 - **Relationship to other artifacts:** this document is the narrative horizon scan.
@@ -908,8 +905,8 @@ document being merged.
   changes fast enough that a stale, confidently-worded entry is more dangerous than an
   explicit "reverify" note.
 - **Confidentiality:** this document must never contain privileged counsel communications,
-  specific incident details, or any content excluded by `.squad/directives.md` (no secrets,
-  no personal task/profile content, no prompts or connector payloads).
+  specific incident details, secrets,
+  personal task/profile content, prompts, or connector payloads.
 
 ## Primary source index
 
@@ -960,5 +957,4 @@ before relying):
 Existing plan/charter sources this document draws its "why this matters" framing from:
 `docs/plan.md` (Legal and regulatory charter; Licensing, IP, and project governance;
 Initial first-party skill catalog and guardrails; Feedback and Support Framework; Phase 0
-and Phase 1A deliverables; Investigation ledger); `.squad/directives.md`; and
-`.squad/agents/sarek/charter.md`.
+and Phase 1A deliverables; Investigation ledger).

@@ -1,7 +1,7 @@
 # Personal semantic graph research and Phase 1A contract
 
-- **Status:** Decision recommendation; pending Seven, Spock, T'Pol, Deanna Troi,
-  Tuvok, Data, and Cyrus review
+- **Status:** Decision recommendation; pending Assistant and skills lead, Architecture lead, Application lead, Privacy lead,
+  Security lead, Quality lead, and Cyrus review
 - **Prepared:** 2026-08-23
 - **Tracking:** [GitHub issue #4](https://github.com/Jamula/Andreja/issues/4)
 - **Governing sources:** [platform plan](plan.md),
@@ -331,7 +331,7 @@ Open a new ADR only if all are true:
 3. tenant/grant/purpose filtering is proven inside every traversal;
 4. export/import, backup/restore, migration, deletion, and derived purge pass;
 5. operating, support, licensing, and portability costs are measured; and
-6. Spock, T'Pol, Deanna Troi, Tuvok, Data, and Cyrus accept the residual risk.
+6. Architecture lead, Application lead, Privacy lead, Security lead, Quality lead, and Cyrus accept the residual risk.
 
 ## Provenance, time, review, and sharing rules
 
@@ -408,7 +408,7 @@ present in another user's context.
   purpose-partitioned. No global “people graph” or similarity service.
 - Before Relationships/Communities or public onboarding, define non-user notice,
   access, correction, objection, erasure, conflict, safety, and identity-proof
-  workflows with Deanna Troi, Sarek, Tuvok, and Cyrus.
+  workflows with Privacy lead, Legal research lead, Security lead, and Cyrus.
 
 Content-minimized suppression records may prevent re-ingestion after a justified
 objection or deletion, but cannot become a hidden dossier. Their identifier,
@@ -553,12 +553,12 @@ lossless portable round-trip without a second database.
 
 | Reviewer | Approval question |
 | --- | --- |
-| Seven of Nine | Is the contract sufficient for the task skill, bounded extensions, and future federation without ambient graph access? |
-| Spock | Are portability seams real and complexity deferrals explicit? |
-| T'Pol | Can relational constraints enforce ownership, references, lifecycle, and migrations without contaminating domain models? |
-| Deanna Troi | Are purpose, non-user subjects, sensitive inference, review, revocation, and deletion understandable and effective? |
-| Tuvok | Do authorization, import, extension, inference, enumeration, and purge boundaries fail closed? |
-| Data | Are round-trip, provenance, isolation, correction, purge, and adverse-input claims reproducible? |
+| Assistant and skills lead | Is the contract sufficient for the task skill, bounded extensions, and future federation without ambient graph access? |
+| Architecture lead | Are portability seams real and complexity deferrals explicit? |
+| Application lead | Can relational constraints enforce ownership, references, lifecycle, and migrations without contaminating domain models? |
+| Privacy lead | Are purpose, non-user subjects, sensitive inference, review, revocation, and deletion understandable and effective? |
+| Security lead | Do authorization, import, extension, inference, enumeration, and purge boundaries fail closed? |
+| Quality lead | Are round-trip, provenance, isolation, correction, purge, and adverse-input claims reproducible? |
 | Cyrus | Do the user outcome, residual risk, scope, and deferrals justify entering Phase 1A? |
 
 ## Authoritative sources
