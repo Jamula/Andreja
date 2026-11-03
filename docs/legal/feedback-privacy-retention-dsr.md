@@ -5,9 +5,9 @@
 - **Status:** Human AMEND recorded; revised proposal awaiting approval; collection and publication remain blocked
 - **Decision issue:** [#155](https://github.com/Jamula/Andreja/issues/155)
 - **Parent framework:** [Feedback and support framework](../frameworks/feedback-support.md)
-- **Accountable owner:** Deanna Troi
-- **Legal lead:** Sarek
-- **Required reviewers:** Tuvok, Guinan, and Data
+- **Accountable owner:** Privacy lead
+- **Legal lead:** Legal research lead
+- **Required reviewers:** Security lead, Support lead, and Quality lead
 - **Decision authority:** Cyrus Jamula
 - **Decision version:** `feedback-privacy-v1.1`
 - **Notice version:** `feedback-notice-v1.1`
@@ -49,7 +49,7 @@ of these gates:
    register below before receiving data.
 4. The notice is completed with operator contact details and is tested against
    the deployed fields, routes, recipients, and schedules.
-5. Tuvok, Guinan, and Data accept the implementation evidence required below.
+5. Security lead, Support lead, and Quality lead accept the implementation evidence required below.
 6. Before the affected route can activate, Cyrus and qualified,
    jurisdiction-appropriate counsel resolve and authorize the scope-specific
    post-deadline disposition described in the hold expiry procedure below.
@@ -135,7 +135,7 @@ backup, restore, remote-access, or onward path. Missing, invalid, expired,
 overdue, or differently scoped evidence, changed terms/countries/subprocessors,
 or an unresolved counsel determination halts the affected transfer and retries.
 Disable the affected egress/access path, restrict already held copies, and route
-minimal facts privately to the operator, Deanna Troi, Tuvok, and Sarek/counsel.
+minimal facts privately to the operator, Privacy lead, Security lead, and Legal research lead/counsel.
 Permit only separately authorized restricted containment, return, or deletion;
 remediation is not permission for a new unreviewed transfer. Resume only after
 fresh scope-matched evidence and explicit operator authorization under the
@@ -451,8 +451,8 @@ threshold is broken; demonstrably anonymous aggregates need not be changed.
 A hold is not a blanket copy. Create the separate minimized hold record in the
 inventory before imposing an exception; record authority, necessary purpose,
 conditional basis, exact content scope, access, review/expiry, and end condition.
-Sarek/jurisdiction-appropriate counsel must identify any binding duty or confirm
-the proposed legal-claims basis; Deanna Troi and Tuvok must authorize a
+Legal research lead/jurisdiction-appropriate counsel must identify any binding duty or confirm
+the proposed legal-claims basis; Privacy lead and Security lead must authorize a
 purpose-limited security hold within the approved policy. Unconfirmed legal
 ambiguity goes to restricted counsel review, not an indefinite default hold.
 Keep held content separate from metadata and isolate both from ordinary reuse.
@@ -562,7 +562,7 @@ unretractable copies without reproducing them.
    redact the minimum unsafe text without quoting it in the edit explanation.
 4. **Preserve narrowly:** store minimized incident evidence in the restricted
    incident system. Do not preserve the public artifact merely for convenience.
-5. **Assess:** route to Deanna Troi and Tuvok; involve Sarek/counsel for
+5. **Assess:** route to Privacy lead and Security lead; involve Legal research lead/counsel for
    notification, legal duty, platform request, or hold questions. Identify
    affected people and processors without using public discussion.
 6. **Notify safely:** use approved private channels and jurisdiction-specific
@@ -579,12 +579,12 @@ unretractable copies without reproducing them.
 | Risk | Inherent | Required treatment | Residual / decision |
 | --- | --- | --- | --- |
 | Free text exposes sensitive information or another person | High | Warnings, minimum fields, no attachments, automated backstop, first-step privacy screen, restricted quarantine | Medium; activate only with tested restricted handling |
-| Display reference or DSR route enables enumeration | High | Separate high-entropy secret, uniform responses, rate limits, proof ladder, no destination hints | Low/medium; Tuvok must accept negative evidence |
+| Display reference or DSR route enables enumeration | High | Separate high-entropy secret, uniform responses, rate limits, proof ladder, no destination hints | Low/medium; Security lead must accept negative evidence |
 | Submitter asserts authority over a non-user | High | No proxy-consent assumption, private accountless route, restriction on conflict, independent proof and appeal | Medium; legal ambiguity escalates |
 | Optional diagnostics become coerced or overbroad | High | Off by default, field allow list, exact preview, separate receipt, refusal parity, short value retention | Low/medium |
 | Private content is published or remains public after withdrawal | Critical | Separate exact-draft consent, immediate revalidation, least-privilege publisher, removal runbook, copy-limit warning | Medium/high because independent copies cannot be guaranteed; explicit residual-risk acceptance required |
 | Contact, tracking, and case data become linkable profiles | High | Separate stores/keys, source-scoped references, no user timelines or cross-product joins, short schedules | Low/medium |
-| Abuse controls create inaccessible or discriminatory denial | Medium/high | Coarse purpose-limited signals, accessible alternative, human appeal, no cross-site profile, error monitoring | Medium; Guinan and Data review |
+| Abuse controls create inaccessible or discriminatory denial | Medium/high | Coarse purpose-limited signals, accessible alternative, human appeal, no cross-site profile, error monitoring | Medium; Support lead and Quality lead review |
 | Vendor terms or access paths conflict with deletion, role, transfer, or reuse limits | High | Exact-flow recipient/transfer register including hosting, remote access, backups, subprocessors, and independent GitHub; counsel scope/validity evidence; fail closed on missing, expired, or changed evidence | Unaccepted until operator/jurisdiction, counsel, and provider package decisions; policy text is not deployed evidence |
 | Backups or derived stores resurrect deleted content | High | 35-day maximum, tombstone replay before restore availability, propagation ledger and drill | Medium; implementation evidence required |
 | Holds become indefinite shadow retention or timers destroy legally required evidence | High | Separate minimized hold inventory, conditional basis, scoped content isolation, 90-day affirmative review/renewal, bounded metadata trigger, partial deletion, restricted overdue escalation, counsel-authorized exceptions | Unaccepted until counsel confirms exceptions and implementation proves expiry, release, and safe rights responses |
@@ -674,27 +674,27 @@ its implementation gates passed. Preserve them as historical context only.
 
 | Role | Required recorded result |
 | --- | --- |
-| Deanna Troi, Privacy and Consent Lead | **Approve recommendation.** The package minimizes collection, separates optional consent, protects non-user subjects, and makes conflicting claims restrictive rather than submitter-controlled. |
-| Sarek, Legal Lead | **Approve with incorporated amendments.** Role allocations remain deployment-specific; processor terms, GitHub's then-current role/terms, applicable rights and deadlines, lawful bases, periods, transfers, notification, and holds require counsel confirmation. |
-| Tuvok, Security Reviewer | **Approve with incorporated amendments.** Activation requires evidence for atomic restriction, replay-resistant proof, anti-enumeration, publisher authorization, least privilege, idempotent deletion reconciliation, and the publisher kill switch. |
-| Guinan, Workflow Reviewer | **Approve with incorporated amendments.** Activation requires comprehensible accountless/non-user routes, accessible proof alternatives, consequence-free refusal, specific outcome language, and private appeal. |
-| Data, Testability Reviewer | **Approve with incorporated amendments.** All twelve original scenarios and the version-set consistency checks were release-blocking; unknown fields and evidence gaps fail closed. |
+| Privacy lead, Privacy and Consent Lead | **Approve recommendation.** The package minimizes collection, separates optional consent, protects non-user subjects, and makes conflicting claims restrictive rather than submitter-controlled. |
+| Legal research lead, Legal Lead | **Approve with incorporated amendments.** Role allocations remain deployment-specific; processor terms, GitHub's then-current role/terms, applicable rights and deadlines, lawful bases, periods, transfers, notification, and holds require counsel confirmation. |
+| Security lead, Security Reviewer | **Approve with incorporated amendments.** Activation requires evidence for atomic restriction, replay-resistant proof, anti-enumeration, publisher authorization, least privilege, idempotent deletion reconciliation, and the publisher kill switch. |
+| Support lead, Workflow Reviewer | **Approve with incorporated amendments.** Activation requires comprehensible accountless/non-user routes, accessible proof alternatives, consequence-free refusal, specific outcome language, and private appeal. |
+| Quality lead, Testability Reviewer | **Approve with incorporated amendments.** All twelve original scenarios and the version-set consistency checks were release-blocking; unknown fields and evidence gaps fail closed. |
 
 ### Current v1.1 decision and review state
 
 - **Cyrus Jamula:** explicit human **AMEND**, 2026-10-10, authorizes revision
   only. Approval of this exact revised package remains **pending**.
-- **Deanna Troi:** scoped amendment prepared; no fresh approval verdict implied.
-- **Rejected revisions:** Data rejected original head `49f07d8` and second
-  author Sarek's head `7b2be3342f90b57334d23172d323dfa75fad5bff` because recurring
+- **Privacy lead:** scoped amendment prepared; no fresh approval verdict implied.
+- **Rejected revisions:** Quality lead rejected original head `49f07d8` and second
+  author Legal research lead's head `7b2be3342f90b57334d23172d323dfa75fad5bff` because recurring
   reviews and the fourteen-day/weekly frozen-content fallback still allowed
-  indefinite retention. Deanna and Sarek are locked out of this revision.
-- **Independent third author:** Picard drafted this governance/evidence gate
-  without locked-author advice or contribution. Fresh exact-head Data review
+  indefinite retention. Privacy lead and Legal research lead are locked out of this revision.
+- **Independent third author:** Product lead drafted this governance/evidence gate
+  without locked-author advice or contribution. Fresh exact-head Quality lead review
   is required; prior verdicts do not accept this revision.
 - **Post-deadline disposition:** unresolved human/qualified-counsel
   preactivation decision in open #155; no legal conclusion supplied here.
-- **Sarek/counsel, Tuvok, Guinan, and Data:** review of v1.1, its notice, and
+- **Legal research lead/counsel, Security lead, Support lead, and Quality lead:** review of v1.1, its notice, and
   thirteen implementation/negative-evidence scenarios remains **pending**.
 - Record a new explicit approve/amend/reject disposition bound to v1.1 and its
   exact hash in the linked decision record; #155's earlier closed state is historical,

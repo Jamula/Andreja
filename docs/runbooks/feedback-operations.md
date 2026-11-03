@@ -1,6 +1,6 @@
 # Feedback operator runbooks
 
-**Version:** feedback-runbooks-v1; **owner:** Guinan
+**Version:** feedback-runbooks-v1; **owner:** Support lead
 
 **Applicability:** proposed feedback capability; **document review:** 2026-10-15
 
@@ -42,7 +42,7 @@ Applies to **each** runbook below:
 6. If identity, authorization, confidentiality, custody, cap, coverage or
    acceptance fails: stop affected intake/publication/sends, deny optional
    processing, notify the named escalation owner privately and mark FAILED/
-   BLOCKED. Jett/Tuvok/Deanna may contain immediately; Cyrus may revoke.
+   BLOCKED. Operations lead/Security lead/Privacy lead may contain immediately; Cyrus may revoke.
    Do not destroy documented binding-duty evidence or guess a retention rule.
 7. Recovery requires reconciled state, corrected cause, repeat negative tests,
    owner and approver review, and valid stage authorization. Changed artifact/
@@ -57,17 +57,17 @@ launch, legal advice or risk acceptance on Cyrus's behalf.
 
 | Runbook | Proposed accountable owner / approver | Trigger | Minimum purpose-bound access | Cadence input / last successful exercise |
 | --- | --- | --- | --- | --- |
-| R01 intake health/recovery | Jett / Tuvok and Data | Intake health/backlog/cap or persistence signal | Boundary-scoped health/counters; separately authorized recovery job, no case-body browse | REQUIRED / NOT RUN |
-| R02 privacy screen | Guinan / Deanna Troi | New or changed private submission | Screened triage view; restricted reviewer alone sees suspect scope | REQUIRED / NOT RUN |
-| R03 private handoff | Tuvok or Deanna Troi for incident class / appropriate independent privacy/security reviewer | Vulnerability, secret, data incident or conflict | Boundary-specific restricted incident role; ordinary staff only opaque reference | REQUIRED / NOT RUN |
-| R04 dedupe/split | Guinan / Data | Sanitized candidate match or incorrect merge | Screened case links and authorized transition operation | REQUIRED / NOT RUN |
-| R05 publication | Guinan / Deanna Troi and Tuvok | Optional consented draft, grant failure, withdrawal or unsafe publication | Draft/consent review; app-owned scoped publisher; removal only by authorized responder | REQUIRED / NOT RUN |
-| R06 tracking custody | Tuvok / Data and Jett | Issuance, lost receipt, rotation, revocation, replay or enumeration signal | Boundary/record-scoped receipt operation; custodians manage verifiers, never retrieve secrets | REQUIRED / NOT RUN |
-| R07 return/email | Jett / Guinan and Deanna Troi | Verify/change/revoke contact; delivery failure/bounce/complaint | Masked return-channel view; dedicated per-boundary sender/event roles | REQUIRED / NOT RUN |
-| R08 rights/holds | Deanna Troi / Sarek with qualified counsel where required | Access/correction/deletion/objection/withdrawal/conflict/hold trigger | Restricted rights view, scoped proof result, authorized propagation jobs | REQUIRED / NOT RUN |
-| R09 abuse/appeal/cost | Tuvok / Jett, Quark and Deanna Troi | Limit, suspected abuse, challenge failure or appeal | Short-lived approved abuse signals, no content or fingerprint profiling | REQUIRED / NOT RUN |
-| R10 lifecycle/handoff | Guinan / Data and delivery owner | Aging, absent owner, transfer, delivery or reopen request | Screened case state and authorized transitions | REQUIRED / NOT RUN |
-| R11 metric privacy | Guinan/Data / Deanna Troi and Tuvok | Generation, threshold failure, export/access review, purge or misuse | Approved aggregate interface; separately scoped catalog/source-event custodian | REQUIRED / NOT RUN |
+| R01 intake health/recovery | Operations lead / Security lead and Quality lead | Intake health/backlog/cap or persistence signal | Boundary-scoped health/counters; separately authorized recovery job, no case-body browse | REQUIRED / NOT RUN |
+| R02 privacy screen | Support lead / Privacy lead | New or changed private submission | Screened triage view; restricted reviewer alone sees suspect scope | REQUIRED / NOT RUN |
+| R03 private handoff | Security lead or Privacy lead for incident class / appropriate independent privacy/security reviewer | Vulnerability, secret, data incident or conflict | Boundary-specific restricted incident role; ordinary staff only opaque reference | REQUIRED / NOT RUN |
+| R04 dedupe/split | Support lead / Quality lead | Sanitized candidate match or incorrect merge | Screened case links and authorized transition operation | REQUIRED / NOT RUN |
+| R05 publication | Support lead / Privacy lead and Security lead | Optional consented draft, grant failure, withdrawal or unsafe publication | Draft/consent review; app-owned scoped publisher; removal only by authorized responder | REQUIRED / NOT RUN |
+| R06 tracking custody | Security lead / Quality lead and Operations lead | Issuance, lost receipt, rotation, revocation, replay or enumeration signal | Boundary/record-scoped receipt operation; custodians manage verifiers, never retrieve secrets | REQUIRED / NOT RUN |
+| R07 return/email | Operations lead / Support lead and Privacy lead | Verify/change/revoke contact; delivery failure/bounce/complaint | Masked return-channel view; dedicated per-boundary sender/event roles | REQUIRED / NOT RUN |
+| R08 rights/holds | Privacy lead / Legal research lead with qualified counsel where required | Access/correction/deletion/objection/withdrawal/conflict/hold trigger | Restricted rights view, scoped proof result, authorized propagation jobs | REQUIRED / NOT RUN |
+| R09 abuse/appeal/cost | Security lead / Operations lead, FinOps lead and Privacy lead | Limit, suspected abuse, challenge failure or appeal | Short-lived approved abuse signals, no content or fingerprint profiling | REQUIRED / NOT RUN |
+| R10 lifecycle/handoff | Support lead / Quality lead and delivery owner | Aging, absent owner, transfer, delivery or reopen request | Screened case state and authorized transitions | REQUIRED / NOT RUN |
+| R11 metric privacy | Support lead/Quality lead / Privacy lead and Security lead | Generation, threshold failure, export/access review, purge or misuse | Approved aggregate interface; separately scoped catalog/source-event custodian | REQUIRED / NOT RUN |
 
 ## R01 Intake health, backpressure and recovery
 
@@ -91,8 +91,8 @@ retry/dead-letter TTL, cost cap, outage response, recovery binding and coverage.
 
 **Evidence:** before/after counts/ages, rejection class, durable-versus-processed
 reconciliation and replay transition counts; no payloads. **Fail/stop:** cap
-breach, loss, cross-boundary job or unresolved discrepancy. Escalate Jett/Data,
-Tuvok for isolation and Quark for cost. **Recovery:** repair persistence/control,
+breach, loss, cross-boundary job or unresolved discrepancy. Escalate Operations lead/Quality lead,
+Security lead for isolation and FinOps lead for cost. **Recovery:** repair persistence/control,
 repeat outage/replay/cap negatives, then common recovery; never bypass quarantine.
 
 ## R02 Intake privacy screening and safe redaction
@@ -117,7 +117,7 @@ rules, restricted route, sanitization and enforced classification operations.
 **Evidence:** synthetic prohibited-class rejection/redaction counts, consent
 mismatch results, role-denial observations and zero content-canary leakage
 across errors/logs/traces/metrics/alerts/queues. **Fail/stop:** ordinary exposure,
-unknown purpose/class or unavailable restricted owner; Deanna/Tuvok contain.
+unknown purpose/class or unavailable restricted owner; Privacy lead/Security lead contain.
 **Recovery:** correct screening/access and repeat canary/consent tests; never
 lower classification merely to drain backlog.
 
@@ -129,8 +129,8 @@ restricted storage/notification/access; valid route/contact evidence including
 
 1. Stop ordinary triage, dedupe, publication and optional messages for the
    affected scope. Classify as a handoff, not a public spam investigation.
-2. For ordinary non-conflict security reports, use the approved direct Tuvok
-   path; for suspected personal-data incidents, Deanna Troi/Tuvok. Jett contains
+2. For ordinary non-conflict security reports, use the approved direct Security lead
+   path; for suspected personal-data incidents, Privacy lead/Security lead. Operations lead contains
    service exposure. Route counsel/notification questions privately.
 3. If Cyrus is named or has an actual/potential/perceived conflict, bypass
    Cyrus-mediated intake entirely. Use only appointed qualified external
@@ -147,7 +147,7 @@ restricted storage/notification/access; valid route/contact evidence including
 **Evidence:** destination/role authorization result, handoff acknowledgment,
 ordinary/public denial and safe response; synthetic fixtures only. **Fail/stop:**
 wrong recipient, unavailable coverage, conflict or public disclosure; notify
-Tuvok/Deanna or the independent recipient, never disclose conflict content to
+Security lead/Privacy lead or the independent recipient, never disclose conflict content to
 Cyrus. **Recovery:** correct and re-evidence route/coverage; ordinary operations
 resume only for safe unrelated scope, never by moving incident content back.
 
@@ -158,7 +158,7 @@ unlink operations, lifecycle history and safe status per submitter.
 
 1. Compute/search only category, surface, compatible version, sanitized
    outcome and consented bounded error code. Exclude contacts, tenants, IP and
-   raw content. Guinan confirms similarity; automation alone cannot merge.
+   raw content. Support lead confirms similarity; automation alone cannot merge.
 2. Link to canonical work **before** drafting a GitHub issue. Preserve each
    receipt, follow-up choice, consent, verification and reopen independently.
 3. For distinct actionable outcomes, create authorized private children and
@@ -172,8 +172,8 @@ unlink operations, lifecycle history and safe status per submitter.
 
 **Evidence:** before/after link counts/versions, independent status/reopen/
 verification outcomes and denial tests. **Fail/stop:** lost subscription,
-cross-entitlement, consent inheritance or unrepairable history; Guinan/Data,
-Deanna for disclosure. **Recovery:** repair links from authorized history,
+cross-entitlement, consent inheritance or unrepairable history; Support lead/Quality lead,
+Privacy lead for disclosure. **Recovery:** repair links from authorized history,
 retest split/unlink/retry; never restore withdrawn consent or merge identities.
 
 ## R05 GitHub preview, consent, failure, withdrawal and removal
@@ -207,7 +207,7 @@ permission.
 **Evidence:** preview/receipt digests (not bodies), stale-consent denial,
 idempotency and repository reconciliation, removal receipts, incident handoff
 and residual-copy category. **Fail/stop:** unsafe output, stale consent,
-unknown creation result or overbroad grant; Guinan/Deanna/Tuvok contain.
+unknown creation result or overbroad grant; Support lead/Privacy lead/Security lead contain.
 **Recovery:** fix binding/grant, rotate compromised credentials, repeat edited/
 withdrawn/retry/removal negatives and obtain owner/approver review; a former
 consent never authorizes republishing removed content.
@@ -264,7 +264,7 @@ boundary-specific custody and atomic operations; no operator secret retrieval.
 generation/active-verifier counts, transaction/fault observations, session
 denials, response-class comparisons and scoped custody audit. No raw candidate
 in evidence. **Fail/stop:** leakage, two valid credentials, zero after committed
-success, unauthorized read, replay or missing proof policy; Tuvok/Jett/Data.
+success, unauthorized read, replay or missing proof policy; Security lead/Operations lead/Quality lead.
 **Recovery:** contain/revoke scoped authority, repair transactional controls,
 use fresh proof and rerun negatives. Read-only degraded access is allowed only
 if current revocation/expiry/authorization can still be enforced.
@@ -298,7 +298,7 @@ recipient list, DNS/alignment, callback auth, retention and hard send/cost caps.
 **Evidence:** aligned-identity result, template/accessibility verdict, single
 send counts, revoked/complaint/callback replay denials, cap/outage observations
 and scoped purge receipts. **Fail/stop:** unauthorized recipient, duplicate
-send, leak, unsafe contact, alignment/cap failure; Jett/Guinan/Deanna, Quark for
+send, leak, unsafe contact, alignment/cap failure; Operations lead/Support lead/Privacy lead, FinOps lead for
 cost. **Recovery:** disable sender, reconcile queues/provider state, repair/
 rotate scoped grants and retest; no bypass of suppression for convenience.
 
@@ -318,7 +318,7 @@ lawful purge-versus-preserve decision.
    identity or receipt, disclose another person or treat content fragments as
    disclosure authority. Failure gets safe denial and independent appeal.
 3. Atomically restrict disputed processing/publication/dedupe/optional messaging/
-   metrics. Separate uncontested scope. Deanna/Sarek/counsel determine conflict,
+   metrics. Separate uncontested scope. Privacy lead/Legal research lead/counsel determine conflict,
    another person's rights, incident evidence and holds; never default to
    submitter preference or unlock disputed fields on timeout.
 4. For access, return only verified entitled fields in a private portable
@@ -343,7 +343,7 @@ lawful purge-versus-preserve decision.
    disposition, including the no-fresh-decision case. The source's single
    nonrenewable seven-calendar-day proposal is not authority to store or destroy.
    Missing/expired/wrong-scope disposition blocks the affected route before
-   operation and escalates privately to Deanna, Sarek, Cyrus and qualified
+   operation and escalates privately to Privacy lead, Legal research lead, Cyrus and qualified
    counsel (except conflict-class routing follows R03). No indefinite freeze
    or automatic purge fallback; documented binding duties remain protected.
 9. Return safe completed/partial/denied/delayed result with controlling reason,
@@ -356,7 +356,7 @@ lawful purge-versus-preserve decision.
 original-trigger/deadline checks, partial/appeal result, tombstone/restore and
 public-removal evidence, no claimant or case content. **Fail/stop:** unresolved
 lawful disposition, over-disclosure, missed deadline, unpropagated deletion or
-restore resurrection; Deanna/Sarek/counsel and Jett/Data. **Recovery:** repair
+restore resurrection; Privacy lead/Legal research lead/counsel and Operations lead/Quality lead. **Recovery:** repair
 scope/propagation and re-evidence under authorized disposition; do not undo
 deletion or restore old receipts as rollback.
 
@@ -379,7 +379,7 @@ private appeal policy; attachments stay disabled absent separate approval.
    cause per-victim lockout. Independent authorized reviewer checks the reason
    using least-intrusive proof; reply only through approved verified means.
 5. Reserve resources/message/cost before work. On threshold/cap/expiry breach
-   deny further work, stop affected ingress/sends, notify Jett/Quark/Tuvok and
+   deny further work, stop affected ingress/sends, notify Operations lead/FinOps lead/Security lead and
    reconcile accepted records under R01. No autoscaling, quota increase or
    lower-control provider substitution.
 6. Purge approved abuse signals/appeal evidence at the supplied schedule and
@@ -399,8 +399,8 @@ numeric clocks/targets/aging and follow-up window from capacity, approved safe
 reason codes, independent status/return channel and release/help evidence.
 
 1. Reconcile due items and absent owners against approved hours/calendar and
-   backlog. Escalate aging to Guinan/domain owner, operations/Data for coverage,
-   Picard for prioritization and Cyrus for extraordinary resourcing; do not
+   backlog. Escalate aging to Support lead/domain owner, operations/Quality lead for coverage,
+   Product lead for prioritization and Cyrus for extraordinary resourcing; do not
    invent dates or silently reset clocks.
 2. On transfer, record old/new owner, reason, version and explicit acceptance
    by receiving owner; preserve history and due clock. If handoff fails,
@@ -430,7 +430,7 @@ reason codes, independent status/return channel and release/help evidence.
 delivery versus verification evidence, reasoned decline/unverified close/
 reopen results, failures and clock/coverage observations. **Fail/stop:** owner
 vacancy, impossible target, forced verification, inaccessible status or lost
-history; Guinan/Data/domain owner. **Recovery:** correct ownership/state with
+history; Support lead/Quality lead/domain owner. **Recovery:** correct ownership/state with
 audited compensating transition, restore safe status and retest; no fabricated
 verification or unsupported commitment.
 
@@ -459,7 +459,7 @@ and retention/deletion procedures. Public-site analytics remains off.
    backup restoration and obtain receipts. Review access at supplied cadence.
 6. On misuse, disable affected generation/export/grants, retain only authorized
    minimized private evidence, invoke R03 for suspected incident and notify
-   Guinan/Data/Deanna/Tuvok. Quark receives safe cost totals, not case-level joins.
+   Support lead/Quality lead/Privacy lead/Security lead. FinOps lead receives safe cost totals, not case-level joins.
 
 **Evidence:** catalog/version, reconciliation/suppression/access/use-test
 results, emitted field inventory, purge/restore receipts and access review.

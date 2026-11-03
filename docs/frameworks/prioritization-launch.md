@@ -6,9 +6,9 @@
 - **Issue:** [#5](https://github.com/Jamula/Andreja/issues/5)
 - **Source PR:** [#19](https://github.com/Jamula/Andreja/pull/19)
 
-Picard and Quark co-own the Prioritization and Launch Framework, per
+Product lead and FinOps lead co-own the Prioritization and Launch Framework, per
 [plan §Phase 0 deliverables](../plan.md#phase-0---govern-and-decide) ("Assign
-... Picard/Quark as Prioritization/Launch Framework owners"). This document
+... Product lead/FinOps lead as Prioritization/Launch Framework owners"). This document
 is a review-ready **operational expansion** of
 [plan §Roadmap prioritization and launch framework](../plan.md#roadmap-prioritization-and-launch-framework):
 it operationalizes how issues are scored, sequenced into launch stages, and
@@ -23,8 +23,8 @@ roadmap issue, skill, and channel must trace to a portfolio lane, a scored
 position, and a launch-stage evidence gate defined here, without changing the
 phase or scope plan.md already ratified for it.
 
-Picard and Quark maintain the scorecard weighting formula and stage-gate
-recommendation; neither can bypass Tuvok/Deanna Troi/Sarek/Data evidence or
+Product lead and FinOps lead maintain the scorecard weighting formula and stage-gate
+recommendation; neither can bypass Security lead/Privacy lead/Legal research lead/Quality lead evidence or
 Cyrus's final decision ([plan §Business leadership
 responsibilities](../plan.md#business-leadership-responsibilities)).
 
@@ -50,7 +50,7 @@ not restate or own it. It does not redefine:
 - The Channel Development Framework's provider-qualification-to-retirement
   lifecycle ([`channel-development.md`](channel-development.md)).
 - The Feedback and Support Framework's intake/triage/routing lifecycle,
-  owned by Guinan under issue #10 and its companion
+  owned by Support lead under issue #10 and its companion
   `docs/frameworks/feedback-support.md`. Feedback themes feed this
   framework's re-scoring (see [Issue scorecard](#issue-scorecard)) but the
   intake pipeline itself is not duplicated here.
@@ -195,10 +195,10 @@ Score = (3×Value + 2×StrategicFit + 2×Reach + 1×Learning + 1×Confidence
 Each field is the raw 0–5 assessment. Issues are ranked by descending
 `Score`. Ties are broken, in order, by: (1) higher Dependency readiness
 (work that unblocks other issues goes first), (2) higher Risk reduction,
-(3) Picard/Quark judgment call, escalated to Cyrus if still unresolved.
+(3) Product lead/FinOps lead judgment call, escalated to Cyrus if still unresolved.
 Scores order eligible work; they never override hard security/privacy/
 legal/data-ownership gates or issue dependencies. Re-score when evidence,
-cost, or provider access changes — including when Guinan's feedback themes
+cost, or provider access changes — including when Support lead's feedback themes
 (issue #10) surface new severity or reach evidence.
 
 Use **Must/Should/Could/Won't** scope per launch stage, with explicit
@@ -296,7 +296,7 @@ for stage 3 (Small managed invite dogfood):
   or minimum end-to-end evidence.
 - Later phases may be reordered only through an issue and ADR/plan update
   that preserves dependencies and user-data guarantees.
-- Quark issues a documented no-go recommendation when cost is unestimated,
+- FinOps lead issues a documented no-go recommendation when cost is unestimated,
   unmeasured, or outside the approved envelope; Cyrus decides whether to
   stop, fund, de-scope, or accept the recorded risk.
 

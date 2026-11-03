@@ -9,7 +9,7 @@
 ## Authorization and measurement boundary
 
 Before measuring, issue [#112](https://github.com/Jamula/Andreja/issues/112) was
-open, explicitly prioritized `priority:p2`, and assigned `squad:data`. Its
+open, explicitly prioritized `priority:p2`, and assigned Quality lead. Its
 prerequisites were all closed and marked merged: #108 through PR #124, #109
 through PR #153, and #110 through PR #152. No test source, package, runner,
 solution, or workflow was changed before this baseline was captured.

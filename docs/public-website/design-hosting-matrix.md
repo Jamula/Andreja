@@ -3,9 +3,9 @@
 - **Status:** Phase 0 recommendation; not an approval to implement or publish
 - **Issue:** [#94](https://github.com/Jamula/Andreja/issues/94)
 - **Decision owner:** Cyrus
-- **Review owners:** Jadzia Dax (experience), Jett Reno (operations), Spock
-  (architecture), Quark (cost), Tuvok (security), Deanna Troi (privacy), Data
-  (quality/accessibility), Guinan (help/support), Sarek (legal), and Neelix
+- **Review owners:** UX lead (experience), Operations lead (operations), Architecture lead
+  (architecture), FinOps lead (cost), Security lead (security), Privacy lead (privacy), Quality lead
+  (quality/accessibility), Support lead (help/support), Legal research lead (legal), and Marketing lead
   (public wording after clearance)
 - **Evidence date:** 2026-08-24
 - **Revalidate:** before implementation, on a material requirement/vendor/cost
@@ -61,16 +61,16 @@ and operability impact.
 
 | Route family | Visitor question | Minimum content | Owner | Publication gate |
 |---|---|---|---|---|
-| Home | What is this and what is its status? | Plain-language purpose, evidence status, routes by visitor need, no conversion claim | Neelix with Picard | Name/trademark and every displayed claim cleared |
+| Home | What is this and what is its status? | Plain-language purpose, evidence status, routes by visitor need, no conversion claim | Marketing lead with Product lead | Name/trademark and every displayed claim cleared |
 | Product | What is intended, current, and later? | Capability boundaries, availability labels, user-agency and data-ownership principles | Product-domain owner | Release evidence and claims inventory current |
-| Get started | What can I safely do now? | Separate self-hosted and managed paths; prerequisites; version applicability | Jadzia with Jett Reno | At least one supported release and tested journey |
+| Get started | What can I safely do now? | Separate self-hosted and managed paths; prerequisites; version applicability | UX lead with Operations lead | At least one supported release and tested journey |
 | Docs | How does a supported version work? | Versioned user, operator, API, skill, channel, backup/export, and troubleshooting docs | Owning engineering lead | Versioned scenario evidence and links pass |
-| Help / FAQ | How do I solve or understand a problem? | Search, known issues, safe diagnostics, escalation boundaries | Guinan | Support routes and content ownership approved |
+| Help / FAQ | How do I solve or understand a problem? | Search, known issues, safe diagnostics, escalation boundaries | Support lead | Support routes and content ownership approved |
 | Release notes | What changed and what should I do? | Version, date, migrations, security relevance, compatibility, rollback guidance | Release owner | Release artifact/evidence exists |
-| Security & privacy | What data and trust boundaries apply? | Data flows, reporting route, privacy notices, retention, subprocessors where applicable | Tuvok and Deanna Troi | Reviewed controls and approved legal wording |
-| Accessibility | How was inclusion tested and how can barriers be reported? | Target/conformance distinction, test scope, known limitations, reporting route | Data and Jadzia | Current manual and automated evidence |
-| Support | Where do questions, incidents, and feedback go? | Safe channels, prohibited content, tracking expectations, no unsupported response promise | Guinan | Tenant-less intake ADR/service or approved alternative |
-| Legal / brand | Who owns this and what terms apply? | Entity/owner, copyright, license, marks, terms, privacy notice | Sarek | Qualified review and explicit human approval |
+| Security & privacy | What data and trust boundaries apply? | Data flows, reporting route, privacy notices, retention, subprocessors where applicable | Security lead and Privacy lead | Reviewed controls and approved legal wording |
+| Accessibility | How was inclusion tested and how can barriers be reported? | Target/conformance distinction, test scope, known limitations, reporting route | Quality lead and UX lead | Current manual and automated evidence |
+| Support | Where do questions, incidents, and feedback go? | Safe channels, prohibited content, tracking expectations, no unsupported response promise | Support lead | Tenant-less intake ADR/service or approved alternative |
+| Legal / brand | Who owns this and what terms apply? | Entity/owner, copyright, license, marks, terms, privacy notice | Legal research lead | Qualified review and explicit human approval |
 
 ### Cross-cutting content rules
 
@@ -115,7 +115,7 @@ SSR is allowed into a proof only when all of these are recorded:
 4. The proof compares performance, availability, accessibility, security
    patching, privacy/logging, deployment/rollback, and monthly cost against the
    static baseline.
-5. Spock, Tuvok, Deanna Troi, Jett Reno, Quark, and Data record challenges, and
+5. Architecture lead, Security lead, Privacy lead, Operations lead, FinOps lead, and Quality lead record challenges, and
    Cyrus explicitly approves the changed boundary.
 
 Without all five, the static decision stands.
@@ -198,18 +198,18 @@ trusted by default.
 
 | Threat / failure | Exposure | Required control and evidence | Owner |
 |---|---|---|---|
-| Product data or credentials enter content/build | Severe boundary violation | Content classification; secret/PII/product-data scan; deny app/project references; reviewed artifact manifest | Tuvok and Deanna Troi |
-| Dependency or build compromise | Malicious public artifact | Locked dependencies, license/SBOM review, least-privilege isolated build, provenance/attestation policy, artifact diff and hash | Tuvok and release owner |
-| Script/content XSS | Visitor compromise | Escape generated content/search results, sanitize allowed author HTML, strict hash-based CSP, no third-party scripts, DOM-XSS tests | Tuvok |
-| Stale or unsupported claim | Trust/legal harm | Claims inventory, evidence links, named owner, expiry, build-time stale failure, takedown path | Content owner and Sarek |
-| Preview becomes indexable/public | Premature disclosure | Access control, separate identity/hostname, noindex headers/meta/robots, crawler evidence, expiry | Jett Reno |
-| Domain/DNS/CDN takeover | Impersonation or redirect | Registrar/DNS ownership, MFA/passkeys, least privilege, renewal owner, DNS inventory, dangling-record scan | Jett Reno |
-| Host/CDN logs collect excess data | Privacy loss | Provider field/retention/residency review, minimization, access control, deletion and subprocessor inventory | Deanna Troi |
-| Search leaks queries | Sensitive intent disclosure | In-browser index only; no query network requests/storage/logging; network and storage test | Deanna Troi |
+| Product data or credentials enter content/build | Severe boundary violation | Content classification; secret/PII/product-data scan; deny app/project references; reviewed artifact manifest | Security lead and Privacy lead |
+| Dependency or build compromise | Malicious public artifact | Locked dependencies, license/SBOM review, least-privilege isolated build, provenance/attestation policy, artifact diff and hash | Security lead and release owner |
+| Script/content XSS | Visitor compromise | Escape generated content/search results, sanitize allowed author HTML, strict hash-based CSP, no third-party scripts, DOM-XSS tests | Security lead |
+| Stale or unsupported claim | Trust/legal harm | Claims inventory, evidence links, named owner, expiry, build-time stale failure, takedown path | Content owner and Legal research lead |
+| Preview becomes indexable/public | Premature disclosure | Access control, separate identity/hostname, noindex headers/meta/robots, crawler evidence, expiry | Operations lead |
+| Domain/DNS/CDN takeover | Impersonation or redirect | Registrar/DNS ownership, MFA/passkeys, least privilege, renewal owner, DNS inventory, dangling-record scan | Operations lead |
+| Host/CDN logs collect excess data | Privacy loss | Provider field/retention/residency review, minimization, access control, deletion and subprocessor inventory | Privacy lead |
+| Search leaks queries | Sensitive intent disclosure | In-browser index only; no query network requests/storage/logging; network and storage test | Privacy lead |
 | Link or download substitution | Malware/phishing | Link checking, allowlisted release origins, integrity/signature guidance, visible destination, periodic external-link review | Release owner |
-| Security contact is absent/stale | Reports lost | Approved `/.well-known/security.txt`, tested private contact, expiry before file expiry, backup route and incident drill | Tuvok |
-| Cache/rollback serves mixed versions | Misleading or broken guidance | Versioned asset names, atomic promotion, controlled invalidation, previous artifact retained, rollback drill | Jett Reno |
-| Clickjacking/MIME/referrer leakage | UI or navigation abuse | `frame-ancestors 'none'`, `X-Content-Type-Options: nosniff`, strict referrer policy, minimal permissions policy | Tuvok |
+| Security contact is absent/stale | Reports lost | Approved `/.well-known/security.txt`, tested private contact, expiry before file expiry, backup route and incident drill | Security lead |
+| Cache/rollback serves mixed versions | Misleading or broken guidance | Versioned asset names, atomic promotion, controlled invalidation, previous artifact retained, rollback drill | Operations lead |
+| Clickjacking/MIME/referrer leakage | UI or navigation abuse | `frame-ancestors 'none'`, `X-Content-Type-Options: nosniff`, strict referrer policy, minimal permissions policy | Security lead |
 
 Required production header baseline, adjusted only by reviewed evidence:
 
@@ -300,7 +300,7 @@ approved professional services remain separately tracked. This ceiling is not a
 budget authorization and is not inherited by the feedback service, analytics,
 status service, or authenticated product.
 
-Before provisioning, Quark records:
+Before provisioning, FinOps lead records:
 
 - Provider/SKU, currency/tax, fixed and variable rates, included quotas, overage
   behavior, data transfer, build minutes, storage, log retention, support, and
@@ -344,7 +344,7 @@ corpus rather than marketing targets.
 | Broken deploy | Smoke/canary checks | Stop promotion and restore previous artifact | Rollback drill with hashes |
 | CDN/origin outage | External availability probe after approval | Fail over only to a pre-qualified static origin or publish incident through separately approved status route | Provider-neutral restore drill |
 | Security compromise | Integrity/provenance alert or report | Freeze deploy identity, revoke/rotate, restore reviewed artifact, preserve evidence, notify per incident process | Tabletop and contact test |
-| Cost anomaly/abuse | Quota/meter review | Cap traffic/builds/previews, preserve essential security contact, escalate to Quark/Cyrus | Modeled abuse and quota test |
+| Cost anomaly/abuse | Quota/meter review | Cap traffic/builds/previews, preserve essential security contact, escalate to FinOps lead/Cyrus | Modeled abuse and quota test |
 | Stale docs | Build-time expiry and scheduled review | Block release or visibly withdraw claim/page | Seeded-expiry test |
 
 No public RTO, RPO, uptime, support response, or incident-notification promise is
@@ -354,15 +354,15 @@ made until measured drills and named operational capacity support it.
 
 | Content class | Accountable owner | Required reviewers | Review cadence / expiry |
 |---|---|---|---|
-| Purpose, product, roadmap boundary | Picard / product-domain owner | Neelix, Fact Checker, Sarek when legal/brand relevant | 90 days or roadmap/release change |
-| User/operator documentation | Feature/release owner | Data, Guinan, Jadzia | Each release; expire when version support ends |
-| Security posture/reporting | Tuvok | Sarek, Jett Reno, Data | 90 days and every security/control/contact change |
-| Privacy/data flows | Deanna Troi | Sarek, Tuvok | 90 days and every field/provider/purpose/retention change |
-| Accessibility | Data and Jadzia | Guinan | Every release and every component/theme/assistive finding |
-| Availability/release/status | Release owner / Jett Reno | Data, Guinan | Each deploy/incident; no claim without current evidence |
-| Support/help/known issues | Guinan | Feature owner, Data | Monthly and each release/incident |
-| Legal/license/trademark/terms | Sarek and Cyrus | Qualified counsel where required | On legal/entity/license/mark/domain change; otherwise counsel-set |
-| Cost/pricing/sponsorship | Quark | Sarek, Neelix, Deanna Troi, Tuvok as applicable | Monthly when live and on every price/term/provider change |
+| Purpose, product, roadmap boundary | Product lead / product-domain owner | Marketing lead, Evidence reviewer, Legal research lead when legal/brand relevant | 90 days or roadmap/release change |
+| User/operator documentation | Feature/release owner | Quality lead, Support lead, UX lead | Each release; expire when version support ends |
+| Security posture/reporting | Security lead | Legal research lead, Operations lead, Quality lead | 90 days and every security/control/contact change |
+| Privacy/data flows | Privacy lead | Legal research lead, Security lead | 90 days and every field/provider/purpose/retention change |
+| Accessibility | Quality lead and UX lead | Support lead | Every release and every component/theme/assistive finding |
+| Availability/release/status | Release owner / Operations lead | Quality lead, Support lead | Each deploy/incident; no claim without current evidence |
+| Support/help/known issues | Support lead | Feature owner, Quality lead | Monthly and each release/incident |
+| Legal/license/trademark/terms | Legal research lead and Cyrus | Qualified counsel where required | On legal/entity/license/mark/domain change; otherwise counsel-set |
+| Cost/pricing/sponsorship | FinOps lead | Legal research lead, Marketing lead, Privacy lead, Security lead as applicable | Monthly when live and on every price/term/provider change |
 
 The build must fail closed on an expired claim or page. Emergency withdrawal is
 allowed; emergency creation of unsupported replacement wording is not.

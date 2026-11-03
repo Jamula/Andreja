@@ -1,24 +1,24 @@
 # Andreja operating model
 
-- **Status:** Accepted at the exact source version below by Cyrus Jamula on
+- **Status:** The exact source version below was accepted by Cyrus Jamula on
   2026-10-11 ([decision](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115232586);
   [confirmed with the other plan-of-record baselines](https://github.com/Jamula/Andreja/issues/73#issuecomment-6115264261))
 - **Accepted source SHA-256 (LF-normalized):**
   `ecfa53473cd08972f269a822e0b55e13b5f68bf64f787f11fb474b8be316136d`
 - **Version note:** The decision accepts workstream ownership, handoffs, WIP
   rules, and the human/agent authority framework as written at that exact hash.
-  This later bookkeeping copy updates status/authority statements and links;
+  This later copy proposes functional roles and manual issue ownership in place
+  of agent identities and automation; it is not itself an accepted revision.
+  It also updates status/authority statements;
   facts/policies separation is a later amendment and is not included. Counsel
   approval, residual-risk acceptance, spending, collection, deployment, launch,
   and Phase 0 exit remain separately gated.
-- **Owner:** Picard (CEO and Lead/Captain), with Quark (CFO/FinOps)
+- **Owner:** Product lead (CEO and Lead/Captain), with FinOps lead (CFO/FinOps)
 - **Issue:** [#14 - Ratify cohesive workstreams and MVP operating model](https://github.com/Jamula/Andreja/issues/14)
 - **Milestone:** [Phase 0 - Govern and decide](https://github.com/Jamula/Andreja/milestone/1)
 - **Depends on / referenced by:** [`docs/plan.md`](plan.md) (`## Operating model and cohesive workstreams`,
   `## Roadmap prioritization and launch framework`, `## Phased execution`),
-  [`docs/charter.md`](charter.md), [`docs/adr/0000-plan-ratification.md`](adr/0000-plan-ratification.md),
-  [`.squad/directives.md`](../.squad/directives.md), [`.squad/team.md`](../.squad/team.md),
-  [`.squad/routing.md`](../.squad/routing.md), [`.squad/ceremonies.md`](../.squad/ceremonies.md)
+  [`docs/charter.md`](charter.md), [`docs/adr/0000-plan-ratification.md`](adr/0000-plan-ratification.md)
 
 ## Authority statement
 
@@ -65,24 +65,19 @@ weights, lanes, or gate checklists.
 
 | Domain | Source of truth | Owner |
 |---|---|---|
-| Architecture, roadmap, phased scope | [`docs/plan.md`](plan.md) and accepted ADRs (`docs/adr/`) | Spock (architecture); Picard (roadmap) |
-| Execution state (what's being worked, by whom, when done) | GitHub Issues and milestones in `Jamula/Andreja` | Coordinator (Squad) |
-| Prioritization, scoring, launch-stage gates | `docs/plan.md`; proposed operational expansion in `docs/frameworks/prioritization-launch.md` (issue #5) | Picard/Quark |
-| Charters, routing, ceremonies, non-negotiable directives | `.squad/directives.md`, `.squad/team.md`, `.squad/routing.md`, `.squad/ceremonies.md`, `.squad/agents/*/charter.md` | Coordinator (Squad) |
-| Who owns which work right now | This document's workstream table + `squad:{member}` / `area:*` labels | Picard (triage) |
-| Company financial/cost evidence | Quark's session-close usage ledger and FinOps issues (`area:finops`) | Quark |
-| Legal/regulatory applicability | `docs/legal/regulatory-applicability.md` (pending ratification, issue #8) | Sarek |
-| Feedback/support lifecycle | Cyrus-recorded Phase 0 framework handoff in `docs/frameworks/feedback-support.md` (issue #10); policy approval and operational activation remain gated by explicit Cyrus decisions in issues #155-#158, not issue closure | Guinan |
-
-Squad runtime state (`.squad/`) supports routing and learning; it is never a
-competing backlog to GitHub Issues, and workstreams do not maintain private plans
-that contradict `docs/plan.md` or an accepted ADR.
+| Architecture, roadmap, phased scope | [`docs/plan.md`](plan.md) and accepted ADRs (`docs/adr/`) | Architecture lead (architecture); Product lead (roadmap) |
+| Execution state (what's being worked, by whom, when done) | GitHub Issues and milestones in `Jamula/Andreja` | Integration owner |
+| Prioritization, scoring, launch-stage gates | `docs/plan.md`; proposed operational expansion in `docs/frameworks/prioritization-launch.md` (issue #5) | Product lead/FinOps lead |
+| Who owns which work right now | This document's workstream table + GitHub assignees and `area:*` labels | Product lead (triage) |
+| Company financial/cost evidence | FinOps lead's session-close usage ledger and FinOps issues (`area:finops`) | FinOps lead |
+| Legal/regulatory applicability | `docs/legal/regulatory-applicability.md` (pending ratification, issue #8) | Legal research lead |
+| Feedback/support lifecycle | Cyrus-recorded Phase 0 framework handoff in `docs/frameworks/feedback-support.md` (issue #10); policy approval and operational activation remain gated by explicit Cyrus decisions in issues #155-#158, not issue closure | Support lead |
 
 ## Workstream charters, owners, and boundaries
 
 Each workstream owns outcomes and evidence in its scope, not a private architecture
 or a duplicate backlog. Accountable leads mirror `docs/plan.md`'s workstream table
-and the crew charters in `.squad/agents/`.
+with current assignees recorded in GitHub Issues.
 
 Workstream names in the first column are copied verbatim from `docs/plan.md`
 `## Operating model and cohesive workstreams` so the two documents never drift
@@ -90,19 +85,19 @@ into synonyms for the same accountable scope.
 
 | # | Workstream (exact `docs/plan.md` name) | Accountable lead(s) | Core scope | Explicit boundary (does **not** own) |
 |---|---|---|---|---|
-| 1 | Executive, Product and Business | Picard (CEO), Quark (CFO) | Mission, strategy, portfolio, launch decisions, partnerships, sponsorship, capital allocation proposals, executive risk | Cannot override security/privacy/legal/evidence gates; per `docs/charter.md` `## Human and agent authority`, cannot spend funds, sign contracts, or make legal representations |
-| 2 | Product Discovery and User Research | Picard, Jadzia Dax, Guinan, Neelix | Jobs-to-be-done, dogfood evidence, interviews, usability, delight criteria, adoption learning | Does not set the prioritization scorecard weights (owned by issue #5/Picard+Quark) |
-| 3 | Core Platform and Architecture | Spock, T'Pol, Seven of Nine | Clean/Onion modules, API/domain, identity/tenancy, semantic graph, assistant/provider seams, skill/channel hosts, data ownership, federation seams | Does not define product priorities or public claims |
-| 4 | Web, Public Site and User Experience | Jadzia Dax, Neelix, Guinan | Blazor web app, accessible workflows, public site, help/docs, feedback/support surfaces | Does not own backend domain contracts (Core Platform) or channel provider qualification |
-| 5 | Native Mobile and Device Experience | Hoshi Sato | iOS/Android architecture evaluation, offline sync, secure device storage, push/deep links, app-store lifecycle | Deferred activation; does not select a mobile stack before the mobile ADR/PoC lands |
-| 6 | Platform Operations, Hosting and FinOps | Jett Reno, Quark | Self-host package, cloud adapters, OpenTofu, CI/CD, reliability, OTel, incidents, backups/DR, cost/burn evidence | Jett Reno does not approve spend; Quark does not own runtime architecture |
-| 7 | Quality, Performance and Release | Data | Test architecture, E2E/accessibility, performance/scale, provider conformance, release evidence, regression prevention | Does not waive evidence for schedule pressure; does not set product goals |
-| 8 | Channels and Connectors | Jett Reno, Seven of Nine, Tuvok | Channel Development Framework, provider qualification, adapters, auth/scopes, channel runbooks, retirement | Does not own the Skill Development Framework (Seven+domain leads) though Seven co-owns both |
-| 9 | First-party Skills and Developer Ecosystem | Seven of Nine + domain leads; Quark co-leads only the five finance-adjacent skills named in the catalog | Skill Development Framework, manifests, first-party catalog, SDK/examples/conformance, third-party trust path | Quark has no standing user-record access, launch authority, veto, or control over Seven's product recommendation; does not approve marketplace/legal terms (Sarek) or connector qualification alone (Channels) |
-| 10 | Trust, Security, Privacy and Legal | Tuvok, Deanna Troi, Sarek | Threat/privacy/legal artifacts, data classification, auth/grants, abuse/safety, terms/licensing/trademark, public claims, regulatory gates | Sarek's legal research is not binding advice or a public authorization; does not sign contracts |
-| 11 | Customer Success, Feedback and Support | Guinan | Intake/triage, support status, user communication, help gaps, resolution verification, feedback insights | Does not investigate security/privacy incidents in public channels; does not promise timelines before capacity is known |
-| 12 | Marketing, Community and Partnerships | Neelix, Picard, Quark | Positioning, Personal Brand Studio input, public/community content, sponsorship communication, partner ecosystem | Activates only after product claims have evidence and licensing/trademark clears (Sarek) |
-| 13 | Future Research and Innovation | Spock, Seven of Nine, rotating specialists | Semantic/AI research, federation, on-device intelligence, new providers/skills/channels, bounded experiments (referred to as "R&D" elsewhere in this document) | Findings enter the catalog/backlog; do not interrupt the MVP unless they change a rewrite-level seam or safety boundary |
+| 1 | Executive, Product and Business | Product lead (CEO), FinOps lead (CFO) | Mission, strategy, portfolio, launch decisions, partnerships, sponsorship, capital allocation proposals, executive risk | Cannot override security/privacy/legal/evidence gates; per `docs/charter.md` `## Human and agent authority`, cannot spend funds, sign contracts, or make legal representations |
+| 2 | Product Discovery and User Research | Product lead, UX lead, Support lead, Marketing lead | Jobs-to-be-done, dogfood evidence, interviews, usability, delight criteria, adoption learning | Does not set the prioritization scorecard weights (owned by issue #5/Product lead+FinOps lead) |
+| 3 | Core Platform and Architecture | Architecture lead, Application lead, Assistant and skills lead | Clean/Onion modules, API/domain, identity/tenancy, semantic graph, assistant/provider seams, skill/channel hosts, data ownership, federation seams | Does not define product priorities or public claims |
+| 4 | Web, Public Site and User Experience | UX lead, Marketing lead, Support lead | Blazor web app, accessible workflows, public site, help/docs, feedback/support surfaces | Does not own backend domain contracts (Core Platform) or channel provider qualification |
+| 5 | Native Mobile and Device Experience | Mobile lead | iOS/Android architecture evaluation, offline sync, secure device storage, push/deep links, app-store lifecycle | Deferred activation; does not select a mobile stack before the mobile ADR/PoC lands |
+| 6 | Platform Operations, Hosting and FinOps | Operations lead, FinOps lead | Self-host package, cloud adapters, OpenTofu, CI/CD, reliability, OTel, incidents, backups/DR, cost/burn evidence | Operations lead does not approve spend; FinOps lead does not own runtime architecture |
+| 7 | Quality, Performance and Release | Quality lead | Test architecture, E2E/accessibility, performance/scale, provider conformance, release evidence, regression prevention | Does not waive evidence for schedule pressure; does not set product goals |
+| 8 | Channels and Connectors | Operations lead, Assistant and skills lead, Security lead | Channel Development Framework, provider qualification, adapters, auth/scopes, channel runbooks, retirement | Does not own the Skill Development Framework (Assistant and skills lead+domain leads) though Assistant and skills lead co-owns both |
+| 9 | First-party Skills and Developer Ecosystem | Assistant and skills lead + domain leads; FinOps lead co-leads only the five finance-adjacent skills named in the catalog | Skill Development Framework, manifests, first-party catalog, SDK/examples/conformance, third-party trust path | FinOps lead has no standing user-record access, launch authority, veto, or control over Assistant and skills lead's product recommendation; does not approve marketplace/legal terms (Legal research lead) or connector qualification alone (Channels) |
+| 10 | Trust, Security, Privacy and Legal | Security lead, Privacy lead, Legal research lead | Threat/privacy/legal artifacts, data classification, auth/grants, abuse/safety, terms/licensing/trademark, public claims, regulatory gates | Legal research lead's legal research is not binding advice or a public authorization; does not sign contracts |
+| 11 | Customer Success, Feedback and Support | Support lead | Intake/triage, support status, user communication, help gaps, resolution verification, feedback insights | Does not investigate security/privacy incidents in public channels; does not promise timelines before capacity is known |
+| 12 | Marketing, Community and Partnerships | Marketing lead, Product lead, FinOps lead | Positioning, Personal Brand Studio input, public/community content, sponsorship communication, partner ecosystem | Activates only after product claims have evidence and licensing/trademark clears (Legal research lead) |
+| 13 | Future Research and Innovation | Architecture lead, Assistant and skills lead, rotating specialists | Semantic/AI research, federation, on-device intelligence, new providers/skills/channels, bounded experiments (referred to as "R&D" elsewhere in this document) | Findings enter the catalog/backlog; do not interrupt the MVP unless they change a rewrite-level seam or safety boundary |
 
 ### Interfaces between workstreams
 
@@ -123,16 +118,16 @@ into synonyms for the same accountable scope.
 
 ## Issue ownership, dependencies, and RACI
 
-Every GitHub issue has exactly one accountable owner, expressed as a
-`squad:{member}` label, plus an `area:*` label identifying the workstream. Use this
+Every GitHub issue has exactly one accountable owner, recorded as a
+GitHub assignee, plus an `area:*` label identifying the workstream. Use this
 RACI pattern for cross-workstream issues:
 
 | Role | Definition | Who |
 |---|---|---|
-| **Responsible (R)** | Does the work, keeps the issue/PR current | The `squad:{member}` assignee named on the issue |
+| **Responsible (R)** | Does the work, keeps the issue/PR current | The GitHub assignee named on the issue |
 | **Accountable (A)** | Accountable for the outcome and evidence; approves the PR | The workstream lead in the table above (may equal R) |
 | **Consulted (C)** | Specialist whose artifact gate applies (security, privacy, legal, cost, quality, RAI, fact-check) | Named per the "Artifact gates" table below, invoked only when their gate is due |
-| **Informed (I)** | Notified via issue comment/handoff note but not blocking | Coordinator, Guinan (user-facing changes), Quark (cost-bearing changes), affected downstream workstream leads |
+| **Informed (I)** | Notified via issue comment/handoff note but not blocking | Integration owner, Support lead (user-facing changes), FinOps lead (cost-bearing changes), affected downstream workstream leads |
 
 - Every issue has exactly one lifecycle label. `status:backlog`,
   `status:branch-only`, `status:pr-draft`, `status:ready`, `status:merged`, and
@@ -148,8 +143,7 @@ RACI pattern for cross-workstream issues:
   be `status:ready` or `status:merged` while exit evidence remains
   `blocked:evidence`; neither label implies that required checks, reviews,
   approvals, or milestone gates passed.
-- Reassignment happens by removing one `squad:{member}` label and adding another;
-  the issue history preserves the accountability trail.
+- Reassignment updates the GitHub assignee; the issue history preserves the accountability trail.
 
 ## Artifact gates
 
@@ -159,18 +153,18 @@ due for that issue.
 
 | Gate | Required artifact | Gatekeeper | Trigger label(s) |
 |---|---|---|---|
-| Architecture | ADR in `docs/adr/` | Spock | `type:decision`, `area:architecture` |
-| Security | Threat-model entry (`docs/threat-model.md`) | Tuvok | `area:security` |
-| Privacy | Privacy classification/consent entry (`docs/privacy.md`) | Deanna Troi | `area:privacy` |
-| Cost | Cost-model delta (`docs/cost-model.md`) or FinOps issue evidence | Quark | `area:finops` |
-| Quality | Test/evidence mapped in `docs/testing-matrix.md` or the PR's test evidence section | Data | any implementation PR |
-| Legal/regulatory | Entry in `docs/legal/regulatory-applicability.md` | Sarek | `area:legal` |
-| AI safety | Rai review | Rai | any change touching model prompts/outputs/safety |
-| Claim verification | Fact Checker review | Fact Checker | any public claim, metric, or external citation |
+| Architecture | ADR in `docs/adr/` | Architecture lead | `type:decision`, `area:architecture` |
+| Security | Threat-model entry (`docs/threat-model.md`) | Security lead | `area:security` |
+| Privacy | Privacy classification/consent entry (`docs/privacy.md`) | Privacy lead | `area:privacy` |
+| Cost | Cost-model delta (`docs/cost-model.md`) or FinOps issue evidence | FinOps lead | `area:finops` |
+| Quality | Test/evidence mapped in `docs/testing-matrix.md` or the PR's test evidence section | Quality lead | any implementation PR |
+| Legal/regulatory | Entry in `docs/legal/regulatory-applicability.md` | Legal research lead | `area:legal` |
+| AI safety | AI safety reviewer review | AI safety reviewer | any change touching model prompts/outputs/safety |
+| Claim verification | Evidence reviewer review | Evidence reviewer | any public claim, metric, or external citation |
 | Governance/ratification | Human approval recorded on the issue/PR | Cyrus | `type:governance` |
 
 Batch related artifacts into themed review packets with at most three
-evidence/revision cycles (per `.squad/directives.md`); unresolved items become
+evidence/revision cycles; unresolved items become
 explicit decision issues (tag `type:decision`; use the
 `blocks:human` label when the decision blocks another issue) instead of
 silently blocking unrelated packets. Silence is never approval.
@@ -186,10 +180,9 @@ passed to another owner) records, on the issue or PR:
    react to.
 4. **Remaining risk** - open questions, known gaps, or deferred de-scope items.
 5. **Next ready issue and owner** - the next unblocked issue and its
-   `squad:{member}` owner, so work never stalls waiting for a status meeting.
+   GitHub assignee, so work never stalls waiting for a status meeting.
 
-Guinan and Scribe preserve user/operational context from these handoffs without
-creating a second backlog; Scribe logs automatically and never blocks.
+The issue and pull-request handoffs preserve user and operational context without a second backlog.
 
 ## WIP limits
 
@@ -198,11 +191,11 @@ creating a second backlog; Scribe logs automatically and never blocks.
   accountable owner can carry through review without queuing rejected work.
   Finish (merge or explicitly park with a recorded reason) before starting new
   work in the same file/module ownership area.
-- The Coordinator parallelizes only **ready, independent** issues — file/module
+- The integration owner parallelizes only **ready, independent** issues — file/module
   ownership and contracts must be independent, or the shared contract must
   already be agreed and merged.
 - Concurrency is bounded dynamically by dependency readiness, CI/test capacity,
-  overlapping ownership, Quark's measured session efficiency, and human review
+  overlapping ownership, FinOps lead's measured session efficiency, and human review
   capacity — not a fixed fleet size (`docs/plan.md`
   `### Parallel worktree execution`).
 - When two ready issues would touch the same file or contract, they do not run
@@ -210,20 +203,12 @@ creating a second backlog; Scribe logs automatically and never blocks.
 
 ## Independent worktrees and stacked PRs
 
-- Every implementation issue gets a `squad/{issue-number}-{kebab-case-slug}`
+- Every implementation issue gets a `copilot/{issue-number}-{kebab-case-slug}`
   branch cut from the current integration branch, a sibling isolated worktree,
-  one accountable owning agent, and an early draft PR.
-- `.github/workflows/issue-status.yml` derives lifecycle from issue, branch, and
-  trusted same-repository PR events. It reads automation only from the default
-  branch, makes idempotent label writes, posts no comments, and never executes
-  pull-request code with a write token. A workflow dispatch may reconcile all
-  issues or make a one-run manual override; the next lifecycle event derives
-  state again. Because Actions has no native issue-dependency trigger, an hourly
-  trusted full reconciliation converges dependency changes, edited closing
-  references, branch evidence, and stack promotion to the default branch.
-- Operator-facing label meanings and repair steps live in
+  one accountable owner, and an early draft PR.
+- Issue owners maintain lifecycle and dependency labels manually; see
   [`docs/help/issue-status.md`](help/issue-status.md).
-- Agents never switch another worktree's branch, edit another agent's files, or
+- Contributors never switch another worktree's branch, edit another contributor's files, or
   share mutable build/output directories.
 - **Independent issues:** run concurrently in separate worktrees, each with its
   own PR targeting the integration branch.
@@ -233,23 +218,17 @@ creating a second backlog; Scribe logs automatically and never blocks.
   stable base. Use GitHub's native stack metadata when the entitlement/API
   version supports it; otherwise keep an ordinary dependent-PR chain rather than
   fake stack metadata (`docs/plan.md` `### Native stacked pull requests`).
-- This document's own delivery follows the same pattern: issue #14 -> branch
-  `squad/14-operating-model` -> isolated worktree -> draft PR targeting `main`.
-  The branch originally targeted `squad/7-sanitize-cast-squad`; once that
-  branch merged into `main` and was deleted, the open PR was retargeted to
-  `main` (the sole integration branch per `.squad/directives.md`
-  `## Delivery workflow`) rather than kept pointed at a stale/deleted base.
 
 ## Integration and revision ownership
 
-- The Coordinator (Squad) owns cross-agent interface decisions, conflict
+- The integration owner manages cross-contributor interface decisions, conflict
   detection, sequencing, and integration — this is not bounced between stream
   owners.
 - A dedicated integration/revision owner resolves rejected or conflicting work;
-  the original author follows reviewer-lockout rules (an author rejected on
-  review does not re-review their own fix).
+  an author whose change is rejected does not revise that artifact or approve
+  the replacement.
 - After merge: remove the worktree, prune branch/stack metadata, update the
-  issue/milestone, and record aggregate usage/validation evidence via Quark's
+  issue/milestone, and record aggregate usage/validation evidence via FinOps lead's
   session-close ledger.
 
 ## Customer Zero loop
@@ -262,7 +241,7 @@ creating a second backlog; Scribe logs automatically and never blocks.
   support load, cost, and API ergonomics — it does not by itself prove broad
   market demand; Product Discovery treats it as one evidence source among the
   issue #5 scorecard's inputs, not a bypass of that scorecard.
-- The loop runs **Customer Success (Guinan) intake -> Product Discovery
+- The loop runs **Customer Success (Support lead) intake -> Product Discovery
   interpretation -> owning workstream fix/feature -> Quality evidence ->
   Customer Success verification with the user -> closed.** Every step is a
   GitHub issue with the originating feedback link; none of it lives in a
@@ -343,107 +322,90 @@ creating a second backlog; Scribe logs automatically and never blocks.
   privilege-sensitive handling; no wording here guarantees that privilege
   attaches. Cyrus records whether an exposure is material and decides whether
   Andreja proceeds after any required counsel review. This boundary is
-  consistent with `docs/charter.md` `## Human and agent authority`: crew titles
+  consistent with `docs/charter.md` `## Human and agent authority`: functional titles
   (CEO, CFO, General Counsel, etc.) describe accountable advisory/operating
-  roles inside Squad; they do **not** grant agents authority to spend or commit
+  project roles; they do **not** grant agents authority to spend or commit
   funds, sign contracts or accept binding terms, make legal representations,
   publish public statements or customer communications, provision cloud
   resources or approve deployment, approve their own security/privacy/RAI/
   evidence/launch gates, or make irreversible/consequential decisions for
   Cyrus or any user. When authority is unclear, work pauses for a human
   decision.
-- **Picard (CEO):** proposes mission, strategy, portfolio, launch readiness, and
-  capital allocation with Quark, for Cyrus's approval. Cannot override security/
+- **Product lead (CEO):** proposes mission, strategy, portfolio, launch readiness, and
+  capital allocation with FinOps lead, for Cyrus's approval. Cannot override security/
   privacy/legal/evidence gates and cannot spend, sign, or publish.
-- **Quark (CFO) — ledger and spend path:** Quark owns the financial-controls
+- **FinOps lead (CFO) — ledger and spend path:** FinOps lead owns the financial-controls
   source of truth (burn/income ledger, budgets, forecast/runway, unit
   economics — `docs/plan.md` `## Cost and FinOps` and the accepted financial-
   control framework in `docs/cost-model.md`). The cost-model decision accepts
   no numeric envelope or spend; `docs/business/sponsorship-policy.md` remains
   a separate draft under [issue #11](https://github.com/Jamula/Andreja/issues/11).
-  Quark facilitates the per-session Session Close Efficiency Review ledger entry
+  FinOps lead facilitates the per-session Session Close Efficiency Review ledger entry
   (below) and posts aggregate findings to the relevant FinOps/retrospective
-  issue. Quark **proposes** budgets and no-go recommendations to Picard and
-  Cyrus; Quark cannot spend, sign, commit funds, or accept sponsorship —
+  issue. FinOps lead **proposes** budgets and no-go recommendations to Product lead and
+  Cyrus; FinOps lead cannot spend, sign, commit funds, or accept sponsorship —
   every actual spend or sponsorship acceptance requires Cyrus's explicit
   approval per `docs/charter.md` `## Human and agent authority`.
-- **Sarek (General Counsel):** maintains the legal/regulatory register and
+- **Legal research lead (General Counsel):** maintains the legal/regulatory register and
   translates proposals into counsel questions. His research is a hypothesis and
   input, never binding advice, privileged communication, a signed filing, or a
   launch approval — Cyrus and qualified jurisdiction-appropriate counsel decide.
-- **Picard and Quark co-own** the business case, scorecard weights, and
-  stage-gate recommendation for issue #5's framework; neither can bypass Tuvok/
-  Deanna Troi/Sarek/Data evidence or Cyrus's final decision.
-- **Every specialist (Tuvok, Deanna Troi, Data, Rai, Fact Checker)** can block a
+- **Product lead and FinOps lead co-own** the business case, scorecard weights, and
+  stage-gate recommendation for issue #5's framework; neither can bypass Security lead/
+  Privacy lead/Legal research lead/Quality lead evidence or Cyrus's final decision.
+- **Every specialist (Security lead, Privacy lead, Quality lead, AI safety reviewer, Evidence reviewer)** can block a
   merge by withholding their required artifact; none of them can singlehandedly
   approve a decision that the charter reserves for Cyrus (irreversible,
   regulated, destructive, or trust-boundary changes).
 - Reversible, low-risk choices favor action by the accountable workstream lead
   without escalation; irreversible, regulated, destructive, or trust-boundary
   changes require the specified evidence and Cyrus's explicit approval
-  (`.squad/directives.md` `## Decision behavior`; `docs/charter.md`
+  (`docs/charter.md`
   `## Precedence, ratification, and amendment`).
 
 ## Session and cost feedback loops
 
-- **Session Close Efficiency Review** (`.squad/ceremonies.md`) runs after any
+- **Session cost review** runs after any
   session that consumed AI credits or incurred external cost: record provider/
   model, credits or usage units, duration, retries, tools, and outcome; keep
   prompts/responses/personal data out of the ledger; identify failed/repeated
   work and one efficiency improvement; update the relevant FinOps or
-  retrospective issue when action is required. Quark facilitates and this
+  retrospective issue when action is required. FinOps lead facilitates and this
   ledger reconciles to the accepted financial-control framework in
   `docs/cost-model.md`; it does not approve any spend or numeric envelope.
-- **Retrospective with Enforcement** runs weekly if no retrospective log exists
-  in the last 7 days: what shipped, what didn't, root cause on failures, and
-  action items filed as issues (see "Recommended follow-up" below for the
-  `retro-action` label this ceremony needs; use `type:chore` with a body
-  reference to the retrospective issue as the interim substitute) — never
-  markdown checklists — production data shows 0% completion on markdown vs.
-  100% on GitHub Issues for this ceremony.
+- Review delivery and cost evidence weekly; record decisions and action items
+  in GitHub Issues, with an owner and evidence for each action.
 - **Phase Gate Review** runs before each milestone exit: required evidence,
   unresolved risks, cost, and user outcome; confirmed dependencies and
   rollback/stop criteria; recorded dissent; Cyrus decides proceed, extend
   learning, de-scope, or stop.
-- Quark's aggregate usage/cost findings post to the relevant retrospective or
+- FinOps lead's aggregate usage/cost findings post to the relevant retrospective or
   FinOps issue (`area:finops`) — never raw prompts, personal data, or
   connector payloads.
 
 ## Workstream-to-label/owner/milestone mapping
 
-This maps the workstream table above onto labels and routing that exist in the
-repository today (`.squad/routing.md`, `gh label list`). It intentionally does
+This maps the workstream table above onto area labels and functional ownership. It intentionally does
 not introduce a parallel prioritization taxonomy — that belongs to issue #5.
 
-| Workstream | Primary `area:*` label(s) today | Primary `squad:{member}` label(s) | Applicable milestones |
+| Workstream | Primary `area:*` label(s) today | Responsible function(s) | Applicable milestones |
 |---|---|---|---|
-| Executive, Product and Business | `area:product` | `squad:picard`, `squad:quark` | Phase 0 and every phase gate |
-| Product Discovery and User Research | `area:product` | `squad:picard`, `squad:jadzia-dax`, `squad:guinan`, `squad:neelix` | Phase 0, 1A, 1B, 2 |
-| Core Platform and Architecture | `area:architecture` | `squad:spock`, `squad:t-pol`, `squad:seven-of-nine` | Phase 0, 1A, 2, 5, 6 |
-| Web, Public Site and User Experience | `area:product` (public site/UX has no dedicated area label yet) | `squad:jadzia-dax`, `squad:neelix`, `squad:guinan` | Phase 1A, 1B |
-| Native Mobile and Device Experience | `area:architecture` (no dedicated `area:mobile` label yet) | `squad:hoshi-sato` | Phase 9 |
-| Platform Operations, Hosting and FinOps | `area:finops` (ops/hosting shares `area:architecture` until a dedicated label exists) | `squad:jett-reno`, `squad:quark` | Phase 0, 1A, 1B, 5 |
-| Quality, Performance and Release | none dedicated today (tag with the owning workstream's `area:*`) | `squad:data` | every phase |
-| Channels and Connectors | `area:architecture` (no dedicated `area:channels` label yet) | `squad:jett-reno`, `squad:seven-of-nine`, `squad:tuvok` | Phase 1B, 3A, 3B, 8 |
-| First-party Skills and Developer Ecosystem | `area:product` (no dedicated `area:skills` label yet) | `squad:seven-of-nine`; `squad:quark` only for the five finance-adjacent skills named in the catalog | Phase 2, 7 |
-| Trust, Security, Privacy and Legal | `area:security`, `area:privacy`, `area:legal` | `squad:tuvok`, `squad:deanna-troi`, `squad:sarek` | every phase |
-| Customer Success, Feedback and Support | `area:product`, `area:privacy` (feedback intake) | `squad:guinan` | Phase 0, 1B onward |
-| Marketing, Community and Partnerships | `area:product` | `squad:neelix`, `squad:picard`, `squad:quark` | Phase 1B onward |
-| Future Research and Innovation | `area:architecture` | `squad:spock`, `squad:seven-of-nine` | ongoing, gated before roadmap commitment |
+| Executive, Product and Business | `area:product` | Product lead, FinOps lead | Phase 0 and every phase gate |
+| Product Discovery and User Research | `area:product` | Product lead, UX lead, Support lead, Marketing lead | Phase 0, 1A, 1B, 2 |
+| Core Platform and Architecture | `area:architecture` | Architecture lead, Application lead, Assistant and skills lead | Phase 0, 1A, 2, 5, 6 |
+| Web, Public Site and User Experience | `area:product` (public site/UX has no dedicated area label yet) | UX lead, Marketing lead, Support lead | Phase 1A, 1B |
+| Native Mobile and Device Experience | `area:architecture` (no dedicated `area:mobile` label yet) | Mobile lead | Phase 9 |
+| Platform Operations, Hosting and FinOps | `area:finops` (ops/hosting shares `area:architecture` until a dedicated label exists) | Operations lead, FinOps lead | Phase 0, 1A, 1B, 5 |
+| Quality, Performance and Release | none dedicated today (tag with the owning workstream's `area:*`) | Quality lead | every phase |
+| Channels and Connectors | `area:architecture` (no dedicated `area:channels` label yet) | Operations lead, Assistant and skills lead, Security lead | Phase 1B, 3A, 3B, 8 |
+| First-party Skills and Developer Ecosystem | `area:product` (no dedicated `area:skills` label yet) | Assistant and skills lead; FinOps lead only for the five finance-adjacent skills named in the catalog | Phase 2, 7 |
+| Trust, Security, Privacy and Legal | `area:security`, `area:privacy`, `area:legal` | Security lead, Privacy lead, Legal research lead | every phase |
+| Customer Success, Feedback and Support | `area:product`, `area:privacy` (feedback intake) | Support lead | Phase 0, 1B onward |
+| Marketing, Community and Partnerships | `area:product` | Marketing lead, Product lead, FinOps lead | Phase 1B onward |
+| Future Research and Innovation | `area:architecture` | Architecture lead, Assistant and skills lead | ongoing, gated before roadmap commitment |
 
-**Recommended follow-up (non-blocking):** several workstreams (Web/UX, Mobile,
-Ops/Hosting, Channels, Skills, Customer Success, Marketing) currently share a
-broader `area:*` label with another workstream because no dedicated label
-exists yet. One ceremony referenced above also needs a dedicated label that
-does not exist today: `retro-action` (for Retrospective-with-Enforcement action
-items, `.squad/ceremonies.md`). Human decisions are represented by a
-`blocks:human` dependency rather than a second lifecycle status. Picard should
-open a small `type:governance` issue to add `area:web-ux`, `area:mobile`, `area:ops`,
-`area:channels`, `area:skills`, `area:customer-success`, `area:marketing`,
-and `retro-action` labels via
-`.github/workflows/sync-squad-labels.yml` once ratified, rather than expanding
-this document's scope to create labels unilaterally. Until that issue lands,
-use `type:chore` plus a link to the retrospective issue for retro-action items.
+Current ownership is maintained through GitHub assignees. Area-label changes
+require an explicit repository-maintenance decision; no label-sync automation runs.
 
 ## Cross-references
 
@@ -454,11 +416,6 @@ use `type:chore` plus a link to the retrospective issue for retro-action items.
   proposed in `docs/plan.md` `### Customer Zero doctrine`.
 - Cohesive-workstream contract and MVP urgency rules: `docs/plan.md`
   `### Cross-workstream contract`, `### MVP mission and urgency rules`.
-- Crew charters: `.squad/agents/*/charter.md` (see `.squad/team.md` for the
-  full roster and status).
-- Routing and triage mechanics: `.squad/routing.md`.
-- Ceremonies referenced above: `.squad/ceremonies.md`.
-- Non-negotiable directives and delivery workflow: `.squad/directives.md`.
 - Prioritization, scorecard, and launch-stage gates (owned by issue #5, not
   duplicated here): `docs/plan.md` `## Roadmap prioritization and launch
   framework`, future `docs/frameworks/prioritization-launch.md`.

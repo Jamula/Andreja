@@ -9,7 +9,7 @@
 - **Governing:** [Platform plan](../plan.md#phase-1a---self-hosted-assistant-walking-skeleton),
   [company charter](../charter.md#commitments), and
   [ADR 0000](0000-plan-ratification.md)
-- **Proposed by:** Data (Quality Engineering Lead)
+- **Proposed by:** Quality lead (Quality Engineering Lead)
 - **Decision owner:** Cyrus Jamula
 - **Scope:** .NET 10 unit, architecture, WebApplicationFactory, EF Core, and
   PostgreSQL integration tests
@@ -60,7 +60,7 @@ rollback before any suite change.
 
 [On 2026-09-07, the decision owner explicitly authorized issue
 #109](https://github.com/Jamula/Andreja/issues/109) to proceed end-to-end after
-it was marked ready and assigned to Data. This authorization releases only
+it was marked ready and assigned to Quality lead. This authorization releases only
 #109 from the original backlog prerequisite below. It does not accept this
 Proposed ADR, authorize a framework or runner migration, or release another
 follow-up issue.
@@ -458,10 +458,10 @@ Cyrus's MSTest direction or start a migration independently.
    by 2026-10-31 or the earlier holding-state trigger. It also owns the
    conditional class-scoped PostgreSQL fixture and IDE evidence.
 2. [Issue #110](https://github.com/Jamula/Andreja/issues/110), owned by Cyrus
-   Jamula with Data quality ownership, tracks the per-assembly/configuration
+   Jamula with Quality lead quality ownership, tracks the per-assembly/configuration
    discovered, executed, passed, failed, and skipped inventory gate.
 3. [Issue #109](https://github.com/Jamula/Andreja/issues/109), owned by Cyrus
-   Jamula with Jett Reno named for CI/operations review, separately tracks
+   Jamula with Operations lead named for CI/operations review, separately tracks
    compatible `xunit.runner.visualstudio` and `Microsoft.NET.Test.Sdk` updates.
 
 At the time of this proposal, all three issues remained backlog and were not

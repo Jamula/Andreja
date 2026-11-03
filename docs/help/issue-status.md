@@ -19,57 +19,28 @@ reaches the default branch.
 
 ## Dependencies and evidence
 
-Use GitHub's **Blocked by** relationship. An unresolved ordinary dependency adds
-`blocked:dependency` to the dependent issue. Add `blocks:evidence` to a blocker
-that exists to produce external or milestone-exit proof; dependents then show
-`blocked:evidence`. Add `blocks:human` to a blocker that requires a recorded
-human decision or approval; dependents then show `blocked:human`.
+Use GitHub's **Blocked by** relationship. For an unresolved ordinary dependency,
+the issue owner adds `blocked:dependency` to the dependent issue. Add
+`blocks:evidence` to a blocker that exists to produce external or milestone-exit
+proof and `blocked:evidence` to its dependents. Add `blocks:human` to a blocker
+that requires a recorded human decision or approval and `blocked:human` to its
+dependents.
 
 These labels never replace `status:*`. An issue can correctly be both
 `status:merged` and `blocked:evidence`.
 
-## Automatic and manual repair
+## Manual maintenance
 
-The Issue Status workflow reacts to issue lifecycle, configured branch names,
-and trusted same-repository pull requests that close an issue. Tracked branch
-forms are `squad/{issue-number}-{slug}`,
-`copilot/{issue-number}-{slug}`, and
-`u/{account}/{issue-number}-{slug}`; arbitrary number-leading names are ignored.
-Branch existence is queried from GitHub and never inferred from a lifecycle
-label. Pull requests connected through the issue's Development sidebar are
-queried from GitHub's `closedByPullRequestsReferences`, so they drive draft,
-ready, and merged state even without a closing keyword in the PR body. Open fork
-PRs remain excluded from the write-capable status path.
+Issue owners maintain lifecycle and blocker labels manually. There is no
+scheduled reconciler, branch-name parser, automatic label synchronization, or
+workflow-dispatch override.
 
-GitHub Actions does not expose native issue-dependency changes as a workflow
-trigger. A trusted hourly full reconciliation repairs dependency labels, PR-body
-reference edits, deleted branches, and stack promotions. For a stacked change,
-the reconciler follows a merged layer's base branch into a PR only when the
-layer's merge commit is an ancestor of that PR's recorded head commit. If multiple
-default-branch PRs prove the same layer, only the earliest timestamped landing is
-used as promotion evidence. That landing is propagated backward through every
-verified merged intermediary, and only edges leading to the source commit's
-first landing remain eligible. Open, draft, closed-unmerged, and later merged
-PRs reusing any branch in an already landed stack cannot revive the old layer,
-even when their heads inherit its commits from the default branch. Before a
-first landing is proven, pending promotions remain eligible. The reconciler
-separately verifies that the layer's merge commit is reachable from the default
-branch. A missing merge or head SHA cannot prove a promotion. Commit comparisons run sequentially,
-once per unique commit pair (or merge SHA for default-branch reachability).
-Any comparison error (including an unavailable commit's HTTP 404) aborts
-reconciliation rather than treating missing evidence as a negative reachability
-result and writing incorrect lifecycle labels.
+Use the issue's Development links and explicit closing references to identify
+related pull requests. Confirm the actual branch, draft, review, and merge state
+before changing a label; label text alone is not evidence. Keep exactly one
+`status:*` label and remove resolved blocker labels after checking the linked
+dependency's outcome.
 
-Reopening an issue supersedes merges at or before the reopen timestamp. The
-original stack edges remain available: a layer first proven to reach the default
-branch after the reopen can still yield `status:merged`, but a stack that landed
-entirely before the reopen cannot. Repeating the closing reference on the final
-PR remains recommended because it gives GitHub and reviewers an explicit closure
-record.
-The workflow is idempotent and does not post comments.
-
-From **Actions > Issue Status > Run workflow**, leave the issue number blank to
-reconcile all issues, or enter one issue number. `auto` derives lifecycle and
-blockers. A selected lifecycle or blocker value is a one-run override; the next
-relevant event derives state again. Adding a recognized `status:*` label directly
-is also a one-event manual override. Unknown `status:*` labels are removed.
+For stacks, verify that the implementation reached the default branch before
+using `status:merged`. Reopening an issue requires a fresh assessment of its
+remaining outcome; a historical merge does not prove that new work is complete.

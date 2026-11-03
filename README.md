@@ -87,7 +87,6 @@ dotnet format Andreja.slnx --verify-no-changes --no-restore
 dotnet format tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj `
   --verify-no-changes --no-restore
 python .github\scripts\check_docs_consistency.py
-node --test .github\scripts\issue-status.test.js
 pwsh -NoProfile -File .github\scripts\invoke-nuget-vulnerability-scan.ps1
 pwsh -NoProfile -File scripts\operations\validate-contract.ps1
 pwsh -NoProfile -File scripts\supply-chain\Test-SupplyChainPolicy.ps1
@@ -398,7 +397,6 @@ runtime state, or user content.
 - [Local development](docs/development.md)
 - [Self-host operations](docs/operations/self-hosting.md)
 - [Application export/import](docs/operations/portability.md)
-- [Squad two-layer state bridge](docs/operations/squad-state-bridge.md)
 - [Local identity and recovery](docs/help/local-identity.md)
 - [Open Loops help](docs/help/open-loops.md)
 - [Testing matrix](docs/testing-matrix.md)
