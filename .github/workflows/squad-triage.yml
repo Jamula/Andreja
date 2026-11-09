@@ -16,6 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 #v4
 
+      - name: Check Squad triage readiness
+        run: node .github/scripts/squad-readiness.js
+
       - name: Triage issue via deterministic keyword routing
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 #v9.0.0
         with:
@@ -302,8 +305,14 @@ jobs:
               '',
               `**Provenance:** Deterministic keyword matching against the capability profile in \`.squad/team.md\` and rules in \`.squad/routing.md\`; no Lead-agent analysis was performed.`,
               `**Issue:** #${issue.number} — ${issue.title}`,
-              `**Assigned to:** ${assignedMember.name} (${assignedMember.role})`,
+              `**Routed to:** ${assignedMember.name} (${assignedMember.role})`,
               `**Reason:** ${triageReason}`,
+              `The label is a routing hint, not a GitHub assignee or a running session.`,
+              isCopilot
+                ? (autoAssign
+                  ? `The assignment workflow will be dispatched; verify a linked Copilot session or draft PR.`
+                  : `If authorized, manually dispatch Squad Issue Assign for this issue; verify a linked Copilot session or draft PR.`)
+                : `Start an authorized session for ${assignedMember.name} to work on this issue.`,
               copilotTier === 'needs-review' ? `\n⚠️ **PR review recommended** — a squad member should review @copilot's work on this one.` : '',
               copilotNote,
               '',

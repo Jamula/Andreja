@@ -70,7 +70,16 @@ try {
         matches = @(
             [pscustomobject]@{
                 vulnerability = [pscustomobject]@{ id = 'CVE-2026-1234'; severity = 'CRITICAL' }
-                artifact = [pscustomobject]@{ name = 'fixture-package'; version = '1.2.3' }
+                artifact = [pscustomobject]@{ name = 'fixture-package'; version = '1.2.3'; location = 'private-location' }
+                matchDetails = 'private-match-details'
+            },
+            [pscustomobject]@{
+                vulnerability = [pscustomobject]@{ id = 'GHSA-abcd-efgh-ijkl'; severity = 'High' }
+                artifact = [pscustomobject]@{ name = "other`n::warning::fake"; version = '2.0+"quoted"' }
+            },
+            [pscustomobject]@{
+                vulnerability = [pscustomobject]@{ id = 'CVE-2026-9999'; severity = 'HIGH' }
+                artifact = [pscustomobject]@{ name = [pscustomobject]@{ secret = 'private-nested-data' } }
             },
             [pscustomobject]@{
                 vulnerability = [pscustomobject]@{ id = 'CVE-2026-5678'; severity = 'LOW' }
@@ -81,21 +90,28 @@ try {
         Set-Content -LiteralPath $grypeReportPath -Encoding utf8NoBOM
     $grypeMatches = @(Get-GrypeForbiddenMatches -Path $grypeReportPath `
         -ForbiddenSeverities @('HIGH', 'CRITICAL'))
-    if ($grypeMatches.Count -ne 1 -or $grypeMatches[0].vulnerability.id -ne 'CVE-2026-1234') {
+    if ($grypeMatches.Count -ne 3 -or $grypeMatches[0].vulnerability.id -ne 'CVE-2026-1234' -or
+        $grypeMatches[1].vulnerability.id -ne 'GHSA-abcd-efgh-ijkl' -or
+        $grypeMatches[2].vulnerability.id -ne 'CVE-2026-9999') {
         throw 'Grype diagnostics must select only forbidden-severity findings.'
     }
-    $findingDetails = @($grypeMatches | ForEach-Object {
-        '{0} {1}@{2} ({3})' -f $_.vulnerability.id, $_.artifact.name, $_.artifact.version,
-            $_.vulnerability.severity
-    })
     $findingError = $null
     try {
-        Assert-NoForbiddenFinding -Count 1 -Scope 'fixture' -FindingDetails $findingDetails
+        Assert-NoForbiddenGrypeFinding -Matches $grypeMatches -Scope 'Dependency'
     } catch {
-        $findingError = $_
+        $findingError = $_.Exception.Message
     }
-    if ($null -eq $findingError -or -not $findingError.Exception.Message.Contains($findingDetails[0])) {
-        throw 'Forbidden scan findings must include package and advisory details.'
+    $expectedError = 'Dependency scan contains 3 forbidden finding(s). Findings: ' +
+        '[{"package":"fixture-package","advisory":"CVE-2026-1234","version":"1.2.3","severity":"CRITICAL"},' +
+        '{"package":"other\n::warning::fake","advisory":"GHSA-abcd-efgh-ijkl","version":"2.0+\"quoted\"","severity":"High"},' +
+        '{"package":null,"advisory":"CVE-2026-9999","version":null,"severity":"HIGH"}].'
+    if ($findingError -cne $expectedError) {
+        throw "Forbidden scan diagnostic differs from the sanitized inventory: $findingError"
+    }
+    Assert-NoForbiddenGrypeFinding -Matches @() -Scope 'Dependency'
+    $generatorSource = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'New-OciEvidence.ps1') -Raw
+    if ($generatorSource -notmatch 'Assert-NoForbiddenGrypeFinding\s+-Matches\s+\$dependencyMatches\s+-Scope\s+''Dependency''') {
+        throw 'OCI evidence generation must invoke the tested dependency diagnostic gate.'
     }
     $passed++
     Write-Output 'PASS (reported): forbidden finding details'
