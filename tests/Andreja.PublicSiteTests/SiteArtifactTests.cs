@@ -7,7 +7,7 @@ namespace Andreja.PublicSiteTests;
 [TestClass]
 public sealed class SiteArtifactTests
 {
-    private static readonly DateOnly ReviewDate = new(2026, 10, 15);
+    private static readonly DateOnly ReviewDate = new(2026, 11, 8);
     private string root = "";
     private string scratch = "";
     private string source = "";
@@ -93,7 +93,7 @@ public sealed class SiteArtifactTests
     [DataRow("owner", "")]
     [DataRow("expires", "2026-10-15")]
     [DataRow("expires", "2027-10-15")]
-    [DataRow("reviewed", "2026-10-16")]
+    [DataRow("reviewed", "2026-11-09")]
     [DataRow("slug", "../Account/Login")]
     public void RejectsInvalidActualPageMetadata(string field, string value)
     {

@@ -242,8 +242,8 @@
       "slug": "release-notes",
       "title": "Release notes and known issues",
       "owner": "Jadzia Dax",
-      "reviewed": "2026-10-15",
-      "expires": "2026-11-14",
+      "reviewed": "2026-11-08",
+      "expires": "2026-12-08",
       "evidence": ["docs/help/local-identity.md", "docs/help/open-loops.md", "docs/public-website/README.md"],
       "claims": [],
       "sections": [
@@ -257,7 +257,7 @@
         {
           "heading": "Known limitations",
           "paragraphs": [
-            "Public launch, hosting, a monitored security contact, managed availability, legal/brand clearance, support capacity and approved public claims remain gated under issue #93 and the associated decision issues. ADR 0008 remains Proposed.",
+            "Public launch, hosting, a monitored security contact, managed availability, legal/brand clearance, support capacity and approved public claims remain gated under issue #93 and the associated decision issues. ADR 0008 accepts only the product-data-free static artifact boundary; it selects no production generator or provider.",
             "English-only local content; no localization or screen-reader conformance claim. No real-time outage feed, supported-product version selector, remote search, feedback submission or published security.txt. Local automated browser checks cover representative viewports, not all devices or assistive technologies.",
             "Rollback for this guide means retaining and verifying a previous complete artifact in a different private output directory. Never overwrite files in place or promote this local artifact to a public host."
           ]
