@@ -16,21 +16,23 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 #v4
 
+      - name: Check Squad triage readiness
+        run: node .github/scripts/squad-readiness.js
+
       - name: Triage issue via deterministic keyword routing
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 #v9.0.0
         with:
           script: |
             const fs = require('fs');
+            const { parseRoster } = require(`${process.cwd()}/.squad/templates/ralph-triage.js`);
             const issue = context.payload.issue;
 
             const teamFile = '.squad/team.md';
             if (!fs.existsSync(teamFile)) {
-              core.warning('No .squad/team.md found — cannot triage');
-              return;
+              throw new Error('No .squad/team.md found — cannot triage');
             }
 
             const content = fs.readFileSync(teamFile, 'utf8');
-            const lines = content.split('\n');
             if (issue.labels.some(label => /^squad:.+/.test(label.name))) {
               core.info(`Issue #${issue.number} already has a squad member label — skipping conflicting triage.`);
               return;
@@ -68,26 +70,7 @@ jobs:
               }
             }
 
-            const members = [];
-            let inMembersTable = false;
-            for (const line of lines) {
-              if (line.match(/^##\s+(Members|Team Roster)/i)) {
-                inMembersTable = true;
-                continue;
-              }
-              if (inMembersTable && line.startsWith('## ')) {
-                break;
-              }
-              if (inMembersTable && line.startsWith('|') && !line.includes('---') && !line.includes('Name')) {
-                const cells = line.split('|').map(c => c.trim()).filter(Boolean);
-                if (cells.length >= 2 && cells[0] !== 'Scribe') {
-                  members.push({
-                    name: cells[0],
-                    role: cells[1]
-                  });
-                }
-              }
-            }
+            const members = parseRoster(content);
 
             const routingFile = '.squad/routing.md';
             let routingContent = '';
@@ -220,8 +203,7 @@ jobs:
 
             const lead = findLead(members);
             if (!lead) {
-              core.warning('No Lead role found in team roster — cannot triage');
-              return;
+              throw new Error('No Lead or Architect role found in team roster — cannot triage');
             }
 
             // Build triage context
@@ -302,8 +284,14 @@ jobs:
               '',
               `**Provenance:** Deterministic keyword matching against the capability profile in \`.squad/team.md\` and rules in \`.squad/routing.md\`; no Lead-agent analysis was performed.`,
               `**Issue:** #${issue.number} — ${issue.title}`,
-              `**Assigned to:** ${assignedMember.name} (${assignedMember.role})`,
+              `**Routed to:** ${assignedMember.name} (${assignedMember.role})`,
               `**Reason:** ${triageReason}`,
+              `The label is a routing hint, not a GitHub assignee or a running session.`,
+              isCopilot
+                ? (autoAssign
+                  ? `The assignment workflow will be dispatched; verify a linked Copilot session or draft PR.`
+                  : `If authorized, manually dispatch Squad Issue Assign for this issue; verify a linked Copilot session or draft PR.`)
+                : `Start an authorized session for ${assignedMember.name} to work on this issue.`,
               copilotTier === 'needs-review' ? `\n⚠️ **PR review recommended** — a squad member should review @copilot's work on this one.` : '',
               copilotNote,
               '',
