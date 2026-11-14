@@ -4,6 +4,8 @@
 
 **Prepared:** 2026-09-07
 
+**Later reconciliation:** 2026-11-08; historical observations remain dated below.
+
 **Scope:** Handoff wrapper around [`docs/legal/license-evaluation.md`](license-evaluation.md); United States baseline with jurisdiction-specific questions preserved
 
 **Tracking:** GitHub issue [#6](https://github.com/Jamula/Andreja/issues/6); merged source PR [#18](https://github.com/Jamula/Andreja/pull/18)
@@ -31,6 +33,13 @@ disclosures, matter files, entity/tax records, or any material outside
 that scope. **Absence of evidence in the reviewed scope is not evidence
 of absence.** Every statement below is limited to what was observed.
 
+The 2026-11-08 reconciliation also reviewed all comments on issue #6, the
+public technical sources identified in the
+[repository evidence inventory](repository-evidence-inventory.md), and the
+primary platform terms cited in §6. It did not inspect the privately verified
+reference, its outcome, counsel communications, or any underlying
+confidential material.
+
 ## 2. Historical vs current as-of
 
 - **Historical artifact — 2026-08-23:** [`docs/legal/license-evaluation.md`](license-evaluation.md)
@@ -39,13 +48,40 @@ of absence.** Every statement below is limited to what was observed.
   interim posture premised on *"keep the repository private"*) reflect
   the reviewed record as of that date. The source-table access dates
   recorded in §15 are as-of 2026-08-23; treat them as historical.
-- **Current reviewed state — 2026-09-07 at `2697352`:** the bounded
+- **Historical reviewed state — 2026-09-07 at `2697352`:** the bounded
   observations in §3 below. Later artifacts postdating PR #18 include
   [`docs/legal/regulatory-applicability.md`](regulatory-applicability.md)
   (issue #8 closed as completed; artifact remains draft), ADR [0006](../adr/0006-charter-ratification.md)
   and [`docs/charter.md`](../charter.md) (Proposed), and ADR
   [0008](../adr/0008-public-website-artifact-boundary.md) with
   [`docs/public-website/`](../public-website/) (relevant to Gate C).
+- **Private-reference verification — 2026-10-11, by Cyrus's attestation:**
+  Cyrus confirmed that qualified counsel privately verified the available
+  reference and provided an outcome identifying its scope, document version,
+  and disposition. The
+  [recorded attestation](https://github.com/Jamula/Andreja/issues/6#issuecomment-6115340637)
+  completes that **procedural** verification; it is not independent agent
+  inspection. The reference, actual scope, document version, disposition,
+  and any conditions remain private. Do not repeat the completed
+  availability/verification request or request disclosure of those details.
+  An earlier "yes-counsel" interpretation was described as a
+  misunderstanding in the [issue discussion](https://github.com/Jamula/Andreja/issues/6#issuecomment-6112217998).
+- **What the attestation does not establish publicly:** It does not show
+  whether any particular H-Inbound, H-Outbound, H-IP, H-TM, or H-Gov
+  category, or separate Gate A, B, or C, was approved, pending, or outside
+  the private outcome's scope. It is not evidence that every category or
+  gate was approved, nor evidence that a private decision does not exist.
+  The authorized humans apply the private outcome only within its actual
+  scope and conditions. Issue #6's stated completion criterion remains
+  Cyrus's and qualified counsel's approval of the specified path; the gates
+  are separately scoped.
+- **Later technical evidence — 2026-11-08:** GitHub reports the repository
+  as public with Apache-2.0 license metadata. The
+  [inventory](repository-evidence-inventory.md) also links a separately
+  documented 2026-08-25 GitHub Pages exposure. Neither today's metadata nor
+  the private-reference attestation establishes the repository's visibility
+  history, particular recipients or versions, rights-holder authority, or
+  substantive approval.
 - **Issue #8 reconciliation — checked 2026-09-26:** GitHub reports
   [#8](https://github.com/Jamula/Andreja/issues/8) closed at
   `2026-08-30T17:10:45Z`. In the reviewed rebased tree (`bf1e27a`),
@@ -55,9 +91,10 @@ of absence.** Every statement below is limited to what was observed.
   source row says "pending ratification, issue #8", which describes
   artifact authority, not the issue's open/closed state. Closure does not
   establish Cyrus or qualified-counsel approval, and the artifact remains
-  draft. These hash-governed files are unchanged in this supplementary
-  packet; correcting their snapshots requires a separate coordinated
-  source/hash update, not an inferred ratification.
+  draft. The later issue #6 visibility-status corrections do not change the
+  separate issue #8 lifecycle row or the operating-model source row;
+  correcting those snapshots requires a separately scoped source/hash
+  update, not an inferred ratification.
 - **Provenance observation, bounded:** PR #18's merge commit `87ce4e6` is
   not an ancestor of current `HEAD`. In current HEAD ancestry,
   `license-evaluation.md` was added by `ab15b72` (#12, 2026-08-23) and
@@ -69,7 +106,10 @@ of absence.** Every statement below is limited to what was observed.
 
 ## 3. Bounded current-state observations (as of 2026-09-07 at `2697352`)
 
-Observations only. No ownership, validity, clearance, or effect conclusion is drawn.
+Here "current-state" means the state observed on 2026-09-07, not a claim
+about later dates. Observations only. No ownership, validity, clearance, or
+effect conclusion is drawn. The historical sequencing recommendations below
+do not establish whether subsequent private work has already occurred.
 
 | # | Observation | As-of source |
 |---|---|---|
@@ -83,6 +123,10 @@ Observations only. No ownership, validity, clearance, or effect conclusion is dr
 | O8 | Dependency surfaces present: `Directory.Packages.props`, `Directory.Build.props`, `global.json`, `Dockerfile`, `compose.yaml`, `supply-chain-policy.json`, `.github/dependabot.yml`. Third-party inbound licensing is in scope; a sanitized inventory is producible from these files. | Repo tree 2026-09-07 |
 
 ## 4. Acceptance mapping against issue #6
+
+The statuses below describe the historical reviewed scope; see §§2 and 7–8
+for the later attestation and partial inventory. A missing public record is
+not proof that private work or a decision is absent.
 
 | Issue #6 item | Evaluation section | Status | What remains (evidence-limited) |
 |---|---|---|---|
@@ -99,15 +143,16 @@ Observations only. No ownership, validity, clearance, or effect conclusion is dr
 | Trademark/domain/namespace | [§9](license-evaluation.md#9-trademark-domain-and-namespace-posture) | Sequence + usage-policy framework present; no clearance found in the reviewed record | Trademark counsel clearance (E7, H-TM) |
 | Visibility & external-contribution gates | [§12](license-evaluation.md#12-external-contribution-and-visibility-gates) | Gate A/B/C checklists defined; execution and approval not evidenced | Confirm each scoped authorization; reconcile O1; see §7 |
 
-## 5. Why the issue #6 "Done when" clause is not satisfied
+## 5. Issue #6 completion: evidence boundary
 
 Issue #6's "Done when" clause requires that **"Cyrus and qualified counsel
-approve the inbound/outbound license, IP, trademark, and collaborator
-governance path."** In the reviewed record:
+approve the inbound/outbound license, IP, trademark, and collaborator governance
+path."** In the record reviewed on 2026-09-07:
 
 - **No engagement reference was found** for qualified counsel review of
-  the evaluation or the §14 questions. Whether any exists outside the
-  reviewed scope is for Cyrus to confirm.
+  the evaluation or the §14 questions in that historical scope. The later
+  user-attested private verification is recorded in §2; its outcome was not
+  inspected and remains private.
 - **No record of Cyrus approval** was found for any of the outbound
   license, inbound mechanism, patent strategy, trademark ownership, or
   collaborator-governance path. The merged PR is an analysis artifact;
@@ -115,13 +160,15 @@ governance path."** In the reviewed record:
 - **No reference was found** to production of the confidential factual
   predicate (recipient/version ledger, employment/consulting/invention
   agreements, invention disclosures, third-party inventory, entity/tax
-  facts) into any counsel-controlled matter file. Whether any exists
-  outside the reviewed scope is for Cyrus to confirm.
+  facts) into any counsel-controlled matter file. This is not evidence that
+  such a file does not exist outside the historical reviewed scope.
 
-Because those three preconditions were not evidenced, **no record of
-any downstream approval** (outbound license, inbound mechanism, patent,
-trademark, marketplace, Gate A/B/C) **was found in the reviewed record.**
-Issue #6 remains OPEN.
+Separately, **no record of downstream approval** (outbound license, inbound
+mechanism, patent, trademark, marketplace, Gate A/B/C) **was found in that
+historical scope.** The later public record does not establish any particular
+category's disposition; the privately verified outcome is not available for
+agent inspection. This is an evidence limitation, not a finding that private
+decisions are absent. Issue #6 was still OPEN when checked on 2026-11-08.
 
 ## 6. Indexed counsel questions
 
@@ -139,9 +186,37 @@ versions, GitHub surfaces, and recipients can be established; what public
 availability or downstream rights must be accounted for; what records must
 be preserved; and what prospective containment or remediation, if any, should
 Cyrus authorize? Do not assume a visibility reversal or license edit revokes
-rights or removes copies. Ask counsel to return a written disposition of each
-question, unresolved facts, applicable jurisdictions, conditions, and scoped
-go/no-go recommendations through the approved confidential channel.
+rights or removes copies. Where a question remains unresolved under the
+privately verified outcome's actual scope and any conditions, route only that
+outstanding question through the approved confidential channel. Do not repeat
+the completed verification or request its private contents.
+
+### Platform-terms supplement — checked 2026-11-08
+
+The current [GitHub Terms of Service](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service)
+identify an effective date of 2026-04-27. Separately from Apache-2.0:
+
+- [§D.5](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service#5-license-grant-to-other-users)
+  addresses public-repository viewing and forking and a nonexclusive,
+  service-based license to other users. It also distinguishes additional
+  rights that may be granted by a repository license.
+- [§D.6](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service#6-contributions-under-repository-license)
+  addresses content added to a repository with a license notice under those
+  terms, subject to a separate agreement with different terms.
+- [§J.3](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service#3-development-and-improvement-using-your-input-and-output)
+  describes an AI input/output opt-out separately from the licenses in
+  §§D.4–D.8, and says that opt-out does not apply to content that is not
+  input or output; it mentions public-repository content as an example.
+  [§J.1](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service#1-applicability)
+  limits §J.3 to individual licenses and says a governing customer or volume
+  agreement controls AI data use instead.
+
+Counsel must assess the applicable account, content, dates, prior terms, and
+any separate agreement. This summary does not establish actual recipients,
+ownership, Apache grants, account settings, data use, or agreement
+applicability; it authorizes no new contributions, settings, or visibility
+change. Do not disclose private facts or the verified outcome to resolve it
+in this public packet.
 
 **Cyrus decisions — [`§14 Cyrus as human decision-maker`](license-evaluation.md#cyrus-as-human-decision-maker).**
 References use the prefix `C` and match the source list positions 1–8: **C1** ownership vehicle & transfer timing; **C2** exclusive assets;
@@ -151,34 +226,41 @@ References use the prefix `C` and match the source list positions 1–8: **C1** 
 ## 7. Human sign-off register
 
 A **record**, not a grant. No approval is recorded here. The `Sign-off`
-column is intentionally empty. Confirm any existing decisions with Cyrus
-before requesting new ones. Each completed row needs the authorized human
-name/role, date, exact artifact/version and scope, conditions, and a
-non-sensitive evidence reference approved for disclosure. Keep underlying
-advice and agreements outside GitHub. A specialist-agent review or merged
-PR is not qualified-counsel sign-off.
+column is intentionally empty. The statuses mean category-specific approval
+is not evidenced in the reviewed public record; they do not establish that
+a decision is pending or absent privately. Authorities can establish and
+apply decisions through an appropriate confidential process without disclosing
+the verified reference or its contents here. If they elect to make a public
+record, include only details explicitly approved for disclosure. Do not
+repeat the completed private-reference verification. Keep underlying advice
+and agreements outside GitHub. A specialist-agent review or merged PR is not
+qualified-counsel sign-off.
 
 ### 7.1 Approval categories
 
 | # | Category | Decider | Depends on | Status | Sign-off |
 |---|---|---|---|---|---|
-| H-Inbound | Inbound-contribution mechanism (DCO / individual CLA / corporate CLA / assignment) selected and drafted | Cyrus + IP counsel | G-Q7, C4, outbound selection | Not evidenced; Cyrus to confirm |  |
-| H-Outbound | **Outbound artifact matrix** — per-artifact license/boundary across specification, SDK, examples, prose docs, reference implementation, hosted control plane, marketplace | Cyrus + IP counsel | G-Q4, G-Q5, C2, C3 | Not evidenced; Cyrus to confirm |  |
-| H-IP | IP / patent posture (ownership vehicle, assignments, FTO direction, filing vs. defensive publication vs. covenant) | Cyrus + IP/patent counsel | C1, G-Q1–3, G-Q6, G-Q8, G-Q9, E1–3, E5–6, E8 | Not evidenced; Cyrus to confirm |  |
-| H-TM | Trademark strategy for **Andreja** (clearance, ownership vehicle, enforcement stance, compatibility-mark policy, fork policy, usage policy) | Cyrus + trademark counsel | G-Q10, C6, E7 | Not evidenced; Cyrus to confirm |  |
-| H-Gov | **Collaborator / release governance** — maintainer roles, admission/removal, release authority (two-person rule or documented sole-owner interim), rulesets, key/credential control | Cyrus + counsel | C7, outbound + inbound selected | Not evidenced; Cyrus to confirm |  |
+| H-Inbound | Inbound-contribution mechanism (DCO / individual CLA / corporate CLA / assignment) selected and drafted | Cyrus + IP counsel | G-Q7, C4, outbound selection | Not evidenced publicly |  |
+| H-Outbound | **Outbound artifact matrix** — per-artifact license/boundary across specification, SDK, examples, prose docs, reference implementation, hosted control plane, marketplace | Cyrus + IP counsel | G-Q4, G-Q5, C2, C3 | Not evidenced publicly |  |
+| H-IP | IP / patent posture (ownership vehicle, assignments, FTO direction, filing vs. defensive publication vs. covenant) | Cyrus + IP/patent counsel | C1, G-Q1–3, G-Q6, G-Q8, G-Q9, E1–3, E5–6, E8 | Not evidenced publicly |  |
+| H-TM | Trademark strategy for **Andreja** (clearance, ownership vehicle, enforcement stance, compatibility-mark policy, fork policy, usage policy) | Cyrus + trademark counsel | G-Q10, C6, E7 | Not evidenced publicly |  |
+| H-Gov | **Collaborator / release governance** — maintainer roles, admission/removal, release authority (two-person rule or documented sole-owner interim), rulesets, key/credential control | Cyrus + counsel | C7, outbound + inbound selected | Not evidenced publicly |  |
 
 ### 7.2 Gate authorizations (separately scoped — [§12](license-evaluation.md#12-external-contribution-and-visibility-gates))
 
 | Gate | Authorization | Decider | Depends on | Status | Sign-off |
 |---|---|---|---|---|---|
-| A | Any new non-owner repository access, per named recipient and scope | Cyrus + qualified counsel | Every [Gate A](license-evaluation.md#gate-a-any-new-non-owner-repository-access) item satisfied | Not evidenced; Cyrus to confirm |  |
-| B | Any external contribution intake | Cyrus + qualified counsel | Every [Gate B](license-evaluation.md#gate-b-any-external-contribution) item satisfied; H-Inbound; C4 | Not evidenced; Cyrus to confirm |  |
-| C | Any public visibility, package, protocol, SDK, docs site, marketplace preview, domain, or stable namespace | Cyrus + qualified counsel | Every [Gate C](license-evaluation.md#gate-c-any-public-visibility-package-protocol-sdk-docs-or-site) item satisfied; C1, C6, H-TM | Not evidenced; Cyrus to confirm |  |
+| A | Any new non-owner repository access, per named recipient and scope | Cyrus + qualified counsel | Every [Gate A](license-evaluation.md#gate-a-any-new-non-owner-repository-access) item satisfied | Not evidenced publicly |  |
+| B | Any external contribution intake | Cyrus + qualified counsel | Every [Gate B](license-evaluation.md#gate-b-any-external-contribution) item satisfied; H-Inbound; C4 | Not evidenced publicly |  |
+| C | Any public visibility, package, protocol, SDK, docs site, marketplace preview, domain, or stable namespace | Cyrus + qualified counsel | Every [Gate C](license-evaluation.md#gate-c-any-public-visibility-package-protocol-sdk-docs-or-site) item satisfied; C1, C6, H-TM | Not evidenced publicly |  |
 
-Note re Gate C: observation O1 records that the current visibility state
-diverges from the merged evaluation's premise. This packet does not
-characterize the legal effect and does not direct a change.
+Notes re Gates A and C: observation O1 records that the current visibility
+state diverges from the historical evaluation's private-state premise. Gate A
+does not imply that public access is blocked or that earlier access did not
+occur. Future collaborator or permission changes, visibility changes, and
+publication decisions remain separately scoped. Neither checklist erases the
+already observed public state or determines its authorization; this packet
+does not characterize legal effect or direct a settings change.
 
 ## 8. Evidence gap register
 
@@ -191,26 +273,26 @@ or comment, or ephemeral chat).
 
 | # | Missing evidence | Owner | Source | Sanitized in-repo portion | Counsel-held portion | Exit evidence (closes the gap) | Blocks |
 |---|---|---|---|---|---|---|---|
-| E1 | Recipient / version ledger for every version, archive, patch, screenshot, attachment, clone, mirror, package, build artifact, or generated output | Cyrus, with counsel direction | GitHub access history, distribution records | Sanitized surface inventory (public artifacts, releases, tags, package registries touched) in `docs/legal/` | Identified recipient names, dates, materials, onward transfers | Ledger delivered to counsel matter file; sanitized surface inventory committed | G-Q3, Gate A |
+| E1 | Recipient / version ledger for every version, archive, patch, screenshot, attachment, clone, mirror, package, build artifact, or generated output | Cyrus, with counsel direction | GitHub access history, distribution records | Partial [surface inventory](repository-evidence-inventory.md), including documented historical Pages exposure and current GitHub observations; not a recipient or complete registry ledger | Identified recipient names, dates, materials, onward transfers | Ledger delivered to counsel matter file; sanitized surface inventory committed | G-Q3, Gate A |
 | E2 | Employment, consulting, contractor, and internship agreements + factual timeline for Cyrus and each material contributor | Cyrus + each material contributor | Personal / employer records | None | Full agreements + timeline | Employment/IP counsel confirms receipt & analysis | [§4](license-evaluation.md#4-employment-consulting-and-invention-obligations), C1, Gate A |
 | E3 | Invention-disclosure list for potentially patentable platform, federation, authorization, semantic/provenance, skill-isolation, marketplace mechanisms | Cyrus + each inventor | Confidential invention-disclosure process under patent counsel | Sanitized categorical topic list (no reduction to practice detail) may be committed under counsel direction | Full disclosures | Patent counsel confirms disclosure intake | [§8](license-evaluation.md#8-patent-posture), H-IP |
-| E4 | Third-party material inventory (open-source, standards-derived, commissioned, adapted, generated) with license/source information | Cyrus, using dependency, snippet, notice, license scans | `Directory.Packages.props`, `Dockerfile`, `compose.yaml`, `supply-chain-policy.json`, `.github/dependabot.yml`, source tree | **Sanitized dependency & third-party inventory committed to `docs/legal/`** | Any commercial-terms or vendor-confidential notes | Inventory committed in-repo; counsel review recorded | [§§5–6](license-evaluation.md#5-outbound-strategy-options), Gate C |
-| E5 | Authorship & AI-assistance provenance record (human selection, arrangement, revision, testing; model/tool terms; third-party source concerns) | Cyrus, preserved privately | Repo history + private records | Sanitized per-artifact source list (paths, artifact classes, commit references; AI involvement **unknown** unless supported by evidence) | Model/tool terms, prompts, contributor attestations and sensitive source details | Source list reviewed; full provenance held with counsel; Git identity alone is not ownership evidence | [§3.2](license-evaluation.md#32-authorship-and-chain-of-title-work-plan), Gate C |
+| E4 | Third-party material inventory (open-source, standards-derived, commissioned, adapted, generated) with license/source information | Cyrus, using dependency, snippet, notice, license scans | `Directory.Packages.props`, `Dockerfile`, `compose.yaml`, `supply-chain-policy.json`, `.github/dependabot.yml`, source tree | Partial [dependency baseline](repository-evidence-inventory.md): declarations, public metadata, graph limits, and CodeCoverage license-file/build-role evidence; not a complete third-party or distribution inventory | Any commercial-terms or vendor-confidential notes | Inventory committed in-repo; counsel review recorded | [§§5–6](license-evaluation.md#5-outbound-strategy-options), Gate C |
+| E5 | Authorship & AI-assistance provenance record (human selection, arrangement, revision, testing; model/tool terms; third-party source concerns) | Cyrus, preserved privately | Repo history + private records | [Source-path and identity-free revision-history index](repository-evidence-inventory.md) at a bounded snapshot; AI involvement and actual authorship remain unknown | Model/tool terms, prompts, contributor attestations and sensitive source details | Source list reviewed; full provenance held with counsel; Git identity alone is not ownership evidence | [§3.2](license-evaluation.md#32-authorship-and-chain-of-title-work-plan), Gate C |
 | E6 | Entity & tax facts: formation jurisdiction, ownership, transfer intent, cross-border implications | Cyrus + entity/tax counsel | Personal / entity records | None | Full records | Entity/tax counsel confirms scope | C1, C6, H-IP |
 | E7 | Trademark clearance record for **Andreja** and any compatibility mark (federal, state, common-law, company-name, domain, app-store, package, container, social, relevant international) | Trademark counsel | Search vendors, USPTO/foreign registries | None | Clearance opinion | Written clearance opinion delivered | [§9.1](license-evaluation.md#91-clearance-sequence), C6, Gate C |
 | E8 | Patent freedom-to-operate direction sufficient to sequence disclosure | Patent counsel | Search vendors, patent registries | None | FTO direction | Written FTO direction delivered | [§8](license-evaluation.md#8-patent-posture), Gate C |
-| E9 | **Public-exposure and contribution-surface inventory** — public artifacts, Git history, Actions logs/artifacts, issues/PRs/comments, funding surfaces, sites, registries, and contribution controls given O1/O6/O7 | Cyrus | Repo tree, GitHub settings/history, service-owner records | Sanitized surface inventory extending O1–O8; no sensitive contents | Recipient identities, access/visibility-change records, invitations, removed access, confidential settings or contact routing | Inventory and available history reconciled with E1; unavailable history explicitly recorded; counsel review referenced | O1, O6, O7, Gate A, Gate C |
+| E9 | **Public-exposure and contribution-surface inventory** — public artifacts, Git history, Actions logs/artifacts, issues/PRs/comments, funding surfaces, sites, registries, and contribution controls given O1/O6/O7 | Cyrus | Repo tree, GitHub settings/history, service-owner records | Partial [surface inventory](repository-evidence-inventory.md) extending O1–O8; no sensitive contents | Recipient identities, access/visibility-change records, invitations, removed access, confidential settings or contact routing | Inventory and available history reconciled with E1; unavailable history explicitly recorded; counsel review referenced | O1, O6, O7, Gate A, Gate C |
 | E10 | Recipient declarations (identity, authority, dates, versions, purpose, copies, onward transfers, deletion status, separate terms) | Each recipient, requested only through counsel-approved communication | Counsel-directed outreach | None | Declarations | Counsel confirms declarations on file | E1, Gate A |
 
 ## 9. Cyrus's next actions
 
 | # | Action | Why it does not require missing facts |
 |---|---|---|
-| R0 | Confirm O1's visibility history and any existing approval/engagement references; preserve evidence and route the current-state supplement to counsel | Starts reconciliation without assuming why the repository is public or changing settings |
-| R1 | Approve counsel budget & timeline (C7) | Business decision within Cyrus's authority |
-| R2 | Identify qualified IP/transactional, employment/invention, patent, trademark, and entity/tax counsel; confirm conflicts, engagement scope, and confidential intake channel before sending sensitive facts | Counsel selection/intake does not predetermine ownership or license choices |
-| R3 | Record ecosystem-outcome ranking (C5) and residual-risk tolerance (C8) | Strategic priors Cyrus can articulate today |
-| R4 | Collect the repository-derived portions of E4, E5, E9; confirm gaps privately and disclose only sanitized references appropriate for this public repository | Repository observations can start now; ownership, AI-authorship, and historical completeness must not be inferred |
+| R0 | Where not already resolved within the private outcome's actual scope and conditions, reconcile visibility history and outstanding substantive decisions with counsel through the existing confidential process; preserve evidence | Does not repeat the completed reference verification or assume why the repository is public |
+| R1 | Decide any additional counsel budget & timeline needed (C7) | Business decision within Cyrus's authority; existing private decisions are not presumed absent |
+| R2 | Where additional specialists or intake are needed, privately determine appropriate IP/transactional, employment/invention, patent, trademark, and entity/tax coverage and confirm conflicts and intake | Does not repeat the completed reference verification or predetermine ownership or license choices |
+| R3 | Where still needed, decide ecosystem-outcome ranking (C5) and residual-risk tolerance (C8) through the appropriate process | Strategic choices without assuming previous private decisions are absent |
+| R4 | Continue reviewing the partial repository-derived E1/E4/E5/E9 [inventory](repository-evidence-inventory.md); handle remaining facts privately | Repository observations do not establish ownership, AI-authorship, historical completeness, or distribution |
 
 No step in this packet changes `LICENSE`, visibility, access, contribution
 settings, namespaces, or release authority. The evaluation's controlled
@@ -221,6 +303,7 @@ treating the historical private recommendation as today's repository state.
 ## 10. Cross-references
 
 - [`docs/legal/license-evaluation.md`](license-evaluation.md) — merged historical research artifact (2026-08-23; PR [#18](https://github.com/Jamula/Andreja/pull/18)).
+- [`docs/legal/repository-evidence-inventory.md`](repository-evidence-inventory.md) — dated, partial source, dependency, and exposure observations; not provenance or approval.
 - [`docs/legal/regulatory-applicability.md`](regulatory-applicability.md) — separate regulatory horizon scan; not a substitute for licensing/IP analysis.
 - ADR [0000 plan-ratification](../adr/0000-plan-ratification.md); ADR [0006 charter-ratification](../adr/0006-charter-ratification.md) (Proposed); ADR [0008 public-website-artifact-boundary](../adr/0008-public-website-artifact-boundary.md).
 - GitHub issue [#6](https://github.com/Jamula/Andreja/issues/6) — investigate licensing, IP, trademark, and contribution strategy; issue [#8](https://github.com/Jamula/Andreja/issues/8) — regulatory applicability.
