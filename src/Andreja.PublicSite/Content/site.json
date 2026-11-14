@@ -6,8 +6,8 @@
       "slug": "index",
       "title": "Vision and boundaries",
       "owner": "Jadzia Dax",
-      "reviewed": "2026-10-15",
-      "expires": "2026-11-14",
+      "reviewed": "2026-11-14",
+      "expires": "2026-12-14",
       "evidence": ["docs/plan.md", "docs/public-website/claims-inventory.md"],
       "claims": [],
       "sections": [
@@ -32,8 +32,8 @@
       "slug": "availability",
       "title": "Self-host or managed?",
       "owner": "Jadzia Dax",
-      "reviewed": "2026-10-15",
-      "expires": "2026-11-14",
+      "reviewed": "2026-11-14",
+      "expires": "2026-12-14",
       "evidence": ["docs/plan.md", "docs/operations/self-hosting.md"],
       "claims": [],
       "sections": [
@@ -58,8 +58,8 @@
       "slug": "getting-started",
       "title": "Start a local evaluation",
       "owner": "Jadzia Dax",
-      "reviewed": "2026-10-15",
-      "expires": "2026-11-14",
+      "reviewed": "2026-11-14",
+      "expires": "2026-12-14",
       "evidence": ["docs/operations/self-hosting.md", "docs/help/local-identity.md", "docs/help/open-loops.md"],
       "claims": [],
       "sections": [
@@ -84,8 +84,8 @@
       "slug": "identity",
       "title": "Passkeys and recovery",
       "owner": "Jadzia Dax",
-      "reviewed": "2026-10-15",
-      "expires": "2026-11-14",
+      "reviewed": "2026-11-14",
+      "expires": "2026-12-14",
       "evidence": ["docs/help/local-identity.md", "src/Andreja.AppHost/Components/Pages/Login.razor", "docs/operations/identity-recovery.md"],
       "claims": [],
       "sections": [
@@ -110,8 +110,8 @@
       "slug": "data",
       "title": "Backup, export and deletion",
       "owner": "Jadzia Dax",
-      "reviewed": "2026-10-15",
-      "expires": "2026-11-14",
+      "reviewed": "2026-11-14",
+      "expires": "2026-12-14",
       "evidence": ["docs/help/open-loops.md", "docs/help/local-identity.md", "docs/operations/self-hosting.md"],
       "claims": [],
       "sections": [
@@ -126,7 +126,7 @@
           "heading": "Inspect consequential changes",
           "paragraphs": [
             "Mark complete changes task state. Delete first asks for Yes, delete; Cancel on that prompt leaves the task unchanged. Export before deletion when you need a copy. This guide does not promise an undo after a committed deletion.",
-            "If a confirmation response is lost or cancelled in transit, its outcome can be unknown even though the server committed it. Keep the same proposal and retry that same confirmation; the application retains its idempotency key. Do not prepare a fresh proposal merely to retry an unknown result."
+            "If a confirmation response is lost or cancelled in transit, its outcome can be unknown even though the server committed it. If the proposal is still visible, retry that same confirmation; the application retains its idempotency key. If it is no longer visible, inspect current tasks before preparing anything new."
           ]
         }
       ],
@@ -136,8 +136,8 @@
       "slug": "assistants",
       "title": "Assistants, skills and consent",
       "owner": "Jadzia Dax",
-      "reviewed": "2026-10-15",
-      "expires": "2026-11-14",
+      "reviewed": "2026-11-14",
+      "expires": "2026-12-14",
       "evidence": ["docs/help/open-loops.md", "src/Andreja.AppHost/Components/Pages/Home.razor"],
       "claims": [],
       "sections": [
@@ -145,7 +145,7 @@
           "heading": "Review before saving",
           "paragraphs": [
             "Ask the assistant takes one task request and prepares a proposal. Inspect the operation, source, expiry, before/after JSON, purpose, capability and confirmation policy. Preparing alone does not save a task. Not now dismisses an unconfirmed proposal without saving it; expired proposals need a fresh review.",
-            "Confirm and save task is explicit consent for that exact proposal, not a blanket grant. For an ambiguous network or cancellation failure during confirmation, the page states that the result is unknown. Retry the still-visible same confirmation safely. An already applied receipt does not create a duplicate task."
+            "Confirm and save task is explicit consent for that exact proposal, not a blanket grant. For an ambiguous network or cancellation failure during confirmation, the page states that the result is unknown. If the proposal is still visible, retry that same confirmation safely; an already applied receipt does not create a duplicate task. If it is no longer visible, inspect current tasks before preparing anything new."
           ]
         },
         {
@@ -162,8 +162,8 @@
       "slug": "connectors-sharing",
       "title": "Connectors and sharing limits",
       "owner": "Jadzia Dax",
-      "reviewed": "2026-10-15",
-      "expires": "2026-11-14",
+      "reviewed": "2026-11-14",
+      "expires": "2026-12-14",
       "evidence": ["docs/plan.md", "docs/help/open-loops.md"],
       "claims": [],
       "sections": [
@@ -188,8 +188,8 @@
       "slug": "troubleshooting",
       "title": "Troubleshoot without oversharing",
       "owner": "Jadzia Dax",
-      "reviewed": "2026-10-15",
-      "expires": "2026-11-14",
+      "reviewed": "2026-11-14",
+      "expires": "2026-12-14",
       "evidence": ["docs/help/open-loops.md", "docs/help/local-identity.md"],
       "claims": [],
       "sections": [
@@ -204,7 +204,7 @@
           "heading": "Distinguish dismissal from uncertain delivery",
           "paragraphs": [
             "Not now before confirmation dismisses the proposal without saving a task. Cancel on the delete prompt cancels that local prompt. Neither statement guarantees rollback of a request already sent.",
-            "When the confirmation result is unknown, retry the same retained proposal; its idempotency key is reused. If you navigated away and lost that proposal, inspect current tasks before preparing anything new. For a conflict, refresh and review current state. Never assume a timeout or disconnected browser means nothing changed.",
+            "When the confirmation result is unknown and the proposal is still visible, retry that same confirmation; its idempotency key is reused. If the proposal is no longer visible, inspect current tasks before preparing anything new. For a conflict, refresh and review current state. Never assume a timeout or disconnected browser means nothing changed.",
             "Provider preparation failures do not confirm a proposal. Do not generalize that behavior to confirmation, completion or deletion after a request may have reached the server."
           ]
         }
@@ -215,8 +215,8 @@
       "slug": "security-privacy",
       "title": "Security and privacy boundaries",
       "owner": "Jadzia Dax",
-      "reviewed": "2026-10-15",
-      "expires": "2026-11-14",
+      "reviewed": "2026-11-14",
+      "expires": "2026-12-14",
       "evidence": ["docs/privacy.md", "docs/threat-model.md", "docs/public-website/claims-inventory.md"],
       "claims": [],
       "sections": [
@@ -269,8 +269,8 @@
       "slug": "status",
       "title": "Status and support routes",
       "owner": "Jadzia Dax",
-      "reviewed": "2026-10-15",
-      "expires": "2026-11-14",
+      "reviewed": "2026-11-14",
+      "expires": "2026-12-14",
       "evidence": ["docs/public-website/README.md", "docs/help/open-loops.md"],
       "claims": [],
       "sections": [
@@ -295,8 +295,8 @@
       "slug": "developer-local-v1",
       "title": "Developer guide · local-v1",
       "owner": "Jadzia Dax",
-      "reviewed": "2026-10-15",
-      "expires": "2026-11-14",
+      "reviewed": "2026-11-14",
+      "expires": "2026-12-14",
       "evidence": ["docs/plan.md", "docs/adr/0008-public-website-artifact-boundary.md", "docs/help/open-loops.md"],
       "claims": [],
       "sections": [

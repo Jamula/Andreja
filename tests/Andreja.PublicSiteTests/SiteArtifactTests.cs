@@ -7,7 +7,7 @@ namespace Andreja.PublicSiteTests;
 [TestClass]
 public sealed class SiteArtifactTests
 {
-    private static readonly DateOnly ReviewDate = new(2026, 11, 8);
+    private static readonly DateOnly ReviewDate = new(2026, 11, 14);
     private string root = "";
     private string scratch = "";
     private string source = "";
@@ -32,6 +32,15 @@ public sealed class SiteArtifactTests
         {
             File.Copy(file, Path.Join(source, Path.GetFileName(file)));
         }
+
+        MutateContent(json =>
+        {
+            foreach (var page in json["pages"]!.AsArray())
+            {
+                page!["reviewed"] = "2026-11-14";
+                page["expires"] = "2026-12-14";
+            }
+        });
     }
 
     [TestCleanup]
@@ -51,7 +60,7 @@ public sealed class SiteArtifactTests
         var html = File.ReadAllText(Path.Join(output, "identity.html"));
         StringAssert.Contains(html, "Sign in with a passkey");
         StringAssert.Contains(html, "local-v1");
-        StringAssert.Contains(html, "Revalidate before: 2026-11-14");
+        StringAssert.Contains(html, "Revalidate before: 2026-12-14");
         StringAssert.Contains(html, "aria-live=\"polite\"");
         StringAssert.Contains(html, "noindex, nofollow, noarchive");
         var search = File.ReadAllText(Path.Join(output, "search-index.js"));
@@ -91,9 +100,9 @@ public sealed class SiteArtifactTests
 
     [TestMethod]
     [DataRow("owner", "")]
-    [DataRow("expires", "2026-10-15")]
+    [DataRow("expires", "2026-11-14")]
     [DataRow("expires", "2027-10-15")]
-    [DataRow("reviewed", "2026-11-09")]
+    [DataRow("reviewed", "2026-11-15")]
     [DataRow("slug", "../Account/Login")]
     public void RejectsInvalidActualPageMetadata(string field, string value)
     {
@@ -107,7 +116,7 @@ public sealed class SiteArtifactTests
     {
         MutateContent(json => json["publishApproved"] = true);
         Assert.ThrowsExactly<JsonException>(Build);
-        File.Copy(Path.Join(root, "src", "Andreja.PublicSite", "Content", "site.json"), Path.Join(source, "site.json"), true);
+        MutateContent(json => json.AsObject().Remove("publishApproved"));
         MutateContent(json => json["version"] = "production-v1");
         StringAssert.Contains(Assert.ThrowsExactly<InvalidDataException>(Build).Message, "version/locale");
         MutateContent(json =>
@@ -165,7 +174,7 @@ public sealed class SiteArtifactTests
         File.WriteAllText(Path.Join(output, "account.html"), "unexpected");
         StringAssert.Contains(Assert.ThrowsExactly<InvalidDataException>(() => SiteArtifact.Verify(output, ReviewDate)).Message, "inventory");
         File.Delete(Path.Join(output, "account.html"));
-        StringAssert.Contains(Assert.ThrowsExactly<InvalidDataException>(() => SiteArtifact.Verify(output, new DateOnly(2026, 11, 14))).Message, "expired");
+        StringAssert.Contains(Assert.ThrowsExactly<InvalidDataException>(() => SiteArtifact.Verify(output, new DateOnly(2026, 12, 14))).Message, "expired");
 
         var indexPath = Path.Join(output, "search-index.js");
         File.WriteAllText(indexPath, "window.siteIndex = [];\n");
