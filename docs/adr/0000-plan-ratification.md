@@ -764,7 +764,7 @@ not match the merged `docs/plan.md`.
 ### 2026-11-08 — proposed issue #6 source-status reconciliation
 
 - **Tracking issue:** [#6](https://github.com/Jamula/Andreja/issues/6)
-- **Pull request:** Not yet created
+- **Pull request:** [#289](https://github.com/Jamula/Andreja/pull/289)
 - **Plan SHA-256:** `46aa969a0e227b803e82b59a7b2394f7d3d785f3aa6c235a671136367fee052b`
 - **Approver:** Cyrus Jamula; **pending**
 - **Classification:** Proposed factual/source-status correction and
