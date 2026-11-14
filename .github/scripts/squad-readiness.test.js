@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const test = require('node:test');
 const { checkReadiness } = require('./squad-readiness.js');
+const { parseRoster } = require('../../.squad/templates/ralph-triage.js');
 
 const team = role => `## Members
 | Name | Role |
@@ -86,8 +87,9 @@ for (const name of ['squad-triage', 'squad-heartbeat']) {
       const core = { info: () => {}, warning: message => { throw new Error(message); },
         setFailed: message => { throw new Error(message); } };
       await workflowScript(name)(module => {
-        assert.equal(module, 'fs');
-        return mockFs;
+        if (module === 'fs') return mockFs;
+        assert.ok(module.endsWith('/.squad/templates/ralph-triage.js'));
+        return { parseRoster };
       }, context, github, core);
       assert.equal(comments.length, 1);
       assert.match(comments[0], /routing hint, not a GitHub assignee or a running session/);
@@ -102,3 +104,38 @@ for (const name of ['squad-triage', 'squad-heartbeat']) {
     });
   }
 }
+
+test('triage routes a roster with reordered columns', async () => {
+  const roster = `## Members
+| Name | Charter | Role |
+|---|---|---|
+| Seven | .squad/agents/seven/charter.md | Platform Lead |
+`;
+  assert.doesNotThrow(() => checkReadiness(roster));
+  const labels = [];
+  const mockFs = {
+    existsSync: () => true,
+    readFileSync: path => path === '.squad/team.md' ? roster : '',
+  };
+  const context = { repo: { owner: 'owner', repo: 'repo' }, payload: {
+    issue: { number: 12, title: 'unmatched', body: '', labels: [] },
+    repository: { default_branch: 'main' },
+  } };
+  const github = { rest: { issues: {
+    addLabels: async ({ labels: added }) => labels.push(...added),
+    createComment: async () => {},
+  } } };
+  await workflowScript('squad-triage')(module => module === 'fs' ? mockFs : { parseRoster },
+    context, github, { info: () => {}, warning: () => {} });
+  assert.deepEqual(labels, ['squad:seven', 'go:needs-research']);
+});
+
+test('triage fails instead of silently succeeding without a fallback', async () => {
+  const mockFs = { existsSync: () => true, readFileSync: () => team('Backend') };
+  const context = { payload: { issue: { number: 12, title: 'unmatched', body: '', labels: [] } } };
+  await assert.rejects(
+    workflowScript('squad-triage')(module => module === 'fs' ? mockFs : { parseRoster },
+      context, {}, { info: () => {}, warning: () => {} }),
+    /No Lead or Architect role found/
+  );
+});

@@ -24,16 +24,15 @@ jobs:
         with:
           script: |
             const fs = require('fs');
+            const { parseRoster } = require(`${process.cwd()}/.squad/templates/ralph-triage.js`);
             const issue = context.payload.issue;
 
             const teamFile = '.squad/team.md';
             if (!fs.existsSync(teamFile)) {
-              core.warning('No .squad/team.md found — cannot triage');
-              return;
+              throw new Error('No .squad/team.md found — cannot triage');
             }
 
             const content = fs.readFileSync(teamFile, 'utf8');
-            const lines = content.split('\n');
             if (issue.labels.some(label => /^squad:.+/.test(label.name))) {
               core.info(`Issue #${issue.number} already has a squad member label — skipping conflicting triage.`);
               return;
@@ -71,26 +70,7 @@ jobs:
               }
             }
 
-            const members = [];
-            let inMembersTable = false;
-            for (const line of lines) {
-              if (line.match(/^##\s+(Members|Team Roster)/i)) {
-                inMembersTable = true;
-                continue;
-              }
-              if (inMembersTable && line.startsWith('## ')) {
-                break;
-              }
-              if (inMembersTable && line.startsWith('|') && !line.includes('---') && !line.includes('Name')) {
-                const cells = line.split('|').map(c => c.trim()).filter(Boolean);
-                if (cells.length >= 2 && cells[0] !== 'Scribe') {
-                  members.push({
-                    name: cells[0],
-                    role: cells[1]
-                  });
-                }
-              }
-            }
+            const members = parseRoster(content);
 
             const routingFile = '.squad/routing.md';
             let routingContent = '';
@@ -223,8 +203,7 @@ jobs:
 
             const lead = findLead(members);
             if (!lead) {
-              core.warning('No Lead role found in team roster — cannot triage');
-              return;
+              throw new Error('No Lead or Architect role found in team roster — cannot triage');
             }
 
             // Build triage context
