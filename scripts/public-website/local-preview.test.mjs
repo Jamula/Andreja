@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { request } from "node:http";
 import path from "node:path";
 import { test } from "node:test";
@@ -9,16 +9,32 @@ import { startLocalSite } from "./local-preview.mjs";
 test("loopback adapter fails closed and stays responsive after rejected requests", async t => {
   const directory = path.resolve("artifacts", `site-adapter-${process.pid}`);
   const root = path.join(directory, "site");
+  const content = path.join(directory, "content");
   let server;
   await mkdir(directory, { recursive: true });
   try {
+    // Synthetic dates keep this adapter fixture valid without refreshing the reviewed source content.
+    await cp(path.join("src", "Andreja.PublicSite", "Content"), content, { recursive: true });
+    const sourcePath = path.join(content, "site.json");
+    const fixture = JSON.parse(await readFile(sourcePath, "utf8"));
+    const today = new Date();
+    const day = offset => {
+      const date = new Date(today);
+      date.setUTCDate(date.getUTCDate() + offset);
+      return date.toISOString().slice(0, 10);
+    };
+    for (const page of fixture.pages) {
+      page.reviewed = day(-1);
+      page.expires = day(30);
+    }
+    await writeFile(sourcePath, JSON.stringify(fixture));
     const build = spawnSync("dotnet", [
       "run", "--project", path.join("src", "Andreja.PublicSite"), "--configuration", "Release", "--no-build",
-      "--", "build", path.join("src", "Andreja.PublicSite", "Content"),
-      path.join("src", "Andreja.PublicSite", "Content", "local.config.json"), root,
+      "--", "build", content, path.join(content, "local.config.json"), root,
     ], { encoding: "utf8", windowsHide: true });
     assert.equal(build.status, 0, `Fixture build failed: ${build.stderr || build.error}`);
     const metadata = JSON.parse(await readFile(path.join(root, "site-metadata.json"), "utf8"));
+    assert.deepEqual(metadata, fixture, "Built metadata must match the synthetic fixture");
     const earliestExpiry = metadata.pages.map(page => page.expires).sort()[0];
     const clock = { value: new Date(`${earliestExpiry}T00:00:00.000Z`) };
     clock.value.setUTCDate(clock.value.getUTCDate() - 1);
@@ -53,6 +69,22 @@ test("loopback adapter fails closed and stays responsive after rejected requests
       assert.equal(healthy.status, 200, "Server must remain responsive after rejection");
       assert.deepEqual(healthy.bytes, original, "Healthy request must serve verified content");
     };
+
+    await t.test("startup still rejects expired artifacts with an injected request clock", async () => {
+      for (const page of fixture.pages) {
+        page.reviewed = "2000-01-01";
+        page.expires = "2000-01-02";
+      }
+      await writeFile(sourcePath, JSON.stringify(fixture));
+      const staleRoot = path.join(directory, "stale-site");
+      const staleBuild = spawnSync("dotnet", [
+        "run", "--project", path.join("src", "Andreja.PublicSite"), "--configuration", "Release", "--no-build",
+        "--", "build", content, path.join(content, "local.config.json"), staleRoot, "2000-01-01",
+      ], { encoding: "utf8", windowsHide: true });
+      assert.equal(staleBuild.status, 0, `Stale fixture build failed: ${staleBuild.stderr || staleBuild.error}`);
+      await assert.rejects(startLocalSite(staleRoot, () => new Date("2000-01-01T00:00:00Z")),
+        /Artifact verification failed:.*expired/);
+    });
 
     await t.test("malformed targets return 400 without terminating the server", async () => {
       for (const target of ["http://[", "//[", "/%ZZ", "/%E0%A4%A"]) {

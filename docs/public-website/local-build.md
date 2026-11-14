@@ -158,7 +158,10 @@ cookies/storage, no cross-origin requests, and actual HTTP headers. It cleans
 up its own browser/profile/server. These are local automated checks, **not**
 manual screen-reader review, cross-browser coverage or WCAG 2.2 AA conformance.
 The Node built-in adapter tests build their own real artifact under ignored
-`artifacts` and clean it up. Raw HTTP requests cover malformed targets and server
+`artifacts` and clean it up. A copied test fixture receives synthetic dates around
+the current UTC date; this does not renew or approve the source content. Startup
+verification still rejects an expired artifact even with an injected request clock.
+Raw HTTP requests cover malformed targets and server
 liveness, wrong Host, POST, traversal/unlisted paths, hash mismatch, missing
 files, expiry at the earliest page date, a non-directory artifact root and an
 unexpected directory-read error.
