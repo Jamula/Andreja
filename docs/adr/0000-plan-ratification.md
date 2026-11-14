@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `e2044133f47deba7dcbbd4d931f2ec0e9a866432726d982182617716f7abfad2`
-- **Current proposed Plan SHA-256:** `f52b5666838a5d0dc9eae7714471f30603fc5c2a2e2e4fb5cde2f067fea42072`
+- **Current proposed Plan SHA-256:** `46aa969a0e227b803e82b59a7b2394f7d3d785f3aa6c235a671136367fee052b`
 - **Accepted plan content:** [PR #202](https://github.com/Jamula/Andreja/pull/202)
   at merge commit
   [`861bff7c6d74be5a497e7a0f706a3a92bdae9ddc`](https://github.com/Jamula/Andreja/commit/861bff7c6d74be5a497e7a0f706a3a92bdae9ddc)
@@ -760,3 +760,24 @@ not match the merged `docs/plan.md`.
   the independently pending owner-device proposal, and all outstanding
   security, privacy, legal, spending, and launch decisions. This record does
   not treat the requested repository cleanup as approval of those decisions.
+
+### 2026-11-08 — proposed issue #6 source-status reconciliation
+
+- **Tracking issue:** [#6](https://github.com/Jamula/Andreja/issues/6)
+- **Pull request:** Not yet created
+- **Plan SHA-256:** `46aa969a0e227b803e82b59a7b2394f7d3d785f3aa6c235a671136367fee052b`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed factual/source-status correction and
+  artifact-hash refresh; acceptance and any required re-ratification remain
+  pending.
+- **Decision:** Proposed only; no new Cyrus or qualified-counsel substantive
+  approval is recorded here. No legal, contribution, visibility, release, or
+  launch gate is closed or authorization granted.
+- **Scope:** Record the dated public-repository observation, identify the
+  earlier private-state recommendation and investigation as historical, add
+  dated source-status pointers to the legal evaluation and regulatory scan,
+  and refresh their plan-table hashes. Preserve the accepted plan hash,
+  previous amendment history, and all independently pending proposals.
+  The private-reference verification remains procedural; its outcome was
+  not inspected and does not publicly establish approval of any category or
+  gate.
