@@ -1,8 +1,9 @@
 # ADR 0008: Public website static artifact and deployment boundary
 
-- **Status:** Proposed
+- **Status:** Accepted — artifact boundary only
 - **Date:** 2026-08-24
-- **Amended:** 2026-08-25
+- **Decision date:** 2026-11-08
+- **Amended:** 2026-11-08
 - **Issue:** [#94](https://github.com/Jamula/Andreja/issues/94)
 - **Governing:** [Platform plan](../plan.md#public-website-help-and-support),
   [company charter](../charter.md#commitments), and
@@ -53,7 +54,16 @@ Containment of the active Pages origin does not claim their deletion.
 
 ## Decision
 
-If accepted, the public/help site will:
+On 2026-11-08, Cyrus accepted only the product-data-free, auth-independent,
+pre-generated static artifact boundary and browser-local search described below.
+This resolves the artifact-boundary question, not the implementation or
+publication gates. In particular, it does not select or approve a production
+generator, source-repository change, vendor, domain, hosting, budget, public
+claims, feedback intake, private preview, security contact, deployment, or
+launch. The existing .NET project remains an unpublished local evaluation
+implementation; it is not thereby approved as a production generator.
+
+The public/help site will:
 
 1. Build as a vendor-neutral, pre-generated static artifact containing ordinary
    HTML, CSS, JavaScript, public assets, and a public-content-only search index.
@@ -218,8 +228,10 @@ Do not build, preview, or publish when any of these is true:
   introduced without their own approval; or
 - Phase 0 would provision or spend on remote infrastructure.
 
-## Human decision
+## Remaining human decisions
 
-Cyrus must accept, reject, or amend this proposal. Acceptance does not select a
-vendor, authorize spend/provisioning/publication, clear public wording, or
-activate any deferred integration.
+The narrow artifact-boundary decision above does not accept a vendor,
+authorize spend/provisioning/publication, clear public wording, or activate any
+deferred integration. Those decisions and their evidence remain separate gates
+tracked by this ADR, issue #93, and the applicable legal, operational, privacy,
+security, accessibility, and release records.

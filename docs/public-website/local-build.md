@@ -1,10 +1,12 @@
 # Unpublished local field guide (issue #93)
 
 This implementation is a private local evaluation slice, **not public-site
-activation** or acceptance of Proposed ADR 0008. It creates ordinary HTML, CSS,
-JavaScript, metadata and integrity records independently of AppHost, identity,
-PostgreSQL and every product-data plane. No cloud resources or paid tools are
-used. Issue #93 remains open for the broader acceptance gates.
+activation** or production-generator approval. ADR 0008 accepts only the
+product-data-free static artifact boundary; the current .NET generator is not
+selected for production. It creates ordinary HTML, CSS, JavaScript, metadata
+and integrity records independently of AppHost, identity, PostgreSQL and every
+product-data plane. No cloud resources or paid tools are used. Issue #93 remains
+open for the broader acceptance gates.
 
 ## Build, verify and review
 
@@ -163,6 +165,9 @@ unexpected directory-read error.
 The latter checks an empty 500 response and the exact safe diagnostic. Expiry
 tests inject a clock and verify serving stops at the earliest page expiry boundary.
 Run the adapter and browser validators sequentially: both use the reviewed port.
+Hosted CI runs the adapter tests in a dedicated job after building the generator
+with the pinned .NET SDK; it installs no Node packages and does not publish or
+deploy the generated site.
 
 ### Local execution evidence — 2026-10-15
 
@@ -220,6 +225,39 @@ empty `410 Gone`.
 
 Hosted CodeQL/DevSkim review for these corrections has not yet run. Manual
 screen-reader/WCAG conformance remains unverified.
+
+### Local execution evidence — 2026-11-08
+
+Windows, .NET SDK 10.0.402 and local Edge; no AppHost, database, cloud service,
+or public endpoint was started. Commands run from the repository root:
+
+| Exact command | Result |
+|---|---|
+| `dotnet build src\Andreja.PublicSite\Andreja.PublicSite.csproj --configuration Release` | Passed; zero warnings/errors |
+| `dotnet test --project tests\Andreja.PublicSiteTests\Andreja.PublicSiteTests.csproj --configuration Release` | Passed; 28/28 |
+| `node --test scripts\public-website\local-preview.test.mjs` | Passed; 9/9, including malformed-target liveness and UTC expiry boundary |
+| `dotnet run --project src\Andreja.PublicSite --configuration Release --no-build -- build src\Andreja.PublicSite\Content src\Andreja.PublicSite\Content\local.config.json artifacts\issue-93-validation-site 2026-11-08` | Passed; 12 pages emitted, integrity verification passed |
+| `dotnet run --project src\Andreja.PublicSite --configuration Release --no-build -- verify artifacts\issue-93-validation-site` | Passed; local-only boundary retained |
+| `node scripts\public-website\validate-local-site.mjs artifacts\issue-93-validation-site` | Passed; 12 pages at 320/768/1280 px, keyboard/search checks, strict headers, no app routes, network requests, cookies or persistence |
+
+This does not establish screen-reader review, WCAG 2.2 AA conformance,
+cross-browser coverage, external SBOM/provenance, production preview or
+deployment evidence. The checked-in content passed automated freshness and
+metadata validation, but its expiry remains **2026-11-14**; the expiry was not
+extended.
+
+### Live gate state — 2026-11-08
+
+Live GitHub states were rechecked for this work: #3 is closed; #6 is open;
+#155, #156 and #157 are closed; #158 is open. The closure comments for #155–#157
+record administrative/specification-only dispositions while required
+counsel/review/runtime/vendor/cost evidence remains unresolved. Their closed
+states are not operational approvals or activation authority. The latest #158
+comment is stale about the predecessor issue states, but still records no
+Evidence Authorization, hosting/spend, public collection or launch authority.
+Keep #158 and #6 as separate unresolved gates; none of these states approves
+public wording, a production generator/provider, domain, preview, publication,
+deployment, security contact or launch.
 
 ### CI registration correction — 2026-10-15
 
