@@ -14,7 +14,7 @@ From the repository root with the pinned .NET 10 SDK:
 
 ```powershell
 dotnet build src\Andreja.PublicSite\Andreja.PublicSite.csproj --configuration Release
-dotnet run --project src\Andreja.PublicSite --configuration Release --no-build -- build src\Andreja.PublicSite\Content src\Andreja.PublicSite\Content\local.config.json artifacts\public-site 2026-10-15
+dotnet run --project src\Andreja.PublicSite --configuration Release --no-build -- build src\Andreja.PublicSite\Content src\Andreja.PublicSite\Content\local.config.json artifacts\public-site
 dotnet run --project src\Andreja.PublicSite --configuration Release --no-build -- verify artifacts\public-site
 node scripts\public-website\local-preview.mjs artifacts\public-site
 ```
@@ -27,6 +27,8 @@ evidence: `verify` rejects expired content at startup, and the preview rechecks 
 earliest chapter expiry on every request against the current UTC date. It returns
 HTTP 410 with no content once that day begins, even if the server was already
 running. Expired artifacts cannot be previewed without re-reviewing the content.
+An historical date also requires source content reviewed no later than that date;
+use the corresponding historical checkout when reproducing an older artifact.
 
 Use a **new or empty dedicated output directory** for each build. The generator
 never deletes or overwrites existing output. Do not serve the repository root,
@@ -148,7 +150,9 @@ node scripts\public-website\validate-local-site.mjs artifacts\public-site
 
 The isolated MSTest/MTP project references only the generator. Its mutations use
 copies of the real content/config and generated artifacts under ignored
-`artifacts`, never operating on secret files. Tests cover reproducibility,
+`artifacts`, never operating on secret files. The generator test fixture uses
+synthetic dates in its copied content; current source freshness is checked by
+building and verifying the actual artifact. Tests cover reproducibility,
 content/search/version/link/header/inventory integrity, staleness, unsafe config,
 public modes, source evidence, encoding, boundary violations and rehashed
 artifact mutations. The browser validator uses the existing local Edge/CDP
@@ -158,7 +162,10 @@ cookies/storage, no cross-origin requests, and actual HTTP headers. It cleans
 up its own browser/profile/server. These are local automated checks, **not**
 manual screen-reader review, cross-browser coverage or WCAG 2.2 AA conformance.
 The Node built-in adapter tests build their own real artifact under ignored
-`artifacts` and clean it up. Raw HTTP requests cover malformed targets and server
+`artifacts` and clean it up. A copied test fixture receives synthetic dates around
+the current UTC date; this does not renew or approve the source content. Startup
+verification still rejects an expired artifact even with an injected request clock.
+Raw HTTP requests cover malformed targets and server
 liveness, wrong Host, POST, traversal/unlisted paths, hash mismatch, missing
 files, expiry at the earliest page date, a non-directory artifact root and an
 unexpected directory-read error.

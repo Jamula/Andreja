@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
-ARG DOTNET_SDK_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0.402-noble@sha256:747cbade5bfd918a175ac32f8f1d931edec2c7d0d5397a3de72eaef1ac1f66d2
-ARG DOTNET_RUNTIME_IMAGE=mcr.microsoft.com/dotnet/aspnet:10.0.13-noble-chiseled@sha256:5165aeeb688df15e869a56a7584bb94bf16a14e0b3ba77b49fcdbe350f6b8020
+ARG DOTNET_SDK_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0.404-noble@sha256:fe0fd4e93bd2fbb47c883b7a6369e5c8d3db8bf01cdc5981f6ee35fbdf3ff4fb
+ARG DOTNET_RUNTIME_IMAGE=mcr.microsoft.com/dotnet/aspnet:10.0.15-noble-chiseled@sha256:7c625e44e5d588b4d7b2a913e94ca4bd5098ce47442da404829e4c7936a764e1
 
 FROM ${DOTNET_SDK_IMAGE} AS build
 ARG SOURCE_DATE_EPOCH=0
@@ -33,8 +33,8 @@ RUN --mount=type=bind,from=nuget-cache,target=/nuget-cache,readonly \
 FROM ${DOTNET_RUNTIME_IMAGE} AS runtime-base
 ARG SOURCE_REVISION=unknown
 ARG SOURCE_URL=https://github.com/Jamula/Andreja
-ARG RUNTIME_BASE_NAME=mcr.microsoft.com/dotnet/aspnet:10.0.13-noble-chiseled
-ARG RUNTIME_BASE_DIGEST=sha256:5165aeeb688df15e869a56a7584bb94bf16a14e0b3ba77b49fcdbe350f6b8020
+ARG RUNTIME_BASE_NAME=mcr.microsoft.com/dotnet/aspnet:10.0.15-noble-chiseled
+ARG RUNTIME_BASE_DIGEST=sha256:7c625e44e5d588b4d7b2a913e94ca4bd5098ce47442da404829e4c7936a764e1
 LABEL org.opencontainers.image.source="${SOURCE_URL}" \
       org.opencontainers.image.revision="${SOURCE_REVISION}" \
       org.opencontainers.image.base.name="${RUNTIME_BASE_NAME}" \
