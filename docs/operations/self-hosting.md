@@ -209,6 +209,12 @@ invalid/unsigned provenance, an untrusted key, forbidden findings, policy,
 platform or checksum drift, unavailable tools, or an unresolved digest blocks startup.
 There is no unsigned, tag-based, online, or scanner fallback.
 
+When evidence generation rejects a Grype dependency or final-image scan, the
+failure includes a JSON inventory of each forbidden match's package, advisory,
+version, and severity. Values are escaped for logs; absent or non-string fields
+appear as `null`. This diagnostic does not establish advisory database provenance
+or change report retention or the severity policy.
+
 For accepted ADR 0010 keyless evidence, acquire the complete retained evidence
 directory, independently authenticated and pre-positioned copies of the Sigstore
 TUF trusted root and `supply-chain-policy.json`, and the preloaded pinned Cosign

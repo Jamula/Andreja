@@ -388,6 +388,45 @@ function Assert-NoForbiddenFinding {
     }
 }
 
+function Assert-NoForbiddenGrypeFinding {
+    param(
+        [Parameter(Mandatory)][AllowEmptyCollection()][object[]] $Matches,
+        [Parameter(Mandatory)][string] $Scope
+    )
+
+    if ($Matches.Count -gt 0) {
+        $inventory = @($Matches | ForEach-Object {
+            $artifactProperty = $_.PSObject.Properties['artifact']
+            $vulnerabilityProperty = $_.PSObject.Properties['vulnerability']
+            $artifact = if ($null -ne $artifactProperty) { $artifactProperty.Value } else { $null }
+            $vulnerability = if ($null -ne $vulnerabilityProperty) { $vulnerabilityProperty.Value } else { $null }
+            [ordered]@{
+                package = Get-GrypeDiagnosticField -Object $artifact -Name 'name'
+                advisory = Get-GrypeDiagnosticField -Object $vulnerability -Name 'id'
+                version = Get-GrypeDiagnosticField -Object $artifact -Name 'version'
+                severity = Get-GrypeDiagnosticField -Object $vulnerability -Name 'severity'
+            }
+        })
+        $details = ConvertTo-Json -InputObject $inventory -Depth 3 -Compress -EscapeHandling EscapeNonAscii
+        Assert-NoForbiddenFinding -Count $Matches.Count -Scope $Scope -FindingDetails @($details)
+    }
+}
+
+function Get-GrypeDiagnosticField {
+    param(
+        [AllowNull()] $Object,
+        [Parameter(Mandatory)][string] $Name
+    )
+
+    if ($null -ne $Object) {
+        $property = $Object.PSObject.Properties[$Name]
+        if ($null -ne $property -and $property.Value -is [string]) {
+            return $property.Value
+        }
+    }
+    return $null
+}
+
 function Assert-ProvenanceBinding {
     param(
         [Parameter(Mandatory)] $Evidence,
@@ -647,6 +686,7 @@ Export-ModuleMember -Function @(
     'Assert-DockerfileProductionTarget',
     'Assert-KeylessBundleStructure',
     'Assert-NoForbiddenFinding',
+    'Assert-NoForbiddenGrypeFinding',
     'Assert-OciPlatformBinding',
     'Assert-PinnedImageReference',
     'Assert-PlatformApproved',

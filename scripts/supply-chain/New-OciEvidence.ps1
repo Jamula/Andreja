@@ -347,18 +347,8 @@ $imageFindings = $imageMatches.Count
 $iacFindings = Get-TrivyForbiddenCount -Path (Join-Path $outputRoot 'scan.iac.json') `
     -ForbiddenSeverities $forbiddenSeverities
 
-Assert-NoForbiddenFinding -Count $dependencyFindings -Scope 'Dependency' -FindingDetails @(
-    $dependencyMatches | ForEach-Object {
-        '{0} {1}@{2} ({3})' -f $_.vulnerability.id, $_.artifact.name, $_.artifact.version,
-            $_.vulnerability.severity
-    }
-)
-Assert-NoForbiddenFinding -Count $imageFindings -Scope 'Final image' -FindingDetails @(
-    $imageMatches | ForEach-Object {
-        '{0} {1}@{2} ({3})' -f $_.vulnerability.id, $_.artifact.name, $_.artifact.version,
-            $_.vulnerability.severity
-    }
-)
+Assert-NoForbiddenGrypeFinding -Matches $dependencyMatches -Scope 'Dependency'
+Assert-NoForbiddenGrypeFinding -Matches $imageMatches -Scope 'Final image'
 Assert-NoForbiddenFinding -Count $iacFindings -Scope 'Container/IaC'
 
 Remove-Item -LiteralPath $cacheRoot -Recurse -Force

@@ -195,6 +195,27 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  public-site-loopback-preview:
+    name: Public-site loopback preview boundary
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pinned .NET SDK
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+
+      - name: Build local-only site generator
+        run: dotnet build src/Andreja.PublicSite/Andreja.PublicSite.csproj --configuration Release
+
+      - name: Test loopback preview adapter
+        run: node --test scripts/public-website/local-preview.test.mjs
+
   vulnerability:
     name: NuGet vulnerability audit
     runs-on: ubuntu-24.04

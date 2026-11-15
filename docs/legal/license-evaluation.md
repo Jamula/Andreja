@@ -13,6 +13,12 @@
 > recipient, invention, and agreement evidence belongs in a counsel-approved
 > confidential channel, not this repository or a GitHub issue.
 
+> **Source-status note — 2026-11-08:** The historical private-repository
+> premise in this 2026-08-23 evaluation does not match the repository observed
+> as public on 2026-11-08. The later private verification recorded in the
+> [decision packet](licensing-decision-packet.md) is not a public record of
+> substantive approval.
+
 ## Executive recommendation
 
 Use a **private, no-new-recipient, no-external-contribution posture** until

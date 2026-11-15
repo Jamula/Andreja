@@ -72,6 +72,10 @@ and linked ADRs so it stays synchronized with actual delivery work rather than d
 
 ### Current footprint bounds what applies today
 
+> **Source-status note — 2026-11-08:** The private-repository premise below
+> is historical. See the [issue #6 decision packet](licensing-decision-packet.md)
+> for the later public-state observation; this note records no approval.
+
 Per `docs/plan.md` (Phase 0 boundary and deliverables),
 Andreja currently has: a private GitHub repository, no cloud accounts or provisioning, no
 external users, no revenue, and no public site. Most of the domain sections below describe
@@ -624,6 +628,10 @@ Store submission (guidelines must be re-read fresh, not from this cached summary
 ---
 
 ## 16. Contracts and intellectual property
+
+> **Source-status note — 2026-11-08:** The private-repository premise in this
+> section is historical. See the [issue #6 decision packet](licensing-decision-packet.md);
+> this pointer does not authorize a visibility change or establish approval.
 
 **Why this matters for Andreja:** this is already flagged in `docs/plan.md` as "an
 immediate investigation, not a casual file change and not legal advice," and is the

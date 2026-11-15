@@ -1,10 +1,10 @@
 # Public website Phase 0 packet
 
-- **Status:** Recommendation for human decision; no publication or deployment
+- **Status:** Phase 0 research; artifact boundary accepted narrowly; no publication or deployment
 - **Issue:** [#94](https://github.com/Jamula/Andreja/issues/94)
 - **Phase:** 0 (local and paper research only)
 - **Decision owner:** Cyrus
-- **Last reviewed:** 2026-08-25
+- **Last reviewed:** 2026-11-08
 
 This packet defines an information architecture and recommends a delivery
 boundary for a future Andreja public/help site. It does not authorize a domain,
@@ -15,10 +15,12 @@ sponsorship, or any connection to the authenticated application.
 
 - [Design, hosting, and review matrix](design-hosting-matrix.md)
 - [Claims inventory](claims-inventory.md)
-- [Proposed ADR 0008](../adr/0008-public-website-artifact-boundary.md)
+- [ADR 0008](../adr/0008-public-website-artifact-boundary.md) — accepted
+  product-data-free static artifact boundary only
 - [Local prototype](prototype/README.md)
 - [Unpublished local build and authoring guide](local-build.md) — issue #93
-  implementation slice; not publication authority or ADR acceptance
+  implementation slice; not production-generator selection or publication
+  authority
 
 ## Recommendation in one sentence
 
@@ -60,8 +62,10 @@ routes, contacts, legal text, and claims are incomplete.
 Issue #93 now also supplies an independently buildable local static field guide
 in `src\Andreja.PublicSite`, with isolated artifact tests. Its configuration
 rejects every publication mode. See the [local build guide](local-build.md) for
-the narrower implementation boundary and remaining acceptance gates. This
-addition does not ratify the Proposed ADR or activate the future public site.
+the narrower implementation boundary and remaining acceptance gates. ADR 0008
+accepts only the product-data-free static artifact boundary; this local
+implementation does not select a production generator or activate the future
+public site.
 
 Phase 0 review is loopback-only or private and access-controlled. Public Pages,
 public previews, CDN delivery, and DNS publication must be disabled; a future

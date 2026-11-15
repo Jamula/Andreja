@@ -2,12 +2,12 @@
 
 ## Prerequisites
 
-- .NET SDK 10.0.402, pinned by `global.json`
+- .NET SDK 10.0.404, pinned by `global.json`
 
 ## GitHub Codespaces
 
 The checked-in `.devcontainer/devcontainer.json` configures Codespaces with
-Node.js 26.12.1 and the pinned .NET SDK 10.0.402. Container creation installs
+Node.js 26.12.1 and the pinned .NET SDK 10.0.404. Container creation installs
 the latest npm and the configured global CLI tool; it does not initialize
 repository agents, skills, workflows, labels, or MCP configuration.
 Rebuild the container after changing these versions. Codespaces use Linux, so
