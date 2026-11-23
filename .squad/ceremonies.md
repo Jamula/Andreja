@@ -49,7 +49,7 @@
 |-------|-------|
 | **Trigger** | auto |
 | **When** | before |
-| **Condition** | No *retrospective* log in .squad/log/ within the last 7 days |
+| **Condition** | No validated canonical weekly completion record in .squad/log/ within the last 7 days; a failure-triggered retrospective counts only if it meets every weekly requirement |
 | **Facilitator** | lead |
 | **Participants** | all |
 | **Time budget** | focused |
@@ -64,11 +64,14 @@
 
 **Coordinator integration:**
 At round start, enumerate retrospective logs through the configured Squad state
-backend. If no completed retrospective is recorded in the previous seven days,
-run this ceremony before the work queue. If state is unavailable or the log
-inventory cannot be verified, stop rather than treating the check as passed.
-The facilitator creates the action issues; verify the canonical record and
-issue labels before resuming.
+backend. Before admitting work, require a canonical weekly completion record
+from the previous seven days and validate it against the weekly agenda and
+evidence requirements, including the required `retro-action` issues. A
+failure-triggered retrospective does not count unless it satisfies every weekly
+requirement. If state is unavailable or the log inventory or record cannot be
+validated, stop rather than treating the check as passed. The facilitator
+creates the action issues; verify the canonical record and issue labels before
+resuming.
 
 The current configuration uses worktree-local state. A successful local inventory
 does not establish the team's retrospective history across other worktrees or
