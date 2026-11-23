@@ -41,3 +41,7 @@ Reuse existing GitHub issues labeled retro-action; do not add duplicate markdown
 ## Limitations and safeguards
 
 No new issue, PR, commit, release, scheduler or roster change. No claim that all team members participated, that a team-wide ceremony completed, or that admission may resume. Record is worktree-local and created atomically through the configured state tool; local atomic creation does not establish cross-worktree uniqueness. Usage/cost measurements unavailable; no estimates invented. Full-team participant input, shared state history and operational admission evidence remain outstanding under #297.
+
+## Inventory correction
+
+The category approximation in "What did not ship" is superseded by this exact count from the retrieved titles: 15 epics (14 numbered roadmap epics plus #38), 16 decision issues (15 phase gates plus #158), and five other open issues (#6, #93, #211, #297, #298). Total: 36. No extra unidentified roadmap items exist in this inventory. Use this corrected classification and the individual GitHub issues, not the earlier approximation.
