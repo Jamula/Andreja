@@ -21,17 +21,24 @@ test('requires a real Lead or Architect roster member', () => {
 });
 
 test('both triage entry points fail closed before applying decisions', () => {
-  for (const workflow of ['squad-triage', 'squad-heartbeat']) {
-    const source = fs.readFileSync(`.github/workflows/${workflow}.yml`, 'utf8');
-    const check = source.indexOf('run: node .github/scripts/squad-readiness.js');
-    assert.ok(check >= 0, `${workflow}: missing readiness check`);
-    const effect = source.indexOf(workflow === 'squad-triage'
-      ? 'await github.rest.issues.addLabels'
-      : 'node .squad/templates/ralph-triage.js');
-    assert.ok(effect > check, `${workflow}: check must precede triage effects`);
+  for (const workflowPath of [
+    '.github/workflows',
+    '.squad/templates/workflows',
+  ]) {
+    for (const workflow of ['squad-triage', 'squad-heartbeat']) {
+      const source = fs.readFileSync(`${workflowPath}/${workflow}.yml`, 'utf8');
+      const check = source.indexOf('run: node .github/scripts/squad-readiness.js');
+      assert.ok(check >= 0, `${workflowPath}/${workflow}: missing readiness check`);
+      const effect = source.indexOf(workflow === 'squad-triage'
+        ? 'await github.rest.issues.addLabels'
+        : 'node .squad/templates/ralph-triage.js');
+      assert.ok(effect > check, `${workflowPath}/${workflow}: check must precede triage effects`);
+    }
   }
-  const heartbeat = fs.readFileSync('.github/workflows/squad-heartbeat.yml', 'utf8');
-  assert.match(heartbeat, /ralph-triage\.js not found[^\n]*\n\s+exit 1/);
+  for (const workflowPath of ['.github/workflows', '.squad/templates/workflows']) {
+    const heartbeat = fs.readFileSync(`${workflowPath}/squad-heartbeat.yml`, 'utf8');
+    assert.match(heartbeat, /ralph-triage\.js not found[^\n]*\n\s+exit 1/);
+  }
 });
 
 function workflowScript(name, stepName, workflowPath = `.github/workflows/${name}.yml`) {
@@ -64,6 +71,43 @@ test('support identities stay on the roster', () => {
 });
 
 for (const workflowPath of [
+  '.github/workflows/squad-triage.yml',
+  '.squad/templates/workflows/squad-triage.yml',
+]) {
+  test(`${workflowPath}: support identities do not appear as routing destinations`, async () => {
+    const roster = fs.readFileSync('.squad/team.md', 'utf8');
+    const comments = [];
+    const mockFs = {
+      existsSync: () => true,
+      readFileSync: path => path === '.squad/team.md' ? roster : '',
+    };
+    const context = {
+      repo: { owner: 'owner', repo: 'repo' },
+      payload: {
+        issue: { number: 12, title: 'unmatched issue', body: '', labels: [] },
+        repository: { default_branch: 'main' },
+      },
+    };
+    const github = { rest: { issues: {
+      addLabels: async () => {},
+      createComment: async ({ body }) => comments.push(body),
+    } } };
+    await workflowScript('squad-triage', undefined, workflowPath)(
+      module => module === 'fs' ? mockFs : { parseRoster },
+      context,
+      github,
+      { info: () => {}, warning: message => { throw new Error(message); } }
+    );
+
+    assert.equal(comments.length, 1);
+    for (const slug of supportSlugs) {
+      assert.ok(!comments[0].includes(`label: \`squad:${slug}\``), `triage advertised squad:${slug}`);
+    }
+    assert.ok(comments[0].includes('label: `squad:lead`'));
+  });
+}
+
+for (const workflowPath of [
   '.github/workflows/sync-squad-labels.yml',
   '.squad/templates/workflows/sync-squad-labels.yml',
 ]) {
@@ -94,7 +138,7 @@ for (const workflowPath of [
   '.squad/templates/workflows/squad-issue-assign.yml',
 ]) {
   test(`${workflowPath}: support identity labels do not resolve or post assignments`, async () => {
-    const supportLabels = supportSlugs.map(slug => `squad:${slug}`);
+    const supportLabels = [...supportSlugs.map(slug => `squad:${slug}`), 'squad:Fact Checker'];
     const comments = [];
     const logs = [];
     const mockFs = {
@@ -125,94 +169,104 @@ for (const workflowPath of [
   });
 }
 
-for (const name of ['squad-triage', 'squad-heartbeat']) {
-  for (const mode of ['member', 'manual-copilot', 'auto-copilot']) {
-    test(`${name}: ${mode} produces a truthful actionable handoff`, async () => {
-      const auto = mode === 'auto-copilot';
-      const copilot = mode !== 'member';
-      const roster = team('Lead') + (copilot ? '\n🤖 Coding Agent\n🟢 Good fit: bug fix\n' : '') +
-        (auto ? '<!-- copilot-auto-assign: true -->' : '');
-      const comments = [];
-      const dispatches = [];
-      const mockFs = {
-        existsSync: () => true,
-        readFileSync: path => {
-          if (path === '.squad/team.md') return roster;
-          if (path === '.squad/routing.md') return '';
-          if (path === 'triage-results.json') return JSON.stringify([{
-            issueNumber: 12, assignTo: copilot ? '@copilot' : 'Seven',
-            label: copilot ? 'squad:copilot' : 'squad:seven',
-            reason: 'fixture', source: 'fixture',
-          }]);
-          throw new Error(`Unexpected read: ${path}`);
-        },
-      };
-      const context = {
-        repo: { owner: 'owner', repo: 'repo' },
-        payload: {
-          issue: { number: 12, title: 'bug fix', body: '', labels: [] },
-          repository: { default_branch: 'main' },
-        },
-      };
-      const github = { rest: {
-        issues: {
-          addLabels: async () => {},
-          createComment: async ({ body }) => comments.push(body),
-        },
-        actions: { createWorkflowDispatch: async args => dispatches.push(args) },
-      } };
-      const core = { info: () => {}, warning: message => { throw new Error(message); },
-        setFailed: message => { throw new Error(message); } };
-      await workflowScript(name)(module => {
-        if (module === 'fs') return mockFs;
-        assert.ok(module.endsWith('/.squad/templates/ralph-triage.js'));
-        return { parseRoster };
-      }, context, github, core);
-      assert.equal(comments.length, 1);
-      assert.match(comments[0], /routing hint, not a GitHub assignee or a running session/);
-      if (copilot) {
-        assert.match(comments[0], /verify (?:a |the )linked (?:Copilot )?session or draft PR/i);
-        assert.match(comments[0], auto ? /assignment.*(?:dispatched|requested)/i : /manually dispatch Squad Issue Assign/);
-      } else {
-        assert.match(comments[0], /Start an authorized session for Seven/);
-      }
-      assert.equal(dispatches.length, auto ? 1 : 0);
-      if (auto) assert.deepEqual(dispatches[0].inputs, { issue_number: '12' });
-    });
+for (const workflowPath of ['.github/workflows', '.squad/templates/workflows']) {
+  for (const name of ['squad-triage', 'squad-heartbeat']) {
+    for (const mode of ['member', 'manual-copilot', 'auto-copilot']) {
+      test(`${workflowPath}/${name}: ${mode} produces a truthful actionable handoff`, async () => {
+        const auto = mode === 'auto-copilot';
+        const copilot = mode !== 'member';
+        const roster = team('Lead') + (copilot ? '\n🤖 Coding Agent\n🟢 Good fit: bug fix\n' : '') +
+          (auto ? '<!-- copilot-auto-assign: true -->' : '');
+        const comments = [];
+        const dispatches = [];
+        const events = [];
+        const mockFs = {
+          existsSync: () => true,
+          readFileSync: path => {
+            if (path === '.squad/team.md') return roster;
+            if (path === '.squad/routing.md') return '';
+            if (path === 'triage-results.json') return JSON.stringify([{
+              issueNumber: 12, assignTo: copilot ? '@copilot' : 'Seven',
+              label: copilot ? 'squad:copilot' : 'squad:seven',
+              reason: 'fixture', source: 'fixture',
+            }]);
+            throw new Error(`Unexpected read: ${path}`);
+          },
+        };
+        const context = {
+          repo: { owner: 'owner', repo: 'repo' },
+          payload: {
+            issue: { number: 12, title: 'bug fix', body: '', labels: [] },
+            repository: { default_branch: 'main' },
+          },
+        };
+        const github = { rest: {
+          issues: {
+            addLabels: async () => {},
+            createComment: async ({ body }) => { comments.push(body); events.push('comment'); },
+          },
+          actions: { createWorkflowDispatch: async args => { dispatches.push(args); events.push('dispatch'); } },
+        } };
+        const core = { info: () => {}, warning: message => { throw new Error(message); },
+          setFailed: message => { throw new Error(message); } };
+        await workflowScript(name, name === 'squad-heartbeat' ? 'Ralph — Apply triage decisions' : undefined,
+          `${workflowPath}/${name}.yml`)(module => {
+          if (module === 'fs') return mockFs;
+          assert.ok(module.replace(/\\/g, '/').endsWith('/.squad/templates/ralph-triage.js'));
+          return { parseRoster };
+        }, context, github, core);
+        assert.equal(comments.length, 1);
+        assert.match(comments[0], /routing hint, not a GitHub assignee or a running session/);
+        assert.doesNotMatch(comments[0], /\*\*Assigned to:\*\*/);
+        if (copilot) {
+          assert.match(comments[0], /verify (?:a |the )linked (?:Copilot )?session or draft PR/i);
+          assert.match(comments[0], auto ? /assignment.*(?:dispatched|requested)/i : /manually dispatch Squad Issue Assign/);
+        } else {
+          assert.match(comments[0], /start an authorized session for Seven/i);
+        }
+        assert.equal(dispatches.length, auto ? 1 : 0);
+        assert.deepEqual(events, auto ? ['dispatch', 'comment'] : ['comment']);
+        if (auto) assert.deepEqual(dispatches[0].inputs, { issue_number: '12' });
+      });
+    }
   }
 }
 
-test('triage routes a roster with reordered columns', async () => {
-  const roster = `## Members
+for (const workflowPath of ['.github/workflows', '.squad/templates/workflows']) {
+  test(`${workflowPath}/squad-triage routes a roster with reordered columns`, async () => {
+    const roster = `## Members
 | Name | Charter | Role |
 |---|---|---|
 | Seven | .squad/agents/seven/charter.md | Platform Lead |
 `;
-  assert.doesNotThrow(() => checkReadiness(roster));
-  const labels = [];
-  const mockFs = {
-    existsSync: () => true,
-    readFileSync: path => path === '.squad/team.md' ? roster : '',
-  };
-  const context = { repo: { owner: 'owner', repo: 'repo' }, payload: {
-    issue: { number: 12, title: 'unmatched', body: '', labels: [] },
-    repository: { default_branch: 'main' },
-  } };
-  const github = { rest: { issues: {
-    addLabels: async ({ labels: added }) => labels.push(...added),
-    createComment: async () => {},
-  } } };
-  await workflowScript('squad-triage')(module => module === 'fs' ? mockFs : { parseRoster },
-    context, github, { info: () => {}, warning: () => {} });
-  assert.deepEqual(labels, ['squad:seven', 'go:needs-research']);
-});
+    assert.doesNotThrow(() => checkReadiness(roster));
+    const labels = [];
+    const mockFs = {
+      existsSync: () => true,
+      readFileSync: path => path === '.squad/team.md' ? roster : '',
+    };
+    const context = { repo: { owner: 'owner', repo: 'repo' }, payload: {
+      issue: { number: 12, title: 'unmatched', body: '', labels: [] },
+      repository: { default_branch: 'main' },
+    } };
+    const github = { rest: { issues: {
+      addLabels: async ({ labels: added }) => labels.push(...added),
+      createComment: async () => {},
+    } } };
+    await workflowScript('squad-triage', undefined, `${workflowPath}/squad-triage.yml`)(
+      module => module === 'fs' ? mockFs : { parseRoster },
+      context, github, { info: () => {}, warning: () => {} });
+    assert.deepEqual(labels, ['squad:seven', 'go:needs-research']);
+  });
 
-test('triage fails instead of silently succeeding without a fallback', async () => {
-  const mockFs = { existsSync: () => true, readFileSync: () => team('Backend') };
-  const context = { payload: { issue: { number: 12, title: 'unmatched', body: '', labels: [] } } };
-  await assert.rejects(
-    workflowScript('squad-triage')(module => module === 'fs' ? mockFs : { parseRoster },
-      context, {}, { info: () => {}, warning: () => {} }),
-    /No Lead or Architect role found/
-  );
-});
+  test(`${workflowPath}/squad-triage fails instead of silently succeeding without a fallback`, async () => {
+    const mockFs = { existsSync: () => true, readFileSync: () => team('Backend') };
+    const context = { payload: { issue: { number: 12, title: 'unmatched', body: '', labels: [] } } };
+    await assert.rejects(
+      workflowScript('squad-triage', undefined, `${workflowPath}/squad-triage.yml`)(
+        module => module === 'fs' ? mockFs : { parseRoster },
+        context, {}, { info: () => {}, warning: () => {} }),
+      /No Lead or Architect role found/
+    );
+  });
+}
