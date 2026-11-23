@@ -48,7 +48,6 @@ jobs:
               .toLowerCase()
               .replace(/[^a-z0-9]+/g, '-')
               .replace(/^-+|-+$/g, '');
-            const SUPPORT_IDENTITY_SLUGS = new Set(['scribe', 'ralph', 'rai', 'fact-checker']);
             const findMemberBySlug = (lines, memberName) => {
               let inMembersTable = false;
               const matches = [];
@@ -75,10 +74,6 @@ jobs:
             const memberName = label.replace('squad:', '').toLowerCase();
             // Copilot is acknowledged only after the assignment API accepts it.
             if (memberName === 'copilot') return;
-            if (SUPPORT_IDENTITY_SLUGS.has(memberName)) {
-              core.info(`Ignoring support identity label "${label}" — support identities are not issue-routing destinations`);
-              return;
-            }
 
             const teamFile = '.squad/team.md';
             if (!fs.existsSync(teamFile)) {

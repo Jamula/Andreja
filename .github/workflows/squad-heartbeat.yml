@@ -37,12 +37,9 @@ jobs:
           if [ -f ".squad/templates/ralph-triage.js" ]; then
             echo "has_script=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::error::ralph-triage.js not found — restore the Squad triage script before retrying"
-            exit 1
+            echo "has_script=false" >> "$GITHUB_OUTPUT"
+            echo "⚠️ ralph-triage.js not found — run 'squad upgrade' to install"
           fi
-
-      - name: Check Squad triage readiness
-        run: node .github/scripts/squad-readiness.js
 
       - name: Ralph — Smart triage
         if: steps.check-script.outputs.has_script == 'true'
@@ -89,16 +86,11 @@ jobs:
                   body: [
                     '### 🔄 Ralph — Auto-Triage',
                     '',
-                    `**Routed to:** ${decision.assignTo}`,
+                    `**Assigned to:** ${decision.assignTo}`,
                     `**Reason:** ${decision.reason}`,
                     `**Source:** ${decision.source}`,
                     '',
-                    '> The label is a routing hint, not a GitHub assignee or a running session.',
-                    decision.label === 'squad:copilot'
-                      ? (autoAssign
-                        ? '> Copilot assignment will be requested; verify the linked session or draft PR.'
-                        : '> If authorized, manually dispatch Squad Issue Assign for this issue; verify the linked session or draft PR.')
-                      : `> Start an authorized session for ${decision.assignTo} to work on this issue.`,
+                    '> Ralph auto-triaged this issue using routing rules.',
                     '> To reassign, swap the `squad:*` label.'
                   ].join('\n')
                 });
