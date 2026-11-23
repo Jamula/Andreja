@@ -71,6 +71,43 @@ test('support identities stay on the roster', () => {
 });
 
 for (const workflowPath of [
+  '.github/workflows/squad-triage.yml',
+  '.squad/templates/workflows/squad-triage.yml',
+]) {
+  test(`${workflowPath}: support identities do not appear as routing destinations`, async () => {
+    const roster = fs.readFileSync('.squad/team.md', 'utf8');
+    const comments = [];
+    const mockFs = {
+      existsSync: () => true,
+      readFileSync: path => path === '.squad/team.md' ? roster : '',
+    };
+    const context = {
+      repo: { owner: 'owner', repo: 'repo' },
+      payload: {
+        issue: { number: 12, title: 'unmatched issue', body: '', labels: [] },
+        repository: { default_branch: 'main' },
+      },
+    };
+    const github = { rest: { issues: {
+      addLabels: async () => {},
+      createComment: async ({ body }) => comments.push(body),
+    } } };
+    await workflowScript('squad-triage', undefined, workflowPath)(
+      module => module === 'fs' ? mockFs : { parseRoster },
+      context,
+      github,
+      { info: () => {}, warning: message => { throw new Error(message); } }
+    );
+
+    assert.equal(comments.length, 1);
+    for (const slug of supportSlugs) {
+      assert.ok(!comments[0].includes(`label: \`squad:${slug}\``), `triage advertised squad:${slug}`);
+    }
+    assert.ok(comments[0].includes('label: `squad:lead`'));
+  });
+}
+
+for (const workflowPath of [
   '.github/workflows/sync-squad-labels.yml',
   '.squad/templates/workflows/sync-squad-labels.yml',
 ]) {

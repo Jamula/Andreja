@@ -71,7 +71,9 @@ jobs:
               }
             }
 
-            const members = parseRoster(content);
+            const SUPPORT_IDENTITY_SLUGS = new Set(['scribe', 'ralph', 'rai', 'fact-checker']);
+            const members = parseRoster(content)
+              .filter(member => !SUPPORT_IDENTITY_SLUGS.has(slugify(member.name)));
 
             const routingFile = '.squad/routing.md';
             let routingContent = '';
