@@ -34,8 +34,13 @@ test('both triage entry points fail closed before applying decisions', () => {
   assert.match(heartbeat, /ralph-triage\.js not found[^\n]*\n\s+exit 1/);
 });
 
-function workflowScript(name) {
-  const lines = fs.readFileSync(`.github/workflows/${name}.yml`, 'utf8').replace(/\r\n/g, '\n').split('\n');
+function workflowScript(name, stepName, workflowPath = `.github/workflows/${name}.yml`) {
+  let lines = fs.readFileSync(workflowPath, 'utf8').replace(/\r\n/g, '\n').split('\n');
+  if (stepName) {
+    const step = lines.findIndex(line => line.trim() === `- name: ${stepName}`);
+    assert.ok(step >= 0, `${name}: missing step "${stepName}"`);
+    lines = lines.slice(step);
+  }
   const start = lines.findIndex(line => line.trim() === 'script: |');
   assert.notEqual(start, -1, `${name}: missing github-script`);
   const script = [];
@@ -46,6 +51,78 @@ function workflowScript(name) {
   return new (Object.getPrototypeOf(async function () {}).constructor)(
     'require', 'context', 'github', 'core', script.join('\n')
   );
+}
+
+const supportNames = ['Scribe', 'Ralph', 'Rai', 'Fact Checker'];
+const supportSlugs = ['scribe', 'ralph', 'rai', 'fact-checker'];
+
+test('support identities stay on the roster', () => {
+  const roster = fs.readFileSync('.squad/team.md', 'utf8');
+  for (const name of supportNames) {
+    assert.ok(roster.split('\n').some(line => line.startsWith(`| ${name} |`)), `${name} is missing from the roster`);
+  }
+});
+
+for (const workflowPath of [
+  '.github/workflows/sync-squad-labels.yml',
+  '.squad/templates/workflows/sync-squad-labels.yml',
+]) {
+  test(`${workflowPath}: support identities do not generate routing labels`, async () => {
+    const roster = fs.readFileSync('.squad/team.md', 'utf8');
+    const syncedLabels = [];
+    const mockFs = { existsSync: () => true, readFileSync: () => roster };
+    const context = { repo: { owner: 'owner', repo: 'repo' } };
+    const github = { rest: { issues: {
+      getLabel: async () => {},
+      updateLabel: async ({ name }) => syncedLabels.push(name),
+      createLabel: async ({ name }) => syncedLabels.push(name),
+    } } };
+    await workflowScript('sync-squad-labels', undefined, workflowPath)(module => {
+      assert.equal(module, 'fs');
+      return mockFs;
+    }, context, github, { info: () => {} });
+
+    for (const slug of supportSlugs) {
+      assert.ok(!syncedLabels.includes(`squad:${slug}`), `support identity created squad:${slug}`);
+    }
+    assert.ok(syncedLabels.includes('squad:lead'));
+  });
+}
+
+for (const workflowPath of [
+  '.github/workflows/squad-issue-assign.yml',
+  '.squad/templates/workflows/squad-issue-assign.yml',
+]) {
+  test(`${workflowPath}: support identity labels do not resolve or post assignments`, async () => {
+    const supportLabels = supportSlugs.map(slug => `squad:${slug}`);
+    const comments = [];
+    const logs = [];
+    const mockFs = {
+      existsSync: () => { throw new Error('Support labels must be rejected before roster lookup'); },
+      readFileSync: () => { throw new Error('Support labels must be rejected before roster lookup'); },
+    };
+    const context = {
+      repo: { owner: 'owner', repo: 'repo' },
+      payload: { label: { name: '' }, issue: { number: 12, title: 'test issue' } },
+    };
+    const github = { rest: { issues: {
+      createComment: async args => comments.push(args),
+    } } };
+    for (const label of supportLabels) {
+      context.payload.label.name = label;
+      await workflowScript('squad-issue-assign', 'Identify assigned member and trigger work', workflowPath)(
+        module => {
+          assert.equal(module, 'fs');
+          return mockFs;
+        },
+        context,
+        github,
+        { info: message => logs.push(message), warning: message => logs.push(message) }
+      );
+    }
+    assert.deepEqual(comments, []);
+    assert.equal(logs.length, supportLabels.length);
+  });
 }
 
 for (const name of ['squad-triage', 'squad-heartbeat']) {
