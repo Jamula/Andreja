@@ -44,7 +44,8 @@ hygiene via
 [`.github/workflows/squad-triage.yml`](../../.github/workflows/squad-triage.yml),
 [`.github/workflows/squad-issue-assign.yml`](../../.github/workflows/squad-issue-assign.yml),
 [`.github/workflows/squad-heartbeat.yml`](../../.github/workflows/squad-heartbeat.yml),
-and pull-request label validation in
+and issue-label mutual-exclusivity enforcement (`go:*`, `release:*`, `type:*`,
+`priority:*`) in
 [`.github/workflows/squad-label-enforce.yml`](../../.github/workflows/squad-label-enforce.yml).
 Those Squad workflows route ownership and triage only; they do not update
 `status:*` or blocker labels.
