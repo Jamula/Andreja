@@ -72,7 +72,7 @@ jobs:
             };
 
             // Extract member name from label (e.g., "squad:ripley" → "ripley")
-            const memberName = label.replace('squad:', '').toLowerCase();
+            const memberName = slugify(label.replace(/^squad:/i, ''));
             // Copilot is acknowledged only after the assignment API accepts it.
             if (memberName === 'copilot') return;
             if (SUPPORT_IDENTITY_SLUGS.has(memberName)) {

@@ -1,4 +1,7 @@
 {
   "version": 1,
-  "stateBackend": "two-layer"
+  "stateBackend": "two-layer",
+  "clients": [
+    "copilot"
+  ]
 }

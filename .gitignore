@@ -81,6 +81,9 @@ docs/architecture/.andreja-high-level.rendering.png
 # Squad: state owned by squad-state branch (two-layer/orphan backend)
 .squad/decisions.md
 .squad/agents/*/history.md
+.squad/memory/
+.squad/identity/
 # /Squad: state owned by squad-state branch
 # Squad: SubSquad activation file (local to this machine)
 .squad-workstream
+.squad/backend/
