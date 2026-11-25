@@ -3,15 +3,6 @@ using Andreja.Platform.Contracts.Composition;
 
 namespace Andreja.Adapters.Assistant.OpenAiCompatible;
 
-public interface IOpenAiCompatibleTransport
-{
-    ValueTask<AssistantResponse> CompleteAsync(
-        AssistantProviderProfile profile,
-        AssistantSessionRequest session,
-        AssistantRequest request,
-        CancellationToken cancellationToken);
-}
-
 public sealed class OpenAiCompatibleAssistantAdapter(
     AssistantProviderProfile profile,
     IOpenAiCompatibleTransport transport)

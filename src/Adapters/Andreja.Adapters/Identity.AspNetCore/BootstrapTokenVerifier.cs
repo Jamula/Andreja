@@ -5,11 +5,6 @@ using Microsoft.Extensions.Options;
 
 namespace Andreja.Adapters.Identity.AspNetCore;
 
-public interface IBootstrapTokenVerifier
-{
-    ValueTask<bool> VerifyAsync(string suppliedToken, CancellationToken cancellationToken = default);
-}
-
 public sealed class BootstrapTokenVerifier(IOptions<LocalIdentityOptions> options)
     : IBootstrapTokenVerifier
 {
@@ -26,7 +21,7 @@ public sealed class BootstrapTokenVerifier(IOptions<LocalIdentityOptions> option
         EnsureTokenFileIsReadOnly(configured.BootstrapTokenFile);
         using var encodedExpected = await ReadTokenFileAsync(
             configured.BootstrapTokenFile,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         using var expected = SensitiveBuffer.Rent(configured.BootstrapTokenBytes);
         using var supplied = SensitiveBuffer.Rent(configured.BootstrapTokenBytes);
 
@@ -78,36 +73,38 @@ public sealed class BootstrapTokenVerifier(IOptions<LocalIdentityOptions> option
         var buffer = SensitiveBuffer.Rent(MaximumTokenFileBytes + 1);
         try
         {
-            await using var stream = new FileStream(
+            var stream = new FileStream(
                 path,
                 FileMode.Open,
                 FileAccess.Read,
                 FileShare.Read,
                 bufferSize: 4096,
                 FileOptions.Asynchronous | FileOptions.SequentialScan);
-
-            var totalRead = 0;
-            while (totalRead < buffer.Capacity)
+            await using (stream.ConfigureAwait(false))
             {
-                var read = await stream.ReadAsync(
-                    buffer.CapacityMemory[totalRead..],
-                    cancellationToken);
-                if (read == 0)
+                var totalRead = 0;
+                while (totalRead < buffer.Capacity)
                 {
-                    break;
+                    var read = await stream.ReadAsync(
+                        buffer.CapacityMemory[totalRead..],
+                        cancellationToken).ConfigureAwait(false);
+                    if (read == 0)
+                    {
+                        break;
+                    }
+
+                    totalRead += read;
                 }
 
-                totalRead += read;
-            }
+                if (totalRead > MaximumTokenFileBytes)
+                {
+                    throw new InvalidDataException(
+                        "The bootstrap token file exceeds the allowed size.");
+                }
 
-            if (totalRead > MaximumTokenFileBytes)
-            {
-                throw new InvalidDataException(
-                    "The bootstrap token file exceeds the allowed size.");
+                buffer.SetLength(totalRead);
+                return buffer;
             }
-
-            buffer.SetLength(totalRead);
-            return buffer;
         }
         catch
         {
@@ -146,59 +143,4 @@ public sealed class BootstrapTokenVerifier(IOptions<LocalIdentityOptions> option
         value[writeIndex..].Clear();
         return writeIndex;
     }
-}
-
-internal sealed class SensitiveBuffer : IDisposable
-{
-    private byte[]? buffer;
-    private readonly bool returnToPool;
-
-    internal SensitiveBuffer(byte[] buffer, int length, bool returnToPool)
-    {
-        ArgumentNullException.ThrowIfNull(buffer);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan((uint)length, (uint)buffer.Length);
-        this.buffer = buffer;
-        this.returnToPool = returnToPool;
-        Length = length;
-    }
-
-    public int Capacity => GetBuffer().Length;
-
-    public Memory<byte> CapacityMemory => GetBuffer();
-
-    public Span<byte> Span => GetBuffer().AsSpan(0, Length);
-
-    public int Length { get; private set; }
-
-    public static SensitiveBuffer Rent(int capacity)
-    {
-        var rented = ArrayPool<byte>.Shared.Rent(capacity);
-        CryptographicOperations.ZeroMemory(rented);
-        return new SensitiveBuffer(rented, capacity, returnToPool: true);
-    }
-
-    public void SetLength(int length)
-    {
-        ArgumentOutOfRangeException.ThrowIfGreaterThan((uint)length, (uint)Capacity);
-        Length = length;
-    }
-
-    public void Dispose()
-    {
-        var toClear = Interlocked.Exchange(ref buffer, null);
-        if (toClear is null)
-        {
-            return;
-        }
-
-        CryptographicOperations.ZeroMemory(toClear);
-        Length = 0;
-        if (returnToPool)
-        {
-            ArrayPool<byte>.Shared.Return(toClear);
-        }
-    }
-
-    private byte[] GetBuffer() =>
-        buffer ?? throw new ObjectDisposedException(nameof(SensitiveBuffer));
 }

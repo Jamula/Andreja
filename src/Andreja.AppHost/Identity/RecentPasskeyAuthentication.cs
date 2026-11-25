@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using Andreja.Adapters.Identity.AspNetCore;
 using Andreja.Adapters.PostgreSql;
@@ -9,37 +8,20 @@ using Microsoft.AspNetCore.WebUtilities;
 
 namespace Andreja.AppHost.Identity;
 
-internal sealed record RecentPasskeyAuthenticationTicket(
-    Guid UserId,
-    string SecurityStamp,
-    string Audience,
-    string Nonce);
-
-internal sealed class RecentPasskeyAuthentication
+internal sealed class RecentPasskeyAuthentication(
+    IDataProtectionProvider dataProtection,
+    IOptions<LocalIdentityOptions> options,
+    IRecentAuthenticationGrantStore grants,
+    TimeProvider timeProvider)
 {
     internal const string Audience = "andreja.passkey-management.v1";
     internal const string CookieName = "__Host-Andreja.RecentPasskey";
     private const string ProtectionPurpose =
         "Andreja.Identity.RecentPasskeyAuthentication.v1";
-    private readonly ITimeLimitedDataProtector protector;
-    private readonly IOptions<LocalIdentityOptions> options;
-    private readonly IRecentAuthenticationGrantStore grants;
-    private readonly TimeProvider timeProvider;
-
-    public RecentPasskeyAuthentication(
-        IDataProtectionProvider dataProtection,
-        IOptions<LocalIdentityOptions> options,
-        IRecentAuthenticationGrantStore grants,
-        TimeProvider timeProvider)
-    {
-        ArgumentNullException.ThrowIfNull(dataProtection);
-        this.options = options;
-        this.grants = grants;
-        this.timeProvider = timeProvider;
-        protector = dataProtection
+    private readonly ITimeLimitedDataProtector protector =
+        (dataProtection ?? throw new ArgumentNullException(nameof(dataProtection)))
             .CreateProtector(ProtectionPurpose)
             .ToTimeLimitedDataProtector();
-    }
 
     internal sealed class UnavailableAppUserDisplayNameResolver
         : IAppUserDisplayNameResolver

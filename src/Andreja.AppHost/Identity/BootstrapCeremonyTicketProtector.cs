@@ -6,30 +6,16 @@ using Microsoft.Extensions.Options;
 
 namespace Andreja.AppHost.Identity;
 
-internal sealed record BootstrapCeremonyTicket(
-    Guid CredentialUserId,
-    string Token,
-    string TenantName,
-    string UserDisplayName,
-    string Challenge);
-
-internal sealed class BootstrapCeremonyTicketProtector
+internal sealed class BootstrapCeremonyTicketProtector(
+    IDataProtectionProvider dataProtection,
+    IOptions<LocalIdentityOptions> options)
 {
     private const string ProtectionPurpose =
         "Andreja.Identity.BootstrapCeremony.v1";
-    private readonly ITimeLimitedDataProtector protector;
-    private readonly IOptions<LocalIdentityOptions> options;
-
-    public BootstrapCeremonyTicketProtector(
-        IDataProtectionProvider dataProtection,
-        IOptions<LocalIdentityOptions> options)
-    {
-        ArgumentNullException.ThrowIfNull(dataProtection);
-        this.options = options;
-        protector = dataProtection
+    private readonly ITimeLimitedDataProtector protector =
+        (dataProtection ?? throw new ArgumentNullException(nameof(dataProtection)))
             .CreateProtector(ProtectionPurpose)
             .ToTimeLimitedDataProtector();
-    }
 
     public string Protect(BootstrapCeremonyTicket ticket) =>
         ProtectUntil(
