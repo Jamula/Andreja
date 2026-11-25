@@ -82,7 +82,6 @@ Five architectural boundaries govern the codebase:
 - Git.
 - .NET SDK 10.0.404, pinned by [`global.json`](global.json).
 - `dotnet-ef` 10.0.11 for migration inspection and script generation.
-- Python 3, available as `python`, for documentation consistency checks.
 - PowerShell 7 for repository validation scripts.
 - Node.js 26.12.1 and Microsoft Edge for browser, passkey, viewport, and
   telemetry evidence.
@@ -97,7 +96,6 @@ Set-Location Andreja
 if ((dotnet --version) -ne "10.0.404") {
   throw "Install the .NET SDK version pinned by global.json."
 }
-python --version
 pwsh --version
 node --version
 
@@ -158,7 +156,9 @@ policy:
 dotnet format Andreja.slnx --verify-no-changes --no-restore
 dotnet format tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj `
   --verify-no-changes --no-restore
-python .github\scripts\check_docs_consistency.py
+dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj -- check-consistency
+dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj -- check-feedback-readiness
+dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj -- architecture-diagram --check
 pwsh -NoProfile -File .github\scripts\invoke-nuget-vulnerability-scan.ps1
 pwsh -NoProfile -File scripts\operations\validate-contract.ps1
 pwsh -NoProfile -File scripts\supply-chain\Test-SupplyChainPolicy.ps1
