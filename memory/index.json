@@ -8,5 +8,15 @@
     "status": "active",
     "createdAt": "2026-11-25T10:34:33.847Z",
     "updatedAt": "2026-11-25T10:34:33.847Z"
+  },
+  {
+    "id": "11d2426e-4a9b-4122-8e5d-cb78a5eef0a8",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Sponsorship and licensing posture confirmed",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-seven-sponsorship-and-licensing-posture-confirmed-11d2426e.md",
+    "status": "active",
+    "createdAt": "2026-11-25T10:34:45.323Z",
+    "updatedAt": "2026-11-25T10:34:45.323Z"
   }
 ]
