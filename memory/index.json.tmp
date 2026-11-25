@@ -1,0 +1,32 @@
+[
+  {
+    "id": "7c3c0ee8-b00f-4363-802f-8ee2eeff1870",
+    "class": "POLICY",
+    "loadGuidance": "ALWAYS",
+    "title": "No-Python tooling policy and .NET 10 migration target",
+    "path": ".squad\\memory\\policy-inbox\\cyrus-jamula-via-seven-no-python-tooling-policy-and-net-10-migration-target-7c3c0ee8.md",
+    "status": "active",
+    "createdAt": "2026-11-25T10:34:33.847Z",
+    "updatedAt": "2026-11-25T10:34:33.847Z"
+  },
+  {
+    "id": "11d2426e-4a9b-4122-8e5d-cb78a5eef0a8",
+    "class": "DECISION",
+    "loadGuidance": "ALWAYS",
+    "title": "Sponsorship and licensing posture confirmed",
+    "path": ".squad\\decisions\\inbox\\cyrus-jamula-via-seven-sponsorship-and-licensing-posture-confirmed-11d2426e.md",
+    "status": "active",
+    "createdAt": "2026-11-25T10:34:45.323Z",
+    "updatedAt": "2026-11-25T10:34:45.323Z"
+  },
+  {
+    "id": "a9d94928-3e92-4c0c-9aa1-41eb37d85896",
+    "class": "LOCAL",
+    "loadGuidance": "ON-DEMAND",
+    "title": "Docs-CI, upgrade backup, and milestone guardrails",
+    "path": ".squad\\memory\\local\\cyrus-jamula-via-seven-docs-ci-upgrade-backup-and-milestone-guardrails-a9d94928.md",
+    "status": "active",
+    "createdAt": "2026-11-25T10:34:45.323Z",
+    "updatedAt": "2026-11-25T10:34:45.323Z"
+  }
+]
