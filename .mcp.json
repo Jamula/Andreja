@@ -1,28 +1,16 @@
 {
   "mcpServers": {
     "squad_state": {
-      "command": "squad",
+      "command": "npx",
       "args": [
+        "-y",
+        "@bradygaster/squad-cli@2.0.0",
         "state-mcp"
       ],
       "env": {},
       "tools": [
         "*"
-      ],
-      "x-squad": {
-        "managed": true,
-        "version": "2.0.0",
-        "machineSpecific": false,
-        "source": "path",
-        "fallback": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@bradygaster/squad-cli@2.0.0",
-            "state-mcp"
-          ]
-        }
-      }
+      ]
     }
   }
 }
