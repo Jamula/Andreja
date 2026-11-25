@@ -18,7 +18,18 @@ This dated status refresh supplements, and does not rewrite, the historical 2026
 
 This refresh is status evidence only; it does not authorize or record a human gate, release, signing, merge, or phase exit.
 
+## Board refresh — 2026-11-25
+
+This dated status refresh (`2026-11-25T08:16:39.737-08:00`) supplements, and does not rewrite, the historical 2026-11-08 snapshot and 2026-11-15 refresh above. The repository's `main` baseline at this refresh is commit `5bf2ffcacdd19a9672eee7ef69d7be87e88c5187`; recheck volatile GitHub state before execution.
+
+- **Issues and 100% milestone alignment (`36/36`):** All **36 open issues** (`14` phase epics, `15` human decision gates [#260](https://github.com/Jamula/Andreja/issues/260)–[#287](https://github.com/Jamula/Andreja/issues/287), plus [#6](https://github.com/Jamula/Andreja/issues/6), [#38](https://github.com/Jamula/Andreja/issues/38), [#93](https://github.com/Jamula/Andreja/issues/93), [#158](https://github.com/Jamula/Andreja/issues/158), [#211](https://github.com/Jamula/Andreja/issues/211), [#297](https://github.com/Jamula/Andreja/issues/297), and [#298](https://github.com/Jamula/Andreja/issues/298)) now have **100% milestone alignment (`36/36`)** across all 15 roadmap milestones (`#297` and `#298` assigned to `Phase 0 - Govern and decide`, `#211` to `Phase 1A - Self-host MVP`, and `#158` to `Phase 1B - Managed dogfood`; note `#38` and `#158` still carry legacy `phase:0` labels from initial creation).
+- **Pull requests, repository metadata, and Squad configuration:** PRs [#299](https://github.com/Jamula/Andreja/pull/299)–[#302](https://github.com/Jamula/Andreja/pull/302) merged onto `main` through `5bf2ffcacdd19a9672eee7ef69d7be87e88c5187`, landing the Squad roster, workflow updates, `.squad/config.json` with `stateBackend: "two-layer"`, and the Squad `2.0.0` tooling upgrade; `Jamula/Andreja`'s repository description is aligned with the platform mission. Live GitHub PR state at refresh time still holds the six pre-existing dependency PRs from `2026-11-15` ([#255](https://github.com/Jamula/Andreja/pull/255) and [#291](https://github.com/Jamula/Andreja/pull/291)–[#295](https://github.com/Jamula/Andreja/pull/295)) open pending reconciliation/review, alongside concurrent governance alignment PR [#303](https://github.com/Jamula/Andreja/pull/303) opened after baseline `5bf2ffcacdd19a9672eee7ef69d7be87e88c5187`.
+
+This refresh is status evidence only; it does not authorize or record a human gate, release, signing, merge, charter ratification, or phase exit.
+
 ## Reading guide and status vocabulary
+
+For the repository's genesis (`cyrusjamula/Andreja` → `Jamula/Andreja`), five core platform invariants, ADR provenance, and 15-milestone baseline summary, see [`docs/project-origin-and-evolution.md`](../project-origin-and-evolution.md).
 
 1. Read **Executive assessment**, **Decision queue**, **Critical path**, and **Five-day execution attempt** for the leadership view.
 2. Read **Delivery operating system**, **Phase-by-phase roadmap**, and the two **catalog matrices** for the work program.
@@ -786,6 +797,7 @@ An independent reviewer challenged the draft against the repository and decision
 
 ## Source index
 
+- [Project origin, architectural evolution, and 15-milestone trajectory](../project-origin-and-evolution.md).
 - [Accepted plan authority and amendment policy, ADR 0000](https://github.com/Jamula/Andreja/blob/7923b4d67f17f402c3e65d2c81dd1a981fa456e2/docs/adr/0000-plan-ratification.md); [current platform plan and all phases](https://github.com/Jamula/Andreja/blob/7923b4d67f17f402c3e65d2c81dd1a981fa456e2/docs/plan.md).
 - [Proposed company charter](https://github.com/Jamula/Andreja/blob/7923b4d67f17f402c3e65d2c81dd1a981fa456e2/docs/charter.md); [charter ratification instrument ADR 0006](https://github.com/Jamula/Andreja/blob/7923b4d67f17f402c3e65d2c81dd1a981fa456e2/docs/adr/0006-charter-ratification.md).
 - [Direct owner-only human direction](https://github.com/Jamula/Andreja/issues/2#issuecomment-6115465929); [proposed owner-device encryption ADR 0012](https://github.com/Jamula/Andreja/blob/7923b4d67f17f402c3e65d2c81dd1a981fa456e2/docs/adr/0012-owner-device-content-encryption.md).
