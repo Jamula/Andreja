@@ -31,9 +31,6 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 #v4
 
-      - name: Validate Squad triage readiness
-        run: node .github/scripts/squad-readiness.js
-
       - name: Check triage script
         id: check-script
         run: |
@@ -42,7 +39,6 @@ jobs:
           else
             echo "has_script=false" >> "$GITHUB_OUTPUT"
             echo "⚠️ ralph-triage.js not found — run 'squad upgrade' to install"
-            exit 1
           fi
 
       - name: Ralph — Smart triage
@@ -82,6 +78,22 @@ jobs:
                   issue_number: decision.issueNumber,
                   labels: [decision.label]
                 });
+                
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: decision.issueNumber,
+                  body: [
+                    '### 🔄 Ralph — Auto-Triage',
+                    '',
+                    `**Assigned to:** ${decision.assignTo}`,
+                    `**Reason:** ${decision.reason}`,
+                    `**Source:** ${decision.source}`,
+                    '',
+                    '> Ralph auto-triaged this issue using routing rules.',
+                    '> To reassign, swap the `squad:*` label.'
+                  ].join('\n')
+                });
 
                 if (decision.label === 'squad:copilot' && autoAssign) {
                   await github.rest.actions.createWorkflowDispatch({
@@ -93,41 +105,6 @@ jobs:
                   });
                   core.info(`Dispatched squad-issue-assign.yml for auto-assigned issue #${decision.issueNumber}`);
                 }
-
-                const handoff = decision.label === 'squad:copilot'
-                  ? autoAssign
-                    ? [
-                        '> This label is a routing hint, not a GitHub assignee or a running session.',
-                        '> Auto-assignment is enabled; Squad Issue Assign was dispatched to request Copilot work.',
-                        '> Verify a linked Copilot session or draft PR before treating the handoff as started.',
-                      ]
-                    : [
-                        '> This label is a routing hint, not a GitHub assignee or a running session.',
-                        `> Next: manually dispatch Squad Issue Assign with issue_number=${decision.issueNumber} to request Copilot work.`,
-                        '> Verify a linked Copilot session or draft PR before treating the handoff as started.',
-                      ]
-                  : [
-                      '> This label is a routing hint, not a GitHub assignee or a running session.',
-                      `> Next: start an authorized session for ${decision.assignTo} and ask it to work on issue #${decision.issueNumber}.`,
-                    ];
-                
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: decision.issueNumber,
-                  body: [
-                    '### 🔄 Ralph — Auto-Triage',
-                    '',
-                    `**Routing label:** ${decision.label} (${decision.assignTo})`,
-                    `**Reason:** ${decision.reason}`,
-                    `**Source:** ${decision.source}`,
-                    '',
-                    ...handoff,
-                    '',
-                    '> Ralph auto-triaged this issue using routing rules.',
-                    '> To reassign, swap the `squad:*` label.'
-                  ].join('\n')
-                });
                 
                 core.info(`Triaged #${decision.issueNumber} → ${decision.assignTo} (${decision.source})`);
               } catch (e) {

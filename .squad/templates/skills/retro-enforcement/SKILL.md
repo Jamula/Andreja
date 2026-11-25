@@ -1,3 +1,11 @@
+---
+name: "retro-enforcement"
+description: "Keep retrospectives on schedule and track their action items as GitHub Issues, not markdown checklists"
+domain: "process"
+confidence: "high"
+source: "team-decision"
+---
+
 # Skill: Retro Enforcement
 
 ## Purpose

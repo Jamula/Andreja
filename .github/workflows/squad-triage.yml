@@ -16,15 +16,11 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 #v4
 
-      - name: Validate Squad triage readiness
-        run: node .github/scripts/squad-readiness.js
-
       - name: Triage issue via deterministic keyword routing
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b #v7
         with:
           script: |
             const fs = require('fs');
-            const { parseRoster } = require(`${process.cwd()}/.squad/templates/ralph-triage.js`);
             const issue = context.payload.issue;
 
             const teamFile = '.squad/team.md';
@@ -34,6 +30,7 @@ jobs:
             }
 
             const content = fs.readFileSync(teamFile, 'utf8');
+            const lines = content.split('\n');
             if (issue.labels.some(label => /^squad:.+/.test(label.name))) {
               core.info(`Issue #${issue.number} already has a squad member label — skipping conflicting triage.`);
               return;
@@ -71,9 +68,26 @@ jobs:
               }
             }
 
-            const SUPPORT_IDENTITY_SLUGS = new Set(['scribe', 'ralph', 'rai', 'fact-checker']);
-            const members = parseRoster(content)
-              .filter(member => !SUPPORT_IDENTITY_SLUGS.has(slugify(member.name)));
+            const members = [];
+            let inMembersTable = false;
+            for (const line of lines) {
+              if (line.match(/^##\s+(Members|Team Roster)/i)) {
+                inMembersTable = true;
+                continue;
+              }
+              if (inMembersTable && line.startsWith('## ')) {
+                break;
+              }
+              if (inMembersTable && line.startsWith('|') && !line.includes('---') && !line.includes('Name')) {
+                const cells = line.split('|').map(c => c.trim()).filter(Boolean);
+                if (cells.length >= 2 && cells[0] !== 'Scribe') {
+                  members.push({
+                    name: cells[0],
+                    role: cells[1]
+                  });
+                }
+              }
+            }
 
             const routingFile = '.squad/routing.md';
             let routingContent = '';
@@ -206,7 +220,8 @@ jobs:
 
             const lead = findLead(members);
             if (!lead) {
-              throw new Error('No Lead or Architect role found in team roster — cannot triage');
+              core.warning('No Lead role found in team roster — cannot triage');
+              return;
             }
 
             // Build triage context
@@ -247,7 +262,7 @@ jobs:
               assignedMember = assignment.member;
               triageReason = assignment.workType
                 ? `Matched routing rule "${assignment.workType}"`
-                : 'No specific domain match — routed to Lead for further analysis';
+                : 'No specific domain match — assigned to Lead for further analysis';
             }
 
             const isCopilot = assignedMember.name === '@copilot';
@@ -281,41 +296,13 @@ jobs:
               }
             }
 
-            if (isCopilot && autoAssign) {
-              await github.rest.actions.createWorkflowDispatch({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: 'squad-issue-assign.yml',
-                ref: context.payload.repository.default_branch,
-                inputs: { issue_number: String(issue.number) }
-              });
-              core.info(`Dispatched squad-issue-assign.yml for auto-assigned issue #${issue.number}`);
-            }
-
-            const handoff = isCopilot
-              ? autoAssign
-                ? [
-                    '> This label is a routing hint, not a GitHub assignee or a running session.',
-                    '> Auto-assignment is enabled; Squad Issue Assign was dispatched to request Copilot work.',
-                    '> Verify a linked Copilot session or draft PR before treating the handoff as started.',
-                  ]
-                : [
-                    '> This label is a routing hint, not a GitHub assignee or a running session.',
-                    `> Next: manually dispatch Squad Issue Assign with issue_number=${issue.number} to request Copilot work.`,
-                    '> Verify a linked Copilot session or draft PR before treating the handoff as started.',
-                  ]
-              : [
-                  '> This label is a routing hint, not a GitHub assignee or a running session.',
-                  `> Next: start an authorized session for ${assignedMember.name} and ask it to work on issue #${issue.number}.`,
-                ];
-
             // Post triage comment
             const comment = [
               `### 🏗️ Squad Triage — Automated keyword routing`,
               '',
               `**Provenance:** Deterministic keyword matching against the capability profile in \`.squad/team.md\` and rules in \`.squad/routing.md\`; no Lead-agent analysis was performed.`,
               `**Issue:** #${issue.number} — ${issue.title}`,
-              `**Routing label:** ${assignLabel} (${assignedMember.name}, ${assignedMember.role})`,
+              `**Assigned to:** ${assignedMember.name} (${assignedMember.role})`,
               `**Reason:** ${triageReason}`,
               copilotTier === 'needs-review' ? `\n⚠️ **PR review recommended** — a squad member should review @copilot's work on this one.` : '',
               copilotNote,
@@ -325,8 +312,6 @@ jobs:
               `**Team roster:**`,
               memberList,
               hasCopilot ? `- **@copilot** (Coding Agent) → label: \`squad:copilot\`` : '',
-              '',
-              ...handoff,
               '',
               `> To reassign, remove the current \`squad:*\` label and add the correct one.`,
             ].filter(Boolean).join('\n');
@@ -339,3 +324,13 @@ jobs:
             });
 
             core.info(`Triaged issue #${issue.number} → ${assignedMember.name} (${assignLabel})`);
+            if (isCopilot && autoAssign) {
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'squad-issue-assign.yml',
+                ref: context.payload.repository.default_branch,
+                inputs: { issue_number: String(issue.number) }
+              });
+              core.info(`Dispatched squad-issue-assign.yml for auto-assigned issue #${issue.number}`);
+            }

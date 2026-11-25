@@ -50,14 +50,14 @@ gh auth token --user corpalias_enterprise
 The most common scenario: your shell defaults to the EMU account, but you need to push to a personal GitHub repo.
 
 ```bash
-# 1. Extract the personal token
-$token = gh auth token --user personaluser
-
-# 2. Push using token-authenticated HTTPS
-git push https://personaluser:$token@github.com/personaluser/repo.git branch-name
+# Push as the personal account for this one command: gh's credential helper hands git the
+# token from GH_TOKEN, so it never appears in a URL, a remote or the command line
+GH_TOKEN="$(gh auth token --user personaluser)" \
+  git -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
+  push https://github.com/personaluser/repo.git branch-name
 ```
 
-**Why this works:** `gh auth token --user` reads from `gh`'s credential store without switching the active account. The token is used inline for a single operation and never persisted.
+**Why this works:** `gh auth token --user` reads from `gh`'s credential store without switching the active account. The token lives only in that one command's environment: `credential.helper=` clears the stored (EMU) helper for this command, and `gh auth git-credential` answers git's credential request with `GH_TOKEN`. Never put a token in a git URL: it shows up in shell history, process listings, tool logs and `.git/config`.
 
 ### Create PRs on Personal Forks
 
@@ -128,24 +128,21 @@ alias ghe='gh'
 # Agent needs to push to personaluser.github.io (personal repo)
 # Default gh auth is corpalias_enterprise (EMU)
 
-$token = gh auth token --user personaluser
-git remote set-url origin https://personaluser:$token@github.com/personaluser/personaluser.github.io.git
-git push origin main
-
-# Clean up — don't leave token in remote URL
-git remote set-url origin https://github.com/personaluser/personaluser.github.io.git
+$env:GH_TOKEN = gh auth token --user personaluser
+git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push origin main
+Remove-Item Env:GH_TOKEN  # the token never touches the remote URL
 ```
 
 ### ✓ Correct: Agent creates a PR from personal fork to upstream
 
 ```powershell
-# Fork: personaluser/squad, Upstream: bradygaster/squad
+# Fork: personaluser/squad, Upstream: github/squad
 # Agent is on branch contrib/fix-docs in the fork clone
 
 git push origin contrib/fix-docs  # Pushes to fork (may need token auth)
 
 # Create PR targeting upstream
-gh pr create --repo bradygaster/squad --head personaluser:contrib/fix-docs `
+gh pr create --repo github/squad --head personaluser:contrib/fix-docs `
   --title "docs: fix installation guide" `
   --body "Fixes #123"
 ```
@@ -167,9 +164,10 @@ git push https://personaluser:ghp_xxxxxxxxxxxx@github.com/personaluser/repo.git 
 ```bash
 # Always verify which account has access before operations
 gh auth status
-# If wrong account, use token extraction:
-$token = gh auth token --user personaluser
-git push https://personaluser:$token@github.com/personaluser/repo.git main
+# If wrong account, hand git the personal token for this one push:
+GH_TOKEN="$(gh auth token --user personaluser)" \
+  git -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
+  push https://github.com/personaluser/repo.git main
 ```
 
 ## Anti-Patterns
