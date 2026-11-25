@@ -18,5 +18,15 @@
     "status": "active",
     "createdAt": "2026-11-25T10:34:45.323Z",
     "updatedAt": "2026-11-25T10:34:45.323Z"
+  },
+  {
+    "id": "a9d94928-3e92-4c0c-9aa1-41eb37d85896",
+    "class": "LOCAL",
+    "loadGuidance": "ON-DEMAND",
+    "title": "Docs-CI, upgrade backup, and milestone guardrails",
+    "path": ".squad\\memory\\local\\cyrus-jamula-via-seven-docs-ci-upgrade-backup-and-milestone-guardrails-a9d94928.md",
+    "status": "active",
+    "createdAt": "2026-11-25T10:34:45.323Z",
+    "updatedAt": "2026-11-25T10:34:45.323Z"
   }
 ]
