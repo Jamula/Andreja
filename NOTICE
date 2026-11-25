@@ -1,0 +1,24 @@
+Andreja
+Copyright © Jamula, Inc.
+
+Canonical repository: https://github.com/Jamula/Andreja
+Original author: Cyrus Jamula
+
+This product includes software developed for the Andreja project
+(https://github.com/Jamula/Andreja).
+
+Trademark notice (Apache License, Version 2.0, Section 6):
+Nothing in the root LICENSE file grants permission to use the trade names,
+trademarks, service marks, product names, or compatibility marks of the
+Licensor (including "Andreja", "Jamula", and "Jamula, Inc."), except as
+required for reasonable and customary use in describing the origin of the Work
+and reproducing the content of this NOTICE file.
+
+Governance and licensing status:
+Active outbound/inbound licensing, chain-of-title, patent, trademark,
+namespace, and external-contribution governance is tracked in GitHub Issue #6
+(https://github.com/Jamula/Andreja/issues/6), with current evidence boundaries
+recorded in docs/legal/license-evaluation.md,
+docs/legal/licensing-decision-packet.md, and CONTRIBUTING.md. This NOTICE file
+provides attribution and Section 6 trademark notice under Apache-2.0; it does
+not modify LICENSE or record legal clearance or closure of Issue #6.

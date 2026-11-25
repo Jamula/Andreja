@@ -31,9 +31,23 @@ These labels never replace `status:*`. An issue can correctly be both
 
 ## Manual maintenance
 
-Issue owners maintain lifecycle and blocker labels manually. There is no
-scheduled reconciler, branch-name parser, automatic label synchronization, or
-workflow-dispatch override.
+Issue owners maintain implementation lifecycle (`status:*`) and blocker
+(`blocked:*`, `blocks:*`) labels manually. No scheduled reconciler or
+branch-name parser automatically mutates `status:*`, `blocked:*`, or `blocks:*`
+labels.
+
+Separate Squad automation manages specialist routing (`squad` and `squad:*`
+labels — excluding support-only identities `Scribe`, `Ralph`, `Rai`, and
+`Fact Checker`; see [`meet-the-squad.md`](../../meet-the-squad.md)) and queue
+hygiene via
+[`.github/workflows/sync-squad-labels.yml`](../../.github/workflows/sync-squad-labels.yml),
+[`.github/workflows/squad-triage.yml`](../../.github/workflows/squad-triage.yml),
+[`.github/workflows/squad-issue-assign.yml`](../../.github/workflows/squad-issue-assign.yml),
+[`.github/workflows/squad-heartbeat.yml`](../../.github/workflows/squad-heartbeat.yml),
+and pull-request label validation in
+[`.github/workflows/squad-label-enforce.yml`](../../.github/workflows/squad-label-enforce.yml).
+Those Squad workflows route ownership and triage only; they do not update
+`status:*` or blocker labels.
 
 Use the issue's Development links and explicit closing references to identify
 related pull requests. Confirm the actual branch, draft, review, and merge state
