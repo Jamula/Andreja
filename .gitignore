@@ -70,14 +70,17 @@ __pycache__/
 # Deterministic architecture render scratch
 docs/architecture/.andreja-high-level.check.png
 docs/architecture/.andreja-high-level.rendering.png
-# Squad: ignore runtime state (logs, inbox, sessions)
+
+# Squad: ignore upgrade backups and local runtime state (logs, inbox, sessions, backend)
 # Note: .squad/casting/* is identity and MUST be committed to main, not ignored
+*.local-backup
 .squad/orchestration-log/
 .squad/log/
 .squad/decisions/inbox/
 .squad/sessions/
 .squad/.scratch/
 .squad/.cache/
+.squad/backend/
 # Squad: state owned by squad-state branch (two-layer/orphan backend)
 .squad/decisions.md
 .squad/agents/*/history.md
@@ -86,4 +89,3 @@ docs/architecture/.andreja-high-level.rendering.png
 # /Squad: state owned by squad-state branch
 # Squad: SubSquad activation file (local to this machine)
 .squad-workstream
-.squad/backend/
