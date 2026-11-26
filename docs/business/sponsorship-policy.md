@@ -31,8 +31,10 @@ termination rules. It does **not**:
 [`.github/FUNDING.yml`](../../.github/FUNDING.yml) links solely to original author
 Cyrus Jamula's personal GitHub Sponsors profile (`cyrusjamula`), as recorded in
 [`docs/repository-migration.md`](../repository-migration.md) and
-[`SPONSORS.md`](../../SPONSORS.md); that personal creator link does not activate
-organization- or project-level sponsorship (`Jamula, Inc.`) under this policy.
+[`SPONSORS.md`](../../SPONSORS.md); that personal creator link grants no product
+entitlement, sponsor-wall listing, data access, or roadmap influence, and does
+not activate organization- or project-level sponsorship (`Jamula, Inc.`) under
+this policy.
 
 ## Principles: transparent donations and recognition
 

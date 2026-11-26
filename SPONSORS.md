@@ -13,7 +13,8 @@ as recorded in [`docs/repository-migration.md`](docs/repository-migration.md).
   creator.
 - They are voluntary appreciation, not a commercial contract with `Jamula, Inc.`,
   not a hosted-service subscription, and not an organization or project
-  sponsorship tier.
+  sponsorship tier; they grant no product entitlement, SLA, commercial license,
+  or governance authority.
 
 ## Organization and project sponsorship (`Jamula, Inc.` — inactive)
 
@@ -33,8 +34,8 @@ including:
    [issue #6](https://github.com/Jamula/Andreja/issues/6)
    ([`docs/legal/license-evaluation.md`](docs/legal/license-evaluation.md) and
    [`docs/legal/licensing-decision-packet.md`](docs/legal/licensing-decision-packet.md)).
-3. Explicit human approval by Cyrus Jamula after security, privacy, legal, and
-   FinOps review.
+3. Explicit human approval by Cyrus Jamula after security, privacy, legal,
+   FinOps, and Marketing review.
 
 ## Non-negotiable guardrails
 
@@ -46,7 +47,7 @@ following:
   open-loop records, prompts, connector payloads, or non-public telemetry.
 - **No targeted ads or ranking bias:** Sponsorship never enables targeted
   advertising, paid product placement, or preferential ranking in assistant
-  responses, skills, or channels.
+  responses, skills, channels, or future skill-marketplace listings.
 - **No roadmap veto or governance bypass:** Product priorities, architecture,
   security, privacy, and release gates remain governed by
   [`docs/plan.md`](docs/plan.md) and accepted ADRs. Support grants no roadmap

@@ -23,13 +23,16 @@ Security Advisories:
 - **Submit a private report:** <https://github.com/Jamula/Andreja/security/advisories/new>
 - **View repository security policy:** <https://github.com/Jamula/Andreja/security/policy>
 
-Do **not** disclose vulnerabilities, exploit steps, credentials, `.env` values,
-bootstrap tokens, recovery codes, passkey ceremony payloads, task/open-loop
-content, prompts, provider responses, or personal data in public issues,
-discussions, or pull requests. Provide only the minimum synthetic reproduction
-details needed to verify the issue. Internal triage and incident-routing rules
-are documented in
-[`docs/frameworks/feedback-security-abuse-incident-routing.md`](docs/frameworks/feedback-security-abuse-incident-routing.md).
+Do **not** disclose vulnerabilities, exploit steps, credentials, API keys, `.env`
+values, bootstrap tokens, recovery codes, Data Protection or signing keys,
+passkey ceremony payloads, task/open-loop content, prompts, provider responses,
+personal data, or private diagnostics in public issues, discussions, or pull
+requests. Provide only the minimum synthetic reproduction details needed to
+verify the issue; if GitHub Security Advisories are unavailable, contact the
+repository owner through an already approved private channel. Internal triage,
+incident-routing, and threat-model rules are documented in
+[`docs/frameworks/feedback-security-abuse-incident-routing.md`](docs/frameworks/feedback-security-abuse-incident-routing.md)
+and [`docs/threat-model.md`](docs/threat-model.md).
 
 ## Current security and trust boundaries
 
@@ -41,7 +44,8 @@ stating non-implemented controls plainly:
 - **Passkey authentication (`WebAuthn`):** Self-hosted deployments authenticate
   via ASP.NET Core Identity passkeys bound to an exact HTTPS `AllowedOrigins`
   origin and `RelyingPartyId`
-  ([`docs/help/local-identity.md`](docs/help/local-identity.md),
+  ([`docs/adr/0002-phase-1a-identity-tenancy.md`](docs/adr/0002-phase-1a-identity-tenancy.md),
+  [`docs/help/local-identity.md`](docs/help/local-identity.md),
   [`docs/operations/self-hosting.md`](docs/operations/self-hosting.md)).
 - **Bootstrap token handling:** Initial owner enrollment (`/Account/Bootstrap`)
   reads the Base64-encoded one-time token from the configured host file into
@@ -76,7 +80,8 @@ stating non-implemented controls plainly:
   allowlist.
 - **Compile- and environment-gated dev sign-in:** The local development sign-in
   endpoint is compiled inside `#if DEBUG` only and mapped only when
-  `IsDevelopment()` is true; it is absent from `Release` builds and OCI images.
+  `IsDevelopment()` is true; it is absent from `Release` builds and OCI images,
+  enforced by unit and architecture tests.
 
 ### Tenant isolation, mutation pipeline, migrations, and encryption posture
 
@@ -87,7 +92,7 @@ stating non-implemented controls plainly:
 - **Explicit human confirmation (`Proposal → Policy → Confirmation → Persistence → Audit`):**
   Assistant turns and typed tools (`open-loops.propose-task`) can create
   proposals only; durable task creation and state changes require explicit user
-  confirmation and emit auditable records.
+  confirmation, enforce durable idempotency records, and emit auditable records.
 - **Backup-gated schema migrations:** Normal web startup is schema-read-only.
   Database migrations execute only through
   [`scripts/operations/migrate-database.ps1`](scripts/operations/migrate-database.ps1),
@@ -97,7 +102,8 @@ stating non-implemented controls plainly:
   [`src/Andreja.Portability.Cli`](src/Andreja.Portability.Cli) encrypts
   operator-exported archives with AES-256-GCM and excludes credentials,
   passkeys, recovery codes, bootstrap tokens, and Data Protection keys
-  ([`docs/operations/portability.md`](docs/operations/portability.md)). However,
+  ([`docs/operations/portability.md`](docs/operations/portability.md),
+  [`docs/privacy.md`](docs/privacy.md)). However,
   [`docs/adr/0012-owner-device-content-encryption.md`](docs/adr/0012-owner-device-content-encryption.md)
   is **Proposed (`Proposed; not ratified`) and not yet implemented** — current
   Phase 1A PostgreSQL tables and operator-decrypted exports store plaintext
@@ -121,9 +127,11 @@ support artifacts. See the
 - **Digest-pinned OCI supply chain:** [`Dockerfile`](Dockerfile),
   [`compose.yaml`](compose.yaml), and
   [`supply-chain-policy.json`](supply-chain-policy.json) enforce `@sha256:`
-  digest-pinned base, runtime, and scanner images, offline BuildKit NuGet
-  restore, reproducible double-build digest checks, SBOM/vulnerability thresholds,
-  and offline Cosign bundle verification ([`docs/operations/self-hosting.md`](docs/operations/self-hosting.md)).
+  digest-pinned base, runtime, and scanner images, non-root read-only containers
+  with all Linux capabilities dropped (`cap_drop: [ALL]`,
+  `no-new-privileges:true`), offline BuildKit NuGet restore, reproducible
+  double-build digest checks, SBOM/vulnerability thresholds, and offline Cosign
+  bundle verification ([`docs/operations/self-hosting.md`](docs/operations/self-hosting.md)).
 - **Loopback-only static field guide:** [`src/Andreja.PublicSite`](src/Andreja.PublicSite)
   and [`scripts/public-website/local-preview.mjs`](scripts/public-website/local-preview.mjs)
   build and preview static field-guide HTML strictly in `local-unpublished`

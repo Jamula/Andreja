@@ -3,8 +3,12 @@
 Andreja is a privacy-first, user-owned personal assistant and skill platform
 built as a modular `.NET 10` monolith for self-hosted operators first and future
 cloud portability by contract. The ratified architecture, product roadmap, and
-delivery phases are in [`docs/plan.md`](docs/plan.md). The proposed company
-mission, commitments, and operating culture are in
+delivery phases are in [`docs/plan.md`](docs/plan.md), with historical context
+and end-to-end milestone sequencing in
+[`docs/project-origin-and-evolution.md`](docs/project-origin-and-evolution.md)
+and
+[`docs/roadmap/full-vision-completion-roadmap.md`](docs/roadmap/full-vision-completion-roadmap.md).
+The proposed company mission, commitments, and operating culture are in
 [`docs/charter.md`](docs/charter.md); the charter remains pending explicit
 ratification and takes effect only if Cyrus approves it through the proposed
 [ADR 0006 ratification instrument](docs/adr/0006-charter-ratification.md).
@@ -17,8 +21,10 @@ personal workflows without surrendering custody of personal records, prompts, or
 credentials. Rather than shipping an opaque prompt wrapper that silently writes
 state or requires third-party cloud lock-in, Andreja is engineered as an
 evidence-gated platform across 15 planned delivery milestones (`Phase 0` through
-`Phase 12` in [`docs/plan.md`](docs/plan.md)), currently spanning `Phase 0`
-governance baselines and the `Phase 1A` self-hosted walking skeleton.
+`Phase 12` in [`docs/plan.md`](docs/plan.md); see
+[`docs/project-origin-and-evolution.md`](docs/project-origin-and-evolution.md)),
+currently spanning `Phase 0` governance baselines and the `Phase 1A` self-hosted
+walking skeleton.
 
 Five architectural boundaries govern the codebase:
 
@@ -31,7 +37,9 @@ Five architectural boundaries govern the codebase:
    ([`Dockerfile`](Dockerfile), [`compose.yaml`](compose.yaml)), with
    operator-invoked AES-256-GCM application export and dry-run/approved import
    in [`src/Andreja.Portability.Cli`](src/Andreja.Portability.Cli)
-   ([`docs/operations/portability.md`](docs/operations/portability.md)).
+   ([`docs/operations/portability.md`](docs/operations/portability.md)) and
+   shared contracts for future managed dogfood, multi-tenant SaaS,
+   bilateral-consent federation, and isolated remote MCP/HTTP skill hosts.
    Current Phase 1A storage is operator-custodied rather than zero-knowledge
    ciphertext; owner-device content encryption in
    [ADR 0012](docs/adr/0012-owner-device-content-encryption.md) remains
@@ -67,7 +75,7 @@ Five architectural boundaries govern the codebase:
 | [`src/Andreja.PublicSite`](src/Andreja.PublicSite) | Deterministic static field-guide generator and verifier (`local-unpublished` loopback-only mode; public publication remains gated on [issue #93](https://github.com/Jamula/Andreja/issues/93)). |
 | [`tests/`](tests) | Four `.NET` `MSTest.Sdk` suites ([`Andreja.UnitTests`](tests/Andreja.UnitTests), [`Andreja.ArchitectureTests`](tests/Andreja.ArchitectureTests), and [`Andreja.PublicSiteTests`](tests/Andreja.PublicSiteTests) in [`Andreja.slnx`](Andreja.slnx), plus separately compiled [`Andreja.PostgreSqlIntegrationTests`](tests/Andreja.PostgreSqlIntegrationTests)) and doc-consistency tests (`tests/test_check_docs_consistency.py`). |
 | [`deploy/`](deploy), [`scripts/`](scripts) | Digest-pinned Compose overrides, OpenTelemetry collector config, backup-gated migration scripts, OCI supply-chain verification, local public-site preview, and browser/offline evidence scripts. |
-| [`docs/`](docs), [`.squad/`](.squad) | Architecture, ADRs, Phase 0/1A governance and evidence records, operator/user guides, and Squad specialist team state ([`meet-the-squad.md`](meet-the-squad.md)). |
+| [`docs/`](docs), [`.squad/`](.squad) | Ratified plan, ADRs (`0000`–`0012`), Phase 0/1A governance and evidence records, roadmap catalogs, operator/user guides, and Squad specialist team state ([`meet-the-squad.md`](meet-the-squad.md)). |
 
 ## Prerequisites
 
@@ -455,6 +463,9 @@ runtime state, or user content.
 
 ## Documentation
 
+- [Platform plan (`docs/plan.md`)](docs/plan.md)
+- [Project origin, architectural evolution, and 15-milestone trajectory](docs/project-origin-and-evolution.md)
+- [Full-vision completion roadmap](docs/roadmap/full-vision-completion-roadmap.md)
 - [High-level architecture and data flows](docs/architecture/andreja-high-level.md)
 - [Privacy baseline](docs/privacy.md)
 - [Threat model](docs/threat-model.md)
@@ -487,8 +498,9 @@ runtime state, or user content.
   [`docs/legal/licensing-decision-packet.md`](docs/legal/licensing-decision-packet.md)).
 - **Sponsorship boundaries:** [`.github/FUNDING.yml`](.github/FUNDING.yml) links
   only to creator Cyrus Jamula's personal GitHub Sponsors profile
-  (`@cyrusjamula`). Organization- and project-level sponsorship for `Jamula, Inc.`
-  remains inactive under [`SPONSORS.md`](SPONSORS.md) and
+  (`@cyrusjamula`) and grants zero user-data access, ads, ranking preference, or
+  roadmap influence. Organization- and project-level sponsorship for
+  `Jamula, Inc.` remains inactive under [`SPONSORS.md`](SPONSORS.md) and
   [`docs/business/sponsorship-policy.md`](docs/business/sponsorship-policy.md).
 
 Phase 0 provisions no cloud accounts, subscriptions, free tiers, or trials.
