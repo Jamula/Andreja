@@ -13,14 +13,21 @@ the former personal-account repository or its redirect.
 
 - The local `origin` fetch and push URL resolves directly to
   `https://github.com/Jamula/Andreja.git`; the default branch is `main`.
-- The organization-owned Andreja Roadmap Project contains all 14 repository
-  issues. Its built-in Status, Milestone, Labels, Assignees, Repository, linked
-  pull request, parent issue, and date fields avoid duplicating issue metadata.
+- At the `2026-08-23` transfer baseline (`d52badd`), the organization-owned
+  Andreja Roadmap Project contained all 14 repository issues that existed at
+  that point in time; subsequent Phase 0, Phase 1A, and Squad issues added on
+  `Jamula/Andreja` follow [`docs/help/issue-status.md`](help/issue-status.md)
+  and [`CONTRIBUTING.md`](../CONTRIBUTING.md). Its built-in Status, Milestone,
+  Labels, Assignees, Repository, linked pull request, parent issue, and date
+  fields avoid duplicating issue metadata.
 - All 15 phase milestones remain repository-owned and appear through each
   Project item's Milestone field. GitHub Projects do not add milestones as
   standalone items.
-- `cyrusjamula` in `.github/FUNDING.yml` is intentionally the GitHub Sponsors
-  profile, not a repository owner or route.
+- `cyrusjamula` in [`.github/FUNDING.yml`](../.github/FUNDING.yml) is
+  intentionally Cyrus Jamula's personal GitHub Sponsors profile, not a
+  repository owner, organization sponsorship tier, or route; see
+  [`SPONSORS.md`](../SPONSORS.md) and
+  [`docs/business/sponsorship-policy.md`](business/sponsorship-policy.md).
 
 ## Migration impact review
 

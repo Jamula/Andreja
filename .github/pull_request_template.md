@@ -1,3 +1,6 @@
+<!-- Review CONTRIBUTING.md and SECURITY.md before opening a pull request.
+External pull requests are currently paused pending issue #6 (Gate B). -->
+
 ## Why
 
 <!-- Link the issue and explain the user or platform outcome. -->
