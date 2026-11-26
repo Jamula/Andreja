@@ -105,7 +105,8 @@ public static partial class FeedbackReadinessValidator
 
     public static IReadOnlyList<string> ValidateContractErrors(
         string repositoryRoot,
-        IReadOnlyDictionary<string, string> documents)
+        IReadOnlyDictionary<string, string> documents,
+        Func<string, string?>? linkTargetResolver = null)
     {
         ArgumentNullException.ThrowIfNull(repositoryRoot);
         ArgumentNullException.ThrowIfNull(documents);
@@ -142,12 +143,9 @@ public static partial class FeedbackReadinessValidator
                 errors.Add($"{code}: complete framework requirement differs");
             }
 
-            foreach (var field in RequiredScenarioFields)
+            foreach (var field in RequiredScenarioFields.Where(field => !body.Contains(field, StringComparison.Ordinal)))
             {
-                if (!body.Contains(field, StringComparison.Ordinal))
-                {
-                    errors.Add($"{code}: missing {field}");
-                }
+                errors.Add($"{code}: missing {field}");
             }
 
             if (!body.Contains("../runbooks/feedback-operations.md", StringComparison.Ordinal))
@@ -170,12 +168,9 @@ public static partial class FeedbackReadinessValidator
         {
             var code = $"R{match.Groups[1].Value}";
             var body = match.Groups[2].Value;
-            foreach (var field in RequiredRunbookFields)
+            foreach (var field in RequiredRunbookFields.Where(field => !body.Contains(field, StringComparison.Ordinal)))
             {
-                if (!body.Contains(field, StringComparison.Ordinal))
-                {
-                    errors.Add($"{code}: missing {field}");
-                }
+                errors.Add($"{code}: missing {field}");
             }
         }
 
@@ -186,32 +181,36 @@ public static partial class FeedbackReadinessValidator
         }
 
         var packetText = RepositoryPaths.NormalizeLf(documents[PacketPath]);
-        foreach (var phrase in RequiredPacketSafetyPhrases)
+        foreach (var phrase in RequiredPacketSafetyPhrases.Where(phrase => !packetText.Contains(phrase, StringComparison.OrdinalIgnoreCase)))
         {
-            if (!packetText.Contains(phrase, StringComparison.OrdinalIgnoreCase))
-            {
-                errors.Add($"{PacketPath}: missing safety statement {phrase}");
-            }
+            errors.Add($"{PacketPath}: missing safety statement {phrase}");
         }
 
         var helpText = RepositoryPaths.NormalizeLf(documents[HelpPath]);
-        foreach (var phrase in RequiredHelpSafetyPhrases)
+        foreach (var phrase in RequiredHelpSafetyPhrases.Where(phrase => !helpText.Contains(phrase, StringComparison.OrdinalIgnoreCase)))
         {
-            if (!helpText.Contains(phrase, StringComparison.OrdinalIgnoreCase))
-            {
-                errors.Add($"{HelpPath}: missing safety statement {phrase}");
-            }
+            errors.Add($"{HelpPath}: missing safety statement {phrase}");
         }
 
-        var rootFull = Path.GetFullPath(repositoryRoot);
-        var rootPrefix = rootFull.EndsWith(Path.DirectorySeparatorChar)
-            ? rootFull
-            : rootFull + Path.DirectorySeparatorChar;
+        if (!RepositoryPaths.TryResolveRealPath(repositoryRoot, out var resolvedRoot, linkTargetResolver: linkTargetResolver))
+        {
+            throw new InvalidDataException($"Could not resolve repository root: {repositoryRoot}");
+        }
 
         foreach (var (path, rawText) in documents)
         {
             var normalizedText = RepositoryPaths.NormalizeLf(rawText);
-            var sourceFile = Path.GetFullPath(Path.Join(rootFull, path));
+            if (Path.IsPathRooted(path)
+                || !RepositoryPaths.TryResolveRealPath(
+                    Path.Join(resolvedRoot, path),
+                    out var sourceFile,
+                    disallowedOpaqueReparseRoot: resolvedRoot,
+                    linkTargetResolver: linkTargetResolver)
+                || !RepositoryPaths.IsWithinRoot(sourceFile, resolvedRoot))
+            {
+                throw new InvalidDataException($"Document path escapes repository root: {path}");
+            }
+
             var sourceDir = Path.GetDirectoryName(sourceFile)
                 ?? throw new InvalidDataException($"Could not determine parent directory for {path}");
 
@@ -231,13 +230,24 @@ public static partial class FeedbackReadinessValidator
                 var hashIndex = link.IndexOf('#');
                 var filename = hashIndex >= 0 ? link[..hashIndex] : link;
                 var fragment = hashIndex >= 0 ? link[(hashIndex + 1)..] : string.Empty;
-                var target = filename.Length > 0
-                    ? Path.GetFullPath(Path.Combine(sourceDir, filename))
-                    : sourceFile;
 
-                var insideRoot = target.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(target, rootFull, StringComparison.OrdinalIgnoreCase);
-                if (!insideRoot || !File.Exists(target))
+                string target;
+                if (filename.Length == 0)
+                {
+                    target = sourceFile;
+                }
+                else if (Path.IsPathRooted(filename)
+                    || !RepositoryPaths.TryResolveRealPath(
+                        Path.Join(sourceDir, filename),
+                        out target,
+                        disallowedOpaqueReparseRoot: resolvedRoot,
+                        linkTargetResolver: linkTargetResolver))
+                {
+                    errors.Add($"{path}: broken local link {link}");
+                    continue;
+                }
+
+                if (!RepositoryPaths.IsWithinRoot(target, resolvedRoot) || !File.Exists(target))
                 {
                     errors.Add($"{path}: broken local link {link}");
                     continue;

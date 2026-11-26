@@ -10,18 +10,18 @@
     "Andreja.DocsTests": {
       "path": "tests/Andreja.DocsTests/Andreja.DocsTests.csproj",
       "Debug": {
-        "discovered": 63,
-        "trx_total": 63,
-        "executed": 63,
-        "passed": 63,
+        "discovered": 65,
+        "trx_total": 65,
+        "executed": 65,
+        "passed": 65,
         "failed": 0,
         "skipped": 0
       },
       "Release": {
-        "discovered": 63,
-        "trx_total": 63,
-        "executed": 63,
-        "passed": 63,
+        "discovered": 65,
+        "trx_total": 65,
+        "executed": 65,
+        "passed": 65,
         "failed": 0,
         "skipped": 0
       }

@@ -464,7 +464,7 @@ public sealed class DiagramBuilder
 
     private static string FormatPythonFloat(double value)
     {
-        return value == Math.Truncate(value)
+        return double.IsInteger(value)
             ? value.ToString("0.0", CultureInfo.InvariantCulture)
             : value.ToString("0.################", CultureInfo.InvariantCulture);
     }
@@ -1399,24 +1399,18 @@ public static class ArchitectureDiagramTool
             .ToArray();
         foreach (var (boundaryLabel, bounds) in boundaryLabels)
         {
-            foreach (var node in nodes)
+            foreach (var node in nodes.Where(node => RectanglesOverlap(bounds, (node.X, node.Y, node.Width, node.Height), margin: 4)))
             {
-                if (RectanglesOverlap(bounds, (node.X, node.Y, node.Width, node.Height), margin: 4))
-                {
-                    errors.Add($"{boundaryLabel.Id} overlaps node/callout {node.Id}");
-                }
+                errors.Add($"{boundaryLabel.Id} overlaps node/callout {node.Id}");
             }
         }
 
         foreach (var flowLabel in flowLabels)
         {
             var flowBounds = (flowLabel.X, flowLabel.Y, flowLabel.Width, flowLabel.Height);
-            foreach (var node in nodes)
+            foreach (var node in nodes.Where(node => RectanglesOverlap(flowBounds, (node.X, node.Y, node.Width, node.Height), margin: 2)))
             {
-                if (RectanglesOverlap(flowBounds, (node.X, node.Y, node.Width, node.Height), margin: 2))
-                {
-                    errors.Add($"{flowLabel.Id} overlaps node/callout {node.Id}");
-                }
+                errors.Add($"{flowLabel.Id} overlaps node/callout {node.Id}");
             }
 
             foreach (var (boundaryLabel, bounds) in boundaryLabels)
@@ -1813,14 +1807,9 @@ public static class ArchitectureDiagramTool
         ValidatePngPolicy(chunks, requireProvenance);
         using var stream = new MemoryStream(data.Length);
         stream.Write(PngSignatureBytes);
-        foreach (var chunk in chunks)
+        foreach (var chunk in chunks.Where(chunk => chunk.TypeName is "IHDR" or "IDAT" or "IEND"))
         {
-            if (string.Equals(chunk.TypeName, "IHDR", StringComparison.Ordinal)
-                || string.Equals(chunk.TypeName, "IDAT", StringComparison.Ordinal)
-                || string.Equals(chunk.TypeName, "IEND", StringComparison.Ordinal))
-            {
-                stream.Write(PngChunk(chunk.TypeBytes, chunk.DataBytes));
-            }
+            stream.Write(PngChunk(chunk.TypeBytes, chunk.DataBytes));
         }
 
         return stream.ToArray();
@@ -1831,14 +1820,10 @@ public static class ArchitectureDiagramTool
         ArgumentNullException.ThrowIfNull(chunks);
 
         using var material = new MemoryStream();
-        foreach (var chunk in chunks)
+        foreach (var chunk in chunks.Where(chunk => chunk.TypeName is "IHDR" or "IDAT"))
         {
-            if (string.Equals(chunk.TypeName, "IHDR", StringComparison.Ordinal)
-                || string.Equals(chunk.TypeName, "IDAT", StringComparison.Ordinal))
-            {
-                material.Write(chunk.TypeBytes);
-                material.Write(chunk.DataBytes);
-            }
+            material.Write(chunk.TypeBytes);
+            material.Write(chunk.DataBytes);
         }
 
         if (material.Length == 0)
@@ -2148,7 +2133,7 @@ public static class ArchitectureDiagramTool
             targets.Add(paths.PngHashPath);
         }
 
-        var backups = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase);
+        var backups = new Dictionary<string, byte[]?>(RepositoryPaths.PathComparer);
         foreach (var target in targets)
         {
             backups[target] = File.Exists(target) ? File.ReadAllBytes(target) : null;

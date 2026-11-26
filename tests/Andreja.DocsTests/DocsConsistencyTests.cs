@@ -420,9 +420,50 @@ public sealed class DocsConsistencyTests
                     DocsConsistencyChecker.ValidateCanonicalBaselineDocuments(removedDocs)).Message);
         }
 
+        var requiredStaticFields = new (string Label, string ExpectedValue, string DriftedValue)[]
+        {
+            ("Status", "Canonical descriptive baseline; not ratified", "Ratified"),
+            ("Residual-risk acceptance", "Cyrus; pending", "Cyrus; accepted"),
+        };
+        foreach (var path in DocsConsistencyChecker.CanonicalBaselineRequirements.Keys)
+        {
+            foreach (var (label, expectedValue, driftedValue) in requiredStaticFields)
+            {
+                var driftedDocs = BuildCanonicalDocuments();
+                driftedDocs[path] = ReplaceFirst(
+                    driftedDocs[path],
+                    $"- **{label}:** {expectedValue}",
+                    $"- **{label}:** {driftedValue}");
+                var driftedMessage = Assert.ThrowsExactly<InvalidDataException>(() =>
+                    DocsConsistencyChecker.ValidateCanonicalBaselineDocuments(driftedDocs)).Message;
+                Assert.Contains("header drifted", driftedMessage);
+                Assert.Contains($"[{label}]", driftedMessage);
+
+                var removedFieldDocs = BuildCanonicalDocuments();
+                removedFieldDocs[path] = ReplaceFirst(
+                    removedFieldDocs[path],
+                    $"- **{label}:** {expectedValue}\n",
+                    string.Empty);
+                var removedFieldMessage = Assert.ThrowsExactly<InvalidDataException>(() =>
+                    DocsConsistencyChecker.ValidateCanonicalBaselineDocuments(removedFieldDocs)).Message;
+                Assert.Contains("header drifted", removedFieldMessage);
+                Assert.Contains($"[{label}]", removedFieldMessage);
+            }
+        }
+
         foreach (var (path, challengers) in DocsConsistencyChecker.CanonicalBaselineRequirements)
         {
             var challengeLine = $"- **Required challenge:** {string.Join(", ", challengers)}";
+            var removedChallengeDocs = BuildCanonicalDocuments();
+            removedChallengeDocs[path] = ReplaceFirst(
+                removedChallengeDocs[path],
+                $"{challengeLine}\n",
+                string.Empty);
+            Assert.Contains(
+                "Missing required challengers",
+                Assert.ThrowsExactly<InvalidDataException>(() =>
+                    DocsConsistencyChecker.ValidateCanonicalBaselineDocuments(removedChallengeDocs)).Message);
+
             foreach (var challenger in new[] { "Privacy lead", "Security lead", "AI safety reviewer" })
             {
                 var docs = BuildCanonicalDocuments();

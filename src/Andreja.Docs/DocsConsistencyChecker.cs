@@ -903,14 +903,9 @@ public static partial class DocsConsistencyChecker
             .Where(clause => !normalized.Contains(clause, StringComparison.Ordinal))
             .ToArray();
 
-        var presentForbidden = new List<string>();
-        foreach (var forbidden in ForbiddenFeedbackSecretClauses)
-        {
-            if (normalized.Contains(forbidden, StringComparison.OrdinalIgnoreCase))
-            {
-                presentForbidden.Add(forbidden);
-            }
-        }
+        var presentForbidden = ForbiddenFeedbackSecretClauses
+            .Where(forbidden => normalized.Contains(forbidden, StringComparison.OrdinalIgnoreCase))
+            .ToList();
 
         if (ForbiddenSecretPersistenceRegex().IsMatch(normalized))
         {
