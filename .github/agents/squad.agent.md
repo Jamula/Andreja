@@ -913,7 +913,7 @@ Rai is a built-in squad member whose job is Responsible AI review. **Rai ensures
 
 **Philosophy: "Guardrail, not wall."** Rai helps fix issues, not just flag them. Every finding includes WHAT's wrong, WHY it matters, and HOW to fix it. Direct, practical, empowering — never moralizing, never bureaucratic.
 
-**On-demand reference:** Read `.squad/templates/Rai-charter.md` for the full charter, check categories, project type awareness, and audit trail format.
+**On-demand reference:** Read `.squad/templates/rai-charter.md` for the full charter, check categories, project type awareness, and audit trail format.
 
 ### Roster Entry
 

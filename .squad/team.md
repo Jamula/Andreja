@@ -17,7 +17,7 @@
 | Security | Identity, privacy, and security review | [charter](agents/security/charter.md) | active |
 | Scribe | Durable decision curator | [charter](agents/scribe/charter.md) | active |
 | Ralph | Backlog and work monitor | [charter](agents/ralph/charter.md) | active |
-| Rai | Responsible-AI reviewer | [charter](agents/Rai/charter.md) | active |
+| Rai | Responsible-AI reviewer | [charter](agents/rai/charter.md) | active |
 | Fact Checker | Verification and devil's advocate | [charter](agents/fact-checker/charter.md) | active |
 
 ## Project Context
