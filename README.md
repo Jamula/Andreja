@@ -1,11 +1,81 @@
 # Andreja
 
-Andreja is a user-owned personal assistant and skill platform. The ratified
-architecture, product roadmap, and delivery phases are in
-[`docs/plan.md`](docs/plan.md). The proposed company mission, commitments, and
-operating culture are in [`docs/charter.md`](docs/charter.md); the charter remains
-pending explicit ratification and takes effect only if Cyrus approves it through
-the proposed [ADR 0006 ratification instrument](docs/adr/0006-charter-ratification.md).
+Andreja is a privacy-first, user-owned personal assistant and skill platform
+built as a modular `.NET 10` monolith for self-hosted operators first and future
+cloud portability by contract. The ratified architecture, product roadmap, and
+delivery phases are in [`docs/plan.md`](docs/plan.md), with historical context
+and end-to-end milestone sequencing in
+[`docs/project-origin-and-evolution.md`](docs/project-origin-and-evolution.md)
+and
+[`docs/roadmap/full-vision-completion-roadmap.md`](docs/roadmap/full-vision-completion-roadmap.md).
+The proposed company mission, commitments, and operating culture are in
+[`docs/charter.md`](docs/charter.md); the charter remains pending explicit
+ratification and takes effect only if Cyrus approves it through the proposed
+[ADR 0006 ratification instrument](docs/adr/0006-charter-ratification.md).
+
+## Why Andreja exists and core principles
+
+Andreja started as a personal system for Customer Zero (original author Cyrus
+Jamula) to capture open loops, prepare reviewed follow-ups, and run repeatable
+personal workflows without surrendering custody of personal records, prompts, or
+credentials. Rather than shipping an opaque prompt wrapper that silently writes
+state or requires third-party cloud lock-in, Andreja is engineered as an
+evidence-gated platform across 15 planned delivery milestones (`Phase 0` through
+`Phase 12` in [`docs/plan.md`](docs/plan.md); see
+[`docs/project-origin-and-evolution.md`](docs/project-origin-and-evolution.md)),
+currently spanning `Phase 0` governance baselines and the `Phase 1A` self-hosted
+walking skeleton.
+
+Five architectural boundaries govern the codebase:
+
+1. **Explicit human agency (`Proposal → Policy → Confirmation → Persistence → Audit`):**
+   Assistant outputs never mutate durable user records directly. Typed proposals
+   pass policy checks, require explicit user confirmation, persist durably, and
+   record auditable state transitions.
+2. **Self-host first, cloud-portable by contract:**
+   Andreja runs locally on digest-pinned OCI images and PostgreSQL
+   ([`Dockerfile`](Dockerfile), [`compose.yaml`](compose.yaml)), with
+   operator-invoked AES-256-GCM application export and dry-run/approved import
+   in [`src/Andreja.Portability.Cli`](src/Andreja.Portability.Cli)
+   ([`docs/operations/portability.md`](docs/operations/portability.md)) and
+   shared contracts for future managed dogfood, multi-tenant SaaS,
+   bilateral-consent federation, and isolated remote MCP/HTTP skill hosts.
+   Current Phase 1A storage is operator-custodied rather than zero-knowledge
+   ciphertext; owner-device content encryption in
+   [ADR 0012](docs/adr/0012-owner-device-content-encryption.md) remains
+   `Proposed` and unimplemented.
+3. **Provider-neutral AI with an offline default and default-zero BYOK spend:**
+   A deterministic local assistant is the offline default. Optional
+   OpenAI-compatible Bring-Your-Own-Key (`BYOK`) requires explicit operator
+   configuration, exact endpoint allowlisting, read-only file-backed
+   credentials, no redirects, and a default-zero external usage envelope
+   ([`docs/phase-1a/byok-security-privacy.md`](docs/phase-1a/byok-security-privacy.md)).
+4. **Passkey identity and composite tenant isolation:**
+   Self-hosted deployments authenticate via WebAuthn passkeys, one-time
+   `SensitiveBuffer` bootstrap tokens, and single-use hashed recovery codes
+   ([`docs/help/local-identity.md`](docs/help/local-identity.md)). Distinct
+   `TenantId`, `AppUserId`, and `PrincipalId` boundaries are enforced across API
+   contracts, modules, channels, skills, and composite PostgreSQL constraints.
+5. **Evidence-gated governance:**
+   `Phase 0` enforces a `$0` cloud-provisioning and no-unapproved-external-account
+   rule ([`docs/cost-model.md`](docs/cost-model.md)). Proposed ADRs remain
+   non-normative design records distinct from accepted ADRs, and SHA-256
+   hash-locked governance artifacts are checked continuously in CI.
+
+## Repository and solution layout
+
+| Path | Role |
+| --- | --- |
+| [`src/Andreja.Platform.Contracts`](src/Andreja.Platform.Contracts) | Framework-neutral shared contracts (`ISkillHost`, `IChannelHost`, semantic conformance assertions, portability schema contracts). |
+| [`src/Andreja.Api.Contracts`](src/Andreja.Api.Contracts) | Versioned HTTP request/response contracts (`/api/v1/open-loops`). |
+| [`src/Modules/Andreja.Modules`](src/Modules/Andreja.Modules) | Capability modules for Identity, Open Loops, Assistant, Skills, Channels, Portability, and in-memory conformance hosts. |
+| [`src/Adapters/Andreja.Adapters`](src/Adapters/Andreja.Adapters) | Outer adapters for PostgreSQL/EF Core, ASP.NET Core Identity (`BootstrapTokenVerifier`, `SensitiveBuffer`), OpenAI-compatible BYOK, and OpenTelemetry. |
+| [`src/Andreja.AppHost`](src/Andreja.AppHost) | Modular monolith composition root, authenticated HTTP API, health probes, and responsive Blazor Open Loops UI. |
+| [`src/Andreja.Portability.Cli`](src/Andreja.Portability.Cli) | Local operator-only CLI for encrypted application export and dry-run/approved import (never exposed as an HTTP endpoint). |
+| [`src/Andreja.PublicSite`](src/Andreja.PublicSite) | Deterministic static field-guide generator and verifier (`local-unpublished` loopback-only mode; public publication remains gated on [issue #93](https://github.com/Jamula/Andreja/issues/93)). |
+| [`tests/`](tests) | Four `.NET` `MSTest.Sdk` suites ([`Andreja.UnitTests`](tests/Andreja.UnitTests), [`Andreja.ArchitectureTests`](tests/Andreja.ArchitectureTests), and [`Andreja.PublicSiteTests`](tests/Andreja.PublicSiteTests) in [`Andreja.slnx`](Andreja.slnx), plus separately compiled [`Andreja.PostgreSqlIntegrationTests`](tests/Andreja.PostgreSqlIntegrationTests)) and doc-consistency tests (`tests/test_check_docs_consistency.py`). |
+| [`deploy/`](deploy), [`scripts/`](scripts) | Digest-pinned Compose overrides, OpenTelemetry collector config, backup-gated migration scripts, OCI supply-chain verification, local public-site preview, and browser/offline evidence scripts. |
+| [`docs/`](docs), [`.squad/`](.squad) | Ratified plan, ADRs (`0000`–`0012`), Phase 0/1A governance and evidence records, roadmap catalogs, operator/user guides, and Squad specialist team state ([`meet-the-squad.md`](meet-the-squad.md)). |
 
 ## Prerequisites
 
@@ -68,16 +138,18 @@ dotnet build tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrat
 
 ## Test and validate
 
-Run the deterministic unit and architecture suites:
+Run the deterministic unit, architecture, and public-site suites:
 
 ```powershell
 dotnet test --test-modules tests\Andreja.UnitTests\bin\Debug\net10.0\Andreja.UnitTests.dll --no-build
 dotnet test --test-modules tests\Andreja.ArchitectureTests\bin\Debug\net10.0\Andreja.ArchitectureTests.dll --no-build
+dotnet test --test-modules tests\Andreja.PublicSiteTests\bin\Debug\net10.0\Andreja.PublicSiteTests.dll --no-build
 dotnet test --test-modules tests\Andreja.UnitTests\bin\Release\net10.0\Andreja.UnitTests.dll --no-build
 dotnet test --test-modules tests\Andreja.ArchitectureTests\bin\Release\net10.0\Andreja.ArchitectureTests.dll --no-build
+dotnet test --test-modules tests\Andreja.PublicSiteTests\bin\Release\net10.0\Andreja.PublicSiteTests.dll --no-build
 ```
 
-For an aggregate run, `dotnet test --solution Andreja.slnx` remains supported.
+For an aggregate run across all three solution test projects, `dotnet test --solution Andreja.slnx` remains supported.
 
 Verify formatting, documentation, dependencies, operations, and supply-chain
 policy:
@@ -391,6 +463,9 @@ runtime state, or user content.
 
 ## Documentation
 
+- [Platform plan (`docs/plan.md`)](docs/plan.md)
+- [Project origin, architectural evolution, and 15-milestone trajectory](docs/project-origin-and-evolution.md)
+- [Full-vision completion roadmap](docs/roadmap/full-vision-completion-roadmap.md)
 - [High-level architecture and data flows](docs/architecture/andreja-high-level.md)
 - [Privacy baseline](docs/privacy.md)
 - [Threat model](docs/threat-model.md)
@@ -402,5 +477,30 @@ runtime state, or user content.
 - [Testing matrix](docs/testing-matrix.md)
 - [Phase 1A evidence](docs/phase-1a/evidence-44.md)
 - [Phase 1A packet decision record](docs/phase-1a/packet-decision-66.md)
+- [Issue status and Squad labels](docs/help/issue-status.md)
+- [Meet the Squad](meet-the-squad.md)
+
+## Community, governance, security, and licensing
+
+- **Contributions (currently paused for external PRs):** See
+  [`CONTRIBUTING.md`](CONTRIBUTING.md). External pull requests remain paused
+  pending inbound contributor-licensing and IP closure in
+  [issue #6](https://github.com/Jamula/Andreja/issues/6).
+- **Security disclosures and trust boundaries:** Report vulnerabilities privately
+  following [`SECURITY.md`](SECURITY.md) — never in public issues or pull
+  requests.
+- **License and attribution:** Source code in this repository is licensed under
+  the Apache License, Version 2.0 ([`LICENSE`](LICENSE)), subject to the
+  attribution and Section 6 trademark notices in [`NOTICE`](NOTICE) and ongoing
+  IP/licensing governance in
+  [issue #6](https://github.com/Jamula/Andreja/issues/6)
+  ([`docs/legal/license-evaluation.md`](docs/legal/license-evaluation.md),
+  [`docs/legal/licensing-decision-packet.md`](docs/legal/licensing-decision-packet.md)).
+- **Sponsorship boundaries:** [`.github/FUNDING.yml`](.github/FUNDING.yml) links
+  only to creator Cyrus Jamula's personal GitHub Sponsors profile
+  (`@cyrusjamula`) and grants zero user-data access, ads, ranking preference, or
+  roadmap influence. Organization- and project-level sponsorship for
+  `Jamula, Inc.` remains inactive under [`SPONSORS.md`](SPONSORS.md) and
+  [`docs/business/sponsorship-policy.md`](docs/business/sponsorship-policy.md).
 
 Phase 0 provisions no cloud accounts, subscriptions, free tiers, or trials.

@@ -33,12 +33,12 @@ Use the `gh` CLI when GitHub MCP tooling is unavailable.
 
 When a scan finds the same normalized failure across two independent attempts
 within seven days, or the same review rejection across distinct revision SHAs,
-return the evidence URLs and ask the coordinator to emit one typed
-`squad-retro` workflow dispatch with `retro_reason: early-evidence` and
-`request_origin: ralph`. Never run the retrospective or decide eligibility
-yourself. One-off failures and retries of the same run are evidence only; the
-shared worker's deterministic gate owns threshold, deduplication, cooldown, and
-pending-request recovery.
+return the evidence URLs to the coordinator. The `squad-retro` workflow and
+its deterministic eligibility gate are not installed; do not dispatch or
+claim they ran. Never run the retrospective or decide eligibility yourself.
+The CLI's `squad triage --retro` capability is not an equivalent gate; see
+`.squad/ceremonies.md`. One-off failures and retries of the same run are
+evidence only.
 
 ## Board Status Format
 
@@ -55,8 +55,9 @@ route work — I don't do it.
 
 ## Project Context
 
-**Project:** {project_name}
-{project_description}
+**Project:** Andreja
+Andreja is a user-owned personal assistant and skill platform built on .NET 10,
+ASP.NET Core, Blazor, EF Core, PostgreSQL, Node.js, PowerShell, and Docker.
 
 ## Learnings
 
