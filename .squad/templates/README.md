@@ -35,7 +35,7 @@ of these — they are NOT loaded on every turn.
 | `ralph-reference.md` | Coordinator | Ralph work-monitor lifecycle and board format |
 | `raw-agent-output.md` | Coordinator | Raw agent output appendix format |
 | `session-init-reference.md` | Coordinator | Procedures run at every session start |
-| `spawn-reference.md` | Coordinator | Full agent spawn template and Ghost Protocol |
+| `spawn-reference.md` | Coordinator | Full agent spawn template and post-work instructions |
 | `worktree-reference.md` | Coordinator | Worktree strategies, lifecycle, and pre-spawn setup |
 
 ### Agent bootstrap templates
@@ -49,8 +49,8 @@ After the agent's own files are seeded, these templates are not read again at ru
 | `fact-checker-charter.md` | `agents/fact-checker/charter.md` |
 | `fact-checker-policy.md` | `agents/fact-checker/policy.md` (Fact Checker methodology) |
 | `history.md` | New agent `history.md` when a team member is added |
-| `rai-charter.md` | `agents/Rai/charter.md` |
-| `rai-policy.md` | `agents/Rai/policy.md` (RAI check taxonomy) |
+| `rai-charter.md` | `agents/rai/charter.md` |
+| `rai-policy.md` | `agents/rai/policy.md` (RAI check taxonomy) |
 | `roster.md` | Roster entry format guidance for `team.md` |
 | `run-output.md` | Standard run output format for agent responses |
 | `scribe-charter.md` | `agents/scribe/charter.md` |

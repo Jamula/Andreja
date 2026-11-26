@@ -39,6 +39,8 @@ jobs:
             const content = fs.readFileSync(teamFile, 'utf8');
             const lines = content.split('\n');
 
+            const SUPPORT_IDENTITY_SLUGS = new Set(['scribe', 'ralph', 'rai', 'fact-checker']);
+
             // Parse the Members table for agent names
             const members = [];
             let inMembersTable = false;
@@ -52,7 +54,7 @@ jobs:
               }
               if (inMembersTable && line.startsWith('|') && !line.includes('---') && !line.includes('Name')) {
                 const cells = line.split('|').map(c => c.trim()).filter(Boolean);
-                if (cells.length >= 2 && cells[0] !== 'Scribe') {
+                if (cells.length >= 2 && !SUPPORT_IDENTITY_SLUGS.has(cells[0].toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''))) {
                   members.push({
                     name: cells[0],
                     role: cells[1]
