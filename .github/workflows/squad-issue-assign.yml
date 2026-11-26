@@ -16,8 +16,9 @@ permissions:
 
 jobs:
   assign-work:
-    # Only trigger on squad:{member} labels (not the base "squad" label)
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.label.name, 'squad:')
+    # Only trigger on squad:{member} labels (not the base "squad" label),
+    # and only when initiated by a trusted actor.
+    if: (github.event_name == 'workflow_dispatch' || startsWith(github.event.label.name, 'squad:')) && contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.sender.author_association)
     runs-on: ubuntu-latest
     steps:
       - name: Require Copilot assignment token
