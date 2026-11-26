@@ -3,12 +3,14 @@
 This matrix records the local evidence expected for shipped Phase 1A behavior.
 Never report unavailable live dependencies as passed.
 
-The .NET suite uses MSTest with Microsoft Testing Platform (MTP) 2.4.1 through
-the .NET 10 runner setting in `global.json`. Use `dotnet test --solution` or
-`dotnet test --project` for local aggregate runs; hosted CI executes the
-already-built assemblies with `dotnet test --test-modules` to avoid repeating
-MSBuild evaluation. VSTest-only `--logger` options are not used. CI enables TRX
-only through the explicitly referenced MTP TRX report extension.
+The .NET suite uses `MSTest.Sdk` `4.5.1` and
+`Microsoft.Testing.Extensions.TrxReport` `2.5.2` on Microsoft Testing Platform
+(MTP) through the .NET 10 runner setting in `global.json`. Use
+`dotnet test --solution` or `dotnet test --project` for local aggregate runs;
+hosted CI executes the already-built assemblies with
+`dotnet test --test-modules` to avoid repeating MSBuild evaluation. VSTest-only
+`--logger` options are not used. CI enables TRX only through the explicitly
+referenced MTP TRX report extension (`--report-trx`).
 
 | Area | Evidence | Command | Current local status |
 | --- | --- | --- | --- |
@@ -35,7 +37,7 @@ only through the explicitly referenced MTP TRX report extension.
 | IDE test discovery | MTP-backed discovery is documented for Visual Studio and VS Code with C# Dev Kit. This host has neither Visual Studio nor C# Dev Kit installed, so local Test Explorer discovery is not claimed. | Official MTP run/debug guidance; `dotnet test --project <test-project.csproj> --list-tests` | CLI discovery is automated and parity-gated; IDE discovery remains locally unverified. |
 | Formatting and docs | Compiler analyzers, solution and PostgreSQL-project format verification, contract and docs consistency | See `docs\development.md` | Required before PR readiness |
 | Vulnerabilities | Direct and transitive NuGet advisory scan of the service-free solution and separately restored PostgreSQL project | `pwsh -NoProfile -File .github\scripts\invoke-nuget-vulnerability-scan.ps1` | Required locally and hosted before PR readiness |
-| C# SAST | Microsoft DevSkim CLI 1.0.90, pinned and executed locally on the hosted runner | `.github\workflows\dotnet-validation.yml` | Repository-owned C# CodeQL evidence is unavailable: private-repository Code Security is disabled, the committed CodeQL workflow remains manually disabled, and its matrix does not include `csharp`. DevSkim fails on findings after the documented loopback-URL and Debug-guard lexical exclusions |
+| C# SAST | Microsoft DevSkim CLI 1.0.90, pinned and executed locally on the hosted runner | `.github\workflows\dotnet-validation.yml` | The former disabled repository-owned CodeQL workflow was removed; pinned DevSkim CLI 1.0.90 is the committed hosted C# SAST gate and fails closed on findings after the documented loopback-URL (`DS137138`) and Debug-guard (`DS162092`) lexical exclusions. Platform-managed dynamic CodeQL on public PRs is supplementary only while public-visibility governance remains open in [issue #6](https://github.com/Jamula/Andreja/issues/6). |
 | OCI supply chain | Two no-cache Buildx OCI builds must have identical manifest/config digests; the sole/default `final` target uses the audited offline cache path; pinned Syft emits SPDX 2.3 and CycloneDX; pinned Grype scans dependency SBOM and final archive; pinned Trivy scans Dockerfile/Compose/IaC; evidence/provenance/OCI config/loaded-image platform must agree; High/Critical findings, unavailable tools/databases, hidden/extra/directory/link/path-traversal inventory, manifest-list ambiguity, invalid SBOM, unsigned/untrusted provenance, digest/platform drift, alternate final targets, or unpinned actions/images fail closed | `pwsh -NoProfile -File scripts\supply-chain\Test-SupplyChainPolicy.ps1`; `pwsh -NoProfile -File scripts\supply-chain\Invoke-NegativeTests.ps1`; keyless and retained operator-held offline verification commands in `docs\operations\self-hosting.md`; `.github\workflows\oci-supply-chain.yml` | PR and ordinary `main` push runs are unsigned audit evidence with read-only/no-secret permissions. A `v*` push requests OIDC only when the workflow verifies the tagged commit is an ancestor of protected `main` (`git merge-base --is-ancestor "$GITHUB_SHA" origin/main`); no qualifying signed tag artifact has yet been recorded. The retained operator-held path remains local-only and cannot substitute for the hosted release gate |
 | Review completion | Proposed procedural sign-off by either explicit favorable exact-head Copilot review or independently dispatched team-lead verdict; no author self-review; rejection locks the author out from revising that artifact; all findings and threads resolved; required checks pass on exact current head; stale/rejected/reopened evidence invalidates readiness; no native human-approval requirement | Manual review record and `.github\scripts\review-gate-app.test.js` for the separate worker design | **BLOCKED as automated enforcement.** The manual sign-off procedure is proposed; no review-completion workflow or external worker is operational. Preserve repository `allow_auto_merge=true` as observed 2026-10-11; the former #104 containment statement is superseded by a proposed documentation correction, not a settings change. Issue #104 closed `NOT_PLANNED`; closure is not implementation or policy ratification. |
 

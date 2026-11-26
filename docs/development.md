@@ -26,9 +26,22 @@ or external services.
   Assistant, Skills, Channels, Portability, and in-memory semantic conformance.
 - `src\Adapters\Andreja.Adapters`: outer seams for PostgreSQL, ASP.NET Core
   Identity, OpenAI-compatible assistants, and OpenTelemetry.
-- `tests\Andreja.ArchitectureTests` and `tests\Andreja.UnitTests`: dependency
-  direction, domain/application, typed API, authorization-negative, antiforgery,
-  provider-failure, cancellation, and telemetry baselines.
+- `src\Andreja.Portability.Cli`: the local operator-only CLI for AES-256-GCM
+  encrypted application export and dry-run/approved import. See the
+  [application portability contract](operations/portability.md).
+- `src\Andreja.PublicSite`: the deterministic static field-guide generator and
+  verifier (`local-unpublished` loopback-only mode; public publication remains
+  gated on [issue #93](https://github.com/Jamula/Andreja/issues/93)). See the
+  [local build guide](public-website/local-build.md).
+- `tests\Andreja.ArchitectureTests`, `tests\Andreja.UnitTests`, and
+  `tests\Andreja.PublicSiteTests`: dependency direction, domain/application,
+  typed API, authorization-negative, antiforgery, provider-failure,
+  cancellation, telemetry, and static public-site conformance suites in
+  `Andreja.slnx`.
+- `tests\Andreja.PostgreSqlIntegrationTests`: separately compiled live
+  PostgreSQL identity, task, confirmation, and portability integration suite
+  kept outside `Andreja.slnx` and gated on a disposable `andreja_test_*`
+  database.
 - `compose.yaml`, `Dockerfile`, `deploy`, and `scripts\operations`: the local-only
   self-host, observability, backup, and recovery contract. See the
   [operations runbook](operations/self-hosting.md).
@@ -43,17 +56,20 @@ SDK analyzers, nullable reference types, warnings-as-errors, package versions,
 and deterministic compilation are configured centrally.
 
 The pinned .NET 10 SDK selects Microsoft Testing Platform mode through
-`global.json`. All three .NET test projects use `MSTest.Sdk` 4.4.1 and MTP
-2.4.1. The SDK uses the `None` extension profile with only the MIT-licensed
-TRX report extension enabled, so retained CI reports do not pull unused
-coverage or CI-report extensions. MSTest analyzers use the `Default` rule set;
-repository warnings remain errors. Local and hosted test commands keep both
-the .NET CLI and MTP telemetry opt-outs enabled.
+`global.json`. All four .NET test projects (`Andreja.UnitTests`,
+`Andreja.ArchitectureTests`, and `Andreja.PublicSiteTests` in `Andreja.slnx`,
+plus separately compiled `Andreja.PostgreSqlIntegrationTests`) use `MSTest.Sdk`
+`4.5.1` and `Microsoft.Testing.Extensions.TrxReport` `2.5.2`. The SDK uses the
+`None` extension profile with only the MIT-licensed TRX report extension
+enabled, so retained CI reports do not pull unused coverage or CI-report
+extensions. MSTest analyzers use the `Default` rule set; repository warnings
+remain errors. Local and hosted test commands keep both the .NET CLI and MTP
+telemetry opt-outs enabled.
 
-Hosted CI builds each configuration first, then invokes the compiled unit and
-architecture test assemblies with `dotnet test --test-modules`. This uses MTP
-directly without repeating MSBuild evaluation; local aggregate runs can still
-use `--solution` or `--project`.
+Hosted CI builds each configuration first, then invokes the compiled unit,
+architecture, and public-site test assemblies with `dotnet test --test-modules`.
+This uses MTP directly without repeating MSBuild evaluation; local aggregate
+runs can still use `--solution` or `--project`.
 
 When changing the test suite, update
 `docs\research\test-suite-current-inventory-112.json` with the expected MTP
@@ -74,10 +90,12 @@ dotnet build Andreja.slnx --configuration Debug --no-restore
 dotnet build tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --configuration Debug --no-restore
 dotnet test --test-modules tests\Andreja.UnitTests\bin\Debug\net10.0\Andreja.UnitTests.dll --no-build
 dotnet test --test-modules tests\Andreja.ArchitectureTests\bin\Debug\net10.0\Andreja.ArchitectureTests.dll --no-build
+dotnet test --test-modules tests\Andreja.PublicSiteTests\bin\Debug\net10.0\Andreja.PublicSiteTests.dll --no-build
 dotnet build Andreja.slnx --configuration Release --no-restore
 dotnet build tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --configuration Release --no-restore
 dotnet test --test-modules tests\Andreja.UnitTests\bin\Release\net10.0\Andreja.UnitTests.dll --no-build
 dotnet test --test-modules tests\Andreja.ArchitectureTests\bin\Release\net10.0\Andreja.ArchitectureTests.dll --no-build
+dotnet test --test-modules tests\Andreja.PublicSiteTests\bin\Release\net10.0\Andreja.PublicSiteTests.dll --no-build
 dotnet format Andreja.slnx --verify-no-changes --no-restore
 dotnet format tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --verify-no-changes --no-restore
 pwsh -NoProfile -File .github\scripts\invoke-nuget-vulnerability-scan.ps1
@@ -100,19 +118,19 @@ project verifies composition-root registration and startup-options validation.
 GitHub Code Quality findings are separate from code-scanning security alerts. If
 the findings API is unavailable, reproduce the Code Quality workflow locally using
 the CodeQL CLI version recorded in its analysis log and the bundled
-`csharp-code-quality.qls`, `javascript-code-quality.qls`, and
-`python-code-quality.qls` suites. Use a clean checkout containing no runtime or
-credential files, then create databases and analyze each language, for example:
+`csharp-code-quality.qls` and `javascript-code-quality.qls` suites. Use a clean
+checkout containing no runtime or credential files, then create databases and
+analyze each language, for example:
 
 ```powershell
 codeql database create .andreja/quality-db --db-cluster `
-  --language=csharp,javascript,python --build-mode=none --source-root=.
+  --language=csharp,javascript --build-mode=none --source-root=.
 codeql database analyze .andreja/quality-db/csharp `
   codeql/csharp-queries:codeql-suites/csharp-code-quality.qls `
   --format=sarif-latest --output=.andreja/csharp-quality.sarif
 ```
 
-Repeat analysis for JavaScript and Python with their matching suites. Keep databases,
+Repeat analysis for JavaScript with its matching suite. Keep databases,
 SARIF, and tool downloads outside Git, and recreate databases after source changes.
 Do not suppress rules or treat a clean security scan as a clean Code Quality scan.
 
@@ -190,40 +208,38 @@ does not provision PostgreSQL or receive a database credential, so the database
 runtime evidence remains **unavailable**, never passed or skipped. Every job
 summary and machine-readable artifact enumerates:
 
-- **Included runtime projects:** `Andreja.ArchitectureTests` and
-  `Andreja.UnitTests`.
+- **Included runtime projects:** `Andreja.ArchitectureTests`,
+  `Andreja.PublicSiteTests`, and `Andreja.UnitTests`.
 - **Excluded from solution runtime but compiled:**
   `Andreja.PostgreSqlIntegrationTests`.
 - **Unavailable runtime projects:** `Andreja.PostgreSqlIntegrationTests`, with
   the missing disposable PostgreSQL dependency recorded.
 
 The repository was observed public on 2026-09-07 and has secret scanning and
-repository push protection enabled. That visibility is unresolved,
-unauthorized drift under investigation in
-[issue #6](https://github.com/Jamula/Andreja/issues/6), not an approved state
-(`docs/plan.md:1074-1077`); this record does not treat it as governed. The
-existing disabled CodeQL workflow is not presented as repository-owned C#
-evidence. The hosted gate instead runs the pinned Microsoft DevSkim CLI
-`1.0.90` locally on the runner, uploads no source, and fails on remaining C#
-findings. Two noisy lexical rules are excluded explicitly: `DS137138` flags
-the intentional loopback HTTP URLs used by local development and
-transport-boundary tests, while `DS162092` flags the words `Debug` and
-`Development` in safeguards that prevent development behavior from shipping in
-Release. Their exclusion is recorded in every SAST artifact. Re-evaluate both
-exclusions and CodeQL if the code or entitlement changes.
+repository push protection enabled. Public-visibility and licensing governance
+remain tracked in [issue #6](https://github.com/Jamula/Andreja/issues/6)
+(`docs/plan.md:1074-1077`). The former disabled repository-owned CodeQL
+workflow has been removed and is not claimed as C# SAST evidence. Instead, the
+committed hosted C# SAST gate runs pinned Microsoft DevSkim CLI `1.0.90`
+locally on the runner, uploads no source, and fails closed on remaining C#
+findings. Two noisy lexical rules are excluded explicitly: `DS137138` flags the
+intentional loopback HTTP URLs used by local development and transport-boundary
+tests, while `DS162092` flags the words `Debug` and `Development` in safeguards
+that prevent development behavior from shipping in Release. Their exclusion is
+recorded in every SAST artifact. Re-evaluate both exclusions and CodeQL if the
+code or entitlement changes.
 
 GitHub may also attach a platform-managed dynamic `Analyze (csharp)` CodeQL
-check to a pull request. That supplementary check ran successfully while this
-gate was introduced, but it is not a repository-owned substitute: the repository-owned
-CodeQL workflow has been removed, and the dynamic check does not
-establish committed push-to-`main` or `merge_group` coverage. As observed on
-2026-09-07, while the repository was in that unresolved public state, the
-code-scanning default-setup and alerts API endpoints returned `200` and
-listed `csharp`, so the earlier `403` entitlement denial no longer applied at
-that time; re-verify live before relying on this, since visibility or
-entitlement can change, and visibility itself remains an open governance
-question (issue #6). The disabled repository-owned CodeQL workflow has been removed; no additional
-CodeQL language coverage or re-enablement is claimed.
+check to public pull requests. That platform check is supplementary only:
+because the repository-owned CodeQL workflow was removed, dynamic pull-request
+analysis does not establish committed push-to-`main` or `merge_group` coverage.
+As observed on 2026-09-07 while the repository was public, the code-scanning
+default-setup and alerts API endpoints returned `200` and listed `csharp`, so
+the earlier `403` entitlement denial no longer applied at that time; re-verify
+live before relying on platform CodeQL, since repository visibility and licensing
+governance remain open in [issue #6](https://github.com/Jamula/Andreja/issues/6).
+No repository-owned CodeQL workflow or additional CodeQL language coverage is
+claimed.
 
 Default-branch required-check enforcement and the entitlement-aware merge
 procedure are defined by
