@@ -35,7 +35,7 @@ issue-routing destinations and must never be assigned `squad:*` issue labels:
 | --- | --- | --- |
 | `Scribe` | Durable decision and session-history curator (enforces secret-free `.squad/` writes). | [`.squad/agents/scribe/charter.md`](.squad/agents/scribe/charter.md) |
 | `Ralph` | Backlog and active work-queue monitor. | [`.squad/agents/ralph/charter.md`](.squad/agents/ralph/charter.md) |
-| `Rai` | Responsible-AI, fairness, and accessibility reviewer. | [`.squad/agents/Rai/charter.md`](.squad/agents/Rai/charter.md) |
+| `Rai` | Responsible-AI, fairness, and accessibility reviewer. | [`.squad/agents/rai/charter.md`](.squad/agents/rai/charter.md) |
 | `Fact Checker` | Evidence verification and devil's-advocate reviewer against unsubstantiated claims. | [`.squad/agents/fact-checker/charter.md`](.squad/agents/fact-checker/charter.md) |
 
 ## Proposed roster rebuild (not yet ratified)

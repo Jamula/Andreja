@@ -124,10 +124,28 @@ dotnet build tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrat
   --configuration Release --no-restore
 
 dotnet test --solution Andreja.slnx --configuration Debug --no-build
-dotnet test --solution Andreja.slnx --configuration Release --no-build
+
+dotnet test --test-modules tests\Andreja.UnitTests\bin\Release\net10.0\Andreja.UnitTests.dll `
+  --no-build `
+  --report-trx `
+  --report-trx-filename Andreja.UnitTests-Release.trx `
+  --results-directory artifacts\Release\test-results\Andreja.UnitTests
+dotnet test --test-modules tests\Andreja.ArchitectureTests\bin\Release\net10.0\Andreja.ArchitectureTests.dll `
+  --no-build `
+  --report-trx `
+  --report-trx-filename Andreja.ArchitectureTests-Release.trx `
+  --results-directory artifacts\Release\test-results\Andreja.ArchitectureTests
+dotnet test --test-modules tests\Andreja.PublicSiteTests\bin\Release\net10.0\Andreja.PublicSiteTests.dll `
+  --no-build `
+  --report-trx `
+  --report-trx-filename Andreja.PublicSiteTests-Release.trx `
+  --results-directory artifacts\Release\test-results\Andreja.PublicSiteTests
+
 pwsh -NoProfile -File .github\scripts\test-dotnet-test-parity.ps1 `
   -Configuration Release `
-  -SkipIntegration
+  -ResultsRoot artifacts\Release\test-results `
+  -InventoryPath docs\research\test-suite-current-inventory-112.json `
+  -OutputPath artifacts\Release\test-inventory-parity.json
 
 python .github\scripts\check_docs_consistency.py
 python -m unittest discover -s tests -p "test_*.py"

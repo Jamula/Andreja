@@ -44,12 +44,18 @@ stating non-implemented controls plainly:
   ([`docs/help/local-identity.md`](docs/help/local-identity.md),
   [`docs/operations/self-hosting.md`](docs/operations/self-hosting.md)).
 - **Bootstrap token handling:** Initial owner enrollment (`/Account/Bootstrap`)
-  reads the one-time token from an owner-read-only file (`0400` on Unix or
-  `ReadOnly` attribute without environment interpolation on Windows) into pooled,
-  deterministically zeroed `SensitiveBuffer` memory (`BootstrapTokenVerifier`)
-  and verifies SHA-256 digests with `CryptographicOperations.FixedTimeEquals`.
-  The raw bootstrap token is never persisted; PostgreSQL records only bootstrap
-  completion metadata.
+  reads the Base64-encoded one-time token from the configured host file into
+  pooled, deterministically zeroed `SensitiveBuffer` memory
+  (`BootstrapTokenVerifier`), Base64-decodes both the file contents and the
+  supplied token into `SensitiveBuffer` spans, and compares the decoded raw
+  token bytes directly with `CryptographicOperations.FixedTimeEquals`. On Unix,
+  `EnsureTokenFileIsReadOnly` enforces owner-only read mode (`0400` /
+  `UnixFileMode.UserRead`); on native Windows, it checks only
+  `FileAttributes.ReadOnly` without inspecting ownership or ACLs, so native
+  Windows operators must restrict filesystem read ACLs separately. PostgreSQL
+  never persists the bootstrap token (storing only single-use completion
+  metadata), while the host file retains the Base64 token until the operator
+  deletes it after setup ([`docs/help/local-identity.md`](docs/help/local-identity.md)).
 - **Single-use recovery codes:** Account recovery consumes hashed single-use
   recovery codes, rotates the recovery set, revokes previously registered
   passkeys, and rotates the user security stamp before enrolling a replacement
@@ -58,10 +64,16 @@ stating non-implemented controls plainly:
   authorize same-user `/api/v1/open-loops` calls with short-lived,
   audience-bound, single-use Data Protection tokens and require durable recent
   authentication grants before mutating passkeys or recovery state.
-- **Exact reverse-proxy trust:** Forwarded headers trust only a single explicit
-  proxy IP configured via `ANDREJA_TRUSTED_PROXY_IP`
-  (`Andreja:Identity:TrustedProxyAddresses`). Wildcards, `0.0.0.0`, `::`, and
-  CIDR ranges are rejected.
+- **Exact reverse-proxy trust:** `LocalIdentityNetworkSecurity` configures
+  single-hop symmetric forwarded headers (`ForwardLimit = 1`,
+  `RequireHeaderSymmetry = true`) and populates `KnownProxies` from
+  `Andreja:Identity:TrustedProxyAddresses` (defaulting to `["127.0.0.1", "::1"]`).
+  Validation requires a non-empty allowlist of exact unicast IP addresses and
+  rejects `0.0.0.0`, `::`, broadcast/multicast addresses, and CIDR ranges. In
+  the Compose stack ([`compose.yaml`](compose.yaml)), `ANDREJA_TRUSTED_PROXY_IP`
+  sets `Andreja__Identity__TrustedProxyAddresses__0`; operators combining
+  configuration sources should audit the full effective `TrustedProxyAddresses`
+  allowlist.
 - **Compile- and environment-gated dev sign-in:** The local development sign-in
   endpoint is compiled inside `#if DEBUG` only and mapped only when
   `IsDevelopment()` is true; it is absent from `Release` builds and OCI images.
