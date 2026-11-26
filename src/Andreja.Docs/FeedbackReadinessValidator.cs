@@ -214,9 +214,8 @@ public static partial class FeedbackReadinessValidator
             var sourceDir = Path.GetDirectoryName(sourceFile)
                 ?? throw new InvalidDataException($"Could not determine parent directory for {path}");
 
-            foreach (Match linkMatch in MarkdownLinkRegex().Matches(normalizedText))
+            foreach (var link in MarkdownLinkRegex().Matches(normalizedText).Select(linkMatch => linkMatch.Groups[1].Value))
             {
-                var link = linkMatch.Groups[1].Value;
                 if (UriSchemePrefixRegex().IsMatch(link))
                 {
                     if (!link.StartsWith("https://github.com/Jamula/Andreja/", StringComparison.Ordinal))

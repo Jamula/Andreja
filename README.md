@@ -73,7 +73,8 @@ Five architectural boundaries govern the codebase:
 | [`src/Andreja.AppHost`](src/Andreja.AppHost) | Modular monolith composition root, authenticated HTTP API, health probes, and responsive Blazor Open Loops UI. |
 | [`src/Andreja.Portability.Cli`](src/Andreja.Portability.Cli) | Local operator-only CLI for encrypted application export and dry-run/approved import (never exposed as an HTTP endpoint). |
 | [`src/Andreja.PublicSite`](src/Andreja.PublicSite) | Deterministic static field-guide generator and verifier (`local-unpublished` loopback-only mode; public publication remains gated on [issue #93](https://github.com/Jamula/Andreja/issues/93)). |
-| [`tests/`](tests) | Four `.NET` `MSTest.Sdk` suites ([`Andreja.UnitTests`](tests/Andreja.UnitTests), [`Andreja.ArchitectureTests`](tests/Andreja.ArchitectureTests), and [`Andreja.PublicSiteTests`](tests/Andreja.PublicSiteTests) in [`Andreja.slnx`](Andreja.slnx), plus separately compiled [`Andreja.PostgreSqlIntegrationTests`](tests/Andreja.PostgreSqlIntegrationTests)) and doc-consistency tests (`tests/test_check_docs_consistency.py`). |
+| [`src/Andreja.Docs`](src/Andreja.Docs) | Deterministic `.NET 10` documentation consistency, feedback-readiness, and architecture-diagram CLI. |
+| [`tests/`](tests) | Five `.NET` `MSTest.Sdk` suites ([`Andreja.UnitTests`](tests/Andreja.UnitTests), [`Andreja.ArchitectureTests`](tests/Andreja.ArchitectureTests), [`Andreja.PublicSiteTests`](tests/Andreja.PublicSiteTests), and [`Andreja.DocsTests`](tests/Andreja.DocsTests) in [`Andreja.slnx`](Andreja.slnx), plus separately compiled [`Andreja.PostgreSqlIntegrationTests`](tests/Andreja.PostgreSqlIntegrationTests)). |
 | [`deploy/`](deploy), [`scripts/`](scripts) | Digest-pinned Compose overrides, OpenTelemetry collector config, backup-gated migration scripts, OCI supply-chain verification, local public-site preview, and browser/offline evidence scripts. |
 | [`docs/`](docs), [`.squad/`](.squad) | Ratified plan, ADRs (`0000`–`0012`), Phase 0/1A governance and evidence records, roadmap catalogs, operator/user guides, and Squad specialist team state ([`meet-the-squad.md`](meet-the-squad.md)). |
 
@@ -136,18 +137,20 @@ dotnet build tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrat
 
 ## Test and validate
 
-Run the deterministic unit, architecture, and public-site suites:
+Run the deterministic unit, architecture, public-site, and documentation suites:
 
 ```powershell
 dotnet test --test-modules tests\Andreja.UnitTests\bin\Debug\net10.0\Andreja.UnitTests.dll --no-build
 dotnet test --test-modules tests\Andreja.ArchitectureTests\bin\Debug\net10.0\Andreja.ArchitectureTests.dll --no-build
 dotnet test --test-modules tests\Andreja.PublicSiteTests\bin\Debug\net10.0\Andreja.PublicSiteTests.dll --no-build
+dotnet test --test-modules tests\Andreja.DocsTests\bin\Debug\net10.0\Andreja.DocsTests.dll --no-build
 dotnet test --test-modules tests\Andreja.UnitTests\bin\Release\net10.0\Andreja.UnitTests.dll --no-build
 dotnet test --test-modules tests\Andreja.ArchitectureTests\bin\Release\net10.0\Andreja.ArchitectureTests.dll --no-build
 dotnet test --test-modules tests\Andreja.PublicSiteTests\bin\Release\net10.0\Andreja.PublicSiteTests.dll --no-build
+dotnet test --test-modules tests\Andreja.DocsTests\bin\Release\net10.0\Andreja.DocsTests.dll --no-build
 ```
 
-For an aggregate run across all three solution test projects, `dotnet test --solution Andreja.slnx` remains supported.
+For an aggregate run across all four solution test projects, `dotnet test --solution Andreja.slnx` remains supported.
 
 Verify formatting, documentation, dependencies, operations, and supply-chain
 policy:

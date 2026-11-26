@@ -608,9 +608,8 @@ public static class ArchitectureDiagramTool
         var splitParagraphs = RepositoryPaths.SplitLines(text);
         var paragraphs = splitParagraphs.Length > 0 ? splitParagraphs : [string.Empty];
         var output = new List<string>();
-        foreach (var paragraph in paragraphs)
+        foreach (var words in paragraphs.Select(SplitByWhitespace))
         {
-            var words = SplitByWhitespace(paragraph);
             if (words.Count == 0)
             {
                 output.Add(string.Empty);
@@ -1724,15 +1723,14 @@ public static class ArchitectureDiagramTool
         var seenKeys = new HashSet<string>(StringComparer.Ordinal);
         foreach (var textChunk in textChunks)
         {
-            var dataBytes = textChunk.DataBytes;
-            var nullIndex = dataBytes.IndexOf((byte)0);
+            var nullIndex = textChunk.DataBytes.IndexOf((byte)0);
             if (nullIndex < 0)
             {
                 throw new InvalidDataException("Malformed PNG tEXt chunk.");
             }
 
-            var rawKey = dataBytes[..nullIndex];
-            var rawValue = dataBytes[(nullIndex + 1)..];
+            var rawKey = textChunk.DataBytes[..nullIndex];
+            var rawValue = textChunk.DataBytes[(nullIndex + 1)..];
             if (!TryDecodeStrictAscii(rawKey, out var key) || !TryDecodeStrictAscii(rawValue, out var value))
             {
                 throw new InvalidDataException("PNG tEXt provenance must be ASCII.");

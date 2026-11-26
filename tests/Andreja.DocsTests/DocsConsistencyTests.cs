@@ -106,9 +106,8 @@ public sealed class DocsConsistencyTests
             "The raw receipt-secret is stored in encrypted storage.",
         ];
 
-        foreach (var statement in statements)
+        foreach (var document in statements.Select(statement => FeedbackSecretContractFixture + " " + statement))
         {
-            var document = FeedbackSecretContractFixture + " " + statement;
             var ex = Assert.ThrowsExactly<InvalidDataException>(() =>
                 DocsConsistencyChecker.ValidateFeedbackTrackingSecretContract(document));
             Assert.Contains("custody contract drifted", ex.Message);
@@ -119,9 +118,8 @@ public sealed class DocsConsistencyTests
     public void FeedbackTrackingSecretExfiltrationBoundariesAreEnforced()
     {
         string[] boundaries = ["URL path", "referrer", "log", "export", "analytics", "support"];
-        foreach (var boundary in boundaries)
+        foreach (var document in boundaries.Select(boundary => ReplaceFirst(FeedbackSecretContractFixture, boundary, "omitted")))
         {
-            var document = ReplaceFirst(FeedbackSecretContractFixture, boundary, "omitted");
             var ex = Assert.ThrowsExactly<InvalidDataException>(() =>
                 DocsConsistencyChecker.ValidateFeedbackTrackingSecretContract(document));
             Assert.Contains("custody contract drifted", ex.Message);
@@ -369,9 +367,8 @@ public sealed class DocsConsistencyTests
             "Cyrus",
             "residual-risk acceptance",
         ];
-        foreach (var requirement in requirements)
+        foreach (var mutated in requirements.Select(requirement => ReplaceFirst(basePlan, requirement, "omitted")))
         {
-            var mutated = ReplaceFirst(basePlan, requirement, "omitted");
             Assert.Contains(
                 "authority drifted",
                 Assert.ThrowsExactly<InvalidDataException>(() =>
@@ -387,9 +384,9 @@ public sealed class DocsConsistencyTests
             Assert.ThrowsExactly<InvalidDataException>(() =>
                 DocsConsistencyChecker.ValidateCanonicalBaselineRows(granted)).Message);
 
-        foreach (var replacement in new[] { "The classification/impact assessment is complete.", string.Empty })
+        foreach (var mutated in new[] { "The classification/impact assessment is complete.", string.Empty }
+            .Select(replacement => ReplaceFirst(basePlan, DocsConsistencyChecker.CanonicalOpenAssessment, replacement)))
         {
-            var mutated = ReplaceFirst(basePlan, DocsConsistencyChecker.CanonicalOpenAssessment, replacement);
             Assert.Contains(
                 "authority drifted",
                 Assert.ThrowsExactly<InvalidDataException>(() =>
@@ -593,12 +590,12 @@ public sealed class DocsConsistencyTests
             StringComparer.Ordinal);
         DocsConsistencyChecker.ValidateProposedPhase1AAdrCopies(proposedTable, validDocs);
 
-        foreach (var badCopy in new[] { string.Empty, $"<!-- {marker.TrimEnd()} -->\n", marker + marker })
-        {
-            var invalidDocs = new Dictionary<string, string>(validDocs, StringComparer.Ordinal)
+        foreach (var invalidDocs in new[] { string.Empty, $"<!-- {marker.TrimEnd()} -->\n", marker + marker }
+            .Select(badCopy => new Dictionary<string, string>(validDocs, StringComparer.Ordinal)
             {
                 ["0003"] = badCopy,
-            };
+            }))
+        {
             Assert.Contains(
                 "ADR 0003",
                 Assert.ThrowsExactly<InvalidDataException>(() =>
