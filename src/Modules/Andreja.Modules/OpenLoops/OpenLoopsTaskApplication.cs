@@ -6,55 +6,6 @@ using System.Text.Json;
 
 namespace Andreja.Modules.OpenLoops;
 
-public static class OpenLoopsPolicy
-{
-    public const string Purpose = "task.capture";
-    public const string ProposeCapability = "tasks.propose";
-    public const string ProposeOperation = "propose";
-    public const string TaskDataClass = "tasks";
-    public const string ResourceReference = "open-loops/tasks";
-    public const string ManageCapability = "tasks.manage";
-
-    public static void Require(TenantPrincipalContext context)
-    {
-        ArgumentNullException.ThrowIfNull(context);
-        if (context.TenantId.Value == Guid.Empty
-            || context.AppUserId.Value == Guid.Empty
-            || context.PrincipalId.Value == Guid.Empty
-            || !string.Equals(context.Purpose, Purpose, StringComparison.Ordinal))
-        {
-            throw new IdentityAccessDeniedException("Task access is not authorized.");
-        }
-    }
-}
-
-public sealed record ProposedTaskInput(
-    string Title,
-    string? Details,
-    DateTimeOffset? DueAt);
-
-public sealed record TaskExport(
-    string SchemaVersion,
-    DateTimeOffset CreatedAtUtc,
-    IReadOnlyList<OpenLoopTask> Tasks,
-    IReadOnlyList<string> Exclusions);
-
-public sealed record ProposalConfirmationResult(
-    ProposalTransitionOutcome Outcome,
-    OpenLoopTask? Task,
-    Proposal? Proposal);
-
-public interface IOpenLoopsProposalConfirmationStore
-{
-    Task<ProposalConfirmationResult> ConfirmAsync(
-        TenantPrincipalContext context,
-        Guid proposalId,
-        long expectedVersion,
-        string idempotencyKey,
-        DateTimeOffset occurredAt,
-        CancellationToken cancellationToken = default);
-}
-
 public sealed class OpenLoopsTaskApplication(
     IOpenLoopsTaskStore taskStore,
     IProposalStore proposalStore,
@@ -116,7 +67,7 @@ public sealed class OpenLoopsTaskApplication(
             now.AddMinutes(10),
             ProposalState.Pending);
 
-        if (!await proposalStore.TryCreateAsync(proposal, cancellationToken))
+        if (!await proposalStore.TryCreateAsync(proposal, cancellationToken).ConfigureAwait(false))
         {
             throw new InvalidOperationException("The proposal could not be created.");
         }
@@ -133,7 +84,7 @@ public sealed class OpenLoopsTaskApplication(
         var proposal = await proposalStore.GetAsync(
             context.TenantId.Value,
             proposalId,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         return proposal?.ActorId == context.PrincipalId.Value ? proposal : null;
     }
 
@@ -156,7 +107,7 @@ public sealed class OpenLoopsTaskApplication(
                 expectedVersion,
                 idempotencyKey,
                 occurredAt,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
 
         var transition = await proposalStore.TryTransitionAsync(
@@ -168,7 +119,7 @@ public sealed class OpenLoopsTaskApplication(
                 ProposalAction.Confirm,
                 idempotencyKey,
                 occurredAt),
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         if (transition.Outcome is not (
                 ProposalTransitionOutcome.Applied
@@ -184,7 +135,7 @@ public sealed class OpenLoopsTaskApplication(
             task,
             proposalId,
             idempotencyKey,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         return mutation.Outcome switch
         {
@@ -247,7 +198,7 @@ public sealed class OpenLoopsTaskApplication(
         CancellationToken cancellationToken = default)
     {
         OpenLoopsPolicy.Require(context);
-        var tasks = await taskStore.ListAsync(context, cancellationToken);
+        var tasks = await taskStore.ListAsync(context, cancellationToken).ConfigureAwait(false);
         return new(
             "andreja.open-loops.tasks.v1",
             timeProvider.GetUtcNow(),

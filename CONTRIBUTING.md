@@ -63,7 +63,7 @@ governance and verification gates:
    Phase 1A ADRs (`0001`–`0005` in
    [`docs/phase-1a/packet-decision-66.md`](docs/phase-1a/packet-decision-66.md))
    are verified by
-   [`.github/scripts/check_docs_consistency.py`](.github/scripts/check_docs_consistency.py).
+   [`src/Andreja.Docs`](src/Andreja.Docs) (`dotnet run --project src/Andreja.Docs -- check-consistency`).
    Do not modify hash-locked governance files without an authorized decision and
    matching hash/amendment update.
 5. **Pull request template and evidence:**
@@ -97,7 +97,7 @@ governance and verification gates:
   keep domain and skill contracts free of external provider SDK types, ambient
   credentials, and unconfirmed side effects.
 - **Microsoft Testing Platform (`MTP`) and test inventory parity:**
-  All four `.NET` test projects use `MSTest.Sdk` `4.5.1` and
+  All five `.NET` test projects use `MSTest.Sdk` `4.5.1` and
   `Microsoft.Testing.Extensions.TrxReport` `2.5.2` on
   `Microsoft.Testing.Platform` (`global.json` test runner). Invoke `dotnet test`
   with `--solution`, `--project`, or `--test-modules`, and emit TRX reports with
@@ -113,9 +113,10 @@ governance and verification gates:
   `andreja_test_*` databases.
 - **Automation languages:**
   Prefer `.NET` (`C#`), `Node.js` (`JavaScript` / `TypeScript`), or
-  `PowerShell 7` for repository tooling. Do not introduce new Python scripts;
-  preserve existing repository-owned documentation checks until migrated through
-  a governed PR.
+  `PowerShell 7` for repository tooling. Do not introduce Python scripts;
+  repository-owned documentation, feedback-readiness, and architecture-diagram
+  checks run via [`src/Andreja.Docs`](src/Andreja.Docs) and
+  [`tests/Andreja.DocsTests`](tests/Andreja.DocsTests).
 
 ## Local pre-PR validation
 
@@ -156,6 +157,11 @@ dotnet test --test-modules tests\Andreja.PublicSiteTests\bin\Release\net10.0\And
   --report-trx `
   --report-trx-filename Andreja.PublicSiteTests-Release.trx `
   --results-directory artifacts\Release\test-results\Andreja.PublicSiteTests
+dotnet test --test-modules tests\Andreja.DocsTests\bin\Release\net10.0\Andreja.DocsTests.dll `
+  --no-build `
+  --report-trx `
+  --report-trx-filename Andreja.DocsTests-Release.trx `
+  --results-directory artifacts\Release\test-results\Andreja.DocsTests
 
 pwsh -NoProfile -File .github\scripts\test-dotnet-test-parity.ps1 `
   -Configuration Release `
@@ -163,9 +169,9 @@ pwsh -NoProfile -File .github\scripts\test-dotnet-test-parity.ps1 `
   -InventoryPath docs\research\test-suite-current-inventory-112.json `
   -OutputPath artifacts\Release\test-inventory-parity.json
 
-python .github\scripts\check_docs_consistency.py
-python .github\scripts\check_docs_consistency.test.py
-python -m unittest discover -s tests -p "test_*.py"
+dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj --configuration Release --no-build -- check-consistency
+dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj --configuration Release --no-build -- check-feedback-readiness
+dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj --configuration Release --no-build -- architecture-diagram --check
 node --test .github\scripts\squad-readiness.test.js
 pwsh -NoProfile -File scripts\operations\validate-contract.ps1
 pwsh -NoProfile -File scripts\supply-chain\Test-SupplyChainPolicy.ps1

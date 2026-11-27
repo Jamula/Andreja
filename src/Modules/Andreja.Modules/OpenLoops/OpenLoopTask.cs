@@ -2,12 +2,6 @@ using Andreja.Modules.Identity;
 
 namespace Andreja.Modules.OpenLoops;
 
-public enum OpenLoopTaskStatus
-{
-    Open = 1,
-    Completed = 2,
-}
-
 public sealed class OpenLoopTask
 {
     private OpenLoopTask()
@@ -106,58 +100,4 @@ public sealed class OpenLoopTask
             ? throw new ArgumentOutOfRangeException(name, $"Maximum length is {maximumLength}.")
             : normalized;
     }
-}
-
-public enum TaskMutationOutcome
-{
-    Applied,
-    IdempotentReplay,
-    NotFound,
-    Conflict,
-    Denied,
-}
-
-public sealed record TaskMutationResult(
-    TaskMutationOutcome Outcome,
-    OpenLoopTask? Task);
-
-public sealed record TaskAuditEntry(
-    Guid AuditId,
-    Guid TenantId,
-    Guid ActorId,
-    Guid ResourceId,
-    string Operation,
-    string Outcome,
-    string SourceKind,
-    string SourceReference,
-    DateTimeOffset OccurredAt);
-
-public interface IOpenLoopsTaskStore
-{
-    Task<IReadOnlyList<OpenLoopTask>> ListAsync(
-        TenantPrincipalContext context,
-        CancellationToken cancellationToken = default);
-
-    Task<TaskMutationResult> CreateAsync(
-        TenantPrincipalContext context,
-        OpenLoopTask task,
-        Guid proposalId,
-        string idempotencyKey,
-        CancellationToken cancellationToken = default);
-
-    Task<TaskMutationResult> CompleteAsync(
-        TenantPrincipalContext context,
-        Guid taskId,
-        long expectedVersion,
-        string idempotencyKey,
-        DateTimeOffset occurredAt,
-        CancellationToken cancellationToken = default);
-
-    Task<TaskMutationResult> DeleteAsync(
-        TenantPrincipalContext context,
-        Guid taskId,
-        long expectedVersion,
-        string idempotencyKey,
-        DateTimeOffset occurredAt,
-        CancellationToken cancellationToken = default);
 }

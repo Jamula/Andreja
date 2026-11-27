@@ -54,7 +54,7 @@ canary, and his later activation and residual-risk acceptance remain required.
 #### Phase 0 policy and governance artifact classification
 
 These hashes classify the files in this amendment's source tree and are enforced
-by `.github/scripts/check_docs_consistency.py`; missing, added, malformed, or
+by `src/Andreja.Docs` (`dotnet run --project src/Andreja.Docs/Andreja.Docs.csproj -- check-consistency`); missing, added, malformed, or
 stale rows fail documentation CI. A closed issue, merged PR, title containing
 “ratify,” or downstream description of an artifact as authoritative is not an
 explicit Cyrus decision.
