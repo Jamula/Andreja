@@ -73,13 +73,16 @@ public sealed class BootstrapTokenVerifier(IOptions<LocalIdentityOptions> option
         var buffer = SensitiveBuffer.Rent(MaximumTokenFileBytes + 1);
         try
         {
-            var stream = new FileStream(
+            var stream = File.Open(
                 path,
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.Read,
-                bufferSize: 4096,
-                FileOptions.Asynchronous | FileOptions.SequentialScan);
+                new FileStreamOptions
+                {
+                    Mode = FileMode.Open,
+                    Access = FileAccess.Read,
+                    Share = FileShare.Read,
+                    BufferSize = 4096,
+                    Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
+                });
             await using (stream.ConfigureAwait(false))
             {
                 var totalRead = 0;

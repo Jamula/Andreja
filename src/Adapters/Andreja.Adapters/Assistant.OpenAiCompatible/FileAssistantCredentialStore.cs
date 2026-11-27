@@ -41,13 +41,16 @@ public sealed class FileAssistantCredentialStore(
         CryptographicOperations.ZeroMemory(buffer);
         try
         {
-            var stream = new FileStream(
+            var stream = File.Open(
                 path,
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.Read,
-                bufferSize: 4096,
-                FileOptions.Asynchronous | FileOptions.SequentialScan);
+                new FileStreamOptions
+                {
+                    Mode = FileMode.Open,
+                    Access = FileAccess.Read,
+                    Share = FileShare.Read,
+                    BufferSize = 4096,
+                    Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
+                });
             var totalRead = 0;
             await using (stream.ConfigureAwait(false))
             {

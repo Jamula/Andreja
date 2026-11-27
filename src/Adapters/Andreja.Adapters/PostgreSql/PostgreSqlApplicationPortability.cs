@@ -113,7 +113,7 @@ public static class PostgreSqlApplicationPortability
         var artifacts = new Dictionary<string, byte[]>(StringComparer.Ordinal);
         var descriptors = new List<PortableArtifactDescriptor>();
         var providerReferences = new SortedSet<string>(StringComparer.Ordinal);
-        var connection = new NpgsqlConnection(connectionString);
+        var connection = CreateConnection(connectionString);
         await using (connection.ConfigureAwait(false))
         {
             await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -183,13 +183,16 @@ public static class PostgreSqlApplicationPortability
         var partialPath = destinationPath + $".partial-{Guid.NewGuid():N}";
         try
         {
-            var output = new FileStream(
+            var output = File.Open(
                 partialPath,
-                FileMode.CreateNew,
-                FileAccess.Write,
-                FileShare.None,
-                64 * 1024,
-                FileOptions.Asynchronous | FileOptions.WriteThrough);
+                new FileStreamOptions
+                {
+                    Mode = FileMode.CreateNew,
+                    Access = FileAccess.Write,
+                    Share = FileShare.None,
+                    BufferSize = 64 * 1024,
+                    Options = FileOptions.Asynchronous | FileOptions.WriteThrough,
+                });
             await using (output.ConfigureAwait(false))
             {
                 await output.WriteAsync(envelope, cancellationToken).ConfigureAwait(false);
@@ -309,7 +312,7 @@ public static class PostgreSqlApplicationPortability
                     lockConnection,
                     cancellationToken).ConfigureAwait(false);
 
-                var connection = new NpgsqlConnection(connectionString);
+                var connection = CreateConnection(connectionString);
                 await using (connection.ConfigureAwait(false))
                 {
                     await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -403,7 +406,7 @@ public static class PostgreSqlApplicationPortability
         long count = 0;
         foreach (var item in plan.Queries)
         {
-            var command = new NpgsqlCommand(item.Sql, connection, transaction);
+            var command = CreateCommand(item.Sql, connection, transaction);
             await using (command.ConfigureAwait(false))
             {
                 command.Parameters.AddWithValue("tenant", tenantId);
@@ -1070,7 +1073,7 @@ public static class PostgreSqlApplicationPortability
             return;
         }
 
-        var command = new NpgsqlCommand(sql, connection, transaction);
+        var command = CreateCommand(sql, connection, transaction);
         await using (command.ConfigureAwait(false))
         {
             command.Parameters.AddWithValue("json", JsonSerializer.Serialize(values));
@@ -1093,7 +1096,7 @@ public static class PostgreSqlApplicationPortability
             ORDER BY table_schema, table_name
             """;
         var tables = new List<DatabaseTable>();
-        var command = new NpgsqlCommand(sql, connection);
+        var command = CreateCommand(sql, connection);
         await using (command.ConfigureAwait(false))
         {
             var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
@@ -1124,7 +1127,7 @@ public static class PostgreSqlApplicationPortability
             ",",
             tables.Select(table =>
                 $"{QuoteIdentifier(table.Schema)}.{QuoteIdentifier(table.Table)}"));
-        var command = new NpgsqlCommand(
+        var command = CreateCommand(
             $"LOCK TABLE {qualifiedTables} IN SHARE MODE",
             connection,
             transaction);
@@ -1143,7 +1146,7 @@ public static class PostgreSqlApplicationPortability
         foreach (var table in tables)
         {
             var quoted = $"{QuoteIdentifier(table.Schema)}.{QuoteIdentifier(table.Table)}";
-            var command = new NpgsqlCommand(
+            var command = CreateCommand(
                 $"SELECT EXISTS (SELECT 1 FROM {quoted} LIMIT 1)",
                 connection,
                 transaction);
@@ -1166,7 +1169,7 @@ public static class PostgreSqlApplicationPortability
     {
         const string sql =
             """SELECT "ExportId","ManifestSha256","TenantReference" FROM portability.application_imports LIMIT 2""";
-        var command = new NpgsqlCommand(sql, connection, transaction);
+        var command = CreateCommand(sql, connection, transaction);
         await using (command.ConfigureAwait(false))
         {
             var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
@@ -1199,7 +1202,7 @@ public static class PostgreSqlApplicationPortability
     {
         const string sql =
             """INSERT INTO portability.application_imports ("ExportId","ManifestSha256","TenantReference","ImportedAt") VALUES (@id,@digest,@tenant,@at)""";
-        var command = new NpgsqlCommand(sql, connection, transaction);
+        var command = CreateCommand(sql, connection, transaction);
         await using (command.ConfigureAwait(false))
         {
             command.Parameters.AddWithValue("id", manifest.ExportId);
@@ -1215,7 +1218,7 @@ public static class PostgreSqlApplicationPortability
         NpgsqlTransaction transaction,
         CancellationToken cancellationToken)
     {
-        var command = new NpgsqlCommand(
+        var command = CreateCommand(
             "SELECT to_regclass('portability.application_imports') IS NOT NULL",
             connection,
             transaction);
@@ -1227,6 +1230,30 @@ public static class PostgreSqlApplicationPortability
                     "The explicit ApplicationPortability database migration has not been applied.");
             }
         }
+    }
+
+    private static NpgsqlConnection CreateConnection(string connectionString) =>
+        new(connectionString);
+
+    private static NpgsqlCommand CreateCommand(
+        string sql,
+        NpgsqlConnection connection,
+        NpgsqlTransaction? transaction = null,
+        int? commandTimeout = null)
+    {
+        var command = connection.CreateCommand();
+        command.CommandText = sql;
+        if (transaction is not null)
+        {
+            command.Transaction = transaction;
+        }
+
+        if (commandTimeout.HasValue)
+        {
+            command.CommandTimeout = commandTimeout.Value;
+        }
+
+        return command;
     }
 
     private static NpgsqlConnection CreateImportLockConnection(string connectionString)
@@ -1249,12 +1276,10 @@ public static class PostgreSqlApplicationPortability
         using var timeoutCancellation =
             CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCancellation.CancelAfter(lockTimeout);
-        var command = new NpgsqlCommand(
+        var command = CreateCommand(
             "SELECT pg_advisory_lock(@lockKey)",
-            connection)
-        {
-            CommandTimeout = 0,
-        };
+            connection,
+            commandTimeout: 0);
         await using (command.ConfigureAwait(false))
         {
             command.Parameters.AddWithValue("lockKey", ImportAdvisoryLock);
@@ -1287,12 +1312,10 @@ public static class PostgreSqlApplicationPortability
         Exception? failure = null;
         try
         {
-            var command = new NpgsqlCommand(
+            var command = CreateCommand(
                 "SELECT pg_advisory_unlock(@lockKey)",
-                connection)
-            {
-                CommandTimeout = 5,
-            };
+                connection,
+                commandTimeout: 5);
             await using (command.ConfigureAwait(false))
             {
                 command.Parameters.AddWithValue("lockKey", ImportAdvisoryLock);
@@ -1327,7 +1350,7 @@ public static class PostgreSqlApplicationPortability
         Guid tenantId,
         CancellationToken cancellationToken)
     {
-        var command = new NpgsqlCommand(
+        var command = CreateCommand(
             """SELECT EXISTS (SELECT 1 FROM identity.tenants WHERE "Id"=@tenant)""",
             connection,
             transaction);
@@ -1509,13 +1532,16 @@ public static class PostgreSqlApplicationPortability
     {
         ArgumentOutOfRangeException.ThrowIfNegative(maximum);
 
-        var input = new FileStream(
+        var input = File.Open(
             path,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            64 * 1024,
-            FileOptions.Asynchronous | FileOptions.SequentialScan);
+            new FileStreamOptions
+            {
+                Mode = FileMode.Open,
+                Access = FileAccess.Read,
+                Share = FileShare.Read,
+                BufferSize = 64 * 1024,
+                Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
+            });
         await using (input.ConfigureAwait(false))
         {
             if (!input.CanSeek || input.Length > maximum)
