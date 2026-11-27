@@ -1,64 +1,27 @@
-using Andreja.Platform.Contracts.Assistant;
-using Andreja.Platform.Contracts.Skills;
 using System.Buffers;
 using System.Diagnostics;
-using System.Diagnostics.Metrics;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
+using Andreja.Platform.Contracts.Assistant;
+using Andreja.Platform.Contracts.Skills;
 
 namespace Andreja.Adapters.Assistant.OpenAiCompatible;
 
-public sealed record OpenAiCompatibleTransportPolicy(
-    IReadOnlyList<Uri> AllowedEndpoints,
-    int MaximumResponseBodyBytes,
-    int MaximumRetries,
-    TimeSpan RetryBaseDelay,
-    long ApprovedExternalTotalUnits);
-
-public sealed class OpenAiCompatibleTransport : IOpenAiCompatibleTransport
+public sealed class OpenAiCompatibleTransport(
+    HttpClient client,
+    IAssistantCredentialStore credentialStore,
+    OpenAiCompatibleTransportPolicy policy) : IOpenAiCompatibleTransport
 {
     private const string ProviderName = "openai-compatible";
-    private readonly HttpClient client;
-    private readonly IAssistantCredentialStore credentialStore;
-    private readonly OpenAiCompatibleTransportPolicy policy;
-    private readonly HashSet<string> allowedEndpoints;
-    private readonly AssistantUsageBudget usageBudget;
-
-    public OpenAiCompatibleTransport(
-        HttpClient client,
-        IAssistantCredentialStore credentialStore,
-        OpenAiCompatibleTransportPolicy policy)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        ArgumentNullException.ThrowIfNull(credentialStore);
-        ArgumentNullException.ThrowIfNull(policy);
-        if (policy.AllowedEndpoints.Count == 0
-            || policy.MaximumResponseBodyBytes is < 1024 or > 16 * 1024 * 1024
-            || policy.MaximumRetries is < 0 or > 5
-            || policy.RetryBaseDelay < TimeSpan.Zero
-            || policy.RetryBaseDelay > TimeSpan.FromSeconds(5)
-            || policy.ApprovedExternalTotalUnits < 0)
-        {
-            throw new ArgumentException("The OpenAI-compatible transport policy is invalid.", nameof(policy));
-        }
-
-        this.client = client;
-        this.credentialStore = credentialStore;
-        this.policy = policy;
-        allowedEndpoints = policy.AllowedEndpoints
-            .Select(ValidateAndCanonicalizeEndpoint)
-            .ToHashSet(StringComparer.Ordinal);
-        if (allowedEndpoints.Count != policy.AllowedEndpoints.Count)
-        {
-            throw new ArgumentException("The endpoint allowlist contains a duplicate.", nameof(policy));
-        }
-
-        usageBudget = new(policy.ApprovedExternalTotalUnits);
-    }
+    private readonly HttpClient client = client ?? throw new ArgumentNullException(nameof(client));
+    private readonly IAssistantCredentialStore credentialStore =
+        credentialStore ?? throw new ArgumentNullException(nameof(credentialStore));
+    private readonly OpenAiCompatibleTransportPolicy policy = ValidatePolicy(policy);
+    private readonly HashSet<string> allowedEndpoints = CreateAllowedEndpoints(policy);
+    private readonly AssistantUsageBudget usageBudget = new(policy.ApprovedExternalTotalUnits);
 
     public async ValueTask<AssistantResponse> CompleteAsync(
         AssistantProviderProfile profile,
@@ -137,7 +100,7 @@ public sealed class OpenAiCompatibleTransport : IOpenAiCompatibleTransport
                 {
                     credential = await credentialStore.ResolveAsync(
                         profile.CredentialHandle,
-                        cancellationToken);
+                        cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception exception) when (
                     exception is InvalidDataException
@@ -552,20 +515,23 @@ public sealed class OpenAiCompatibleTransport : IOpenAiCompatibleTransport
         var buffer = ArrayPool<byte>.Shared.Rent(maximumBytes + 1);
         try
         {
-            await using var stream = await content.ReadAsStreamAsync(cancellationToken)
+            var stream = await content.ReadAsStreamAsync(cancellationToken)
                 .ConfigureAwait(false);
             var totalRead = 0;
-            while (totalRead < maximumBytes + 1)
+            await using (stream.ConfigureAwait(false))
             {
-                var read = await stream.ReadAsync(
-                    buffer.AsMemory(totalRead, maximumBytes + 1 - totalRead),
-                    cancellationToken).ConfigureAwait(false);
-                if (read == 0)
+                while (totalRead < maximumBytes + 1)
                 {
-                    break;
-                }
+                    var read = await stream.ReadAsync(
+                        buffer.AsMemory(totalRead, maximumBytes + 1 - totalRead),
+                        cancellationToken).ConfigureAwait(false);
+                    if (read == 0)
+                    {
+                        break;
+                    }
 
-                totalRead += read;
+                    totalRead += read;
+                }
             }
 
             if (totalRead > maximumBytes)
@@ -830,117 +796,52 @@ public sealed class OpenAiCompatibleTransport : IOpenAiCompatibleTransport
         return Task.Delay(delay, cancellationToken);
     }
 
+    private static OpenAiCompatibleTransportPolicy ValidatePolicy(
+        OpenAiCompatibleTransportPolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+        if (policy.AllowedEndpoints.Count == 0
+            || policy.MaximumResponseBodyBytes is < 1024 or > 16 * 1024 * 1024
+            || policy.MaximumRetries is < 0 or > 5
+            || policy.RetryBaseDelay < TimeSpan.Zero
+            || policy.RetryBaseDelay > TimeSpan.FromSeconds(5)
+            || policy.ApprovedExternalTotalUnits < 0)
+        {
+            throw new ArgumentException("The OpenAI-compatible transport policy is invalid.", nameof(policy));
+        }
+
+        return policy;
+    }
+
+    private static HashSet<string> CreateAllowedEndpoints(
+        OpenAiCompatibleTransportPolicy policy)
+    {
+        var allowed = policy.AllowedEndpoints
+            .Select(ValidateAndCanonicalizeEndpoint)
+            .ToHashSet(StringComparer.Ordinal);
+        if (allowed.Count != policy.AllowedEndpoints.Count)
+        {
+            throw new ArgumentException("The endpoint allowlist contains a duplicate.", nameof(policy));
+        }
+
+        return allowed;
+    }
+
     private sealed record ParsedCompletion(
         string? Content,
         IReadOnlyList<AssistantToolCall> ToolCalls,
         long InputUnits,
         long OutputUnits);
 
-    private sealed class ProviderPayloadException : Exception
+    private sealed class ProviderPayloadException(
+        string code,
+        string safeMessage,
+        Exception? inner = null) : Exception(safeMessage, inner)
     {
-        public ProviderPayloadException(string code, string safeMessage, Exception? inner = null)
-            : base(safeMessage, inner)
-        {
-            Code = code;
-            SafeMessage = safeMessage;
-        }
+        public string Code { get; } = code;
 
-        public string Code { get; }
-
-        public string SafeMessage { get; }
+        public string SafeMessage { get; } = safeMessage;
     }
 
     private sealed class ResponseBodyTooLargeException : Exception;
-}
-
-public static class OpenAiCompatibleMetrics
-{
-    public const string MeterName = "Andreja.Assistant.OpenAiCompatible";
-    public static readonly Meter Meter = new(MeterName);
-    public static readonly Counter<long> Requests =
-        Meter.CreateCounter<long>("andreja_assistant_requests_total");
-    public static readonly Counter<long> Retries =
-        Meter.CreateCounter<long>("andreja_assistant_retries_total");
-    public static readonly Counter<long> InputUnits =
-        Meter.CreateCounter<long>("andreja_assistant_input_units_total");
-    public static readonly Counter<long> OutputUnits =
-        Meter.CreateCounter<long>("andreja_assistant_output_units_total");
-    public static readonly Histogram<double> Duration =
-        Meter.CreateHistogram<double>("andreja_assistant_request_duration_ms");
-
-    internal static void Record(AssistantUsage usage)
-    {
-        Requests.Add(
-            1,
-            new KeyValuePair<string, object?>("result.class", usage.ResultClass));
-        Duration.Record(usage.Duration.TotalMilliseconds);
-        if (usage.InputUnits is { } inputUnits)
-        {
-            InputUnits.Add(inputUnits);
-        }
-
-        if (usage.OutputUnits is { } outputUnits)
-        {
-            OutputUnits.Add(outputUnits);
-        }
-    }
-}
-
-internal sealed class AssistantUsageBudget(long approvedTotalUnits)
-{
-    private readonly object sync = new();
-    private long consumed;
-    private long reserved;
-
-    public AssistantUsageReservation? TryReserve(long maximumUnits)
-    {
-        lock (sync)
-        {
-            if (maximumUnits <= 0
-                || maximumUnits > approvedTotalUnits - consumed - reserved)
-            {
-                return null;
-            }
-
-            reserved += maximumUnits;
-            return new(this, maximumUnits);
-        }
-    }
-
-    internal void Complete(long reservedUnits, long consumedUnits)
-    {
-        lock (sync)
-        {
-            reserved -= reservedUnits;
-            consumed = checked(consumed + Math.Min(consumedUnits, reservedUnits));
-        }
-    }
-}
-
-internal sealed class AssistantUsageReservation : IDisposable
-{
-    public static AssistantUsageReservation Unmetered { get; } = new();
-    private AssistantUsageBudget? budget;
-    private readonly long reservedUnits;
-    private long consumedUnits;
-
-    private AssistantUsageReservation()
-    {
-    }
-
-    public AssistantUsageReservation(AssistantUsageBudget budget, long reservedUnits)
-    {
-        this.budget = budget;
-        this.reservedUnits = reservedUnits;
-    }
-
-    public void Commit(long units)
-    {
-        consumedUnits = units;
-    }
-
-    public void Dispose()
-    {
-        Interlocked.Exchange(ref budget, null)?.Complete(reservedUnits, consumedUnits);
-    }
 }

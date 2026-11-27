@@ -89,6 +89,16 @@ jobs:
           --report-trx-filename Andreja.PublicSiteTests-${{ matrix.configuration }}.trx
           --results-directory artifacts/${{ matrix.configuration }}/test-results/Andreja.PublicSiteTests
 
+      - id: test_docs
+        if: ${{ always() && steps.build_solution.outcome == 'success' && !cancelled() }}
+        name: Test documentation tooling assembly
+        run: >-
+          dotnet test --test-modules tests/Andreja.DocsTests/bin/${{ matrix.configuration }}/net10.0/Andreja.DocsTests.dll
+          --no-build
+          --report-trx
+          --report-trx-filename Andreja.DocsTests-${{ matrix.configuration }}.trx
+          --results-directory artifacts/${{ matrix.configuration }}/test-results/Andreja.DocsTests
+
       - id: parity
         if: always()
         name: Verify test inventory parity
@@ -121,6 +131,7 @@ jobs:
             "test_unit":"${{ steps.test_unit.outcome }}",
             "test_architecture":"${{ steps.test_architecture.outcome }}",
             "test_public_site":"${{ steps.test_public_site.outcome }}",
+            "test_docs":"${{ steps.test_docs.outcome }}",
             "evidence_contract":"${{ steps.evidence_contract.outcome }}",
             "parity":"${{ steps.parity.outcome }}"}
         run: >-

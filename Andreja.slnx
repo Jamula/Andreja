@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Andreja.Api.Contracts/Andreja.Api.Contracts.csproj" />
     <Project Path="src/Andreja.AppHost/Andreja.AppHost.csproj" />
+    <Project Path="src/Andreja.Docs/Andreja.Docs.csproj" />
     <Project Path="src/Andreja.Platform.Contracts/Andreja.Platform.Contracts.csproj" />
     <Project Path="src/Andreja.Portability.Cli/Andreja.Portability.Cli.csproj" />
     <Project Path="src/Andreja.PublicSite/Andreja.PublicSite.csproj" />
@@ -14,6 +15,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Andreja.ArchitectureTests/Andreja.ArchitectureTests.csproj" />
+    <Project Path="tests/Andreja.DocsTests/Andreja.DocsTests.csproj" />
     <Project Path="tests/Andreja.UnitTests/Andreja.UnitTests.csproj" />
     <Project Path="tests/Andreja.PublicSiteTests/Andreja.PublicSiteTests.csproj" />
   </Folder>

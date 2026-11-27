@@ -1,12 +1,31 @@
 {
   "schema_version": 1,
   "inventory_kind": "current",
-  "updated_on": "2026-11-14",
+  "updated_on": "2026-11-24",
   "historical_baseline_path": "docs/research/test-suite-baseline-112.json",
   "sdk_version": "10.0.404",
   "target_framework": "net10.0",
   "runner": "Microsoft.Testing.Platform",
   "projects": {
+    "Andreja.DocsTests": {
+      "path": "tests/Andreja.DocsTests/Andreja.DocsTests.csproj",
+      "Debug": {
+        "discovered": 65,
+        "trx_total": 65,
+        "executed": 65,
+        "passed": 65,
+        "failed": 0,
+        "skipped": 0
+      },
+      "Release": {
+        "discovered": 65,
+        "trx_total": 65,
+        "executed": 65,
+        "passed": 65,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
     "Andreja.PublicSiteTests": {
       "path": "tests/Andreja.PublicSiteTests/Andreja.PublicSiteTests.csproj",
       "Debug": {

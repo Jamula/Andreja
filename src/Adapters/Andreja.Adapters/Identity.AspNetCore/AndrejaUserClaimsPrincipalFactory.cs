@@ -7,13 +7,6 @@ using Microsoft.Extensions.Options;
 
 namespace Andreja.Adapters.Identity.AspNetCore;
 
-public static class LocalIdentityClaimTypes
-{
-    public const string TenantId = "andreja:tenant_id";
-    public const string AppUserId = "andreja:app_user_id";
-    public const string PrincipalId = "andreja:principal_id";
-}
-
 public sealed class AndrejaUserClaimsPrincipalFactory(
     UserManager<AspNetIdentityUser> userManager,
     RoleManager<IdentityRole<Guid>> roleManager,
@@ -27,7 +20,7 @@ public sealed class AndrejaUserClaimsPrincipalFactory(
     protected override async Task<ClaimsIdentity> GenerateClaimsAsync(
         AspNetIdentityUser user)
     {
-        var identity = await base.GenerateClaimsAsync(user);
+        var identity = await base.GenerateClaimsAsync(user).ConfigureAwait(false);
         var membership = await database.Memberships
             .IgnoreQueryFilters()
             .Where(candidate =>
@@ -38,7 +31,8 @@ public sealed class AndrejaUserClaimsPrincipalFactory(
                 candidate.TenantId,
                 candidate.PrincipalId,
             })
-            .SingleAsync();
+            .SingleAsync()
+            .ConfigureAwait(false);
 
         identity.AddClaims(
         [

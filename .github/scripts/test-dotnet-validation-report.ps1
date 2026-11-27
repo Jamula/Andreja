@@ -46,6 +46,7 @@ try {
 
     $expectedProjects = @(
         'Andreja.ArchitectureTests'
+        'Andreja.DocsTests'
         'Andreja.PostgreSqlIntegrationTests'
         'Andreja.PublicSiteTests'
         'Andreja.UnitTests'
@@ -65,6 +66,7 @@ try {
         test_unit = 'success'
         test_architecture = 'success'
         test_public_site = 'success'
+        test_docs = 'success'
         evidence_contract = 'success'
         parity = 'success'
     }
@@ -81,9 +83,18 @@ try {
         'The public-site runtime outcome was not preserved in the report.'
     Assert-True ((@($validReport.validation.commands) -match 'Andreja.PublicSiteTests').Count -gt 0) `
         'The report command list omitted the public-site test invocation.'
+    $docsProject = @($validReport.test_projects.included |
+        Where-Object path -eq 'tests/Andreja.DocsTests/Andreja.DocsTests.csproj')
+    Assert-True ($docsProject.Count -eq 1) 'The documentation-tooling project was not classified as included.'
+    Assert-True ($docsProject[0].runtime_result -eq 'success') `
+        'The documentation-tooling runtime outcome was not preserved in the report.'
+    Assert-True ((@($validReport.validation.commands) -match 'Andreja.DocsTests').Count -gt 0) `
+        'The report command list omitted the documentation-tooling test invocation.'
     $summary = Get-Content -LiteralPath $summaryPath -Raw
     Assert-True ($summary.Contains('Andreja.PublicSiteTests.csproj')) `
         'The step summary omitted the public-site project.'
+    Assert-True ($summary.Contains('Andreja.DocsTests.csproj')) `
+        'The step summary omitted the documentation-tooling project.'
 
     $missingResults = [ordered]@{}
     foreach ($name in $validResults.Keys) {
