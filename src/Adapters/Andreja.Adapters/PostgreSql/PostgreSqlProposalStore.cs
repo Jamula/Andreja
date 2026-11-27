@@ -43,7 +43,7 @@ public sealed class PostgreSqlProposalStore
         }
 
         var context = RequireCurrent(proposal.TenantId, proposal.ActorId, proposal.Purpose);
-        if (!await HasActorBindingAsync(context, cancellationToken))
+        if (!await HasActorBindingAsync(context, cancellationToken).ConfigureAwait(false))
         {
             throw new IdentityAccessDeniedException(
                 "The proposal actor is not an active tenant membership.");
@@ -53,7 +53,7 @@ public sealed class PostgreSqlProposalStore
         database.Proposals.Add(ProposalRecord.FromDomain(proposal, context.AppUserId));
         try
         {
-            await database.SaveChangesAsync(cancellationToken);
+            await database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return true;
         }
         catch (DbUpdateException)
@@ -61,7 +61,8 @@ public sealed class PostgreSqlProposalStore
             database.ChangeTracker.Clear();
             if (await database.Proposals
                     .AsNoTracking()
-                    .AnyAsync(candidate => candidate.Id == proposal.ProposalId, cancellationToken))
+                    .AnyAsync(candidate => candidate.Id == proposal.ProposalId, cancellationToken)
+                    .ConfigureAwait(false))
             {
                 return false;
             }
@@ -83,14 +84,15 @@ public sealed class PostgreSqlProposalStore
                 "The requested proposal tenant does not match the resolved request context.");
         }
 
-        if (!await HasActorBindingAsync(current, cancellationToken))
+        if (!await HasActorBindingAsync(current, cancellationToken).ConfigureAwait(false))
         {
             return null;
         }
 
         var proposal = await database.Proposals
             .AsNoTracking()
-            .SingleOrDefaultAsync(candidate => candidate.Id == proposalId, cancellationToken);
+            .SingleOrDefaultAsync(candidate => candidate.Id == proposalId, cancellationToken)
+            .ConfigureAwait(false);
         return proposal?.ActorAppUserId == current.AppUserId
                && proposal.ActorId == current.PrincipalId
             ? proposal.ToDomain()
@@ -103,7 +105,7 @@ public sealed class PostgreSqlProposalStore
     {
         var context = RequireCurrent(request.TenantId, request.ActorId, OpenLoopsPolicy.Purpose);
         ValidateIdempotencyKey(request.IdempotencyKey);
-        if (!await HasActorBindingAsync(context, cancellationToken))
+        if (!await HasActorBindingAsync(context, cancellationToken).ConfigureAwait(false))
         {
             return new(ProposalTransitionOutcome.Denied, null);
         }
@@ -113,14 +115,15 @@ public sealed class PostgreSqlProposalStore
             context,
             request.IdempotencyKey,
             intent,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         if (replay is not null)
         {
             return replay;
         }
 
         var proposal = await database.Proposals
-            .SingleOrDefaultAsync(candidate => candidate.Id == request.ProposalId, cancellationToken);
+            .SingleOrDefaultAsync(candidate => candidate.Id == request.ProposalId, cancellationToken)
+            .ConfigureAwait(false);
         if (proposal is null)
         {
             return new(ProposalTransitionOutcome.NotFound, null);
@@ -156,7 +159,7 @@ public sealed class PostgreSqlProposalStore
             proposal.Version));
         try
         {
-            await database.SaveChangesAsync(cancellationToken);
+            await database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return new(outcome.Value, proposal.ToDomain());
         }
         catch (DbUpdateConcurrencyException)
@@ -171,7 +174,7 @@ public sealed class PostgreSqlProposalStore
                     context,
                     request.IdempotencyKey,
                     intent,
-                    cancellationToken)
+                    cancellationToken).ConfigureAwait(false)
                 ?? new(ProposalTransitionOutcome.Conflict, null);
         }
     }
@@ -186,7 +189,7 @@ public sealed class PostgreSqlProposalStore
     {
         EnsureCurrent(context);
         ValidateIdempotencyKey(idempotencyKey);
-        if (!await HasActorBindingAsync(context, cancellationToken))
+        if (!await HasActorBindingAsync(context, cancellationToken).ConfigureAwait(false))
         {
             return new(ProposalTransitionOutcome.Denied, null, null);
         }
@@ -196,128 +199,134 @@ public sealed class PostgreSqlProposalStore
             context,
             idempotencyKey,
             intent,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         if (replay is not null)
         {
             return replay;
         }
 
-        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
-        var proposal = await database.Proposals
-            .SingleOrDefaultAsync(candidate => candidate.Id == proposalId, cancellationToken);
-        if (proposal is null)
+        var transaction = await database.Database
+            .BeginTransactionAsync(cancellationToken)
+            .ConfigureAwait(false);
+        await using (transaction.ConfigureAwait(false))
         {
-            await transaction.RollbackAsync(cancellationToken);
-            return new(ProposalTransitionOutcome.NotFound, null, null);
-        }
-
-        if (proposal.ActorAppUserId != context.AppUserId)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return new(ProposalTransitionOutcome.Denied, null, null);
-        }
-
-        var request = new ProposalTransitionRequest(
-            proposalId,
-            expectedVersion,
-            context.TenantId.Value,
-            context.PrincipalId.Value,
-            ProposalAction.Confirm,
-            idempotencyKey,
-            occurredAt);
-        var invalid = ValidateTransition(proposal, request);
-        if (invalid is not null)
-        {
-            if (invalid == ProposalTransitionOutcome.Expired
-                && proposal.State == ProposalState.Pending)
+            var proposal = await database.Proposals
+                .SingleOrDefaultAsync(candidate => candidate.Id == proposalId, cancellationToken)
+                .ConfigureAwait(false);
+            if (proposal is null)
             {
-                proposal.Expire();
+                await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                return new(ProposalTransitionOutcome.NotFound, null, null);
             }
 
-            AddProposalAudit(proposal, request.ActorId, request.Action, invalid.Value, occurredAt);
-            database.ProposalReceipts.Add(ProposalReceiptRecord.ForTransition(
-                request,
+            if (proposal.ActorAppUserId != context.AppUserId)
+            {
+                await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                return new(ProposalTransitionOutcome.Denied, null, null);
+            }
+
+            var request = new ProposalTransitionRequest(
+                proposalId,
+                expectedVersion,
+                context.TenantId.Value,
+                context.PrincipalId.Value,
+                ProposalAction.Confirm,
+                idempotencyKey,
+                occurredAt);
+            var invalid = ValidateTransition(proposal, request);
+            if (invalid is not null)
+            {
+                if (invalid == ProposalTransitionOutcome.Expired
+                    && proposal.State == ProposalState.Pending)
+                {
+                    proposal.Expire();
+                }
+
+                AddProposalAudit(proposal, request.ActorId, request.Action, invalid.Value, occurredAt);
+                database.ProposalReceipts.Add(ProposalReceiptRecord.ForTransition(
+                    request,
+                    intent,
+                    invalid.Value,
+                    proposal.Version));
+                try
+                {
+                    await database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                    return new(invalid.Value, null, proposal.ToDomain());
+                }
+                catch (DbUpdateException)
+                {
+                    await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                    database.ChangeTracker.Clear();
+                    return await FindConfirmationReplayAsync(
+                            context,
+                            idempotencyKey,
+                            intent,
+                            cancellationToken).ConfigureAwait(false)
+                        ?? new(ProposalTransitionOutcome.Conflict, null, null);
+                }
+            }
+
+            var task = OpenLoopsTaskApplication.MaterializeTask(context, proposal.ToDomain());
+            proposal.Confirm(task.Id);
+            database.OpenLoopTasks.Add(task);
+            database.OpenLoopTaskAudits.Add(new(
+                Guid.CreateVersion7(),
+                context.TenantId,
+                context.PrincipalId,
+                task.Id,
+                "create",
+                "applied",
+                task.SourceKind,
+                task.SourceReference,
+                occurredAt));
+            AddProposalAudit(
+                proposal,
+                context.PrincipalId.Value,
+                ProposalAction.Confirm,
+                ProposalTransitionOutcome.Applied,
+                occurredAt);
+            database.ProposalReceipts.Add(ProposalReceiptRecord.ForConfirmation(
+                context,
+                proposalId,
+                expectedVersion,
+                idempotencyKey,
                 intent,
-                invalid.Value,
-                proposal.Version));
+                proposal.Version,
+                task.Id,
+                task.Version));
+
             try
             {
-                await database.SaveChangesAsync(cancellationToken);
-                await transaction.CommitAsync(cancellationToken);
-                return new(invalid.Value, null, proposal.ToDomain());
+                await database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                if (faultInjector is not null)
+                {
+                    await faultInjector.OnCheckpointAsync(
+                        ProposalConfirmationCheckpoint.BeforeCommit,
+                        cancellationToken).ConfigureAwait(false);
+                }
+
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                if (faultInjector is not null)
+                {
+                    await faultInjector.OnCheckpointAsync(
+                        ProposalConfirmationCheckpoint.AfterCommit,
+                        cancellationToken).ConfigureAwait(false);
+                }
+
+                return new(ProposalTransitionOutcome.Applied, task, proposal.ToDomain());
             }
             catch (DbUpdateException)
             {
-                await transaction.RollbackAsync(cancellationToken);
+                await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
                 database.ChangeTracker.Clear();
                 return await FindConfirmationReplayAsync(
                         context,
                         idempotencyKey,
                         intent,
-                        cancellationToken)
+                        cancellationToken).ConfigureAwait(false)
                     ?? new(ProposalTransitionOutcome.Conflict, null, null);
             }
-        }
-
-        var task = OpenLoopsTaskApplication.MaterializeTask(context, proposal.ToDomain());
-        proposal.Confirm(task.Id);
-        database.OpenLoopTasks.Add(task);
-        database.OpenLoopTaskAudits.Add(new(
-            Guid.CreateVersion7(),
-            context.TenantId,
-            context.PrincipalId,
-            task.Id,
-            "create",
-            "applied",
-            task.SourceKind,
-            task.SourceReference,
-            occurredAt));
-        AddProposalAudit(
-            proposal,
-            context.PrincipalId.Value,
-            ProposalAction.Confirm,
-            ProposalTransitionOutcome.Applied,
-            occurredAt);
-        database.ProposalReceipts.Add(ProposalReceiptRecord.ForConfirmation(
-            context,
-            proposalId,
-            expectedVersion,
-            idempotencyKey,
-            intent,
-            proposal.Version,
-            task.Id,
-            task.Version));
-
-        try
-        {
-            await database.SaveChangesAsync(cancellationToken);
-            if (faultInjector is not null)
-            {
-                await faultInjector.OnCheckpointAsync(
-                    ProposalConfirmationCheckpoint.BeforeCommit,
-                    cancellationToken);
-            }
-
-            await transaction.CommitAsync(cancellationToken);
-            if (faultInjector is not null)
-            {
-                await faultInjector.OnCheckpointAsync(
-                    ProposalConfirmationCheckpoint.AfterCommit,
-                    cancellationToken);
-            }
-
-            return new(ProposalTransitionOutcome.Applied, task, proposal.ToDomain());
-        }
-        catch (DbUpdateException)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            database.ChangeTracker.Clear();
-            return await FindConfirmationReplayAsync(
-                    context,
-                    idempotencyKey,
-                    intent,
-                    cancellationToken)
-                ?? new(ProposalTransitionOutcome.Conflict, null, null);
         }
     }
 
@@ -328,7 +337,7 @@ public sealed class PostgreSqlProposalStore
         var context = RequireCurrent(entry.TenantId, entry.ActorId, OpenLoopsPolicy.Purpose);
         EnsureCurrent(context);
         database.ProposalAudits.Add(ProposalAuditRecord.FromDomain(entry));
-        await database.SaveChangesAsync(cancellationToken);
+        await database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<ProposalTransitionResult?> FindTransitionReplayAsync(
@@ -337,7 +346,8 @@ public sealed class PostgreSqlProposalStore
         string intent,
         CancellationToken cancellationToken)
     {
-        var receipt = await FindReceiptAsync(context, idempotencyKey, cancellationToken);
+        var receipt = await FindReceiptAsync(context, idempotencyKey, cancellationToken)
+            .ConfigureAwait(false);
         if (receipt is null)
         {
             return null;
@@ -345,7 +355,8 @@ public sealed class PostgreSqlProposalStore
 
         var proposal = await database.Proposals
             .AsNoTracking()
-            .SingleOrDefaultAsync(candidate => candidate.Id == receipt.ProposalId, cancellationToken);
+            .SingleOrDefaultAsync(candidate => candidate.Id == receipt.ProposalId, cancellationToken)
+            .ConfigureAwait(false);
         if (!string.Equals(receipt.Intent, intent, StringComparison.Ordinal))
         {
             return new(ProposalTransitionOutcome.Conflict, proposal?.ToDomain());
@@ -364,7 +375,8 @@ public sealed class PostgreSqlProposalStore
         string intent,
         CancellationToken cancellationToken)
     {
-        var receipt = await FindReceiptAsync(context, idempotencyKey, cancellationToken);
+        var receipt = await FindReceiptAsync(context, idempotencyKey, cancellationToken)
+            .ConfigureAwait(false);
         if (receipt is null)
         {
             return null;
@@ -372,13 +384,15 @@ public sealed class PostgreSqlProposalStore
 
         var proposal = await database.Proposals
             .AsNoTracking()
-            .SingleOrDefaultAsync(candidate => candidate.Id == receipt.ProposalId, cancellationToken);
+            .SingleOrDefaultAsync(candidate => candidate.Id == receipt.ProposalId, cancellationToken)
+            .ConfigureAwait(false);
         OpenLoopTask? task = null;
         if (receipt.TaskId is Guid taskId)
         {
             task = await database.OpenLoopTasks
                 .AsNoTracking()
-                .SingleOrDefaultAsync(candidate => candidate.Id == taskId, cancellationToken);
+                .SingleOrDefaultAsync(candidate => candidate.Id == taskId, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         if (!string.Equals(receipt.Intent, intent, StringComparison.Ordinal))
@@ -503,225 +517,5 @@ public sealed class PostgreSqlProposalStore
                 "An idempotency key between 8 and 128 characters is required.",
                 nameof(key));
         }
-    }
-}
-
-internal enum ProposalConfirmationCheckpoint
-{
-    BeforeCommit,
-    AfterCommit,
-}
-
-internal interface IProposalConfirmationFaultInjector
-{
-    ValueTask OnCheckpointAsync(
-        ProposalConfirmationCheckpoint checkpoint,
-        CancellationToken cancellationToken);
-}
-
-internal sealed class ProposalRecord
-{
-    private ProposalRecord()
-    {
-    }
-
-    public Guid Id { get; private set; }
-    public long Version { get; private set; }
-    public TenantId TenantId { get; private set; }
-    public PrincipalId ActorId { get; private set; }
-    public AppUserId ActorAppUserId { get; private set; }
-    public PrincipalId SourceActorId { get; private set; }
-    public string Purpose { get; private set; } = string.Empty;
-    public string SourceKind { get; private set; } = string.Empty;
-    public string SourceReference { get; private set; } = string.Empty;
-    public string Operation { get; private set; } = string.Empty;
-    public string ResourceReference { get; private set; } = string.Empty;
-    public string CanonicalPayload { get; private set; } = string.Empty;
-    public string PayloadDigest { get; private set; } = string.Empty;
-    public string BeforeCanonical { get; private set; } = string.Empty;
-    public string AfterCanonical { get; private set; } = string.Empty;
-    public DateTimeOffset CreatedAt { get; private set; }
-    public DateTimeOffset ExpiresAt { get; private set; }
-    public ProposalState State { get; private set; }
-    public Guid? ActiveTaskId { get; private set; }
-
-    public static ProposalRecord FromDomain(Proposal proposal, AppUserId actorAppUserId) =>
-        new()
-        {
-            Id = proposal.ProposalId,
-            Version = proposal.Version,
-            TenantId = new TenantId(proposal.TenantId),
-            ActorId = new PrincipalId(proposal.ActorId),
-            ActorAppUserId = actorAppUserId,
-            SourceActorId = new PrincipalId(proposal.Source.ActorId),
-            Purpose = proposal.Purpose,
-            SourceKind = proposal.Source.Kind,
-            SourceReference = proposal.Source.Reference,
-            Operation = proposal.Operation.Operation,
-            ResourceReference = proposal.Operation.ResourceReference,
-            CanonicalPayload = proposal.Operation.CanonicalPayload,
-            PayloadDigest = proposal.Operation.PayloadDigest,
-            BeforeCanonical = proposal.Diff.BeforeCanonical,
-            AfterCanonical = proposal.Diff.AfterCanonical,
-            CreatedAt = proposal.CreatedAt,
-            ExpiresAt = proposal.ExpiresAt,
-            State = proposal.State,
-        };
-
-    public Proposal ToDomain() =>
-        new(
-            Id,
-            Version,
-            TenantId.Value,
-            ActorId.Value,
-            Purpose,
-            new(SourceKind, SourceReference, SourceActorId.Value),
-            new(Operation, ResourceReference, CanonicalPayload, PayloadDigest),
-            new(BeforeCanonical, AfterCanonical),
-            CreatedAt,
-            ExpiresAt,
-            State);
-
-    public void Transition(ProposalAction action)
-    {
-        State = action switch
-        {
-            ProposalAction.Reject => ProposalState.Rejected,
-            ProposalAction.Cancel => ProposalState.Cancelled,
-            _ => throw new InvalidOperationException(
-                "Confirmation must use the atomic Open Loops confirmation path."),
-        };
-        Version++;
-    }
-
-    public void Confirm(Guid taskId)
-    {
-        State = ProposalState.Confirmed;
-        ActiveTaskId = taskId;
-        Version++;
-    }
-
-    public void Expire()
-    {
-        State = ProposalState.Expired;
-        Version++;
-    }
-
-    public void DetachTask() => ActiveTaskId = null;
-}
-
-internal sealed class ProposalAuditRecord
-{
-    private ProposalAuditRecord()
-    {
-    }
-
-    public ProposalAuditRecord(
-        Guid id,
-        TenantId tenantId,
-        PrincipalId actorId,
-        Guid proposalId,
-        long proposalVersion,
-        ProposalAction action,
-        ProposalTransitionOutcome outcome,
-        string sourceKind,
-        string sourceReference,
-        DateTimeOffset occurredAt)
-    {
-        Id = id;
-        TenantId = tenantId;
-        ActorId = actorId;
-        ProposalId = proposalId;
-        ProposalVersion = proposalVersion;
-        Action = action;
-        Outcome = outcome;
-        SourceKind = sourceKind;
-        SourceReference = sourceReference;
-        OccurredAt = occurredAt;
-    }
-
-    public Guid Id { get; private set; }
-    public TenantId TenantId { get; private set; }
-    public PrincipalId ActorId { get; private set; }
-    public Guid ProposalId { get; private set; }
-    public long ProposalVersion { get; private set; }
-    public ProposalAction Action { get; private set; }
-    public ProposalTransitionOutcome Outcome { get; private set; }
-    public string SourceKind { get; private set; } = string.Empty;
-    public string SourceReference { get; private set; } = string.Empty;
-    public DateTimeOffset OccurredAt { get; private set; }
-
-    public static ProposalAuditRecord FromDomain(ProposalAuditEntry entry) =>
-        new(
-            entry.AuditId,
-            new TenantId(entry.TenantId),
-            new PrincipalId(entry.ActorId),
-            entry.ProposalId,
-            entry.ProposalVersion,
-            entry.Action,
-            entry.Outcome,
-            entry.SourceKind,
-            entry.SourceReference,
-            entry.OccurredAt);
-}
-
-internal sealed class ProposalReceiptRecord
-{
-    private ProposalReceiptRecord()
-    {
-    }
-
-    public TenantId TenantId { get; private set; }
-    public PrincipalId ActorId { get; private set; }
-    public string IdempotencyKey { get; private set; } = string.Empty;
-    public string Intent { get; private set; } = string.Empty;
-    public Guid ProposalId { get; private set; }
-    public long ProposalVersion { get; private set; }
-    public ProposalTransitionOutcome Outcome { get; private set; }
-    public Guid? TaskId { get; private set; }
-    public long? TaskVersion { get; private set; }
-
-    public static ProposalReceiptRecord ForTransition(
-        ProposalTransitionRequest request,
-        string intent,
-        ProposalTransitionOutcome outcome,
-        long proposalVersion) =>
-        new()
-        {
-            TenantId = new TenantId(request.TenantId),
-            ActorId = new PrincipalId(request.ActorId),
-            IdempotencyKey = request.IdempotencyKey,
-            Intent = intent,
-            ProposalId = request.ProposalId,
-            ProposalVersion = proposalVersion,
-            Outcome = outcome,
-        };
-
-    public static ProposalReceiptRecord ForConfirmation(
-        TenantPrincipalContext context,
-        Guid proposalId,
-        long expectedVersion,
-        string idempotencyKey,
-        string intent,
-        long proposalVersion,
-        Guid taskId,
-        long taskVersion) =>
-        new()
-        {
-            TenantId = context.TenantId,
-            ActorId = context.PrincipalId,
-            IdempotencyKey = idempotencyKey,
-            Intent = intent,
-            ProposalId = proposalId,
-            ProposalVersion = proposalVersion,
-            Outcome = ProposalTransitionOutcome.Applied,
-            TaskId = taskId,
-            TaskVersion = taskVersion,
-        };
-
-    public void DetachTask()
-    {
-        TaskId = null;
-        TaskVersion = null;
     }
 }

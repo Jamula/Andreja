@@ -121,7 +121,9 @@ public static class ApplicationExportVerifier
         ArgumentNullException.ThrowIfNull(openArtifact);
 
         var errors = new List<string>();
-        var targetIsClean = await cleanInstanceProbe.IsCleanAsync(cancellationToken);
+        var targetIsClean = await cleanInstanceProbe
+            .IsCleanAsync(cancellationToken)
+            .ConfigureAwait(false);
         if (!targetIsClean)
         {
             errors.Add("target-not-clean");
@@ -201,16 +203,21 @@ public static class ApplicationExportVerifier
                 continue;
             }
 
-            await using var content = await openArtifact(artifact.Path, cancellationToken);
-            var (checksum, byteLength) = await ComputeSha256Async(content, cancellationToken);
-            if (!string.Equals(checksum, artifact.Sha256, StringComparison.Ordinal))
+            var content = await openArtifact(artifact.Path, cancellationToken)
+                .ConfigureAwait(false);
+            await using (content.ConfigureAwait(false))
             {
-                errors.Add($"checksum-mismatch:{artifact.Path}");
-            }
+                var (checksum, byteLength) = await ComputeSha256Async(content, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!string.Equals(checksum, artifact.Sha256, StringComparison.Ordinal))
+                {
+                    errors.Add($"checksum-mismatch:{artifact.Path}");
+                }
 
-            if (byteLength != artifact.ByteLength)
-            {
-                errors.Add($"length-mismatch:{artifact.Path}");
+                if (byteLength != artifact.ByteLength)
+                {
+                    errors.Add($"length-mismatch:{artifact.Path}");
+                }
             }
         }
 
@@ -243,7 +250,7 @@ public static class ApplicationExportVerifier
         var buffer = new byte[64 * 1024];
         long byteLength = 0;
         int bytesRead;
-        while ((bytesRead = await content.ReadAsync(buffer, cancellationToken)) > 0)
+        while ((bytesRead = await content.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
         {
             hasher.AppendData(buffer, 0, bytesRead);
             byteLength += bytesRead;

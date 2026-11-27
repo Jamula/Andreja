@@ -19,7 +19,8 @@ public sealed class PostgreSqlIdentityStore(
                 contact.Id,
                 contact.DisplayName,
                 contact.LinkedPrincipalId))
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public async Task<ContactProjection> AddContactAsync(
@@ -36,7 +37,7 @@ public sealed class PostgreSqlIdentityStore(
         }
 
         database.Contacts.Add(contact);
-        await database.SaveChangesAsync(cancellationToken);
+        await database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return new ContactProjection(contact.Id, contact.DisplayName, contact.LinkedPrincipalId);
     }
 
