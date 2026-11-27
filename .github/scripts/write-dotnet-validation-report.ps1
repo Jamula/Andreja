@@ -19,6 +19,7 @@ $ErrorActionPreference = 'Stop'
 
 $expectedTestProjects = @(
     'tests/Andreja.ArchitectureTests/Andreja.ArchitectureTests.csproj'
+    'tests/Andreja.DocsTests/Andreja.DocsTests.csproj'
     'tests/Andreja.PostgreSqlIntegrationTests/Andreja.PostgreSqlIntegrationTests.csproj'
     'tests/Andreja.PublicSiteTests/Andreja.PublicSiteTests.csproj'
     'tests/Andreja.UnitTests/Andreja.UnitTests.csproj'
@@ -51,6 +52,7 @@ if ($Kind -eq 'build-test') {
         'test_unit'
         'test_architecture'
         'test_public_site'
+        'test_docs'
         'evidence_contract'
         'parity'
     )
@@ -74,6 +76,7 @@ $commands = switch ($Kind) {
             "dotnet test --test-modules tests/Andreja.UnitTests/bin/$Configuration/net10.0/Andreja.UnitTests.dll --no-build --report-trx --report-trx-filename Andreja.UnitTests-$Configuration.trx --results-directory artifacts/$Configuration/test-results/Andreja.UnitTests"
             "dotnet test --test-modules tests/Andreja.ArchitectureTests/bin/$Configuration/net10.0/Andreja.ArchitectureTests.dll --no-build --report-trx --report-trx-filename Andreja.ArchitectureTests-$Configuration.trx --results-directory artifacts/$Configuration/test-results/Andreja.ArchitectureTests"
             "dotnet test --test-modules tests/Andreja.PublicSiteTests/bin/$Configuration/net10.0/Andreja.PublicSiteTests.dll --no-build --report-trx --report-trx-filename Andreja.PublicSiteTests-$Configuration.trx --results-directory artifacts/$Configuration/test-results/Andreja.PublicSiteTests"
+            "dotnet test --test-modules tests/Andreja.DocsTests/bin/$Configuration/net10.0/Andreja.DocsTests.dll --no-build --report-trx --report-trx-filename Andreja.DocsTests-$Configuration.trx --results-directory artifacts/$Configuration/test-results/Andreja.DocsTests"
             "pwsh -NoProfile -File .github/scripts/test-dotnet-test-parity.ps1 -Configuration $Configuration -ResultsRoot artifacts/$Configuration/test-results -InventoryPath docs/research/test-suite-current-inventory-112.json -OutputPath artifacts/$Configuration/test-inventory-parity.json"
         )
     }
@@ -122,6 +125,11 @@ $report = [ordered]@{
                 path = 'tests/Andreja.ArchitectureTests/Andreja.ArchitectureTests.csproj'
                 classification = 'service-free runtime test'
                 runtime_result = if ($Kind -eq 'build-test') { $results.test_architecture } else { 'not-run-in-this-job' }
+            }
+            [ordered]@{
+                path = 'tests/Andreja.DocsTests/Andreja.DocsTests.csproj'
+                classification = 'service-free runtime test'
+                runtime_result = if ($Kind -eq 'build-test') { $results.test_docs } else { 'not-run-in-this-job' }
             }
             [ordered]@{
                 path = 'tests/Andreja.PublicSiteTests/Andreja.PublicSiteTests.csproj'
@@ -186,6 +194,7 @@ $($operationRows -join "`n")
 | Classification | Project | Runtime evidence |
 | --- | --- | --- |
 | Included | tests/Andreja.ArchitectureTests/Andreja.ArchitectureTests.csproj | $(if ($Kind -eq 'build-test') { $results.test_architecture } else { 'not run in this job' }) |
+| Included | tests/Andreja.DocsTests/Andreja.DocsTests.csproj | $(if ($Kind -eq 'build-test') { $results.test_docs } else { 'not run in this job' }) |
 | Included | tests/Andreja.PublicSiteTests/Andreja.PublicSiteTests.csproj | $(if ($Kind -eq 'build-test') { $results.test_public_site } else { 'not run in this job' }) |
 | Included | tests/Andreja.UnitTests/Andreja.UnitTests.csproj | $(if ($Kind -eq 'build-test') { $results.test_unit } else { 'not run in this job' }) |
 | Excluded from solution runtime | $postgresProject | compiled and discovered separately in Debug and Release |

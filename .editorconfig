@@ -1,0 +1,38 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{cs,ps1,psm1}]
+indent_style = space
+indent_size = 4
+
+[*.{csproj,props,targets,slnx,xml,json,yml,yaml,js,mjs,razor,html,css}]
+indent_style = space
+indent_size = 2
+
+[*.cs]
+csharp_style_namespace_declarations = file_scoped:error
+csharp_style_prefer_primary_constructors = true:warning
+
+[src/{Core,Modules,Adapters,Andreja.Api.Contracts,Andreja.Platform.Contracts}/**/*.cs]
+dotnet_diagnostic.CA2007.severity = error
+
+[src/Adapters/Andreja.Adapters/PostgreSql/Migrations/*.cs]
+csharp_style_namespace_declarations = block_scoped:none
+csharp_style_prefer_primary_constructors = false:none
+dotnet_diagnostic.IDE0161.severity = none
+dotnet_diagnostic.IDE0290.severity = none
+dotnet_diagnostic.CA2007.severity = none
+
+[src/{Host,Andreja.AppHost,Andreja.PublicSite,Tools,Andreja.Portability.Cli,Andreja.Docs}/**/*.cs]
+dotnet_diagnostic.CA2007.severity = none
+
+[tests/**/*.cs]
+dotnet_diagnostic.CA2007.severity = none

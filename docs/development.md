@@ -33,11 +33,13 @@ or external services.
   verifier (`local-unpublished` loopback-only mode; public publication remains
   gated on [issue #93](https://github.com/Jamula/Andreja/issues/93)). See the
   [local build guide](public-website/local-build.md).
-- `tests\Andreja.ArchitectureTests`, `tests\Andreja.UnitTests`, and
-  `tests\Andreja.PublicSiteTests`: dependency direction, domain/application,
-  typed API, authorization-negative, antiforgery, provider-failure,
-  cancellation, telemetry, and static public-site conformance suites in
-  `Andreja.slnx`.
+- `src\Andreja.Docs`: the deterministic `.NET 10` documentation consistency,
+  feedback-readiness, and architecture-diagram CLI.
+- `tests\Andreja.ArchitectureTests`, `tests\Andreja.UnitTests`,
+  `tests\Andreja.PublicSiteTests`, and `tests\Andreja.DocsTests`: dependency
+  direction, domain/application, typed API, authorization-negative, antiforgery,
+  provider-failure, cancellation, telemetry, static public-site conformance,
+  and documentation/diagram parity suites in `Andreja.slnx`.
 - `tests\Andreja.PostgreSqlIntegrationTests`: separately compiled live
   PostgreSQL identity, task, confirmation, and portability integration suite
   kept outside `Andreja.slnx` and gated on a disposable `andreja_test_*`
@@ -56,20 +58,21 @@ SDK analyzers, nullable reference types, warnings-as-errors, package versions,
 and deterministic compilation are configured centrally.
 
 The pinned .NET 10 SDK selects Microsoft Testing Platform mode through
-`global.json`. All four .NET test projects (`Andreja.UnitTests`,
-`Andreja.ArchitectureTests`, and `Andreja.PublicSiteTests` in `Andreja.slnx`,
-plus separately compiled `Andreja.PostgreSqlIntegrationTests`) use `MSTest.Sdk`
-`4.5.1` and `Microsoft.Testing.Extensions.TrxReport` `2.5.2`. The SDK uses the
-`None` extension profile with only the MIT-licensed TRX report extension
-enabled, so retained CI reports do not pull unused coverage or CI-report
-extensions. MSTest analyzers use the `Default` rule set; repository warnings
-remain errors. Local and hosted test commands keep both the .NET CLI and MTP
-telemetry opt-outs enabled.
+`global.json`. All five .NET test projects (`Andreja.UnitTests`,
+`Andreja.ArchitectureTests`, `Andreja.PublicSiteTests`, and `Andreja.DocsTests`
+in `Andreja.slnx`, plus separately compiled
+`Andreja.PostgreSqlIntegrationTests`) use `MSTest.Sdk` `4.5.1` and
+`Microsoft.Testing.Extensions.TrxReport` `2.5.2`. The SDK uses the `None`
+extension profile with only the MIT-licensed TRX report extension enabled, so
+retained CI reports do not pull unused coverage or CI-report extensions. MSTest
+analyzers use the `Default` rule set; repository warnings remain errors. Local
+and hosted test commands keep both the .NET CLI and MTP telemetry opt-outs
+enabled.
 
 Hosted CI builds each configuration first, then invokes the compiled unit,
-architecture, and public-site test assemblies with `dotnet test --test-modules`.
-This uses MTP directly without repeating MSBuild evaluation; local aggregate
-runs can still use `--solution` or `--project`.
+architecture, public-site, and documentation test assemblies with
+`dotnet test --test-modules`. This uses MTP directly without repeating MSBuild
+evaluation; local aggregate runs can still use `--solution` or `--project`.
 
 When changing the test suite, update
 `docs\research\test-suite-current-inventory-112.json` with the expected MTP
@@ -91,13 +94,18 @@ dotnet build tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrat
 dotnet test --test-modules tests\Andreja.UnitTests\bin\Debug\net10.0\Andreja.UnitTests.dll --no-build
 dotnet test --test-modules tests\Andreja.ArchitectureTests\bin\Debug\net10.0\Andreja.ArchitectureTests.dll --no-build
 dotnet test --test-modules tests\Andreja.PublicSiteTests\bin\Debug\net10.0\Andreja.PublicSiteTests.dll --no-build
+dotnet test --test-modules tests\Andreja.DocsTests\bin\Debug\net10.0\Andreja.DocsTests.dll --no-build
 dotnet build Andreja.slnx --configuration Release --no-restore
 dotnet build tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --configuration Release --no-restore
 dotnet test --test-modules tests\Andreja.UnitTests\bin\Release\net10.0\Andreja.UnitTests.dll --no-build
 dotnet test --test-modules tests\Andreja.ArchitectureTests\bin\Release\net10.0\Andreja.ArchitectureTests.dll --no-build
 dotnet test --test-modules tests\Andreja.PublicSiteTests\bin\Release\net10.0\Andreja.PublicSiteTests.dll --no-build
+dotnet test --test-modules tests\Andreja.DocsTests\bin\Release\net10.0\Andreja.DocsTests.dll --no-build
 dotnet format Andreja.slnx --verify-no-changes --no-restore
 dotnet format tests\Andreja.PostgreSqlIntegrationTests\Andreja.PostgreSqlIntegrationTests.csproj --verify-no-changes --no-restore
+dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj --configuration Release --no-build -- check-consistency
+dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj --configuration Release --no-build -- check-feedback-readiness
+dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj --configuration Release --no-build -- architecture-diagram --check
 pwsh -NoProfile -File .github\scripts\invoke-nuget-vulnerability-scan.ps1
 pwsh -NoProfile -File scripts\operations\validate-contract.ps1
 pwsh -NoProfile -File scripts\supply-chain\Test-SupplyChainPolicy.ps1

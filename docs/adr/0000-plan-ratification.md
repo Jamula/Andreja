@@ -5,7 +5,7 @@
 - **Approver:** Cyrus Jamula
 - **Plan:** [`docs/plan.md`](../plan.md)
 - **Accepted Plan SHA-256:** `e2044133f47deba7dcbbd4d931f2ec0e9a866432726d982182617716f7abfad2`
-- **Current proposed Plan SHA-256:** `46aa969a0e227b803e82b59a7b2394f7d3d785f3aa6c235a671136367fee052b`
+- **Current proposed Plan SHA-256:** `3e0c6b52c66c87bd276ab382e57a6ca25e4031d9a0690d9c6312e641e353bfab`
 - **Accepted plan content:** [PR #202](https://github.com/Jamula/Andreja/pull/202)
   at merge commit
   [`861bff7c6d74be5a497e7a0f706a3a92bdae9ddc`](https://github.com/Jamula/Andreja/commit/861bff7c6d74be5a497e7a0f706a3a92bdae9ddc)
@@ -781,3 +781,21 @@ not match the merged `docs/plan.md`.
   The private-reference verification remains procedural; its outcome was
   not inspected and does not publicly establish approval of any category or
   gate.
+
+### 2026-11-24 — proposed documentation tooling .NET migration reference update
+
+- **Tracking issue:** N/A; user-directed .NET 10 repository tooling migration (`2026-11-24T23:13:45.733-08:00`)
+- **Pull request:** Pending branch commit (`u/cyrusjamula/backend-porting-python-tools-to-dotnet`)
+- **Plan SHA-256:** `3e0c6b52c66c87bd276ab382e57a6ca25e4031d9a0690d9c6312e641e353bfab`
+- **Approver:** Cyrus Jamula; **pending**
+- **Classification:** Proposed editorial documentation-tooling reference update;
+  no re-ratification, risk acceptance, or gate closure.
+- **Decision:** Proposed only; no substantive plan, architecture, trust-boundary,
+  spend, legal, privacy, or release decision is changed or implied.
+- **Scope:** Update the Phase 0 status-artifact enforcement reference in
+  `docs/plan.md` from `.github/scripts/check_docs_consistency.py` to `src/Andreja.Docs`
+  (`dotnet run --project src/Andreja.Docs/Andreja.Docs.csproj -- check-consistency`)
+  following migration of the repository's documentation scripts and test suites
+  from Python to `.NET 10` C# and MSTest. Preserve the accepted plan hash, all 12
+  status-artifact hashes, previous amendment history, and all independently
+  pending proposals.

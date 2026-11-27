@@ -2,19 +2,11 @@ using Andreja.Platform.Contracts.Assistant;
 
 namespace Andreja.Modules.Assistant;
 
-public sealed class DeterministicAssistantProvider : IAssistantProvider
+public sealed class DeterministicAssistantProvider(
+    AssistantProviderCapabilities capabilities,
+    Func<AssistantRequest, CancellationToken, ValueTask<AssistantResponse>> responder)
+    : IAssistantProvider
 {
-    private readonly AssistantProviderCapabilities capabilities;
-    private readonly Func<AssistantRequest, CancellationToken, ValueTask<AssistantResponse>> responder;
-
-    public DeterministicAssistantProvider(
-        AssistantProviderCapabilities capabilities,
-        Func<AssistantRequest, CancellationToken, ValueTask<AssistantResponse>> responder)
-    {
-        this.capabilities = capabilities;
-        this.responder = responder;
-    }
-
     public ValueTask<AssistantProviderCapabilities> GetCapabilitiesAsync(
         CancellationToken cancellationToken)
     {
