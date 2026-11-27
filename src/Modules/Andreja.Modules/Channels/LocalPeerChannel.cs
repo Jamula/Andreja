@@ -5,28 +5,24 @@ using System.Text;
 
 namespace Andreja.Modules.Channels;
 
-public sealed class LocalPeerChannel : IPeerChannel
+public sealed class LocalPeerChannel(
+    IReadOnlyDictionary<string, byte[]> verificationKeys,
+    TimeSpan? maximumClockSkew = null) : IPeerChannel
 {
     public const string ProtocolVersion = "andreja.peer/1";
     public const string FixtureAlgorithm = "HMAC-SHA256-FIXTURE";
 
     private readonly object gate = new();
-    private readonly Dictionary<string, byte[]> verificationKeys;
-    private readonly TimeSpan maximumClockSkew;
+    private readonly Dictionary<string, byte[]> verificationKeys =
+        (verificationKeys ?? throw new ArgumentNullException(nameof(verificationKeys)))
+            .ToDictionary(
+                pair => pair.Key,
+                pair => pair.Value.ToArray(),
+                StringComparer.Ordinal);
+    private readonly TimeSpan maximumClockSkew =
+        maximumClockSkew ?? TimeSpan.FromMinutes(5);
     private readonly HashSet<(Guid Sender, string Nonce)> nonces = [];
     private readonly Dictionary<(Guid Sender, string Key), IdempotencyReceipt> receipts = [];
-
-    public LocalPeerChannel(
-        IReadOnlyDictionary<string, byte[]> verificationKeys,
-        TimeSpan? maximumClockSkew = null)
-    {
-        ArgumentNullException.ThrowIfNull(verificationKeys);
-        this.verificationKeys = verificationKeys.ToDictionary(
-            pair => pair.Key,
-            pair => pair.Value.ToArray(),
-            StringComparer.Ordinal);
-        this.maximumClockSkew = maximumClockSkew ?? TimeSpan.FromMinutes(5);
-    }
 
     public ValueTask<PeerReceiveResult> ReceiveAsync(
         SignedPeerEnvelope envelope,

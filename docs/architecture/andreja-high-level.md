@@ -121,10 +121,10 @@ author must complete this checklist:
 - [ ] Regenerate and verify artifacts:
 
   ```powershell
-  python scripts\docs\generate_architecture_diagram.py --render-png
-  python scripts\docs\generate_architecture_diagram.py --check
-  python scripts\docs\test_architecture_diagram.py
-  python .github\scripts\check_docs_consistency.py
+  dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj -- architecture-diagram --render-png
+  dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj -- architecture-diagram --check
+  dotnet test --project tests\Andreja.DocsTests\Andreja.DocsTests.csproj
+  dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj -- check-consistency
   ```
 
 The generator derives the editable source and SVG from one model, embeds the

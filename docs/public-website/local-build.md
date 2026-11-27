@@ -144,6 +144,7 @@ record the relevant decisions and exact-version evidence.
 ```powershell
 dotnet build tests\Andreja.PublicSiteTests\Andreja.PublicSiteTests.csproj --configuration Release
 dotnet test --project tests\Andreja.PublicSiteTests\Andreja.PublicSiteTests.csproj --configuration Release --no-build
+dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj -- check-consistency
 node --test scripts\public-website\local-preview.test.mjs
 node scripts\public-website\validate-local-site.mjs artifacts\public-site
 ```
@@ -191,7 +192,7 @@ service was started. Commands run from the repository root:
 | `node scripts\public-website\validate-local-site.mjs artifacts\public-site-adapter-verified` | Passed; all 12 pages at 320/768/1280 px, keyboard skip/search/Tab/Enter/Escape, live/no-results, header and network/storage checks |
 | `dotnet format src\Andreja.PublicSite\Andreja.PublicSite.csproj --verify-no-changes --no-restore` | Passed |
 | `dotnet format tests\Andreja.PublicSiteTests\Andreja.PublicSiteTests.csproj --verify-no-changes --no-restore` | Passed |
-| `python .github\scripts\check_docs_consistency.py` | Passed |
+| Pre-migration documentation consistency check (now `dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj -- check-consistency`) | Passed |
 | `node --check scripts\public-website\local-preview.mjs` | Passed |
 | `node --check scripts\public-website\local-preview.test.mjs` | Passed |
 | `node --check scripts\public-website\validate-local-site.mjs` | Passed |
@@ -227,7 +228,7 @@ empty `410 Gone`.
 | `dotnet run --project src\Andreja.PublicSite --configuration Release --no-build -- verify artifacts\public-site-review-verified` | Passed |
 | `node scripts\public-website\validate-local-site.mjs artifacts\public-site-review-verified` | Passed; 12 pages, responsive/keyboard checks and local-only network boundary |
 | `dotnet format src\Andreja.PublicSite\Andreja.PublicSite.csproj --verify-no-changes --no-restore` | Passed |
-| `python .github\scripts\check_docs_consistency.py` | Passed |
+| Pre-migration documentation consistency check (now `dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj -- check-consistency`) | Passed |
 | `git diff --check` | Passed |
 
 Hosted CodeQL/DevSkim review for these corrections has not yet run. Manual
@@ -301,7 +302,7 @@ ARM64:
 | `./.github/scripts/test-dotnet-test-parity.ps1 -Configuration Release -ResultsRoot artifacts/Release/test-results -InventoryPath docs/research/test-suite-current-inventory-112.json -OutputPath artifacts/Release/test-inventory-parity.json` | Passed; all current project discovery/TRX counts matched |
 | `./.github/scripts/test-dotnet-validation-report.ps1 -Configuration Debug` | Passed; valid inclusion, missing/invalid outcome, failed outcome, unclassified project, and missing-TRX cases |
 | `./.github/scripts/test-dotnet-validation-report.ps1 -Configuration Release` | Passed; valid inclusion, missing/invalid outcome, failed outcome, unclassified project, and missing-TRX cases |
-| `python .github\scripts\check_docs_consistency.py` | Passed |
+| Pre-migration documentation consistency check (now `dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj -- check-consistency`) | Passed |
 | `git diff --check` | Passed |
 
 The local evidence validates the CI wiring and report/parity contracts, but it

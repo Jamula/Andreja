@@ -239,8 +239,9 @@ or change controls.
 Run the repository documentation checks and the packet-specific contract tests:
 
 ```powershell
-python .github\scripts\check_docs_consistency.py
-python -m unittest discover -s tests -p test_feedback_readiness_docs.py
+dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj -- check-consistency
+dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj -- check-feedback-readiness
+dotnet test --project tests\Andreja.DocsTests\Andreja.DocsTests.csproj
 git diff --check
 ```
 
