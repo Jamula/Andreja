@@ -1,9 +1,12 @@
 using Andreja.Adapters.OpenTelemetry;
 using Andreja.Adapters.PostgreSql;
 using Andreja.AppHost.Hosting;
+using Andreja.Modules.Channels;
 using Andreja.Modules.Identity;
 using Andreja.Modules.OpenLoops;
 using Andreja.Modules.Proposals;
+using Andreja.Modules.Skills;
+using Andreja.Platform.Contracts.Channels;
 using Andreja.Platform.Contracts.Portability;
 using Andreja.Platform.Contracts.Sharing;
 using Andreja.Platform.Contracts.Skills;
@@ -12,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using OpenTelemetry;
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
@@ -49,10 +53,11 @@ public sealed class OperationsContractTests
     {
         long violations = 0;
         long suppressed = 0;
+        using var testMeter = new Meter($"Andreja.Operations.Test.{Guid.NewGuid():N}");
         using var meterListener = new MeterListener();
         meterListener.InstrumentPublished = (instrument, listener) =>
         {
-            if (instrument.Meter.Name == AndrejaTelemetry.MeterName)
+            if (ReferenceEquals(instrument.Meter, testMeter))
             {
                 listener.EnableMeasurementEvents(instrument);
             }
@@ -72,7 +77,7 @@ public sealed class OperationsContractTests
 
         using var canaryActivity = new Activity("andreja.telemetry.startup-canary").Start();
         canaryActivity.SetTag("andreja.evidence.canary", "synthetic");
-        var processor = new ContentSuppressingActivityProcessor();
+        var processor = new ContentSuppressingActivityProcessor(testMeter);
         processor.OnEnd(canaryActivity);
         Assert.IsNull(canaryActivity.GetTagItem("andreja.evidence.canary"));
         Assert.AreEqual(0L, Interlocked.Read(ref violations));
@@ -226,9 +231,121 @@ public sealed class OperationsContractTests
                 ExecutionContractFixture.Authorization()),
             CancellationToken.None);
 
+        var invalidSkill = await skillHost.InvokeAsync(
+            new SkillInvocation(
+                OpenLoopsSkill.Manifest.SkillId,
+                OpenLoopsSkill.Manifest.Version,
+                OpenLoopsSkill.ProposeTaskTool,
+                tenantId,
+                userId,
+                principalId,
+                OpenLoopsPolicy.Purpose,
+                OpenLoopsPolicy.ProposeOperation,
+                OpenLoopsPolicy.TaskDataClass,
+                DisclosureLevel.Summary,
+                OpenLoopsPolicy.ResourceReference,
+                new Dictionary<string, JsonElement>(),
+                InMemorySkillHost.ComputeManifestDigest(OpenLoopsSkill.Manifest)),
+            new SkillExecutionContext(
+                tenantId,
+                userId,
+                principalId,
+                OpenLoopsPolicy.Purpose,
+                ExecutionContractFixture.Authorization()),
+            CancellationToken.None);
+
+        var channelHost = new InMemoryChannelHost(telemetry);
+        var channelManifest = ExecutionContractFixture.ChannelManifest();
+        channelHost.Register(
+            channelManifest,
+            new Dictionary<string, ChannelOperationHandler>(StringComparer.Ordinal)
+            {
+                [ExecutionContractFixture.ChannelOperationName] = static (_, _, _) =>
+                    ValueTask.FromResult(new ChannelResult(ChannelResultStatus.Completed, null, null)),
+            });
+        var invalidChannel = await channelHost.InvokeAsync(
+            new ChannelInvocation(
+                channelManifest.ChannelId,
+                channelManifest.Version,
+                ExecutionContractFixture.ChannelOperationName,
+                tenantId,
+                userId,
+                principalId,
+                ExecutionContractFixture.Purpose,
+                ExecutionContractFixture.Operation,
+                ExecutionContractFixture.DataClass,
+                DisclosureLevel.Summary,
+                ExecutionContractFixture.Resource,
+                new Dictionary<string, JsonElement>(),
+                InMemoryChannelHost.ComputeManifestDigest(channelManifest)),
+            new ChannelExecutionContext(
+                tenantId,
+                userId,
+                principalId,
+                ExecutionContractFixture.Purpose,
+                ExecutionContractFixture.Authorization()),
+            CancellationToken.None);
+
+        Activity? parentActivity;
+        using (var cancelledCts = new CancellationTokenSource())
+        {
+            await cancelledCts.CancelAsync();
+            using var outerSpan = AndrejaTelemetry.ActivitySource.StartActivity("parent.request", ActivityKind.Internal);
+            parentActivity = outerSpan;
+            var cancelledSkill = await skillHost.InvokeAsync(
+                new SkillInvocation(
+                    OpenLoopsSkill.Manifest.SkillId,
+                    OpenLoopsSkill.Manifest.Version,
+                    OpenLoopsSkill.ProposeTaskTool,
+                    tenantId,
+                    userId,
+                    principalId,
+                    OpenLoopsPolicy.Purpose,
+                    OpenLoopsPolicy.ProposeOperation,
+                    OpenLoopsPolicy.TaskDataClass,
+                    DisclosureLevel.Summary,
+                    OpenLoopsPolicy.ResourceReference,
+                    new Dictionary<string, JsonElement>(),
+                    InMemorySkillHost.ComputeManifestDigest(OpenLoopsSkill.Manifest)),
+                new SkillExecutionContext(
+                    tenantId,
+                    userId,
+                    principalId,
+                    OpenLoopsPolicy.Purpose,
+                    ExecutionContractFixture.Authorization()),
+                cancelledCts.Token);
+            var cancelledChannel = await channelHost.InvokeAsync(
+                new ChannelInvocation(
+                    channelManifest.ChannelId,
+                    channelManifest.Version,
+                    ExecutionContractFixture.ChannelOperationName,
+                    tenantId,
+                    userId,
+                    principalId,
+                    ExecutionContractFixture.Purpose,
+                    ExecutionContractFixture.Operation,
+                    ExecutionContractFixture.DataClass,
+                    DisclosureLevel.Summary,
+                    ExecutionContractFixture.Resource,
+                    new Dictionary<string, JsonElement>(),
+                    InMemoryChannelHost.ComputeManifestDigest(channelManifest)),
+                new ChannelExecutionContext(
+                    tenantId,
+                    userId,
+                    principalId,
+                    ExecutionContractFixture.Purpose,
+                    ExecutionContractFixture.Authorization()),
+                cancelledCts.Token);
+            Assert.AreEqual(SkillResultStatus.Cancelled, cancelledSkill.Status);
+            Assert.AreEqual(ChannelResultStatus.Cancelled, cancelledChannel.Status);
+        }
+
         Assert.AreEqual(Andreja.Platform.Contracts.Proposals.ProposalTransitionOutcome.Applied, confirmed.Outcome);
         Assert.AreEqual(Andreja.Platform.Contracts.Proposals.ProposalTransitionOutcome.IdempotentReplay, replay.Outcome);
         Assert.AreEqual(SkillResultStatus.Denied, deniedSkill.Status);
+        Assert.AreEqual(SkillResultStatus.Invalid, invalidSkill.Status);
+        Assert.AreEqual(ChannelResultStatus.Invalid, invalidChannel.Status);
+        Assert.IsNull(parentActivity?.GetTagItem("andreja.outcome"));
 
         lock (recordedCounters)
         {
@@ -238,6 +355,14 @@ public sealed class OperationsContractTests
             Assert.IsTrue(recordedCounters.Any(c =>
                 c.Name == "andreja_execution_denied_total"
                 && c.Tags.Any(t => t.Key == "andreja.denial.code" && Equals(t.Value, "skill-not-declared"))));
+            Assert.IsTrue(recordedCounters.Any(c =>
+                c.Name == "andreja_host_invocations_total"
+                && c.Tags.Any(t => t.Key == "andreja.artifact.kind" && Equals(t.Value, "skill"))
+                && c.Tags.Any(t => t.Key == "andreja.outcome" && Equals(t.Value, "invalid"))));
+            Assert.IsTrue(recordedCounters.Any(c =>
+                c.Name == "andreja_host_invocations_total"
+                && c.Tags.Any(t => t.Key == "andreja.artifact.kind" && Equals(t.Value, "channel"))
+                && c.Tags.Any(t => t.Key == "andreja.outcome" && Equals(t.Value, "invalid"))));
 
             foreach (var text in recordedCounters
                 .SelectMany(static counter => counter.Tags)
@@ -254,7 +379,18 @@ public sealed class OperationsContractTests
         {
             Assert.IsTrue(recordedActivities.Any(a => a.OperationName == "andreja.proposal.create"));
             Assert.IsTrue(recordedActivities.Any(a => a.OperationName == "andreja.proposal.confirm"));
-            Assert.IsTrue(recordedActivities.Any(a => a.OperationName == "andreja.skill.invoke"));
+            Assert.IsTrue(recordedActivities.Any(a =>
+                a.OperationName == "andreja.skill.invoke"
+                && Equals(a.GetTagItem("andreja.outcome"), "invalid")));
+            Assert.IsTrue(recordedActivities.Any(a =>
+                a.OperationName == "andreja.skill.invoke"
+                && Equals(a.GetTagItem("andreja.outcome"), "cancelled")));
+            Assert.IsTrue(recordedActivities.Any(a =>
+                a.OperationName == "andreja.channel.invoke"
+                && Equals(a.GetTagItem("andreja.outcome"), "invalid")));
+            Assert.IsTrue(recordedActivities.Any(a =>
+                a.OperationName == "andreja.channel.invoke"
+                && Equals(a.GetTagItem("andreja.outcome"), "cancelled")));
             foreach (var text in recordedActivities
                 .SelectMany(static activity => activity.TagObjects)
                 .Select(static tag => tag.Value?.ToString() ?? string.Empty))
@@ -272,10 +408,11 @@ public sealed class OperationsContractTests
     {
         long violations = 0;
         long suppressed = 0;
+        using var testMeter = new Meter($"Andreja.Operations.Test.{Guid.NewGuid():N}");
         using var meterListener = new MeterListener();
         meterListener.InstrumentPublished = (instrument, listener) =>
         {
-            if (instrument.Meter.Name == AndrejaTelemetry.MeterName)
+            if (ReferenceEquals(instrument.Meter, testMeter))
             {
                 listener.EnableMeasurementEvents(instrument);
             }
@@ -293,16 +430,17 @@ public sealed class OperationsContractTests
         });
         meterListener.Start();
 
+        var appSourceName = $"Test.Application.{Guid.NewGuid():N}";
         using var exporter = new CapturingActivityExporter();
         using var exportProcessor = new SimpleActivityExportProcessor(exporter);
         using var tracerProvider = Sdk.CreateTracerProviderBuilder()
-            .AddSource(NpgsqlSpanSanitizingProcessor.NpgsqlActivitySourceName, "Test.Application")
+            .AddSource(NpgsqlSpanSanitizingProcessor.NpgsqlActivitySourceName, appSourceName)
             .AddProcessor(new NpgsqlSpanSanitizingProcessor())
-            .AddProcessor(new ContentSuppressingActivityProcessor())
+            .AddProcessor(new ContentSuppressingActivityProcessor(testMeter))
             .AddProcessor(exportProcessor)
             .Build();
         using var npgsqlSource = new ActivitySource(NpgsqlSpanSanitizingProcessor.NpgsqlActivitySourceName);
-        using var appSource = new ActivitySource("Test.Application");
+        using var appSource = new ActivitySource(appSourceName);
 
         using (var querySpan = npgsqlSource.StartActivity("SELECT open_loops.tasks", ActivityKind.Client))
         {
@@ -346,6 +484,52 @@ public sealed class OperationsContractTests
         Assert.AreEqual(1L, Interlocked.Read(ref violations));
         Assert.HasCount(1, exporter.Exported);
         Assert.IsTrue(Interlocked.Read(ref suppressed) >= 4L);
+    }
+
+    [TestMethod]
+    public void NpgsqlMetricViewStripsConnectionPoolAndDatabaseMetadataBeforeExport()
+    {
+        using var metricExporter = new CapturingMetricExporter();
+        using var metricReader = new BaseExportingMetricReader(metricExporter);
+        using var meterProvider = Sdk.CreateMeterProviderBuilder()
+            .AddMeter(NpgsqlSpanSanitizingProcessor.NpgsqlActivitySourceName)
+            .AddView(OpenTelemetryServiceCollectionExtensions.ConfigureMetricView)
+            .AddReader(metricReader)
+            .Build();
+        using var npgsqlMeter = new Meter(NpgsqlSpanSanitizingProcessor.NpgsqlActivitySourceName);
+        var duration = npgsqlMeter.CreateHistogram<double>("db.client.operation.duration");
+
+        duration.Record(
+            0.015,
+            new KeyValuePair<string, object?>("db.system.name", "postgresql"),
+            new KeyValuePair<string, object?>("db.operation.name", "SELECT"),
+            new KeyValuePair<string, object?>(
+                "db.client.connection.pool.name",
+                "Host=db.internal.canary;Database=andreja_secret_db;Username=admin_canary"),
+            new KeyValuePair<string, object?>("db.namespace", "andreja_secret_db"),
+            new KeyValuePair<string, object?>("server.address", "db.internal.canary"));
+        Assert.IsTrue(meterProvider.ForceFlush());
+
+        var exportedTags = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var metric in metricExporter.Exported)
+        {
+            foreach (var point in metric.GetMetricPoints())
+            {
+                foreach (var tag in point.Tags)
+                {
+                    exportedTags[tag.Key] = tag.Value?.ToString() ?? string.Empty;
+                }
+            }
+        }
+
+        Assert.AreEqual("postgresql", exportedTags["db.system.name"]);
+        Assert.AreEqual("SELECT", exportedTags["db.operation.name"]);
+        Assert.IsFalse(exportedTags.ContainsKey("db.client.connection.pool.name"));
+        Assert.IsFalse(exportedTags.ContainsKey("db.namespace"));
+        Assert.IsFalse(exportedTags.ContainsKey("server.address"));
+        var serialized = JsonSerializer.Serialize(exportedTags);
+        Assert.DoesNotContain("canary", serialized, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("andreja_secret_db", serialized, StringComparison.Ordinal);
     }
 
     [TestMethod]
@@ -642,7 +826,8 @@ public sealed class OperationsContractTests
         Assert.DoesNotContain("\n  logging:", collectorDashboard, StringComparison.Ordinal);
         Assert.Contains("attributes/suppress", collectorDashboard, StringComparison.Ordinal);
         Assert.Contains("aspire-dashboard:", compose, StringComparison.Ordinal);
-        Assert.Contains("${ASPIRE_DASHBOARD_BIND_ADDRESS:-127.0.0.1}:", compose, StringComparison.Ordinal);
+        Assert.Contains("127.0.0.1:${ASPIRE_DASHBOARD_PORT:-18888}:18888", compose, StringComparison.Ordinal);
+        Assert.DoesNotContain("ASPIRE_DASHBOARD_BIND_ADDRESS", compose, StringComparison.Ordinal);
         Assert.Contains("DOTNET_DASHBOARD_TELEMETRY_OPTOUT: \"true\"", compose, StringComparison.Ordinal);
         Assert.Contains("otel-collector.dashboard.yaml:/etc/otelcol-contrib/config.yaml:ro", dashboardCompose, StringComparison.Ordinal);
         Assert.Contains("127.0.0.1:", maintenance, StringComparison.Ordinal);
@@ -776,6 +961,21 @@ public sealed class OperationsContractTests
             foreach (var activity in batch)
             {
                 Exported.Add(activity);
+            }
+
+            return ExportResult.Success;
+        }
+    }
+
+    private sealed class CapturingMetricExporter : BaseExporter<Metric>
+    {
+        public List<Metric> Exported { get; } = [];
+
+        public override ExportResult Export(in Batch<Metric> batch)
+        {
+            foreach (var metric in batch)
+            {
+                Exported.Add(metric);
             }
 
             return ExportResult.Success;

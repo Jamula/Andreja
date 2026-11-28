@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using Andreja.Adapters.Assistant.OpenAiCompatible;
 using Andreja.Platform.Contracts.Observability;
 using Microsoft.Extensions.Configuration;
@@ -17,6 +18,16 @@ public static class OpenTelemetryServiceCollectionExtensions
 {
     public const string ContentCaptureProhibitedMessage =
         "Andreja telemetry prohibits content and sensitive-data capture (CaptureContent and EnableSensitiveData must remain false).";
+
+    private static readonly string[] ApprovedNpgsqlMetricTagKeys =
+    [
+        "db.operation.name",
+        "db.response.status_code",
+        "db.system",
+        "db.system.name",
+        "error.type",
+        "state",
+    ];
 
     public static IServiceCollection AddAndrejaOpenTelemetry(
         this IServiceCollection services,
@@ -130,6 +141,7 @@ public static class OpenTelemetryServiceCollectionExtensions
                     AndrejaTelemetry.GenAiMeterName,
                     AndrejaTelemetry.ExtensionsAiDiagnosticsName,
                     OpenAiCompatibleMetrics.MeterName)
+                .AddView(ConfigureMetricView)
                 .AddOtlpExporter(exporter =>
                 {
                     exporter.Endpoint = endpoint;
@@ -137,5 +149,20 @@ public static class OpenTelemetryServiceCollectionExtensions
                 }));
 
         return services;
+    }
+
+    public static MetricStreamConfiguration? ConfigureMetricView(Instrument instrument)
+    {
+        ArgumentNullException.ThrowIfNull(instrument);
+
+        return string.Equals(
+            instrument.Meter.Name,
+            NpgsqlSpanSanitizingProcessor.NpgsqlActivitySourceName,
+            StringComparison.Ordinal)
+            ? new MetricStreamConfiguration
+            {
+                TagKeys = ApprovedNpgsqlMetricTagKeys,
+            }
+            : null;
     }
 }

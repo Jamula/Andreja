@@ -162,7 +162,7 @@ services:
     tmpfs:
       - /tmp:size=64m,mode=1700,uid=1654,gid=1654
     ports:
-      - "${ASPIRE_DASHBOARD_BIND_ADDRESS:-127.0.0.1}:${ASPIRE_DASHBOARD_PORT:-18888}:18888"
+      - "127.0.0.1:${ASPIRE_DASHBOARD_PORT:-18888}:18888"
     networks:
       - backend
     cap_drop:

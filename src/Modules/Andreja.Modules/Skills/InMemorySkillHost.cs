@@ -78,13 +78,14 @@ public sealed class InMemorySkillHost : ISkillHost
         SkillExecutionContext context,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(invocation);
+        ArgumentNullException.ThrowIfNull(context);
+
+        using var span = telemetry.StartOperation("andreja.skill.invoke", "skill");
         try
         {
-            ArgumentNullException.ThrowIfNull(invocation);
-            ArgumentNullException.ThrowIfNull(context);
             cancellationToken.ThrowIfCancellationRequested();
 
-            using var span = telemetry.StartOperation("andreja.skill.invoke", "skill");
             if (!registrations.TryGetValue((invocation.SkillId, invocation.SkillVersion), out var registration))
             {
                 return await DeniedAsync(
@@ -164,6 +165,7 @@ public sealed class InMemorySkillHost : ISkillHost
                 invocation.Arguments);
             if (schemaFailure is not null)
             {
+                telemetry.RecordHostInvocation("skill", "invalid");
                 await ExecutionAudit.DeniedAsync(
                     auditSink,
                     "skill",

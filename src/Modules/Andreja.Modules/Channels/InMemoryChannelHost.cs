@@ -83,13 +83,14 @@ public sealed class InMemoryChannelHost : IChannelHost
         ChannelExecutionContext context,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(invocation);
+        ArgumentNullException.ThrowIfNull(context);
+
+        using var span = telemetry.StartOperation("andreja.channel.invoke", "channel");
         try
         {
-            ArgumentNullException.ThrowIfNull(invocation);
-            ArgumentNullException.ThrowIfNull(context);
             cancellationToken.ThrowIfCancellationRequested();
 
-            using var span = telemetry.StartOperation("andreja.channel.invoke", "channel");
             if (!registrations.TryGetValue(
                     (invocation.ChannelId, invocation.ChannelVersion),
                     out var registration))
@@ -175,6 +176,7 @@ public sealed class InMemoryChannelHost : IChannelHost
                 invocation.Arguments);
             if (schemaFailure is not null)
             {
+                telemetry.RecordHostInvocation("channel", "invalid");
                 await ExecutionAudit.DeniedAsync(
                     auditSink,
                     "channel",

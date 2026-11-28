@@ -31,7 +31,6 @@ public static class OpenAiCompatibleMetrics
         {
             { "gen_ai.operation.name", "chat" },
             { "gen_ai.provider.name", usage.Provider },
-            { "gen_ai.request.model", usage.Model },
         };
         if (!string.Equals(usage.ResultClass, "completed", StringComparison.Ordinal)
             && !string.Equals(usage.ResultClass, "proposed", StringComparison.Ordinal))

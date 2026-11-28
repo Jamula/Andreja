@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using OpenTelemetry;
 
 namespace Andreja.Adapters.OpenTelemetry;
@@ -6,6 +7,37 @@ namespace Andreja.Adapters.OpenTelemetry;
 public sealed class ContentSuppressingActivityProcessor : BaseProcessor<Activity>
 {
     public static IReadOnlySet<string> AllowedTagNames => AllowedAttributes;
+
+    private readonly Counter<long> policyChecks;
+    private readonly Counter<long> policyViolations;
+    private readonly Counter<long> suppressedAttributes;
+
+    public ContentSuppressingActivityProcessor()
+        : this(
+            AndrejaTelemetry.PolicyChecks,
+            AndrejaTelemetry.PolicyViolations,
+            AndrejaTelemetry.SuppressedAttributes)
+    {
+    }
+
+    internal ContentSuppressingActivityProcessor(Meter meter)
+        : this(
+            (meter ?? throw new ArgumentNullException(nameof(meter)))
+                .CreateCounter<long>("andreja_telemetry_policy_checks_total"),
+            meter.CreateCounter<long>("andreja_telemetry_policy_violation_total"),
+            meter.CreateCounter<long>("andreja_telemetry_suppressed_attributes_total"))
+    {
+    }
+
+    private ContentSuppressingActivityProcessor(
+        Counter<long> policyChecks,
+        Counter<long> policyViolations,
+        Counter<long> suppressedAttributes)
+    {
+        this.policyChecks = policyChecks;
+        this.policyViolations = policyViolations;
+        this.suppressedAttributes = suppressedAttributes;
+    }
 
     private static readonly HashSet<string> AllowedAttributes = new(StringComparer.Ordinal)
     {
@@ -49,7 +81,7 @@ public sealed class ContentSuppressingActivityProcessor : BaseProcessor<Activity
             removed++;
             if (IsProhibited(tag.Key))
             {
-                AndrejaTelemetry.PolicyViolations.Add(1);
+                policyViolations.Add(1);
             }
         }
 
@@ -73,16 +105,16 @@ public sealed class ContentSuppressingActivityProcessor : BaseProcessor<Activity
                 HasUnexemptProhibitedEventPayload(@event, isNpgsqlSource));
             if (prohibitedEvents > 0)
             {
-                AndrejaTelemetry.PolicyViolations.Add(prohibitedEvents);
+                policyViolations.Add(prohibitedEvents);
             }
 
             data.ActivityTraceFlags &= ~ActivityTraceFlags.Recorded;
         }
 
-        AndrejaTelemetry.PolicyChecks.Add(1);
+        policyChecks.Add(1);
         if (removed > 0)
         {
-            AndrejaTelemetry.SuppressedAttributes.Add(removed);
+            suppressedAttributes.Add(removed);
         }
     }
 
