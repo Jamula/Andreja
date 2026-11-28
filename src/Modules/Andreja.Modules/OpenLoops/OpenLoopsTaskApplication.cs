@@ -1,4 +1,5 @@
 using Andreja.Modules.Identity;
+using Andreja.Platform.Contracts.Observability;
 using Andreja.Platform.Contracts.Proposals;
 using System.Security.Cryptography;
 using System.Text;
@@ -9,8 +10,11 @@ namespace Andreja.Modules.OpenLoops;
 public sealed class OpenLoopsTaskApplication(
     IOpenLoopsTaskStore taskStore,
     IProposalStore proposalStore,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IControlPlaneTelemetry? telemetry = null)
 {
+    private readonly IControlPlaneTelemetry telemetry =
+        telemetry ?? NullControlPlaneTelemetry.Instance;
     private const long CanonicalTimestampResolutionTicks = TimeSpan.TicksPerMicrosecond;
     private static readonly JsonSerializerOptions CanonicalJson = new()
     {
@@ -27,6 +31,7 @@ public sealed class OpenLoopsTaskApplication(
         ArgumentNullException.ThrowIfNull(input);
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceReference);
 
+        using var span = telemetry.StartOperation("andreja.proposal.create", "open_loops");
         var now = CanonicalizeTimestamp(timeProvider.GetUtcNow());
         DateTimeOffset? dueAt = input.DueAt is DateTimeOffset suppliedDueAt
             ? CanonicalizeTimestamp(suppliedDueAt)
@@ -69,9 +74,11 @@ public sealed class OpenLoopsTaskApplication(
 
         if (!await proposalStore.TryCreateAsync(proposal, cancellationToken).ConfigureAwait(false))
         {
+            telemetry.RecordProposalEvent("proposal_create_failed", "conflict");
             throw new InvalidOperationException("The proposal could not be created.");
         }
 
+        telemetry.RecordProposalEvent("proposal_created", "pending");
         return proposal;
     }
 
@@ -97,17 +104,20 @@ public sealed class OpenLoopsTaskApplication(
     {
         OpenLoopsPolicy.Require(context);
         ValidateIdempotencyKey(idempotencyKey);
+        using var span = telemetry.StartOperation("andreja.proposal.confirm", "open_loops");
         var occurredAt = timeProvider.GetUtcNow();
 
         if (proposalStore is IOpenLoopsProposalConfirmationStore atomicStore)
         {
-            return await atomicStore.ConfirmAsync(
+            var atomicResult = await atomicStore.ConfirmAsync(
                 context,
                 proposalId,
                 expectedVersion,
                 idempotencyKey,
                 occurredAt,
                 cancellationToken).ConfigureAwait(false);
+            RecordConfirmationTelemetry(atomicResult.Outcome);
+            return atomicResult;
         }
 
         var transition = await proposalStore.TryTransitionAsync(
@@ -126,6 +136,7 @@ public sealed class OpenLoopsTaskApplication(
                 or ProposalTransitionOutcome.IdempotentReplay)
             || transition.Proposal is null)
         {
+            RecordConfirmationTelemetry(transition.Outcome);
             return new(transition.Outcome, null, transition.Proposal);
         }
 
@@ -137,7 +148,7 @@ public sealed class OpenLoopsTaskApplication(
             idempotencyKey,
             cancellationToken).ConfigureAwait(false);
 
-        return mutation.Outcome switch
+        ProposalConfirmationResult result = mutation.Outcome switch
         {
             TaskMutationOutcome.Applied or TaskMutationOutcome.IdempotentReplay =>
                 new(transition.Outcome, mutation.Task, transition.Proposal),
@@ -147,6 +158,29 @@ public sealed class OpenLoopsTaskApplication(
                 new(ProposalTransitionOutcome.Conflict, mutation.Task, transition.Proposal),
             _ => new(ProposalTransitionOutcome.NotFound, null, transition.Proposal),
         };
+        RecordConfirmationTelemetry(result.Outcome);
+        return result;
+    }
+
+    private void RecordConfirmationTelemetry(ProposalTransitionOutcome outcome)
+    {
+        switch (outcome)
+        {
+            case ProposalTransitionOutcome.Applied:
+                telemetry.RecordProposalEvent("proposal_confirmed", "applied");
+                break;
+            case ProposalTransitionOutcome.IdempotentReplay:
+                telemetry.RecordProposalEvent("idempotent_replay", "replayed");
+                break;
+            case ProposalTransitionOutcome.Expired:
+                telemetry.RecordProposalEvent("proposal_expired", "expired");
+                break;
+            default:
+                telemetry.RecordProposalEvent(
+                    "proposal_confirm_rejected",
+                    outcome.ToString().ToLowerInvariant());
+                break;
+        }
     }
 
     public Task<IReadOnlyList<OpenLoopTask>> ListAsync(

@@ -109,9 +109,75 @@ try {
         throw "Forbidden scan diagnostic differs from the sanitized inventory: $findingError"
     }
     Assert-NoForbiddenGrypeFinding -Matches @() -Scope 'Dependency'
+    $grypeDbReportPath = Join-Path $testRoot 'grype-db-report.json'
+    [pscustomobject]@{
+        descriptor = [pscustomobject]@{
+            name = 'grype'
+            version = '0.100.0'
+            db = [pscustomobject]@{
+                schemaVersion = 6
+                built = '2026-11-14T06:19:25Z'
+                checksum = 'sha256:ad4ef5a2d7ec9ee89b5571018ff6c444fc269d3f576d2f4d2f32d3433d12f413'
+                location = '/private/cache/path'
+            }
+        }
+        source = [pscustomobject]@{ type = 'directory' }
+        matches = @(
+            [pscustomobject]@{
+                vulnerability = [pscustomobject]@{ id = 'CVE-2026-4321'; severity = 'HIGH' }
+                artifact = [pscustomobject]@{ name = 'runtime-pkg'; version = '10.0.12' }
+            }
+        )
+    } | ConvertTo-Json -Depth 100 |
+        Set-Content -LiteralPath $grypeDbReportPath -Encoding utf8NoBOM
+    $grypeDbMeta = Get-GrypeDatabaseMetadata -Path $grypeDbReportPath
+    $grypeDbMatches = @(Get-GrypeForbiddenMatches -Path $grypeDbReportPath -ForbiddenSeverities @('HIGH', 'CRITICAL'))
+    $dbFindingError = $null
+    try {
+        Assert-NoForbiddenGrypeFinding -Matches $grypeDbMatches -Scope 'Dependency' -DatabaseMetadata $grypeDbMeta
+    } catch {
+        $dbFindingError = $_.Exception.Message
+    }
+    $expectedDbError = 'Dependency scan contains 1 forbidden finding(s). Findings: ' +
+        '[{"package":"runtime-pkg","advisory":"CVE-2026-4321","version":"10.0.12","severity":"HIGH"}]; ' +
+        'Database: {"scannerVersion":"0.100.0","dbSchemaVersion":"6","dbBuilt":"2026-11-14T06:19:25Z",' +
+        '"dbChecksum":"sha256:ad4ef5a2d7ec9ee89b5571018ff6c444fc269d3f576d2f4d2f32d3433d12f413"}.'
+    if ($dbFindingError -cne $expectedDbError) {
+        throw "Forbidden Grype DB diagnostic differs from expected sanitized metadata: $dbFindingError"
+    }
+
+    $trivyReportPath = Join-Path $testRoot 'trivy-report.json'
+    [pscustomobject]@{
+        Results = @(
+            [pscustomobject]@{
+                Target = '/private/Dockerfile'
+                Misconfigurations = @(
+                    [pscustomobject]@{ ID = 'AVD-DS-0002'; Type = 'Dockerfile Security Check'; Severity = 'HIGH'; Message = 'private-detail' },
+                    [pscustomobject]@{ ID = 'AVD-DS-0099'; Type = 'Dockerfile Security Check'; Severity = 'LOW' }
+                )
+            }
+        )
+    } | ConvertTo-Json -Depth 100 |
+        Set-Content -LiteralPath $trivyReportPath -Encoding utf8NoBOM
+    $trivyMatches = @(Get-TrivyForbiddenMatches -Path $trivyReportPath -ForbiddenSeverities @('HIGH', 'CRITICAL'))
+    $trivyFindingError = $null
+    try {
+        Assert-NoForbiddenTrivyFinding -Matches $trivyMatches -Scope 'Container/IaC'
+    } catch {
+        $trivyFindingError = $_.Exception.Message
+    }
+    $expectedTrivyError = 'Container/IaC scan contains 1 forbidden finding(s). Findings: ' +
+        '[{"id":"AVD-DS-0002","type":"Dockerfile Security Check","severity":"HIGH"}].'
+    if ($trivyFindingError -cne $expectedTrivyError) {
+        throw "Forbidden Trivy diagnostic differs from expected sanitized metadata: $trivyFindingError"
+    }
+
     $generatorSource = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'New-OciEvidence.ps1') -Raw
     if ($generatorSource -notmatch 'Assert-NoForbiddenGrypeFinding\s+-Matches\s+\$dependencyMatches\s+-Scope\s+''Dependency''') {
         throw 'OCI evidence generation must invoke the tested dependency diagnostic gate.'
+    }
+    if ($generatorSource -notmatch 'Assert-NoForbiddenTrivyFinding\s+-Matches\s+\$iacMatches\s+-Scope\s+''Container/IaC''') {
+        throw 'OCI evidence generation must invoke the tested container/IaC diagnostic gate.'
     }
     $passed++
     Write-Output 'PASS (reported): forbidden finding details'

@@ -38,6 +38,28 @@ processors:
         action: delete
       - key: connector.content
         action: delete
+      - key: db.statement
+        action: delete
+      - key: db.query.text
+        action: delete
+      - key: exception.message
+        action: delete
+      - key: exception.stacktrace
+        action: delete
+      - key: url.query
+        action: delete
+      - key: gen_ai.input.messages
+        action: delete
+      - key: gen_ai.output.messages
+        action: delete
+      - key: gen_ai.system_instructions
+        action: delete
+      - key: gen_ai.tool.call.arguments
+        action: delete
+      - key: gen_ai.tool.call.result
+        action: delete
+      - key: gen_ai.tool.definitions
+        action: delete
   batch:
     send_batch_size: 512
     timeout: 5s

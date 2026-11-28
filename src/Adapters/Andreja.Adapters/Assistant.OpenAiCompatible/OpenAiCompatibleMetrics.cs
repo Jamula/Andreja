@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using Andreja.Adapters.OpenTelemetry;
 using Andreja.Platform.Contracts.Assistant;
 
 namespace Andreja.Adapters.Assistant.OpenAiCompatible;
@@ -24,14 +26,36 @@ public static class OpenAiCompatibleMetrics
             1,
             new KeyValuePair<string, object?>("result.class", usage.ResultClass));
         Duration.Record(usage.Duration.TotalMilliseconds);
+
+        var genAiBaseTags = new TagList
+        {
+            { "gen_ai.operation.name", "chat" },
+            { "gen_ai.provider.name", usage.Provider },
+        };
+        if (!string.Equals(usage.ResultClass, "completed", StringComparison.Ordinal)
+            && !string.Equals(usage.ResultClass, "proposed", StringComparison.Ordinal))
+        {
+            genAiBaseTags.Add("error.type", usage.ResultClass);
+        }
+
+        AndrejaTelemetry.GenAiOperationDuration.Record(
+            usage.Duration.TotalSeconds,
+            genAiBaseTags);
+
         if (usage.InputUnits is { } inputUnits)
         {
             InputUnits.Add(inputUnits);
+            var inputTags = genAiBaseTags;
+            inputTags.Add("gen_ai.token.type", "input");
+            AndrejaTelemetry.GenAiTokenUsage.Record(inputUnits, inputTags);
         }
 
         if (usage.OutputUnits is { } outputUnits)
         {
             OutputUnits.Add(outputUnits);
+            var outputTags = genAiBaseTags;
+            outputTags.Add("gen_ai.token.type", "output");
+            AndrejaTelemetry.GenAiTokenUsage.Record(outputUnits, outputTags);
         }
     }
 }

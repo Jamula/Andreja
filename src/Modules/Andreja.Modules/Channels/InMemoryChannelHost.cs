@@ -2,6 +2,7 @@ using Andreja.Modules.Execution;
 using Andreja.Modules.Skills;
 using Andreja.Platform.Contracts.Channels;
 using Andreja.Platform.Contracts.Execution;
+using Andreja.Platform.Contracts.Observability;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
@@ -13,20 +14,29 @@ public sealed class InMemoryChannelHost : IChannelHost
     private readonly ConcurrentDictionary<(string Id, string Version), Registration> registrations = [];
     private readonly IExecutionAuthorizationEvaluator evaluator;
     private readonly IExecutionAuditSink auditSink;
+    private readonly IControlPlaneTelemetry telemetry;
 
     public InMemoryChannelHost()
+        : this(NullControlPlaneTelemetry.Instance)
     {
+    }
+
+    public InMemoryChannelHost(IControlPlaneTelemetry telemetry)
+    {
+        this.telemetry = telemetry ?? throw new ArgumentNullException(nameof(telemetry));
         var sink = new InMemoryExecutionAuditSink();
-        evaluator = new ExecutionAuthorizationEvaluator(sink);
+        evaluator = new ExecutionAuthorizationEvaluator(sink, this.telemetry);
         auditSink = sink;
     }
 
     public InMemoryChannelHost(
         IExecutionAuthorizationEvaluator evaluator,
-        IExecutionAuditSink auditSink)
+        IExecutionAuditSink auditSink,
+        IControlPlaneTelemetry? telemetry = null)
     {
         this.evaluator = evaluator ?? throw new ArgumentNullException(nameof(evaluator));
         this.auditSink = auditSink ?? throw new ArgumentNullException(nameof(auditSink));
+        this.telemetry = telemetry ?? NullControlPlaneTelemetry.Instance;
     }
 
     public IReadOnlyList<ExecutionAuditEntry> AuditEntries =>
@@ -73,10 +83,12 @@ public sealed class InMemoryChannelHost : IChannelHost
         ChannelExecutionContext context,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(invocation);
+        ArgumentNullException.ThrowIfNull(context);
+
+        using var span = telemetry.StartOperation("andreja.channel.invoke", "channel");
         try
         {
-            ArgumentNullException.ThrowIfNull(invocation);
-            ArgumentNullException.ThrowIfNull(context);
             cancellationToken.ThrowIfCancellationRequested();
 
             if (!registrations.TryGetValue(
@@ -164,6 +176,7 @@ public sealed class InMemoryChannelHost : IChannelHost
                 invocation.Arguments);
             if (schemaFailure is not null)
             {
+                telemetry.RecordHostInvocation("channel", "invalid");
                 await ExecutionAudit.DeniedAsync(
                     auditSink,
                     "channel",
@@ -205,16 +218,22 @@ public sealed class InMemoryChannelHost : IChannelHost
                 cancellationToken).ConfigureAwait(false);
             if (!decision.Allowed)
             {
+                telemetry.RecordHostInvocation("channel", "denied");
                 return Denied(decision.Code, "Execution authorization was denied.");
             }
 
-            return await handler(
+            var result = await handler(
                 invocation,
                 context with { EffectiveDisclosure = decision.EffectiveDisclosure },
                 cancellationToken).ConfigureAwait(false);
+            telemetry.RecordHostInvocation(
+                "channel",
+                result.Status.ToString().ToLowerInvariant());
+            return result;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            telemetry.RecordHostInvocation("channel", "cancelled");
             return new(
                 ChannelResultStatus.Cancelled,
                 null,
@@ -253,6 +272,8 @@ public sealed class InMemoryChannelHost : IChannelHost
         string code,
         string message)
     {
+        telemetry.RecordAuthorizationDenied("channel", code);
+        telemetry.RecordHostInvocation("channel", "denied");
         await ExecutionAudit.DeniedAsync(
             auditSink,
             "channel",

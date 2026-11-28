@@ -1,15 +1,33 @@
 using Andreja.Adapters.OpenTelemetry;
 using Andreja.Adapters.PostgreSql;
 using Andreja.AppHost.Hosting;
+using Andreja.Modules.Channels;
+using Andreja.Modules.Identity;
+using Andreja.Modules.OpenLoops;
+using Andreja.Modules.Proposals;
+using Andreja.Modules.Skills;
+using Andreja.Platform.Contracts.Channels;
 using Andreja.Platform.Contracts.Portability;
+using Andreja.Platform.Contracts.Sharing;
+using Andreja.Platform.Contracts.Skills;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Net;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Andreja.UnitTests;
@@ -32,6 +50,650 @@ public sealed class OperationsContractTests
         Assert.IsNull(activity.GetTagItem("task"));
         Assert.IsNull(activity.GetTagItem("user.id"));
         Assert.IsNull(activity.GetTagItem("custom.attribute"));
+    }
+
+    [TestMethod]
+    public void TelemetryProcessorAllowsLowCardinalityGenAiDbAndControlPlaneTagsWhileBlockingSensitiveFields()
+    {
+        long violations = 0;
+        long suppressed = 0;
+        using var testMeter = new Meter($"Andreja.Operations.Test.{Guid.NewGuid():N}");
+        using var meterListener = new MeterListener();
+        meterListener.InstrumentPublished = (instrument, listener) =>
+        {
+            if (ReferenceEquals(instrument.Meter, testMeter))
+            {
+                listener.EnableMeasurementEvents(instrument);
+            }
+        };
+        meterListener.SetMeasurementEventCallback<long>((instrument, measurement, _, _) =>
+        {
+            if (instrument.Name == "andreja_telemetry_policy_violation_total")
+            {
+                Interlocked.Add(ref violations, measurement);
+            }
+            else if (instrument.Name == "andreja_telemetry_suppressed_attributes_total")
+            {
+                Interlocked.Add(ref suppressed, measurement);
+            }
+        });
+        meterListener.Start();
+
+        using var canaryActivity = new Activity("andreja.telemetry.startup-canary").Start();
+        canaryActivity.SetTag("andreja.evidence.canary", "synthetic");
+        var processor = new ContentSuppressingActivityProcessor(testMeter);
+        processor.OnEnd(canaryActivity);
+        Assert.IsNull(canaryActivity.GetTagItem("andreja.evidence.canary"));
+        Assert.AreEqual(0L, Interlocked.Read(ref violations));
+        Assert.IsTrue(Interlocked.Read(ref suppressed) >= 1L);
+
+        using var operationalActivity = new Activity("gen_ai.chat").Start();
+        operationalActivity.SetTag("gen_ai.operation.name", "chat");
+        operationalActivity.SetTag("gen_ai.provider.name", "local-loopback");
+        operationalActivity.SetTag("gen_ai.request.model", "phi-4-mini");
+        operationalActivity.SetTag("gen_ai.usage.input_tokens", 42);
+        operationalActivity.SetTag("gen_ai.usage.output_tokens", 17);
+        operationalActivity.SetTag("db.system.name", "postgresql");
+        operationalActivity.SetTag("andreja.operation", "andreja.proposal.create");
+        operationalActivity.SetTag("andreja.outcome", "pending");
+        operationalActivity.SetTag("gen_ai.input.messages", "SECRET-PROMPT");
+        operationalActivity.SetTag("gen_ai.output.messages", "SECRET-COMPLETION");
+        operationalActivity.SetTag("gen_ai.tool.call.arguments", "{\"title\":\"SECRET\"}");
+        operationalActivity.SetTag("db.statement", "SELECT * FROM open_loops.tasks WHERE Title='SECRET'");
+        operationalActivity.SetTag("db.query.text", "SELECT * FROM identity.recovery_codes");
+        operationalActivity.SetTag("url.query", "?token=SECRET");
+
+        processor.OnEnd(operationalActivity);
+
+        Assert.AreEqual("chat", operationalActivity.GetTagItem("gen_ai.operation.name"));
+        Assert.AreEqual("local-loopback", operationalActivity.GetTagItem("gen_ai.provider.name"));
+        Assert.AreEqual("phi-4-mini", operationalActivity.GetTagItem("gen_ai.request.model"));
+        Assert.AreEqual(42, operationalActivity.GetTagItem("gen_ai.usage.input_tokens"));
+        Assert.AreEqual(17, operationalActivity.GetTagItem("gen_ai.usage.output_tokens"));
+        Assert.AreEqual("postgresql", operationalActivity.GetTagItem("db.system.name"));
+        Assert.AreEqual("andreja.proposal.create", operationalActivity.GetTagItem("andreja.operation"));
+        Assert.IsNull(operationalActivity.GetTagItem("gen_ai.input.messages"));
+        Assert.IsNull(operationalActivity.GetTagItem("gen_ai.output.messages"));
+        Assert.IsNull(operationalActivity.GetTagItem("gen_ai.tool.call.arguments"));
+        Assert.IsNull(operationalActivity.GetTagItem("db.statement"));
+        Assert.IsNull(operationalActivity.GetTagItem("db.query.text"));
+        Assert.IsNull(operationalActivity.GetTagItem("url.query"));
+        Assert.IsTrue(Interlocked.Read(ref violations) >= 6L);
+    }
+
+    [TestMethod]
+    [DataRow("CaptureContent")]
+    [DataRow("EnableSensitiveData")]
+    public void TelemetryRegistrationFailsClosedWhenSensitiveCaptureIsEnabled(string propertyName)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{AndrejaTelemetryOptions.SectionName}:Enabled"] = "true",
+                [$"{AndrejaTelemetryOptions.SectionName}:ServiceName"] = "andreja",
+                [$"{AndrejaTelemetryOptions.SectionName}:OtlpEndpoint"] = "http://127.0.0.1:4317",
+                [$"{AndrejaTelemetryOptions.SectionName}:{propertyName}"] = "true",
+            })
+            .Build();
+        var services = new ServiceCollection();
+
+        var exception = Assert.ThrowsExactly<InvalidOperationException>(() =>
+            services.AddAndrejaOpenTelemetry(configuration, "test-instance"));
+        Assert.Contains("prohibits content and sensitive-data capture", exception.Message, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public async Task ControlPlaneTelemetryRecordsProposalLifecycleAndDenialsWithoutLeakingContent()
+    {
+        var recordedActivities = new List<Activity>();
+        var recordedCounters = new List<(string Name, long Value, KeyValuePair<string, object?>[] Tags)>();
+        using var activityListener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == AndrejaTelemetry.ActivitySourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity =>
+            {
+                new ContentSuppressingActivityProcessor().OnEnd(activity);
+                lock (recordedActivities)
+                {
+                    recordedActivities.Add(activity);
+                }
+            },
+        };
+        ActivitySource.AddActivityListener(activityListener);
+
+        using var meterListener = new MeterListener();
+        meterListener.InstrumentPublished = (instrument, listener) =>
+        {
+            if (instrument.Meter.Name == AndrejaTelemetry.MeterName)
+            {
+                listener.EnableMeasurementEvents(instrument);
+            }
+        };
+        meterListener.SetMeasurementEventCallback<long>((instrument, measurement, tags, _) =>
+        {
+            lock (recordedCounters)
+            {
+                recordedCounters.Add((instrument.Name, measurement, tags.ToArray()));
+            }
+        });
+        meterListener.Start();
+
+        var telemetry = new OpenTelemetryControlPlaneTelemetry();
+        var application = new OpenLoopsTaskApplication(
+            new InMemoryOpenLoopsTaskStore(),
+            new InMemoryProposalStore(),
+            TimeProvider.System,
+            telemetry);
+        var tenantId = ExecutionContractFixture.TenantId;
+        var userId = ExecutionContractFixture.AppUserId;
+        var principalId = ExecutionContractFixture.PrincipalId;
+        var context = new TenantPrincipalContext(
+            new(tenantId),
+            new(userId),
+            new(principalId),
+            OpenLoopsPolicy.Purpose);
+
+        const string canaryTitle = "CANARY-PRIVATE-TITLE-312";
+        const string canaryDetails = "CANARY-PRIVATE-DETAILS-312";
+        var proposal = await application.ProposeAsync(
+            context,
+            new(canaryTitle, canaryDetails, null),
+            "canary-source");
+        var confirmed = await application.ConfirmAsync(
+            context,
+            proposal.ProposalId,
+            proposal.Version,
+            "confirm-312");
+        var replay = await application.ConfirmAsync(
+            context,
+            proposal.ProposalId,
+            proposal.Version,
+            "confirm-312");
+
+        var skillHost = OpenLoopsSkill.CreateHost(application, telemetry);
+        var deniedSkill = await skillHost.InvokeAsync(
+            new SkillInvocation(
+                "undeclared-skill",
+                "1.0.0",
+                OpenLoopsSkill.ProposeTaskTool,
+                tenantId,
+                userId,
+                principalId,
+                OpenLoopsPolicy.Purpose,
+                OpenLoopsPolicy.ProposeOperation,
+                OpenLoopsPolicy.TaskDataClass,
+                DisclosureLevel.Summary,
+                OpenLoopsPolicy.ResourceReference,
+                new Dictionary<string, JsonElement>(),
+                "bad-digest"),
+            new SkillExecutionContext(
+                tenantId,
+                userId,
+                principalId,
+                OpenLoopsPolicy.Purpose,
+                ExecutionContractFixture.Authorization()),
+            CancellationToken.None);
+
+        var invalidSkill = await skillHost.InvokeAsync(
+            new SkillInvocation(
+                OpenLoopsSkill.Manifest.SkillId,
+                OpenLoopsSkill.Manifest.Version,
+                OpenLoopsSkill.ProposeTaskTool,
+                tenantId,
+                userId,
+                principalId,
+                OpenLoopsPolicy.Purpose,
+                OpenLoopsPolicy.ProposeOperation,
+                OpenLoopsPolicy.TaskDataClass,
+                DisclosureLevel.Summary,
+                OpenLoopsPolicy.ResourceReference,
+                new Dictionary<string, JsonElement>(),
+                InMemorySkillHost.ComputeManifestDigest(OpenLoopsSkill.Manifest)),
+            new SkillExecutionContext(
+                tenantId,
+                userId,
+                principalId,
+                OpenLoopsPolicy.Purpose,
+                ExecutionContractFixture.Authorization()),
+            CancellationToken.None);
+
+        var channelHost = new InMemoryChannelHost(telemetry);
+        var channelManifest = ExecutionContractFixture.ChannelManifest();
+        channelHost.Register(
+            channelManifest,
+            new Dictionary<string, ChannelOperationHandler>(StringComparer.Ordinal)
+            {
+                [ExecutionContractFixture.ChannelOperationName] = static (_, _, _) =>
+                    ValueTask.FromResult(new ChannelResult(ChannelResultStatus.Completed, null, null)),
+            });
+        var invalidChannel = await channelHost.InvokeAsync(
+            new ChannelInvocation(
+                channelManifest.ChannelId,
+                channelManifest.Version,
+                ExecutionContractFixture.ChannelOperationName,
+                tenantId,
+                userId,
+                principalId,
+                ExecutionContractFixture.Purpose,
+                ExecutionContractFixture.Operation,
+                ExecutionContractFixture.DataClass,
+                DisclosureLevel.Summary,
+                ExecutionContractFixture.Resource,
+                new Dictionary<string, JsonElement>(),
+                InMemoryChannelHost.ComputeManifestDigest(channelManifest)),
+            new ChannelExecutionContext(
+                tenantId,
+                userId,
+                principalId,
+                ExecutionContractFixture.Purpose,
+                ExecutionContractFixture.Authorization()),
+            CancellationToken.None);
+
+        Activity? parentActivity;
+        using (var cancelledCts = new CancellationTokenSource())
+        {
+            await cancelledCts.CancelAsync();
+            using var outerSpan = AndrejaTelemetry.ActivitySource.StartActivity("parent.request", ActivityKind.Internal);
+            parentActivity = outerSpan;
+            var cancelledSkill = await skillHost.InvokeAsync(
+                new SkillInvocation(
+                    OpenLoopsSkill.Manifest.SkillId,
+                    OpenLoopsSkill.Manifest.Version,
+                    OpenLoopsSkill.ProposeTaskTool,
+                    tenantId,
+                    userId,
+                    principalId,
+                    OpenLoopsPolicy.Purpose,
+                    OpenLoopsPolicy.ProposeOperation,
+                    OpenLoopsPolicy.TaskDataClass,
+                    DisclosureLevel.Summary,
+                    OpenLoopsPolicy.ResourceReference,
+                    new Dictionary<string, JsonElement>(),
+                    InMemorySkillHost.ComputeManifestDigest(OpenLoopsSkill.Manifest)),
+                new SkillExecutionContext(
+                    tenantId,
+                    userId,
+                    principalId,
+                    OpenLoopsPolicy.Purpose,
+                    ExecutionContractFixture.Authorization()),
+                cancelledCts.Token);
+            var cancelledChannel = await channelHost.InvokeAsync(
+                new ChannelInvocation(
+                    channelManifest.ChannelId,
+                    channelManifest.Version,
+                    ExecutionContractFixture.ChannelOperationName,
+                    tenantId,
+                    userId,
+                    principalId,
+                    ExecutionContractFixture.Purpose,
+                    ExecutionContractFixture.Operation,
+                    ExecutionContractFixture.DataClass,
+                    DisclosureLevel.Summary,
+                    ExecutionContractFixture.Resource,
+                    new Dictionary<string, JsonElement>(),
+                    InMemoryChannelHost.ComputeManifestDigest(channelManifest)),
+                new ChannelExecutionContext(
+                    tenantId,
+                    userId,
+                    principalId,
+                    ExecutionContractFixture.Purpose,
+                    ExecutionContractFixture.Authorization()),
+                cancelledCts.Token);
+            Assert.AreEqual(SkillResultStatus.Cancelled, cancelledSkill.Status);
+            Assert.AreEqual(ChannelResultStatus.Cancelled, cancelledChannel.Status);
+        }
+
+        Assert.AreEqual(Andreja.Platform.Contracts.Proposals.ProposalTransitionOutcome.Applied, confirmed.Outcome);
+        Assert.AreEqual(Andreja.Platform.Contracts.Proposals.ProposalTransitionOutcome.IdempotentReplay, replay.Outcome);
+        Assert.AreEqual(SkillResultStatus.Denied, deniedSkill.Status);
+        Assert.AreEqual(SkillResultStatus.Invalid, invalidSkill.Status);
+        Assert.AreEqual(ChannelResultStatus.Invalid, invalidChannel.Status);
+        Assert.IsNull(parentActivity?.GetTagItem("andreja.outcome"));
+
+        lock (recordedCounters)
+        {
+            Assert.IsTrue(recordedCounters.Any(c => c.Name == "andreja_proposals_created_total"));
+            Assert.IsTrue(recordedCounters.Any(c => c.Name == "andreja_proposals_confirmed_total"));
+            Assert.IsTrue(recordedCounters.Any(c => c.Name == "andreja_proposals_idempotent_replay_total"));
+            Assert.IsTrue(recordedCounters.Any(c =>
+                c.Name == "andreja_execution_denied_total"
+                && c.Tags.Any(t => t.Key == "andreja.denial.code" && Equals(t.Value, "skill-not-declared"))));
+            Assert.IsTrue(recordedCounters.Any(c =>
+                c.Name == "andreja_host_invocations_total"
+                && c.Tags.Any(t => t.Key == "andreja.artifact.kind" && Equals(t.Value, "skill"))
+                && c.Tags.Any(t => t.Key == "andreja.outcome" && Equals(t.Value, "invalid"))));
+            Assert.IsTrue(recordedCounters.Any(c =>
+                c.Name == "andreja_host_invocations_total"
+                && c.Tags.Any(t => t.Key == "andreja.artifact.kind" && Equals(t.Value, "channel"))
+                && c.Tags.Any(t => t.Key == "andreja.outcome" && Equals(t.Value, "invalid"))));
+
+            foreach (var text in recordedCounters
+                .SelectMany(static counter => counter.Tags)
+                .Select(static tag => tag.Value?.ToString() ?? string.Empty))
+            {
+                Assert.DoesNotContain(canaryTitle, text, StringComparison.Ordinal);
+                Assert.DoesNotContain(canaryDetails, text, StringComparison.Ordinal);
+                Assert.DoesNotContain(tenantId.ToString("D"), text, StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain(userId.ToString("D"), text, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        lock (recordedActivities)
+        {
+            Assert.IsTrue(recordedActivities.Any(a => a.OperationName == "andreja.proposal.create"));
+            Assert.IsTrue(recordedActivities.Any(a => a.OperationName == "andreja.proposal.confirm"));
+            Assert.IsTrue(recordedActivities.Any(a =>
+                a.OperationName == "andreja.skill.invoke"
+                && Equals(a.GetTagItem("andreja.outcome"), "invalid")));
+            Assert.IsTrue(recordedActivities.Any(a =>
+                a.OperationName == "andreja.skill.invoke"
+                && Equals(a.GetTagItem("andreja.outcome"), "cancelled")));
+            Assert.IsTrue(recordedActivities.Any(a =>
+                a.OperationName == "andreja.channel.invoke"
+                && Equals(a.GetTagItem("andreja.outcome"), "invalid")));
+            Assert.IsTrue(recordedActivities.Any(a =>
+                a.OperationName == "andreja.channel.invoke"
+                && Equals(a.GetTagItem("andreja.outcome"), "cancelled")));
+            foreach (var text in recordedActivities
+                .SelectMany(static activity => activity.TagObjects)
+                .Select(static tag => tag.Value?.ToString() ?? string.Empty))
+            {
+                Assert.DoesNotContain(canaryTitle, text, StringComparison.Ordinal);
+                Assert.DoesNotContain(canaryDetails, text, StringComparison.Ordinal);
+                Assert.DoesNotContain(tenantId.ToString("D"), text, StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain(userId.ToString("D"), text, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+    }
+
+    [TestMethod]
+    public void DatabaseTracingPipelineExportsSanitizedQueriesWithoutViolationsAndDropsExceptionEventSpans()
+    {
+        long violations = 0;
+        long suppressed = 0;
+        using var testMeter = new Meter($"Andreja.Operations.Test.{Guid.NewGuid():N}");
+        using var meterListener = new MeterListener();
+        meterListener.InstrumentPublished = (instrument, listener) =>
+        {
+            if (ReferenceEquals(instrument.Meter, testMeter))
+            {
+                listener.EnableMeasurementEvents(instrument);
+            }
+        };
+        meterListener.SetMeasurementEventCallback<long>((instrument, measurement, _, _) =>
+        {
+            if (instrument.Name == "andreja_telemetry_policy_violation_total")
+            {
+                Interlocked.Add(ref violations, measurement);
+            }
+            else if (instrument.Name == "andreja_telemetry_suppressed_attributes_total")
+            {
+                Interlocked.Add(ref suppressed, measurement);
+            }
+        });
+        meterListener.Start();
+
+        var appSourceName = $"Test.Application.{Guid.NewGuid():N}";
+        using var exporter = new CapturingActivityExporter();
+        using var exportProcessor = new SimpleActivityExportProcessor(exporter);
+        using var tracerProvider = Sdk.CreateTracerProviderBuilder()
+            .AddSource(NpgsqlSpanSanitizingProcessor.NpgsqlActivitySourceName, appSourceName)
+            .AddProcessor(new NpgsqlSpanSanitizingProcessor())
+            .AddProcessor(new ContentSuppressingActivityProcessor(testMeter))
+            .AddProcessor(exportProcessor)
+            .Build();
+        using var npgsqlSource = new ActivitySource(NpgsqlSpanSanitizingProcessor.NpgsqlActivitySourceName);
+        using var appSource = new ActivitySource(appSourceName);
+
+        using (var querySpan = npgsqlSource.StartActivity("SELECT open_loops.tasks", ActivityKind.Client))
+        {
+            Assert.IsNotNull(querySpan);
+            querySpan.SetTag("db.system.name", "postgresql");
+            querySpan.SetTag("db.operation.name", "SELECT");
+            querySpan.SetTag("db.query.text", "SELECT * FROM open_loops.tasks WHERE Title='CANARY-SQL'");
+            querySpan.AddEvent(new ActivityEvent("received-first-response"));
+        }
+
+        Assert.AreEqual(0L, Interlocked.Read(ref violations));
+        var exportedQuery = Assert.ContainsSingle(exporter.Exported);
+        Assert.AreEqual("postgresql.operation", exportedQuery.DisplayName);
+        Assert.AreEqual("postgresql", exportedQuery.GetTagItem("db.system.name"));
+        Assert.AreEqual("SELECT", exportedQuery.GetTagItem("db.operation.name"));
+        Assert.IsNull(exportedQuery.GetTagItem("db.query.text"));
+
+        Activity? capturedFailedSpan;
+        using (var failedDbSpan = npgsqlSource.StartActivity("INSERT open_loops.tasks", ActivityKind.Client))
+        {
+            Assert.IsNotNull(failedDbSpan);
+            failedDbSpan.SetTag("db.system.name", "postgresql");
+            failedDbSpan.SetTag("db.response.status_code", "23505");
+            failedDbSpan.SetStatus(ActivityStatusCode.Error, "DETAIL: Key (Title)=(CANARY-SQL-ERR) already exists.");
+            failedDbSpan.AddException(new InvalidOperationException("Password=CANARY-DB-SECRET"));
+            Assert.IsTrue(failedDbSpan.Recorded);
+            capturedFailedSpan = failedDbSpan;
+        }
+
+        Assert.IsFalse(capturedFailedSpan.Recorded);
+        Assert.IsTrue(string.IsNullOrEmpty(capturedFailedSpan.StatusDescription));
+        Assert.AreEqual(0L, Interlocked.Read(ref violations));
+        Assert.HasCount(1, exporter.Exported);
+
+        using (var appExceptionSpan = appSource.StartActivity("app.unfiltered-exception", ActivityKind.Internal))
+        {
+            Assert.IsNotNull(appExceptionSpan);
+            appExceptionSpan.AddException(new InvalidOperationException("Token=CANARY-APP-SECRET"));
+        }
+
+        Assert.AreEqual(1L, Interlocked.Read(ref violations));
+        Assert.HasCount(1, exporter.Exported);
+        Assert.IsTrue(Interlocked.Read(ref suppressed) >= 4L);
+    }
+
+    [TestMethod]
+    public void NpgsqlMetricViewStripsConnectionPoolAndDatabaseMetadataBeforeExport()
+    {
+        var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(
+            "Host=db.internal.canary;Database=andreja_secret_db;Username=admin_canary;Password=secret_canary");
+        PostgreSqlServiceCollectionExtensions.ConfigureContentSafeTracing(dataSourceBuilder);
+        Assert.AreEqual(
+            PostgreSqlServiceCollectionExtensions.OperationalDataSourceName,
+            dataSourceBuilder.Name);
+
+        using var metricExporter = new CapturingMetricExporter();
+        using var metricReader = new BaseExportingMetricReader(metricExporter);
+        using var meterProvider = Sdk.CreateMeterProviderBuilder()
+            .AddMeter(NpgsqlSpanSanitizingProcessor.NpgsqlActivitySourceName)
+            .AddView(OpenTelemetryServiceCollectionExtensions.ConfigureMetricView)
+            .AddReader(metricReader)
+            .Build();
+        using var npgsqlMeter = new Meter(NpgsqlSpanSanitizingProcessor.NpgsqlActivitySourceName);
+        var duration = npgsqlMeter.CreateHistogram<double>("db.client.operation.duration");
+
+        duration.Record(
+            0.015,
+            new KeyValuePair<string, object?>("db.system.name", "postgresql"),
+            new KeyValuePair<string, object?>("db.operation.name", "SELECT"),
+            new KeyValuePair<string, object?>(
+                "db.client.connection.pool.name",
+                "Host=db.internal.canary;Database=andreja_secret_db;Username=admin_canary"),
+            new KeyValuePair<string, object?>("db.namespace", "andreja_secret_db"),
+            new KeyValuePair<string, object?>("server.address", "db.internal.canary"));
+        Assert.IsTrue(meterProvider.ForceFlush());
+
+        var exportedTags = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var metric in metricExporter.Exported)
+        {
+            foreach (var point in metric.GetMetricPoints())
+            {
+                foreach (var tag in point.Tags)
+                {
+                    exportedTags[tag.Key] = tag.Value?.ToString() ?? string.Empty;
+                }
+            }
+        }
+
+        Assert.AreEqual("postgresql", exportedTags["db.system.name"]);
+        Assert.AreEqual("SELECT", exportedTags["db.operation.name"]);
+        Assert.IsFalse(exportedTags.ContainsKey("db.client.connection.pool.name"));
+        Assert.IsFalse(exportedTags.ContainsKey("db.namespace"));
+        Assert.IsFalse(exportedTags.ContainsKey("server.address"));
+        var serialized = JsonSerializer.Serialize(exportedTags);
+        Assert.DoesNotContain("canary", serialized, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("andreja_secret_db", serialized, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public async Task HttpInstrumentationThroughProductionRegistrationFiltersHealthAndRedactsCanaries()
+    {
+        var serverBuilder = WebApplication.CreateSlimBuilder();
+        serverBuilder.Logging.ClearProviders();
+        serverBuilder.WebHost.UseUrls("http://127.0.0.1:0");
+        await using var loopbackApp = serverBuilder.Build();
+        loopbackApp.MapPut(
+            "/secret-path-canary",
+            () => Results.Text("secret-response-canary", statusCode: StatusCodes.Status202Accepted));
+        loopbackApp.MapPatch(
+            "/secret-error-canary",
+            () => Results.Problem(
+                detail: "secret-error-detail-canary",
+                statusCode: StatusCodes.Status422UnprocessableEntity));
+        loopbackApp.MapMethods(
+            "/health/ready",
+            ["HEAD"],
+            () => Results.StatusCode(StatusCodes.Status204NoContent));
+        await loopbackApp.StartAsync();
+        var serverBaseUri = new Uri(loopbackApp.Urls.Single(), UriKind.Absolute);
+
+        try
+        {
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    [$"{AndrejaTelemetryOptions.SectionName}:Enabled"] = "true",
+                    [$"{AndrejaTelemetryOptions.SectionName}:ServiceName"] = "andreja-http-test",
+                    [$"{AndrejaTelemetryOptions.SectionName}:OtlpEndpoint"] = "http://127.0.0.1:4317",
+                })
+                .Build();
+            using var activityExporter = new CapturingActivityExporter();
+            using var activityProcessor = new SimpleActivityExportProcessor(activityExporter);
+            using var metricExporter = new CapturingMetricExporter();
+            using var metricReader = new BaseExportingMetricReader(metricExporter);
+
+            var services = new ServiceCollection();
+            services.AddAndrejaOpenTelemetry(configuration, "http-canary-instance");
+            services.AddHttpClient("canary-client");
+            services.ConfigureOpenTelemetryTracerProvider(
+                tracing => tracing.AddProcessor(activityProcessor));
+            services.ConfigureOpenTelemetryMeterProvider(
+                metrics => metrics.AddReader(metricReader));
+
+            await using var provider = services.BuildServiceProvider();
+            _ = provider.GetRequiredService<TracerProvider>();
+            _ = provider.GetRequiredService<MeterProvider>();
+            var clientFactory = provider.GetRequiredService<IHttpClientFactory>();
+            using var client = clientFactory.CreateClient("canary-client");
+
+            using (var okRequest = new HttpRequestMessage(
+                HttpMethod.Put,
+                new Uri(serverBaseUri, "/secret-path-canary?api_key=secret-query-canary")))
+            {
+                okRequest.Headers.TryAddWithoutValidation("Authorization", "Bearer secret-header-canary");
+                using var okResponse = await client.SendAsync(okRequest);
+                Assert.AreEqual(HttpStatusCode.Accepted, okResponse.StatusCode);
+            }
+
+            using (var errRequest = new HttpRequestMessage(
+                HttpMethod.Patch,
+                new Uri(serverBaseUri, "/secret-error-canary?token=secret-token-canary")))
+            {
+                errRequest.Headers.TryAddWithoutValidation("Cookie", "sid=secret-cookie-canary");
+                using var errResponse = await client.SendAsync(errRequest);
+                Assert.AreEqual(HttpStatusCode.UnprocessableEntity, errResponse.StatusCode);
+            }
+
+            using (var healthRequest = new HttpRequestMessage(
+                HttpMethod.Head,
+                new Uri(serverBaseUri, "/health/ready?probe=secret-health-canary")))
+            {
+                using var healthResponse = await client.SendAsync(healthRequest);
+                Assert.AreEqual(HttpStatusCode.NoContent, healthResponse.StatusCode);
+            }
+
+            Assert.IsTrue(activityProcessor.ForceFlush());
+            Assert.IsTrue(metricReader.Collect());
+
+            var httpSpans = activityExporter.Exported
+                .Where(static span => span.Kind == ActivityKind.Client)
+                .ToArray();
+            Assert.IsTrue(httpSpans.Any(static span =>
+                span.DisplayName == "HTTP PUT"
+                && Equals(span.GetTagItem("http.request.method"), "PUT")
+                && Equals(span.GetTagItem("http.response.status_code"), 202)
+                && Equals(span.GetTagItem("andreja.endpoint.locality"), "loopback")));
+            Assert.IsTrue(httpSpans.Any(static span =>
+                span.DisplayName == "HTTP PATCH"
+                && Equals(span.GetTagItem("http.request.method"), "PATCH")
+                && Equals(span.GetTagItem("http.response.status_code"), 422)
+                && Equals(span.GetTagItem("andreja.endpoint.locality"), "loopback")));
+            Assert.IsFalse(httpSpans.Any(static span =>
+                span.DisplayName == "HTTP HEAD"
+                || Equals(span.GetTagItem("http.request.method"), "HEAD")));
+            Assert.IsFalse(httpSpans.Any(static span =>
+                span.GetTagItem("server.address") is not null
+                || span.GetTagItem("server.port") is not null
+                || span.GetTagItem("url.full") is not null
+                || span.GetTagItem("url.path") is not null
+                || span.GetTagItem("url.query") is not null));
+
+            var exportedMetricTags = new List<KeyValuePair<string, object?>>();
+            foreach (var metric in metricExporter.Exported
+                .Where(static m => m.MeterName is "System.Net.Http" or "System.Net.NameResolution"))
+            {
+                foreach (var point in metric.GetMetricPoints())
+                {
+                    foreach (var tag in point.Tags)
+                    {
+                        exportedMetricTags.Add(tag);
+                    }
+                }
+            }
+
+            Assert.IsNotEmpty(exportedMetricTags);
+            Assert.IsFalse(exportedMetricTags.Any(static tag =>
+                tag.Key is "server.address" or "server.port" or "dns.question.name"));
+
+            var serializedTelemetry = JsonSerializer.Serialize(new
+            {
+                SpanNames = httpSpans.Select(static s => s.DisplayName).ToArray(),
+                SpanStatuses = httpSpans.Select(static s => s.StatusDescription).ToArray(),
+                SpanTags = httpSpans.SelectMany(static s => s.TagObjects).ToArray(),
+                SpanEvents = httpSpans.SelectMany(static s => s.Events)
+                    .Select(static e => new { e.Name, Tags = e.Tags.ToArray() })
+                    .ToArray(),
+                MetricTags = exportedMetricTags,
+            });
+
+            foreach (var canary in new[]
+            {
+                "secret-path-canary",
+                "secret-query-canary",
+                "secret-header-canary",
+                "secret-response-canary",
+                "secret-error-canary",
+                "secret-token-canary",
+                "secret-cookie-canary",
+                "secret-error-detail-canary",
+                "secret-health-canary",
+            })
+            {
+                Assert.DoesNotContain(canary, serializedTelemetry, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+        finally
+        {
+            await loopbackApp.StopAsync();
+        }
     }
 
     [TestMethod]
@@ -289,6 +951,10 @@ public sealed class OperationsContractTests
         var compose = File.ReadAllText(Path.Join(root, "compose.yaml"));
         var dockerfile = File.ReadAllText(Path.Join(root, "Dockerfile"));
         var collector = File.ReadAllText(Path.Join(root, "deploy", "otel-collector.yaml"));
+        var collectorDashboard = File.ReadAllText(
+            Path.Join(root, "deploy", "otel-collector.dashboard.yaml"));
+        var dashboardCompose = File.ReadAllText(
+            Path.Join(root, "deploy", "compose.dashboard.yaml"));
         var maintenance = File.ReadAllText(
             Path.Join(root, "deploy", "compose.maintenance.yaml"));
         var migration = File.ReadAllText(
@@ -318,6 +984,16 @@ public sealed class OperationsContractTests
         Assert.DoesNotContain("\n  debug:", collector, StringComparison.Ordinal);
         Assert.DoesNotContain("\n  logging:", collector, StringComparison.Ordinal);
         Assert.Contains("attributes/suppress", collector, StringComparison.Ordinal);
+        Assert.Contains("gen_ai.input.messages", collector, StringComparison.Ordinal);
+        Assert.Contains("db.statement", collector, StringComparison.Ordinal);
+        Assert.DoesNotContain("\n  debug:", collectorDashboard, StringComparison.Ordinal);
+        Assert.DoesNotContain("\n  logging:", collectorDashboard, StringComparison.Ordinal);
+        Assert.Contains("attributes/suppress", collectorDashboard, StringComparison.Ordinal);
+        Assert.Contains("aspire-dashboard:", compose, StringComparison.Ordinal);
+        Assert.Contains("127.0.0.1:${ASPIRE_DASHBOARD_PORT:-18888}:18888", compose, StringComparison.Ordinal);
+        Assert.DoesNotContain("ASPIRE_DASHBOARD_BIND_ADDRESS", compose, StringComparison.Ordinal);
+        Assert.Contains("DOTNET_DASHBOARD_TELEMETRY_OPTOUT: \"true\"", compose, StringComparison.Ordinal);
+        Assert.Contains("otel-collector.dashboard.yaml:/etc/otelcol-contrib/config.yaml:ro", dashboardCompose, StringComparison.Ordinal);
         Assert.Contains("127.0.0.1:", maintenance, StringComparison.Ordinal);
         Assert.Contains("migration-approval.json:ro", migration, StringComparison.Ordinal);
         Assert.Contains("backup.dump:ro", migration, StringComparison.Ordinal);
@@ -438,5 +1114,35 @@ public sealed class OperationsContractTests
     {
         public ValueTask<bool> IsCleanAsync(CancellationToken cancellationToken = default) =>
             ValueTask.FromResult(isClean);
+    }
+
+    private sealed class CapturingActivityExporter : BaseExporter<Activity>
+    {
+        public List<Activity> Exported { get; } = [];
+
+        public override ExportResult Export(in Batch<Activity> batch)
+        {
+            foreach (var activity in batch)
+            {
+                Exported.Add(activity);
+            }
+
+            return ExportResult.Success;
+        }
+    }
+
+    private sealed class CapturingMetricExporter : BaseExporter<Metric>
+    {
+        public List<Metric> Exported { get; } = [];
+
+        public override ExportResult Export(in Batch<Metric> batch)
+        {
+            foreach (var metric in batch)
+            {
+                Exported.Add(metric);
+            }
+
+            return ExportResult.Success;
+        }
     }
 }

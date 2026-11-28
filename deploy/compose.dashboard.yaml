@@ -1,0 +1,7 @@
+services:
+  otel-collector:
+    depends_on:
+      aspire-dashboard:
+        condition: service_started
+    volumes:
+      - ./deploy/otel-collector.dashboard.yaml:/etc/otelcol-contrib/config.yaml:ro

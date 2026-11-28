@@ -145,6 +145,34 @@ services:
     mem_limit: 512m
     cpus: 0.5
 
+  aspire-dashboard:
+    profiles:
+      - dashboard
+    image: ${ASPIRE_DASHBOARD_IMAGE:-mcr.microsoft.com/dotnet/aspire-dashboard:13.6.5@sha256:e2b7cf9a4ead932de46c6fa2a289c7d6159cfcf06a51aa65f38253a8fae75407}
+    user: "1654:1654"
+    read_only: true
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_URLS: "http://0.0.0.0:18888"
+      DOTNET_DASHBOARD_OTLP_ENDPOINT_URL: "http://0.0.0.0:18889"
+      DOTNET_DASHBOARD_TELEMETRY_OPTOUT: "true"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DASHBOARD__FRONTEND__AUTHMODE: "BrowserToken"
+      DASHBOARD__OTLP__AUTHMODE: "Unsecured"
+    tmpfs:
+      - /tmp:size=64m,mode=1700,uid=1654,gid=1654
+    ports:
+      - "127.0.0.1:${ASPIRE_DASHBOARD_PORT:-18888}:18888"
+    networks:
+      - backend
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 512m
+    cpus: 0.5
+
 secrets:
   postgres_password:
     file: ${POSTGRES_PASSWORD_FILE:-./deploy/secrets/postgres_password}

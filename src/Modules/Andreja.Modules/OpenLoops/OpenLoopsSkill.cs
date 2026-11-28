@@ -1,6 +1,7 @@
 using Andreja.Modules.Identity;
 using Andreja.Platform.Contracts.Assistant;
 using Andreja.Platform.Contracts.Execution;
+using Andreja.Platform.Contracts.Observability;
 using Andreja.Platform.Contracts.Proposals;
 using Andreja.Platform.Contracts.Sharing;
 using Andreja.Platform.Contracts.Skills;
@@ -82,10 +83,13 @@ public static class OpenLoopsSkill
                 [OpenLoopsPolicy.Purpose]),
         ]);
 
-    public static ISkillHost CreateHost(OpenLoopsTaskApplication application)
+    public static ISkillHost CreateHost(
+        OpenLoopsTaskApplication application,
+        IControlPlaneTelemetry? telemetry = null)
     {
         ArgumentNullException.ThrowIfNull(application);
-        var host = new Modules.Skills.InMemorySkillHost();
+        var host = new Modules.Skills.InMemorySkillHost(
+            telemetry ?? NullControlPlaneTelemetry.Instance);
         host.Register(
             Manifest,
             new Dictionary<string, SkillToolHandler>(StringComparer.Ordinal)

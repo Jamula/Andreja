@@ -8,6 +8,10 @@ public sealed class AndrejaTelemetryOptions
 
     public bool Enabled { get; init; }
 
+    public bool CaptureContent { get; init; }
+
+    public bool EnableSensitiveData { get; init; }
+
     [Required]
     public string ServiceName { get; init; } = "andreja";
 

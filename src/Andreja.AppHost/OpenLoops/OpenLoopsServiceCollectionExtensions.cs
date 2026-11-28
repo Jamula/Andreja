@@ -6,8 +6,10 @@ using Andreja.Modules.Identity;
 using Andreja.Modules.OpenLoops;
 using Andreja.Modules.Proposals;
 using Andreja.Platform.Contracts.Assistant;
+using Andreja.Platform.Contracts.Observability;
 using Andreja.Platform.Contracts.Proposals;
 using Andreja.Platform.Contracts.Skills;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
@@ -125,10 +127,12 @@ public static class OpenLoopsServiceCollectionExtensions
                 "Open Loops requires PostgreSQL outside Development.");
         }
 
+        services.TryAddSingleton<IControlPlaneTelemetry>(NullControlPlaneTelemetry.Instance);
         services.AddScoped<OpenLoopsTaskApplication>();
         services.AddScoped<ISkillHost>(
             provider => OpenLoopsSkill.CreateHost(
-                provider.GetRequiredService<OpenLoopsTaskApplication>()));
+                provider.GetRequiredService<OpenLoopsTaskApplication>(),
+                provider.GetRequiredService<IControlPlaneTelemetry>()));
         if (openLoops.AssistantProvider == "openai-compatible")
         {
             services.AddSingleton(provider =>

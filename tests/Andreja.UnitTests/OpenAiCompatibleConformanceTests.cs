@@ -1,4 +1,5 @@
 using Andreja.Adapters.Assistant.OpenAiCompatible;
+using Andreja.Adapters.OpenTelemetry;
 using Andreja.AppHost.Hosting;
 using Andreja.AppHost.OpenLoops;
 using Andreja.Modules.Assistant;
@@ -148,6 +149,22 @@ public sealed class OpenAiCompatibleConformanceTests
     [TestMethod]
     public async Task TimeoutAndCallerCancellationAreDistinct()
     {
+        var genAiDurations = new ConcurrentBag<(double Value, KeyValuePair<string, object?>[] Tags)>();
+        using var listener = new MeterListener
+        {
+            InstrumentPublished = (instrument, meterListener) =>
+            {
+                if (instrument.Meter.Name == AndrejaTelemetry.GenAiMeterName
+                    && instrument.Name == "gen_ai.client.operation.duration")
+                {
+                    meterListener.EnableMeasurementEvents(instrument);
+                }
+            },
+        };
+        listener.SetMeasurementEventCallback<double>(
+            (_, value, tags, _) => genAiDurations.Add((value, tags.ToArray())));
+        listener.Start();
+
         await using var server = await ConformanceServer.StartAsync(async (context, _) =>
         {
             await Task.Delay(TimeSpan.FromSeconds(30), context.RequestAborted);
@@ -162,6 +179,7 @@ public sealed class OpenAiCompatibleConformanceTests
         Assert.AreEqual(AssistantResponseStatus.Failed, timedOut.Status);
         Assert.AreEqual("provider-timeout", timedOut.Failure?.Code);
         Assert.IsTrue(timedOut.Failure?.IsTransient);
+        Assert.IsGreaterThan(TimeSpan.Zero, timedOut.Usage.Duration);
 
         var cancellationProvider = Provider(
             server.Client,
@@ -174,6 +192,13 @@ public sealed class OpenAiCompatibleConformanceTests
 
         Assert.AreEqual(AssistantResponseStatus.Cancelled, cancelled.Status);
         Assert.IsNull(cancelled.Failure);
+        Assert.IsGreaterThan(TimeSpan.Zero, cancelled.Usage.Duration);
+        Assert.IsTrue(genAiDurations.Any(sample =>
+            sample.Value > 0d
+            && sample.Tags.Any(t => t.Key == "error.type" && Equals(t.Value, "provider-timeout"))));
+        Assert.IsTrue(genAiDurations.Any(sample =>
+            sample.Value > 0d
+            && sample.Tags.Any(t => t.Key == "error.type" && Equals(t.Value, "cancelled"))));
     }
 
     [TestMethod]
@@ -280,55 +305,123 @@ public sealed class OpenAiCompatibleConformanceTests
     [TestMethod]
     public async Task MetricsContainOnlyContentFreeBoundedTags()
     {
-        var observedTags = new ConcurrentBag<KeyValuePair<string, object?>>();
+        var observedLegacyTags = new ConcurrentBag<KeyValuePair<string, object?>>();
+        var genAiLongSamples = new ConcurrentBag<(string Name, long Value, KeyValuePair<string, object?>[] Tags)>();
+        var genAiDoubleSamples = new ConcurrentBag<(string Name, double Value, KeyValuePair<string, object?>[] Tags)>();
         using var listener = new MeterListener
         {
             InstrumentPublished = (instrument, meterListener) =>
             {
-                if (instrument.Meter.Name == OpenAiCompatibleMetrics.MeterName)
+                if (instrument.Meter.Name is OpenAiCompatibleMetrics.MeterName
+                    or AndrejaTelemetry.GenAiMeterName)
                 {
                     meterListener.EnableMeasurementEvents(instrument);
                 }
             },
         };
         listener.SetMeasurementEventCallback<long>(
-            (_, _, tags, _) =>
+            (instrument, value, tags, _) =>
             {
-                foreach (var tag in tags)
+                if (instrument.Meter.Name == OpenAiCompatibleMetrics.MeterName)
                 {
-                    observedTags.Add(tag);
+                    foreach (var tag in tags)
+                    {
+                        observedLegacyTags.Add(tag);
+                    }
+                }
+                else if (instrument.Meter.Name == AndrejaTelemetry.GenAiMeterName)
+                {
+                    genAiLongSamples.Add((instrument.Name, value, tags.ToArray()));
                 }
             });
         listener.SetMeasurementEventCallback<double>(
-            (_, _, tags, _) =>
+            (instrument, value, tags, _) =>
             {
-                foreach (var tag in tags)
+                if (instrument.Meter.Name == OpenAiCompatibleMetrics.MeterName)
                 {
-                    observedTags.Add(tag);
+                    foreach (var tag in tags)
+                    {
+                        observedLegacyTags.Add(tag);
+                    }
+                }
+                else if (instrument.Meter.Name == AndrejaTelemetry.GenAiMeterName)
+                {
+                    genAiDoubleSamples.Add((instrument.Name, value, tags.ToArray()));
                 }
             });
         listener.Start();
-        await using var server = await ConformanceServer.StartAsync((context, _) =>
-            WriteCompletionAsync(
-                context,
-                "open-loops_propose-task",
-                """{"title":"Metric canary task"}""",
-                "Metric canary response",
-                4,
-                2));
+        await using var server = await ConformanceServer.StartAsync((context, call) =>
+        {
+            if (call == 1)
+            {
+                return WriteCompletionAsync(
+                    context,
+                    "open-loops_propose-task",
+                    """{"title":"Metric canary task"}""",
+                    "Metric canary response",
+                    4,
+                    2);
+            }
 
-        var response = await CompleteAsync(
-            Provider(server.Client, new MutableCredentialStore(CredentialValue)));
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            return context.Response.WriteAsync("""{"error":"secret provider canary error"}""");
+        });
+
+        var provider = Provider(server.Client, new MutableCredentialStore(CredentialValue));
+        var response = await CompleteAsync(provider);
+        var failedResponse = await CompleteAsync(provider);
 
         Assert.AreEqual(AssistantResponseStatus.Completed, response.Status);
-        Assert.IsTrue(observedTags.Any(
+        Assert.AreEqual(AssistantResponseStatus.Failed, failedResponse.Status);
+        Assert.IsTrue(observedLegacyTags.Any(
             tag => tag.Key == "result.class"
                 && string.Equals(tag.Value as string, "completed", StringComparison.Ordinal)));
-        foreach (var tag in observedTags)
+        foreach (var tag in observedLegacyTags)
         {
             Assert.AreEqual("result.class", tag.Key);
         }
-        var serializedTags = JsonSerializer.Serialize(observedTags);
+
+        Assert.IsTrue(genAiLongSamples.Any(sample =>
+            sample.Name == "gen_ai.client.token.usage"
+            && sample.Value == 4L
+            && sample.Tags.Any(t => t.Key == "gen_ai.operation.name" && Equals(t.Value, "chat"))
+            && sample.Tags.Any(t => t.Key == "gen_ai.provider.name" && Equals(t.Value, "openai-compatible"))
+            && sample.Tags.Any(t => t.Key == "gen_ai.token.type" && Equals(t.Value, "input"))));
+        Assert.IsTrue(genAiLongSamples.Any(sample =>
+            sample.Name == "gen_ai.client.token.usage"
+            && sample.Value == 2L
+            && sample.Tags.Any(t => t.Key == "gen_ai.token.type" && Equals(t.Value, "output"))));
+        Assert.IsTrue(genAiDoubleSamples.Any(sample =>
+            sample.Name == "gen_ai.client.operation.duration"
+            && sample.Value >= 0d
+            && sample.Value < 30d
+            && sample.Tags.All(t => t.Key != "error.type")));
+        Assert.IsTrue(genAiDoubleSamples.Any(sample =>
+            sample.Name == "gen_ai.client.operation.duration"
+            && sample.Value >= 0d
+            && sample.Value < 30d
+            && sample.Tags.Any(t => t.Key == "error.type" && Equals(t.Value, "provider-rejected-request"))));
+
+        var allowedGenAiKeys = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "gen_ai.operation.name",
+            "gen_ai.provider.name",
+            "gen_ai.token.type",
+            "error.type",
+        };
+        foreach (var tag in genAiLongSamples
+            .SelectMany(static sample => sample.Tags)
+            .Concat(genAiDoubleSamples.SelectMany(static sample => sample.Tags)))
+        {
+            Assert.IsTrue(allowedGenAiKeys.Contains(tag.Key), $"Unexpected GenAI metric tag '{tag.Key}'.");
+        }
+
+        var serializedTags = JsonSerializer.Serialize(new
+        {
+            Legacy = observedLegacyTags,
+            GenAiLong = genAiLongSamples.SelectMany(static sample => sample.Tags).ToArray(),
+            GenAiDouble = genAiDoubleSamples.SelectMany(static sample => sample.Tags).ToArray(),
+        });
         Assert.DoesNotContain(CredentialValue, serializedTags, StringComparison.Ordinal);
         Assert.DoesNotContain("canary", serializedTags, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("conformance-model", serializedTags, StringComparison.Ordinal);
