@@ -23,21 +23,19 @@ External pull requests are **currently paused** under Gate B in
   Follow [`SECURITY.md`](SECURITY.md) to submit a private GitHub Security
   Advisory (`https://github.com/Jamula/Andreja/security/advisories/new`).
 
-## Authorized maintainer and `.squad/` workflow
+## Authorized maintainer and agent workflow
 
-Authorized changes by repository owner Cyrus Jamula and the repository's
-[`.squad/`](.squad) specialist team ([`meet-the-squad.md`](meet-the-squad.md))
-follow [`docs/operating-model.md`](docs/operating-model.md) and strict
-governance and verification gates:
+Authorized changes by repository owner Cyrus Jamula and repository-authorized
+coding agents follow [`docs/operating-model.md`](docs/operating-model.md) and
+strict governance and verification gates:
 
 1. **Roadmap milestones and issue tracking:**
    Work is organized across the 15 roadmap milestones defined in
    [`docs/plan.md`](docs/plan.md) and sequenced in
    [`docs/roadmap/full-vision-completion-roadmap.md`](docs/roadmap/full-vision-completion-roadmap.md)
    (`Phase 0`, `Phase 1A`, `Phase 1B`, `Phase 2`, `Phase 3A`, `Phase 3B`, and
-   `Phase 4` through `Phase 12`). Lifecycle labels (`status:*`, `blocked:*`,
-   `blocks:*`) are maintained manually, while `squad` / `squad:*` specialist
-   routing labels are managed as documented in
+   `Phase 4` through `Phase 12`). Lifecycle and blocker labels (`status:*`,
+   `blocked:*`, `blocks:*`) are maintained manually as documented in
    [`docs/help/issue-status.md`](docs/help/issue-status.md).
 2. **Human gates and `$0` cloud rule:**
    `Phase 0` provisions no cloud accounts, paid services, free tiers, or trials
@@ -52,10 +50,10 @@ governance and verification gates:
 3. **Independent reviewer lockout:**
    Security, privacy, legal, supply-chain, and governance artifacts require
    independent specialist review under
-   [`.github/skills/reviewer-protocol/SKILL.md`](.github/skills/reviewer-protocol/SKILL.md)
-   before squash-merging into protected `main`. When a reviewer rejects an
-   artifact, the original author is locked out from revising that artifact and a
-   different specialist must own the revision.
+   [`docs/operating-model.md`](docs/operating-model.md) before squash-merging
+   into protected `main`. When a reviewer rejects an artifact, the original
+   author is locked out from revising that artifact and a different specialist
+   must own the revision.
 4. **SHA-256 hash-locked governance baselines:**
    [`docs/plan.md`](docs/plan.md) (hash-locked in
    [`docs/adr/0000-plan-ratification.md`](docs/adr/0000-plan-ratification.md)),
@@ -71,10 +69,10 @@ governance and verification gates:
    [`.github/pull_request_template.md`](.github/pull_request_template.md),
    preserving its charter-impact state marker, gate checklist, and exact
    validation commands with pass/fail results.
-6. **Zero secrets or personal data in Git or `.squad/`:**
+6. **Zero secrets or personal data in Git:**
    Never read live `.env*` files or record secrets, tokens, emails, or personal
-   data in source files, tests, commits, or `.squad/` state
-   ([`.github/skills/secret-handling/SKILL.md`](.github/skills/secret-handling/SKILL.md)).
+   data in source files, tests, commits, issues, or pull requests
+   ([`SECURITY.md`](SECURITY.md), [`docs/privacy.md`](docs/privacy.md)).
 
 ## Engineering, C#, and testing standards
 
@@ -172,7 +170,6 @@ pwsh -NoProfile -File .github\scripts\test-dotnet-test-parity.ps1 `
 dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj --configuration Release --no-build -- check-consistency
 dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj --configuration Release --no-build -- check-feedback-readiness
 dotnet run --project src\Andreja.Docs\Andreja.Docs.csproj --configuration Release --no-build -- architecture-diagram --check
-node --test .github\scripts\squad-readiness.test.js
 pwsh -NoProfile -File scripts\operations\validate-contract.ps1
 pwsh -NoProfile -File scripts\supply-chain\Test-SupplyChainPolicy.ps1
 ```
