@@ -136,6 +136,7 @@ public sealed class OpenAiCompatibleAssistantAdapter(
                 cancellationToken,
                 sessionCancellation.Token,
                 timeout.Token);
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 return await transport.CompleteAsync(
@@ -154,11 +155,12 @@ public sealed class OpenAiCompatibleAssistantAdapter(
                     "provider-timeout",
                     "The assistant provider timed out.",
                     isTransient: true,
-                    profile);
+                    profile,
+                    stopwatch.Elapsed);
             }
             catch (OperationCanceledException)
             {
-                var usage = Usage(profile, "cancelled");
+                var usage = Usage(profile, "cancelled", stopwatch.Elapsed);
                 OpenAiCompatibleMetrics.Record(usage);
                 return new(
                     assistantRequest.RequestId,
@@ -195,9 +197,10 @@ public sealed class OpenAiCompatibleAssistantAdapter(
         string code,
         string message,
         bool isTransient,
-        AssistantProviderProfile profile)
+        AssistantProviderProfile profile,
+        TimeSpan duration)
     {
-        var usage = Usage(profile, code);
+        var usage = Usage(profile, code, duration);
         OpenAiCompatibleMetrics.Record(usage);
         return new(
             requestId,
@@ -210,13 +213,14 @@ public sealed class OpenAiCompatibleAssistantAdapter(
 
     private static AssistantUsage Usage(
         AssistantProviderProfile profile,
-        string resultClass) =>
+        string resultClass,
+        TimeSpan duration) =>
         new(
             "openai-compatible",
             profile.Model,
             null,
             null,
-            TimeSpan.Zero,
+            duration,
             resultClass,
             0,
             0);
@@ -235,7 +239,7 @@ public sealed class OpenAiCompatibleAssistantAdapter(
                 AssistantResponseStatus.Failed,
                 null,
                 [],
-                Usage(profile, "not-configured"),
+                Usage(profile, "not-configured", TimeSpan.Zero),
                 new(
                     "provider-not-configured",
                     "The OpenAI-compatible provider is not configured.",

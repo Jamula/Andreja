@@ -149,6 +149,22 @@ public sealed class OpenAiCompatibleConformanceTests
     [TestMethod]
     public async Task TimeoutAndCallerCancellationAreDistinct()
     {
+        var genAiDurations = new ConcurrentBag<(double Value, KeyValuePair<string, object?>[] Tags)>();
+        using var listener = new MeterListener
+        {
+            InstrumentPublished = (instrument, meterListener) =>
+            {
+                if (instrument.Meter.Name == AndrejaTelemetry.GenAiMeterName
+                    && instrument.Name == "gen_ai.client.operation.duration")
+                {
+                    meterListener.EnableMeasurementEvents(instrument);
+                }
+            },
+        };
+        listener.SetMeasurementEventCallback<double>(
+            (_, value, tags, _) => genAiDurations.Add((value, tags.ToArray())));
+        listener.Start();
+
         await using var server = await ConformanceServer.StartAsync(async (context, _) =>
         {
             await Task.Delay(TimeSpan.FromSeconds(30), context.RequestAborted);
@@ -163,6 +179,7 @@ public sealed class OpenAiCompatibleConformanceTests
         Assert.AreEqual(AssistantResponseStatus.Failed, timedOut.Status);
         Assert.AreEqual("provider-timeout", timedOut.Failure?.Code);
         Assert.IsTrue(timedOut.Failure?.IsTransient);
+        Assert.IsGreaterThan(TimeSpan.Zero, timedOut.Usage.Duration);
 
         var cancellationProvider = Provider(
             server.Client,
@@ -175,6 +192,13 @@ public sealed class OpenAiCompatibleConformanceTests
 
         Assert.AreEqual(AssistantResponseStatus.Cancelled, cancelled.Status);
         Assert.IsNull(cancelled.Failure);
+        Assert.IsGreaterThan(TimeSpan.Zero, cancelled.Usage.Duration);
+        Assert.IsTrue(genAiDurations.Any(sample =>
+            sample.Value > 0d
+            && sample.Tags.Any(t => t.Key == "error.type" && Equals(t.Value, "provider-timeout"))));
+        Assert.IsTrue(genAiDurations.Any(sample =>
+            sample.Value > 0d
+            && sample.Tags.Any(t => t.Key == "error.type" && Equals(t.Value, "cancelled"))));
     }
 
     [TestMethod]

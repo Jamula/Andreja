@@ -29,6 +29,20 @@ public static class OpenTelemetryServiceCollectionExtensions
         "state",
     ];
 
+    private static readonly string[] ApprovedHttpMetricTagKeys =
+    [
+        "error.type",
+        "http.request.method",
+        "http.response.status_code",
+        "network.protocol.version",
+        "url.scheme",
+    ];
+
+    private static readonly string[] ApprovedDnsMetricTagKeys =
+    [
+        "error.type",
+    ];
+
     public static IServiceCollection AddAndrejaOpenTelemetry(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -113,6 +127,7 @@ public static class OpenTelemetryServiceCollectionExtensions
                             StringComparison.OrdinalIgnoreCase) != true;
                     instrumentation.EnrichWithHttpRequestMessage = static (activity, message) =>
                     {
+                        activity.DisplayName = $"HTTP {message.Method.Method}";
                         activity.SetTag("url.full", null);
                         activity.SetTag("url.query", null);
                         activity.SetTag("url.path", null);
@@ -155,14 +170,21 @@ public static class OpenTelemetryServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(instrument);
 
-        return string.Equals(
-            instrument.Meter.Name,
-            NpgsqlSpanSanitizingProcessor.NpgsqlActivitySourceName,
-            StringComparison.Ordinal)
-            ? new MetricStreamConfiguration
+        return instrument.Meter.Name switch
+        {
+            NpgsqlSpanSanitizingProcessor.NpgsqlActivitySourceName => new MetricStreamConfiguration
             {
                 TagKeys = ApprovedNpgsqlMetricTagKeys,
-            }
-            : null;
+            },
+            "System.Net.Http" => new MetricStreamConfiguration
+            {
+                TagKeys = ApprovedHttpMetricTagKeys,
+            },
+            "System.Net.NameResolution" => new MetricStreamConfiguration
+            {
+                TagKeys = ApprovedDnsMetricTagKeys,
+            },
+            _ => null,
+        };
     }
 }

@@ -48,18 +48,18 @@
     "Andreja.UnitTests": {
       "path": "tests/Andreja.UnitTests/Andreja.UnitTests.csproj",
       "Debug": {
-        "discovered": 268,
-        "trx_total": 268,
-        "executed": 268,
-        "passed": 268,
+        "discovered": 269,
+        "trx_total": 269,
+        "executed": 269,
+        "passed": 269,
         "failed": 0,
         "skipped": 0
       },
       "Release": {
-        "discovered": 264,
-        "trx_total": 264,
-        "executed": 264,
-        "passed": 264,
+        "discovered": 265,
+        "trx_total": 265,
+        "executed": 265,
+        "passed": 265,
         "failed": 0,
         "skipped": 0
       }

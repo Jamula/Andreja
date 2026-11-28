@@ -13,6 +13,7 @@ using Andreja.Platform.Contracts.Skills;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
@@ -24,6 +25,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Net;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Andreja.UnitTests;
@@ -537,6 +541,159 @@ public sealed class OperationsContractTests
         var serialized = JsonSerializer.Serialize(exportedTags);
         Assert.DoesNotContain("canary", serialized, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("andreja_secret_db", serialized, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public async Task HttpInstrumentationThroughProductionRegistrationFiltersHealthAndRedactsCanaries()
+    {
+        var serverBuilder = WebApplication.CreateSlimBuilder();
+        serverBuilder.Logging.ClearProviders();
+        serverBuilder.WebHost.UseUrls("http://127.0.0.1:0");
+        await using var loopbackApp = serverBuilder.Build();
+        loopbackApp.MapPut(
+            "/secret-path-canary",
+            () => Results.Text("secret-response-canary", statusCode: StatusCodes.Status202Accepted));
+        loopbackApp.MapPatch(
+            "/secret-error-canary",
+            () => Results.Problem(
+                detail: "secret-error-detail-canary",
+                statusCode: StatusCodes.Status422UnprocessableEntity));
+        loopbackApp.MapMethods(
+            "/health/ready",
+            ["HEAD"],
+            () => Results.StatusCode(StatusCodes.Status204NoContent));
+        await loopbackApp.StartAsync();
+        var serverBaseUri = new Uri(loopbackApp.Urls.Single(), UriKind.Absolute);
+
+        try
+        {
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    [$"{AndrejaTelemetryOptions.SectionName}:Enabled"] = "true",
+                    [$"{AndrejaTelemetryOptions.SectionName}:ServiceName"] = "andreja-http-test",
+                    [$"{AndrejaTelemetryOptions.SectionName}:OtlpEndpoint"] = "http://127.0.0.1:4317",
+                })
+                .Build();
+            using var activityExporter = new CapturingActivityExporter();
+            using var activityProcessor = new SimpleActivityExportProcessor(activityExporter);
+            using var metricExporter = new CapturingMetricExporter();
+            using var metricReader = new BaseExportingMetricReader(metricExporter);
+
+            var services = new ServiceCollection();
+            services.AddAndrejaOpenTelemetry(configuration, "http-canary-instance");
+            services.AddHttpClient("canary-client");
+            services.ConfigureOpenTelemetryTracerProvider(
+                tracing => tracing.AddProcessor(activityProcessor));
+            services.ConfigureOpenTelemetryMeterProvider(
+                metrics => metrics.AddReader(metricReader));
+
+            await using var provider = services.BuildServiceProvider();
+            _ = provider.GetRequiredService<TracerProvider>();
+            _ = provider.GetRequiredService<MeterProvider>();
+            var clientFactory = provider.GetRequiredService<IHttpClientFactory>();
+            using var client = clientFactory.CreateClient("canary-client");
+
+            using (var okRequest = new HttpRequestMessage(
+                HttpMethod.Put,
+                new Uri(serverBaseUri, "/secret-path-canary?api_key=secret-query-canary")))
+            {
+                okRequest.Headers.TryAddWithoutValidation("Authorization", "Bearer secret-header-canary");
+                using var okResponse = await client.SendAsync(okRequest);
+                Assert.AreEqual(HttpStatusCode.Accepted, okResponse.StatusCode);
+            }
+
+            using (var errRequest = new HttpRequestMessage(
+                HttpMethod.Patch,
+                new Uri(serverBaseUri, "/secret-error-canary?token=secret-token-canary")))
+            {
+                errRequest.Headers.TryAddWithoutValidation("Cookie", "sid=secret-cookie-canary");
+                using var errResponse = await client.SendAsync(errRequest);
+                Assert.AreEqual(HttpStatusCode.UnprocessableEntity, errResponse.StatusCode);
+            }
+
+            using (var healthRequest = new HttpRequestMessage(
+                HttpMethod.Head,
+                new Uri(serverBaseUri, "/health/ready?probe=secret-health-canary")))
+            {
+                using var healthResponse = await client.SendAsync(healthRequest);
+                Assert.AreEqual(HttpStatusCode.NoContent, healthResponse.StatusCode);
+            }
+
+            Assert.IsTrue(activityProcessor.ForceFlush());
+            Assert.IsTrue(metricReader.Collect());
+
+            var httpSpans = activityExporter.Exported
+                .Where(static span => span.Kind == ActivityKind.Client)
+                .ToArray();
+            Assert.IsTrue(httpSpans.Any(static span =>
+                span.DisplayName == "HTTP PUT"
+                && Equals(span.GetTagItem("http.request.method"), "PUT")
+                && Equals(span.GetTagItem("http.response.status_code"), 202)
+                && Equals(span.GetTagItem("andreja.endpoint.locality"), "loopback")));
+            Assert.IsTrue(httpSpans.Any(static span =>
+                span.DisplayName == "HTTP PATCH"
+                && Equals(span.GetTagItem("http.request.method"), "PATCH")
+                && Equals(span.GetTagItem("http.response.status_code"), 422)
+                && Equals(span.GetTagItem("andreja.endpoint.locality"), "loopback")));
+            Assert.IsFalse(httpSpans.Any(static span =>
+                span.DisplayName == "HTTP HEAD"
+                || Equals(span.GetTagItem("http.request.method"), "HEAD")));
+            Assert.IsFalse(httpSpans.Any(static span =>
+                span.GetTagItem("server.address") is not null
+                || span.GetTagItem("server.port") is not null
+                || span.GetTagItem("url.full") is not null
+                || span.GetTagItem("url.path") is not null
+                || span.GetTagItem("url.query") is not null));
+
+            var exportedMetricTags = new List<KeyValuePair<string, object?>>();
+            foreach (var metric in metricExporter.Exported
+                .Where(static m => m.MeterName is "System.Net.Http" or "System.Net.NameResolution"))
+            {
+                foreach (var point in metric.GetMetricPoints())
+                {
+                    foreach (var tag in point.Tags)
+                    {
+                        exportedMetricTags.Add(tag);
+                    }
+                }
+            }
+
+            Assert.IsNotEmpty(exportedMetricTags);
+            Assert.IsFalse(exportedMetricTags.Any(static tag =>
+                tag.Key is "server.address" or "server.port" or "dns.question.name"));
+
+            var serializedTelemetry = JsonSerializer.Serialize(new
+            {
+                SpanNames = httpSpans.Select(static s => s.DisplayName).ToArray(),
+                SpanStatuses = httpSpans.Select(static s => s.StatusDescription).ToArray(),
+                SpanTags = httpSpans.SelectMany(static s => s.TagObjects).ToArray(),
+                SpanEvents = httpSpans.SelectMany(static s => s.Events)
+                    .Select(static e => new { e.Name, Tags = e.Tags.ToArray() })
+                    .ToArray(),
+                MetricTags = exportedMetricTags,
+            });
+
+            foreach (var canary in new[]
+            {
+                "secret-path-canary",
+                "secret-query-canary",
+                "secret-header-canary",
+                "secret-response-canary",
+                "secret-error-canary",
+                "secret-token-canary",
+                "secret-cookie-canary",
+                "secret-error-detail-canary",
+                "secret-health-canary",
+            })
+            {
+                Assert.DoesNotContain(canary, serializedTelemetry, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+        finally
+        {
+            await loopbackApp.StopAsync();
+        }
     }
 
     [TestMethod]
