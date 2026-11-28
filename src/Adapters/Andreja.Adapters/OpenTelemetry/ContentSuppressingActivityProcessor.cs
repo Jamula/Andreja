@@ -15,6 +15,7 @@ public sealed class ContentSuppressingActivityProcessor : BaseProcessor<Activity
         "andreja.operation",
         "andreja.outcome",
         "db.operation.name",
+        "db.response.status_code",
         "db.system",
         "db.system.name",
         "error.type",
@@ -32,6 +33,11 @@ public sealed class ContentSuppressingActivityProcessor : BaseProcessor<Activity
         "url.scheme",
     };
 
+    private static readonly HashSet<string> AllowedOperationalEventNames = new(StringComparer.Ordinal)
+    {
+        "received-first-response",
+    };
+
     public override void OnEnd(Activity data)
     {
         ArgumentNullException.ThrowIfNull(data);
@@ -47,13 +53,30 @@ public sealed class ContentSuppressingActivityProcessor : BaseProcessor<Activity
             }
         }
 
-        foreach (var @event in data.Events.ToArray())
+        if (!string.IsNullOrEmpty(data.StatusDescription))
         {
-            if (IsProhibited(@event.Name)
-                || @event.Tags.Any(tag => IsProhibited(tag.Key)))
+            data.SetStatus(data.Status, description: null);
+            removed++;
+        }
+
+        var disallowedEvents = data.Events
+            .Where(static @event => !IsAllowedOperationalEvent(@event))
+            .ToArray();
+        if (disallowedEvents.Length > 0)
+        {
+            var isNpgsqlSource = string.Equals(
+                data.Source.Name,
+                NpgsqlSpanSanitizingProcessor.NpgsqlActivitySourceName,
+                StringComparison.Ordinal);
+            removed += disallowedEvents.Sum(static @event => 1 + @event.Tags.Count());
+            var prohibitedEvents = disallowedEvents.Count(@event =>
+                HasUnexemptProhibitedEventPayload(@event, isNpgsqlSource));
+            if (prohibitedEvents > 0)
             {
-                AndrejaTelemetry.PolicyViolations.Add(1);
+                AndrejaTelemetry.PolicyViolations.Add(prohibitedEvents);
             }
+
+            data.ActivityTraceFlags &= ~ActivityTraceFlags.Recorded;
         }
 
         AndrejaTelemetry.PolicyChecks.Add(1);
@@ -69,6 +92,30 @@ public sealed class ContentSuppressingActivityProcessor : BaseProcessor<Activity
         return !AllowedAttributes.Contains(key) && IsProhibited(key);
     }
 
+    internal static bool IsAllowedOperationalEvent(ActivityEvent @event) =>
+        AllowedOperationalEventNames.Contains(@event.Name)
+        && @event.Tags.All(static tag => AllowedAttributes.Contains(tag.Key));
+
+    private static bool HasUnexemptProhibitedEventPayload(ActivityEvent @event, bool isNpgsqlSource)
+    {
+        if (isNpgsqlSource && string.Equals(@event.Name, "exception", StringComparison.Ordinal))
+        {
+            return @event.Tags.Any(static tag =>
+                !IsStandardExceptionTag(tag.Key) && IsProhibited(tag.Key));
+        }
+
+        return IsProhibitedEventName(@event.Name)
+            || @event.Tags.Any(static tag => IsProhibited(tag.Key));
+    }
+
+    private static bool IsStandardExceptionTag(string key) =>
+        string.Equals(key, "exception.type", StringComparison.Ordinal) ||
+        string.Equals(key, "exception.message", StringComparison.Ordinal) ||
+        string.Equals(key, "exception.stacktrace", StringComparison.Ordinal);
+
+    private static bool IsProhibitedEventName(string eventName) =>
+        !AllowedOperationalEventNames.Contains(eventName) && IsProhibited(eventName);
+
     private static bool IsProhibited(string key) =>
         key.Contains("task", StringComparison.OrdinalIgnoreCase) ||
         key.Contains("prompt", StringComparison.OrdinalIgnoreCase) ||
@@ -82,6 +129,8 @@ public sealed class ContentSuppressingActivityProcessor : BaseProcessor<Activity
         key.Contains("tool.definitions", StringComparison.OrdinalIgnoreCase) ||
         key.Contains("db.statement", StringComparison.OrdinalIgnoreCase) ||
         key.Contains("db.query.text", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("exception.message", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("exception.stacktrace", StringComparison.OrdinalIgnoreCase) ||
         key.Contains("url.query", StringComparison.OrdinalIgnoreCase) ||
         key.Contains("user.id", StringComparison.OrdinalIgnoreCase) ||
         key.Contains("user_id", StringComparison.OrdinalIgnoreCase) ||

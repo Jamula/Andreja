@@ -55,6 +55,7 @@ public static class OpenTelemetryServiceCollectionExtensions
 
         var endpoint = new Uri(options.OtlpEndpoint, UriKind.Absolute);
         services.AddSingleton<IControlPlaneTelemetry, OpenTelemetryControlPlaneTelemetry>();
+        services.AddSingleton<NpgsqlSpanSanitizingProcessor>();
         services.AddSingleton<ContentSuppressingActivityProcessor>();
         services.AddHostedService<TelemetryStartupCanaryService>();
         services.AddLogging(logging => logging
@@ -112,6 +113,7 @@ public static class OpenTelemetryServiceCollectionExtensions
                         }
                     };
                 })
+                .AddProcessor<NpgsqlSpanSanitizingProcessor>()
                 .AddProcessor<ContentSuppressingActivityProcessor>()
                 .AddOtlpExporter(exporter =>
                 {

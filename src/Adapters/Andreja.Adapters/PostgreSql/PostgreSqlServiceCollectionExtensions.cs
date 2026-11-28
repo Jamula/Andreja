@@ -8,6 +8,9 @@ namespace Andreja.Adapters.PostgreSql;
 
 public static class PostgreSqlServiceCollectionExtensions
 {
+    private static readonly Action<Npgsql.NpgsqlDataSourceBuilder> ContentSafeTracingAction =
+        ConfigureContentSafeTracing;
+
     public static IServiceCollection AddAndrejaIdentityPostgreSql(
         this IServiceCollection services,
         string connectionString)
@@ -21,10 +24,35 @@ public static class PostgreSqlServiceCollectionExtensions
         services.AddDbContext<AndrejaIdentityDbContext>(
             options => options.UseNpgsql(
                 connectionString,
-                npgsql => npgsql.MigrationsHistoryTable("__migrations", "identity")));
+                npgsql =>
+                {
+                    npgsql.MigrationsHistoryTable("__migrations", "identity");
+                    npgsql.ConfigureDataSource(ContentSafeTracingAction);
+                }));
         services.AddScoped<IIdentityStore, PostgreSqlIdentityStore>();
 
         return services;
+    }
+
+    public static void ConfigureContentSafeTracing(
+        Npgsql.NpgsqlDataSourceBuilder dataSourceBuilder)
+    {
+        ArgumentNullException.ThrowIfNull(dataSourceBuilder);
+
+        dataSourceBuilder.ConfigureTracing(tracing => tracing
+            .EnableFirstResponseEvent(false)
+            .ConfigureCommandSpanNameProvider(static _ => "postgresql.query")
+            .ConfigureBatchSpanNameProvider(static _ => "postgresql.batch")
+            .ConfigureCopyOperationSpanNameProvider(static _ => "postgresql.copy")
+            .ConfigureCommandEnrichmentCallback(static (activity, _) => ClearDatabaseStatementTags(activity))
+            .ConfigureBatchEnrichmentCallback(static (activity, _) => ClearDatabaseStatementTags(activity))
+            .ConfigureCopyOperationEnrichmentCallback(static (activity, _) => ClearDatabaseStatementTags(activity)));
+    }
+
+    private static void ClearDatabaseStatementTags(System.Diagnostics.Activity activity)
+    {
+        activity.SetTag("db.query.text", value: null);
+        activity.SetTag("db.statement", value: null);
     }
 
     public static IServiceCollection AddAndrejaOpenLoopsPostgreSql(

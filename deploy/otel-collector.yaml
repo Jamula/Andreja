@@ -42,6 +42,10 @@ processors:
         action: delete
       - key: db.query.text
         action: delete
+      - key: exception.message
+        action: delete
+      - key: exception.stacktrace
+        action: delete
       - key: url.query
         action: delete
       - key: gen_ai.input.messages

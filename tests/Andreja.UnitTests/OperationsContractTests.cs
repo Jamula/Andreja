@@ -11,6 +11,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+using OpenTelemetry;
+using OpenTelemetry.Trace;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.IO.Compression;
@@ -237,16 +239,14 @@ public sealed class OperationsContractTests
                 c.Name == "andreja_execution_denied_total"
                 && c.Tags.Any(t => t.Key == "andreja.denial.code" && Equals(t.Value, "skill-not-declared"))));
 
-            foreach (var (_, _, tags) in recordedCounters)
+            foreach (var text in recordedCounters
+                .SelectMany(static counter => counter.Tags)
+                .Select(static tag => tag.Value?.ToString() ?? string.Empty))
             {
-                foreach (var tag in tags)
-                {
-                    var text = tag.Value?.ToString() ?? string.Empty;
-                    Assert.DoesNotContain(canaryTitle, text, StringComparison.Ordinal);
-                    Assert.DoesNotContain(canaryDetails, text, StringComparison.Ordinal);
-                    Assert.DoesNotContain(tenantId.ToString("D"), text, StringComparison.OrdinalIgnoreCase);
-                    Assert.DoesNotContain(userId.ToString("D"), text, StringComparison.OrdinalIgnoreCase);
-                }
+                Assert.DoesNotContain(canaryTitle, text, StringComparison.Ordinal);
+                Assert.DoesNotContain(canaryDetails, text, StringComparison.Ordinal);
+                Assert.DoesNotContain(tenantId.ToString("D"), text, StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain(userId.ToString("D"), text, StringComparison.OrdinalIgnoreCase);
             }
         }
 
@@ -255,18 +255,97 @@ public sealed class OperationsContractTests
             Assert.IsTrue(recordedActivities.Any(a => a.OperationName == "andreja.proposal.create"));
             Assert.IsTrue(recordedActivities.Any(a => a.OperationName == "andreja.proposal.confirm"));
             Assert.IsTrue(recordedActivities.Any(a => a.OperationName == "andreja.skill.invoke"));
-            foreach (var activity in recordedActivities)
+            foreach (var text in recordedActivities
+                .SelectMany(static activity => activity.TagObjects)
+                .Select(static tag => tag.Value?.ToString() ?? string.Empty))
             {
-                foreach (var tag in activity.TagObjects)
-                {
-                    var text = tag.Value?.ToString() ?? string.Empty;
-                    Assert.DoesNotContain(canaryTitle, text, StringComparison.Ordinal);
-                    Assert.DoesNotContain(canaryDetails, text, StringComparison.Ordinal);
-                    Assert.DoesNotContain(tenantId.ToString("D"), text, StringComparison.OrdinalIgnoreCase);
-                    Assert.DoesNotContain(userId.ToString("D"), text, StringComparison.OrdinalIgnoreCase);
-                }
+                Assert.DoesNotContain(canaryTitle, text, StringComparison.Ordinal);
+                Assert.DoesNotContain(canaryDetails, text, StringComparison.Ordinal);
+                Assert.DoesNotContain(tenantId.ToString("D"), text, StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain(userId.ToString("D"), text, StringComparison.OrdinalIgnoreCase);
             }
         }
+    }
+
+    [TestMethod]
+    public void DatabaseTracingPipelineExportsSanitizedQueriesWithoutViolationsAndDropsExceptionEventSpans()
+    {
+        long violations = 0;
+        long suppressed = 0;
+        using var meterListener = new MeterListener();
+        meterListener.InstrumentPublished = (instrument, listener) =>
+        {
+            if (instrument.Meter.Name == AndrejaTelemetry.MeterName)
+            {
+                listener.EnableMeasurementEvents(instrument);
+            }
+        };
+        meterListener.SetMeasurementEventCallback<long>((instrument, measurement, _, _) =>
+        {
+            if (instrument.Name == "andreja_telemetry_policy_violation_total")
+            {
+                Interlocked.Add(ref violations, measurement);
+            }
+            else if (instrument.Name == "andreja_telemetry_suppressed_attributes_total")
+            {
+                Interlocked.Add(ref suppressed, measurement);
+            }
+        });
+        meterListener.Start();
+
+        using var exporter = new CapturingActivityExporter();
+        using var exportProcessor = new SimpleActivityExportProcessor(exporter);
+        using var tracerProvider = Sdk.CreateTracerProviderBuilder()
+            .AddSource(NpgsqlSpanSanitizingProcessor.NpgsqlActivitySourceName, "Test.Application")
+            .AddProcessor(new NpgsqlSpanSanitizingProcessor())
+            .AddProcessor(new ContentSuppressingActivityProcessor())
+            .AddProcessor(exportProcessor)
+            .Build();
+        using var npgsqlSource = new ActivitySource(NpgsqlSpanSanitizingProcessor.NpgsqlActivitySourceName);
+        using var appSource = new ActivitySource("Test.Application");
+
+        using (var querySpan = npgsqlSource.StartActivity("SELECT open_loops.tasks", ActivityKind.Client))
+        {
+            Assert.IsNotNull(querySpan);
+            querySpan.SetTag("db.system.name", "postgresql");
+            querySpan.SetTag("db.operation.name", "SELECT");
+            querySpan.SetTag("db.query.text", "SELECT * FROM open_loops.tasks WHERE Title='CANARY-SQL'");
+            querySpan.AddEvent(new ActivityEvent("received-first-response"));
+        }
+
+        Assert.AreEqual(0L, Interlocked.Read(ref violations));
+        var exportedQuery = Assert.ContainsSingle(exporter.Exported);
+        Assert.AreEqual("postgresql.operation", exportedQuery.DisplayName);
+        Assert.AreEqual("postgresql", exportedQuery.GetTagItem("db.system.name"));
+        Assert.AreEqual("SELECT", exportedQuery.GetTagItem("db.operation.name"));
+        Assert.IsNull(exportedQuery.GetTagItem("db.query.text"));
+
+        Activity? capturedFailedSpan;
+        using (var failedDbSpan = npgsqlSource.StartActivity("INSERT open_loops.tasks", ActivityKind.Client))
+        {
+            Assert.IsNotNull(failedDbSpan);
+            failedDbSpan.SetTag("db.system.name", "postgresql");
+            failedDbSpan.SetTag("db.response.status_code", "23505");
+            failedDbSpan.SetStatus(ActivityStatusCode.Error, "DETAIL: Key (Title)=(CANARY-SQL-ERR) already exists.");
+            failedDbSpan.AddException(new InvalidOperationException("Password=CANARY-DB-SECRET"));
+            Assert.IsTrue(failedDbSpan.Recorded);
+            capturedFailedSpan = failedDbSpan;
+        }
+
+        Assert.IsFalse(capturedFailedSpan.Recorded);
+        Assert.IsTrue(string.IsNullOrEmpty(capturedFailedSpan.StatusDescription));
+        Assert.AreEqual(0L, Interlocked.Read(ref violations));
+        Assert.HasCount(1, exporter.Exported);
+
+        using (var appExceptionSpan = appSource.StartActivity("app.unfiltered-exception", ActivityKind.Internal))
+        {
+            Assert.IsNotNull(appExceptionSpan);
+            appExceptionSpan.AddException(new InvalidOperationException("Token=CANARY-APP-SECRET"));
+        }
+
+        Assert.AreEqual(1L, Interlocked.Read(ref violations));
+        Assert.HasCount(1, exporter.Exported);
+        Assert.IsTrue(Interlocked.Read(ref suppressed) >= 4L);
     }
 
     [TestMethod]
@@ -686,5 +765,20 @@ public sealed class OperationsContractTests
     {
         public ValueTask<bool> IsCleanAsync(CancellationToken cancellationToken = default) =>
             ValueTask.FromResult(isClean);
+    }
+
+    private sealed class CapturingActivityExporter : BaseExporter<Activity>
+    {
+        public List<Activity> Exported { get; } = [];
+
+        public override ExportResult Export(in Batch<Activity> batch)
+        {
+            foreach (var activity in batch)
+            {
+                Exported.Add(activity);
+            }
+
+            return ExportResult.Success;
+        }
     }
 }
