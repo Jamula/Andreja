@@ -338,18 +338,24 @@ Invoke-CheckedCommand -FilePath 'docker' -Arguments @(
 ) -FailureMessage 'Pinned Trivy container/IaC scan failed.'
 
 $forbiddenSeverities = @($policy.forbiddenSeverities | ForEach-Object { $_.ToUpperInvariant() })
-$dependencyMatches = @(Get-GrypeForbiddenMatches -Path (Join-Path $outputRoot 'scan.dependencies.json') `
+$dependencyScanPath = Join-Path $outputRoot 'scan.dependencies.json'
+$imageScanPath = Join-Path $outputRoot 'scan.image.json'
+$iacScanPath = Join-Path $outputRoot 'scan.iac.json'
+$dependencyMatches = @(Get-GrypeForbiddenMatches -Path $dependencyScanPath `
     -ForbiddenSeverities $forbiddenSeverities)
-$imageMatches = @(Get-GrypeForbiddenMatches -Path (Join-Path $outputRoot 'scan.image.json') `
+$dependencyDbMetadata = Get-GrypeDatabaseMetadata -Path $dependencyScanPath
+$imageMatches = @(Get-GrypeForbiddenMatches -Path $imageScanPath `
+    -ForbiddenSeverities $forbiddenSeverities)
+$imageDbMetadata = Get-GrypeDatabaseMetadata -Path $imageScanPath
+$iacMatches = @(Get-TrivyForbiddenMatches -Path $iacScanPath `
     -ForbiddenSeverities $forbiddenSeverities)
 $dependencyFindings = $dependencyMatches.Count
 $imageFindings = $imageMatches.Count
-$iacFindings = Get-TrivyForbiddenCount -Path (Join-Path $outputRoot 'scan.iac.json') `
-    -ForbiddenSeverities $forbiddenSeverities
+$iacFindings = $iacMatches.Count
 
-Assert-NoForbiddenGrypeFinding -Matches $dependencyMatches -Scope 'Dependency'
-Assert-NoForbiddenGrypeFinding -Matches $imageMatches -Scope 'Final image'
-Assert-NoForbiddenFinding -Count $iacFindings -Scope 'Container/IaC'
+Assert-NoForbiddenGrypeFinding -Matches $dependencyMatches -Scope 'Dependency' -DatabaseMetadata $dependencyDbMetadata
+Assert-NoForbiddenGrypeFinding -Matches $imageMatches -Scope 'Final image' -DatabaseMetadata $imageDbMetadata
+Assert-NoForbiddenTrivyFinding -Matches $iacMatches -Scope 'Container/IaC'
 
 Remove-Item -LiteralPath $cacheRoot -Recurse -Force
 Copy-Item -LiteralPath $policyPath -Destination (Join-Path $outputRoot 'policy.json')

@@ -346,7 +346,55 @@ function Get-GrypeForbiddenCount {
     @(Get-GrypeForbiddenMatches -Path $Path -ForbiddenSeverities $ForbiddenSeverities).Count
 }
 
-function Get-TrivyForbiddenCount {
+function Get-GrypeDatabaseMetadata {
+    param([Parameter(Mandatory)][string] $Path)
+
+    $report = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -Depth 100
+    if (-not $report.descriptor -or -not $report.source -or $null -eq $report.matches) {
+        throw "Grype report is invalid: $Path"
+    }
+
+    $descriptor = $report.descriptor
+    $dbProperty = $descriptor.PSObject.Properties['db']
+    $db = if ($null -ne $dbProperty) { $dbProperty.Value } else { $null }
+    $schemaVersion = $null
+    if ($null -ne $db) {
+        $schemaProperty = $db.PSObject.Properties['schemaVersion']
+        if ($null -ne $schemaProperty -and (
+            $schemaProperty.Value -is [string] -or
+            $schemaProperty.Value -is [int] -or
+            $schemaProperty.Value -is [long])) {
+            $schemaVersion = [string] $schemaProperty.Value
+        }
+    }
+
+    $builtValue = $null
+    if ($null -ne $db) {
+        $builtProperty = $db.PSObject.Properties['built']
+        if ($null -ne $builtProperty) {
+            if ($builtProperty.Value -is [string]) {
+                $builtValue = $builtProperty.Value
+            } elseif ($builtProperty.Value -is [datetime]) {
+                $builtValue = ([datetime] $builtProperty.Value).ToUniversalTime().ToString(
+                    'yyyy-MM-ddTHH:mm:ssZ',
+                    [Globalization.CultureInfo]::InvariantCulture)
+            } elseif ($builtProperty.Value -is [datetimeoffset]) {
+                $builtValue = ([datetimeoffset] $builtProperty.Value).ToUniversalTime().ToString(
+                    'yyyy-MM-ddTHH:mm:ssZ',
+                    [Globalization.CultureInfo]::InvariantCulture)
+            }
+        }
+    }
+
+    [ordered]@{
+        scannerVersion = Get-GrypeDiagnosticField -Object $descriptor -Name 'version'
+        dbSchemaVersion = $schemaVersion
+        dbBuilt = $builtValue
+        dbChecksum = Get-GrypeDiagnosticField -Object $db -Name 'checksum'
+    }
+}
+
+function Get-TrivyForbiddenMatches {
     param(
         [Parameter(Mandatory)][string] $Path,
         [Parameter(Mandatory)][string[]] $ForbiddenSeverities
@@ -368,7 +416,16 @@ function Get-TrivyForbiddenCount {
         $findings
     } | Where-Object {
         $_ -and $_.Severity.ToUpperInvariant() -in $ForbiddenSeverities
-    }).Count
+    })
+}
+
+function Get-TrivyForbiddenCount {
+    param(
+        [Parameter(Mandatory)][string] $Path,
+        [Parameter(Mandatory)][string[]] $ForbiddenSeverities
+    )
+
+    @(Get-TrivyForbiddenMatches -Path $Path -ForbiddenSeverities $ForbiddenSeverities).Count
 }
 
 function Assert-NoForbiddenFinding {
@@ -391,7 +448,8 @@ function Assert-NoForbiddenFinding {
 function Assert-NoForbiddenGrypeFinding {
     param(
         [Parameter(Mandatory)][AllowEmptyCollection()][object[]] $Matches,
-        [Parameter(Mandatory)][string] $Scope
+        [Parameter(Mandatory)][string] $Scope,
+        [AllowNull()] $DatabaseMetadata = $null
     )
 
     if ($Matches.Count -gt 0) {
@@ -405,6 +463,34 @@ function Assert-NoForbiddenGrypeFinding {
                 advisory = Get-GrypeDiagnosticField -Object $vulnerability -Name 'id'
                 version = Get-GrypeDiagnosticField -Object $artifact -Name 'version'
                 severity = Get-GrypeDiagnosticField -Object $vulnerability -Name 'severity'
+            }
+        })
+        $details = ConvertTo-Json -InputObject $inventory -Depth 3 -Compress -EscapeHandling EscapeNonAscii
+        $findingDetails = @($details)
+        if ($null -ne $DatabaseMetadata) {
+            $dbDetails = ConvertTo-Json -InputObject $DatabaseMetadata -Depth 3 -Compress -EscapeHandling EscapeNonAscii
+            $findingDetails += "Database: $dbDetails"
+        }
+        Assert-NoForbiddenFinding -Count $Matches.Count -Scope $Scope -FindingDetails $findingDetails
+    }
+}
+
+function Assert-NoForbiddenTrivyFinding {
+    param(
+        [Parameter(Mandatory)][AllowEmptyCollection()][object[]] $Matches,
+        [Parameter(Mandatory)][string] $Scope
+    )
+
+    if ($Matches.Count -gt 0) {
+        $inventory = @($Matches | ForEach-Object {
+            $idValue = Get-GrypeDiagnosticField -Object $_ -Name 'ID'
+            if ($null -eq $idValue) {
+                $idValue = Get-GrypeDiagnosticField -Object $_ -Name 'VulnerabilityID'
+            }
+            [ordered]@{
+                id = $idValue
+                type = Get-GrypeDiagnosticField -Object $_ -Name 'Type'
+                severity = Get-GrypeDiagnosticField -Object $_ -Name 'Severity'
             }
         })
         $details = ConvertTo-Json -InputObject $inventory -Depth 3 -Compress -EscapeHandling EscapeNonAscii
@@ -687,6 +773,7 @@ Export-ModuleMember -Function @(
     'Assert-KeylessBundleStructure',
     'Assert-NoForbiddenFinding',
     'Assert-NoForbiddenGrypeFinding',
+    'Assert-NoForbiddenTrivyFinding',
     'Assert-OciPlatformBinding',
     'Assert-PinnedImageReference',
     'Assert-PlatformApproved',
@@ -701,9 +788,11 @@ Export-ModuleMember -Function @(
     'Get-KeylessVerificationArguments',
     'Get-ChecksummedFile',
     'Get-FileSha256',
+    'Get-GrypeDatabaseMetadata',
     'Get-GrypeForbiddenCount',
     'Get-GrypeForbiddenMatches',
     'Get-TrivyForbiddenCount',
+    'Get-TrivyForbiddenMatches',
     'Invoke-CheckedCommand',
     'Read-SupplyChainPolicy'
 )

@@ -61,7 +61,7 @@ The pinned .NET 10 SDK selects Microsoft Testing Platform mode through
 `Andreja.ArchitectureTests`, `Andreja.PublicSiteTests`, and `Andreja.DocsTests`
 in `Andreja.slnx`, plus separately compiled
 `Andreja.PostgreSqlIntegrationTests`) use `MSTest.Sdk` `4.5.1` and
-`Microsoft.Testing.Extensions.TrxReport` `2.5.2`. The SDK uses the `None`
+`Microsoft.Testing.Extensions.TrxReport` `2.5.3`. The SDK uses the `None`
 extension profile with only the MIT-licensed TRX report extension enabled, so
 retained CI reports do not pull unused coverage or CI-report extensions. MSTest
 analyzers use the `Default` rule set; repository warnings remain errors. Local
