@@ -76,7 +76,7 @@ Five architectural boundaries govern the codebase:
 | [`src/Andreja.Docs`](src/Andreja.Docs) | Deterministic `.NET 10` documentation consistency, feedback-readiness, and architecture-diagram CLI. |
 | [`tests/`](tests) | Five `.NET` `MSTest.Sdk` suites ([`Andreja.UnitTests`](tests/Andreja.UnitTests), [`Andreja.ArchitectureTests`](tests/Andreja.ArchitectureTests), [`Andreja.PublicSiteTests`](tests/Andreja.PublicSiteTests), and [`Andreja.DocsTests`](tests/Andreja.DocsTests) in [`Andreja.slnx`](Andreja.slnx), plus separately compiled [`Andreja.PostgreSqlIntegrationTests`](tests/Andreja.PostgreSqlIntegrationTests)). |
 | [`deploy/`](deploy), [`scripts/`](scripts) | Digest-pinned Compose overrides, OpenTelemetry collector config, backup-gated migration scripts, OCI supply-chain verification, local public-site preview, and browser/offline evidence scripts. |
-| [`docs/`](docs), [`.squad/`](.squad) | Ratified plan, ADRs (`0000`–`0012`), Phase 0/1A governance and evidence records, roadmap catalogs, operator/user guides, and Squad specialist team state ([`meet-the-squad.md`](meet-the-squad.md)). |
+| [`docs/`](docs) | Ratified plan, ADRs (`0000`–`0012`), Phase 0/1A governance and evidence records, roadmap catalogs, and operator/user guides. |
 
 ## Prerequisites
 
@@ -480,8 +480,7 @@ runtime state, or user content.
 - [Testing matrix](docs/testing-matrix.md)
 - [Phase 1A evidence](docs/phase-1a/evidence-44.md)
 - [Phase 1A packet decision record](docs/phase-1a/packet-decision-66.md)
-- [Issue status and Squad labels](docs/help/issue-status.md)
-- [Meet the Squad](meet-the-squad.md)
+- [Issue status and blockers](docs/help/issue-status.md)
 
 ## Community, governance, security, and licensing
 

@@ -1,7 +1,0 @@
-{
-  "version": 1,
-  "stateBackend": "two-layer",
-  "clients": [
-    "copilot"
-  ]
-}
