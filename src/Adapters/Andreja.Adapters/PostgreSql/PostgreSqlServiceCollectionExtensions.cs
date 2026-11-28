@@ -34,11 +34,14 @@ public static class PostgreSqlServiceCollectionExtensions
         return services;
     }
 
+    public const string OperationalDataSourceName = "andreja-postgresql";
+
     public static void ConfigureContentSafeTracing(
         Npgsql.NpgsqlDataSourceBuilder dataSourceBuilder)
     {
         ArgumentNullException.ThrowIfNull(dataSourceBuilder);
 
+        dataSourceBuilder.Name = OperationalDataSourceName;
         dataSourceBuilder.ConfigureTracing(tracing => tracing
             .EnableFirstResponseEvent(false)
             .ConfigureCommandSpanNameProvider(static _ => "postgresql.query")

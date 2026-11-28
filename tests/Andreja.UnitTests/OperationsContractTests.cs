@@ -489,6 +489,13 @@ public sealed class OperationsContractTests
     [TestMethod]
     public void NpgsqlMetricViewStripsConnectionPoolAndDatabaseMetadataBeforeExport()
     {
+        var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(
+            "Host=db.internal.canary;Database=andreja_secret_db;Username=admin_canary;Password=secret_canary");
+        PostgreSqlServiceCollectionExtensions.ConfigureContentSafeTracing(dataSourceBuilder);
+        Assert.AreEqual(
+            PostgreSqlServiceCollectionExtensions.OperationalDataSourceName,
+            dataSourceBuilder.Name);
+
         using var metricExporter = new CapturingMetricExporter();
         using var metricReader = new BaseExportingMetricReader(metricExporter);
         using var meterProvider = Sdk.CreateMeterProviderBuilder()
