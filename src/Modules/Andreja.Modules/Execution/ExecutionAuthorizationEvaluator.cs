@@ -1,11 +1,17 @@
 using Andreja.Platform.Contracts.Execution;
+using Andreja.Platform.Contracts.Observability;
 using Andreja.Platform.Contracts.Sharing;
 
 namespace Andreja.Modules.Execution;
 
-public sealed class ExecutionAuthorizationEvaluator(IExecutionAuditSink auditSink)
+public sealed class ExecutionAuthorizationEvaluator(
+    IExecutionAuditSink auditSink,
+    IControlPlaneTelemetry? telemetry = null)
     : IExecutionAuthorizationEvaluator
 {
+    private readonly IControlPlaneTelemetry telemetry =
+        telemetry ?? NullControlPlaneTelemetry.Instance;
+
     public async ValueTask<ExecutionAuthorizationDecision> EvaluateAsync(
         ExecutionAuthorizationRequest request,
         CancellationToken cancellationToken)
@@ -13,6 +19,9 @@ public sealed class ExecutionAuthorizationEvaluator(IExecutionAuditSink auditSin
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
 
+        using var span = telemetry.StartOperation(
+            "andreja.execution.authorize",
+            request.ArtifactKind);
         var policy = request.Authorization.UserPolicy;
         var grant = request.Authorization.Grant;
         var consent = request.Authorization.Consent;
@@ -117,6 +126,11 @@ public sealed class ExecutionAuthorizationEvaluator(IExecutionAuditSink auditSin
         }
 
         var allowed = denial is null;
+        if (!allowed)
+        {
+            telemetry.RecordAuthorizationDenied(request.ArtifactKind, denial!);
+        }
+
         var decision = new ExecutionAuthorizationDecision(
             allowed,
             denial ?? "authorized",

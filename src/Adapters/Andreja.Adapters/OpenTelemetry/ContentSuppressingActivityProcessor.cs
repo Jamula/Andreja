@@ -5,13 +5,30 @@ namespace Andreja.Adapters.OpenTelemetry;
 
 public sealed class ContentSuppressingActivityProcessor : BaseProcessor<Activity>
 {
+    public static IReadOnlySet<string> AllowedTagNames => AllowedAttributes;
+
     private static readonly HashSet<string> AllowedAttributes = new(StringComparer.Ordinal)
     {
+        "andreja.artifact.kind",
+        "andreja.denial.code",
+        "andreja.endpoint.locality",
+        "andreja.operation",
+        "andreja.outcome",
+        "db.operation.name",
+        "db.system",
+        "db.system.name",
         "error.type",
+        "gen_ai.operation.name",
+        "gen_ai.provider.name",
+        "gen_ai.request.model",
+        "gen_ai.response.finish_reasons",
+        "gen_ai.system",
+        "gen_ai.usage.input_tokens",
+        "gen_ai.usage.output_tokens",
         "http.request.method",
         "http.response.status_code",
-        "network.protocol.version",
         "http.route",
+        "network.protocol.version",
         "url.scheme",
     };
 
@@ -30,6 +47,15 @@ public sealed class ContentSuppressingActivityProcessor : BaseProcessor<Activity
             }
         }
 
+        foreach (var @event in data.Events.ToArray())
+        {
+            if (IsProhibited(@event.Name)
+                || @event.Tags.Any(tag => IsProhibited(tag.Key)))
+            {
+                AndrejaTelemetry.PolicyViolations.Add(1);
+            }
+        }
+
         AndrejaTelemetry.PolicyChecks.Add(1);
         if (removed > 0)
         {
@@ -37,11 +63,26 @@ public sealed class ContentSuppressingActivityProcessor : BaseProcessor<Activity
         }
     }
 
+    public static bool IsProhibitedAttributeKey(string key)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        return !AllowedAttributes.Contains(key) && IsProhibited(key);
+    }
+
     private static bool IsProhibited(string key) =>
         key.Contains("task", StringComparison.OrdinalIgnoreCase) ||
         key.Contains("prompt", StringComparison.OrdinalIgnoreCase) ||
         key.Contains("response", StringComparison.OrdinalIgnoreCase) ||
         key.Contains("token", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("input.messages", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("output.messages", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("system_instructions", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("tool.call.arguments", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("tool.call.result", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("tool.definitions", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("db.statement", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("db.query.text", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("url.query", StringComparison.OrdinalIgnoreCase) ||
         key.Contains("user.id", StringComparison.OrdinalIgnoreCase) ||
         key.Contains("user_id", StringComparison.OrdinalIgnoreCase) ||
         key.Contains("userid", StringComparison.OrdinalIgnoreCase) ||

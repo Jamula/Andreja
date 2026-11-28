@@ -1,5 +1,6 @@
 using Andreja.Modules.Execution;
 using Andreja.Platform.Contracts.Execution;
+using Andreja.Platform.Contracts.Observability;
 using Andreja.Platform.Contracts.Skills;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
@@ -12,20 +13,29 @@ public sealed class InMemorySkillHost : ISkillHost
     private readonly ConcurrentDictionary<(string Id, string Version), Registration> registrations = [];
     private readonly IExecutionAuthorizationEvaluator evaluator;
     private readonly IExecutionAuditSink auditSink;
+    private readonly IControlPlaneTelemetry telemetry;
 
     public InMemorySkillHost()
+        : this(NullControlPlaneTelemetry.Instance)
     {
+    }
+
+    public InMemorySkillHost(IControlPlaneTelemetry telemetry)
+    {
+        this.telemetry = telemetry ?? throw new ArgumentNullException(nameof(telemetry));
         var sink = new InMemoryExecutionAuditSink();
-        evaluator = new ExecutionAuthorizationEvaluator(sink);
+        evaluator = new ExecutionAuthorizationEvaluator(sink, this.telemetry);
         auditSink = sink;
     }
 
     public InMemorySkillHost(
         IExecutionAuthorizationEvaluator evaluator,
-        IExecutionAuditSink auditSink)
+        IExecutionAuditSink auditSink,
+        IControlPlaneTelemetry? telemetry = null)
     {
         this.evaluator = evaluator ?? throw new ArgumentNullException(nameof(evaluator));
         this.auditSink = auditSink ?? throw new ArgumentNullException(nameof(auditSink));
+        this.telemetry = telemetry ?? NullControlPlaneTelemetry.Instance;
     }
 
     public IReadOnlyList<ExecutionAuditEntry> AuditEntries =>
@@ -74,6 +84,7 @@ public sealed class InMemorySkillHost : ISkillHost
             ArgumentNullException.ThrowIfNull(context);
             cancellationToken.ThrowIfCancellationRequested();
 
+            using var span = telemetry.StartOperation("andreja.skill.invoke", "skill");
             if (!registrations.TryGetValue((invocation.SkillId, invocation.SkillVersion), out var registration))
             {
                 return await DeniedAsync(
@@ -191,16 +202,22 @@ public sealed class InMemorySkillHost : ISkillHost
                 cancellationToken).ConfigureAwait(false);
             if (!decision.Allowed)
             {
+                telemetry.RecordHostInvocation("skill", "denied");
                 return Denied(decision.Code, "Execution authorization was denied.");
             }
 
-            return await handler(
+            var result = await handler(
                 invocation,
                 context with { EffectiveDisclosure = decision.EffectiveDisclosure },
                 cancellationToken).ConfigureAwait(false);
+            telemetry.RecordHostInvocation(
+                "skill",
+                result.Status.ToString().ToLowerInvariant());
+            return result;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            telemetry.RecordHostInvocation("skill", "cancelled");
             return new(
                 SkillResultStatus.Cancelled,
                 null,
@@ -240,6 +257,8 @@ public sealed class InMemorySkillHost : ISkillHost
         string code,
         string message)
     {
+        telemetry.RecordAuthorizationDenied("skill", code);
+        telemetry.RecordHostInvocation("skill", "denied");
         await ExecutionAudit.DeniedAsync(
             auditSink,
             "skill",

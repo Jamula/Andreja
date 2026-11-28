@@ -21,7 +21,7 @@ try {
         throw "docker compose config failed."
     }
 
-    $images = & docker compose --file (Join-Path $root "compose.yaml") --profile evidence config --images
+    $images = & docker compose --file (Join-Path $root "compose.yaml") --profile evidence --profile dashboard config --images
     if ($LASTEXITCODE -ne 0) {
         throw "docker compose image expansion failed."
     }
@@ -29,6 +29,15 @@ try {
         if ($image -notmatch '(?:^|@)sha256:[0-9a-f]{64}$') {
             throw "Compose image is not digest-pinned: $image"
         }
+    }
+
+    & docker compose `
+        --profile dashboard `
+        --file (Join-Path $root "compose.yaml") `
+        --file (Join-Path $root "deploy/compose.dashboard.yaml") `
+        config --quiet
+    if ($LASTEXITCODE -ne 0) {
+        throw "The dashboard Compose override is invalid."
     }
 
     & docker compose `
