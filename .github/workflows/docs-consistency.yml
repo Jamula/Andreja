@@ -11,11 +11,6 @@ on:
       - 'Directory.Build.props'
       - 'Directory.Packages.props'
       - 'global.json'
-      - '.github/scripts/squad-readiness.js'
-      - '.github/scripts/squad-readiness.test.js'
-      - '.squad/templates/ralph-triage.js'
-      - '.github/workflows/squad-heartbeat.yml'
-      - '.github/workflows/squad-triage.yml'
       - '.github/ISSUE_TEMPLATE/decision.yml'
       - '.github/pull_request_template.md'
       - 'README.md'
@@ -29,11 +24,6 @@ on:
       - 'Directory.Build.props'
       - 'Directory.Packages.props'
       - 'global.json'
-      - '.github/scripts/squad-readiness.js'
-      - '.github/scripts/squad-readiness.test.js'
-      - '.squad/templates/ralph-triage.js'
-      - '.github/workflows/squad-heartbeat.yml'
-      - '.github/workflows/squad-triage.yml'
       - '.github/ISSUE_TEMPLATE/decision.yml'
       - '.github/pull_request_template.md'
       - 'README.md'
@@ -67,9 +57,6 @@ jobs:
 
       - name: Test documentation consistency, feedback readiness, and architecture diagram suites
         run: dotnet test --project tests/Andreja.DocsTests/Andreja.DocsTests.csproj --configuration Release --no-build
-
-      - name: Test Squad triage readiness
-        run: node --test .github/scripts/squad-readiness.test.js
 
       - name: Check plan, artifact hashes, and catalog/seed-table consistency
         run: dotnet run --project src/Andreja.Docs/Andreja.Docs.csproj --configuration Release --no-build -- check-consistency

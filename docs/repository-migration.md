@@ -15,7 +15,7 @@ the former personal-account repository or its redirect.
   `https://github.com/Jamula/Andreja.git`; the default branch is `main`.
 - At the `2026-08-23` transfer baseline (`d52badd`), the organization-owned
   Andreja Roadmap Project contained all 14 repository issues that existed at
-  that point in time; subsequent Phase 0, Phase 1A, and Squad issues added on
+  that point in time; subsequent Phase 0 and Phase 1A issues added on
   `Jamula/Andreja` follow [`docs/help/issue-status.md`](help/issue-status.md)
   and [`CONTRIBUTING.md`](../CONTRIBUTING.md). Its built-in Status, Milestone,
   Labels, Assignees, Repository, linked pull request, parent issue, and date
